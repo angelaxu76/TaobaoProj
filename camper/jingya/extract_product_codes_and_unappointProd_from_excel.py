@@ -133,5 +133,24 @@ def main():
         else:
             print("✅ 所有商品都已设置价格，无需导出缺价表。")
 
+    # ✅ 更新数据库 is_published 状态
+    try:
+        all_codes = df["商品编码"].dropna().unique().tolist()
+        if all_codes:
+            conn = psycopg2.connect(**PGSQL_CONFIG)
+            cursor = conn.cursor()
+            cursor.execute(f"""
+                UPDATE {TABLE_NAME}
+                SET is_published = TRUE
+                WHERE product_name = ANY(%s)
+            """, (all_codes,))
+            conn.commit()
+            conn.close()
+            print(f"📌 已更新数据库中 {len(all_codes)} 个商品编码的发布状态。")
+        else:
+            print("⚠️ 无有效商品编码，无需更新数据库发布状态。")
+    except Exception as e:
+        print(f"❌ 数据库 is_published 更新失败: {e}")
+
 if __name__ == "__main__":
     main()

@@ -19,7 +19,7 @@ PGSQL_CONFIG = {
 TABLE_NAME = "camper_inventory"
 
 # ======================
-# 提取性别：根据 URL 中是否包含 /women/ 或 /men/
+# 提取性别：根据 URL
 # ======================
 def detect_gender_from_url(product_url):
     url = product_url.lower()
@@ -31,23 +31,23 @@ def detect_gender_from_url(product_url):
         return "unknown"
 
 # ======================
-# 解析 TXT 文件，提取编码、URL、尺码、库存
+# 解析 TXT 文件
 # ======================
 def parse_txt_file(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    # 提取基础信息
     code_match = re.search(r"Product CODE:\s*(.+)", content)
     url_match = re.search(r"Product URL:\s*(.+)", content)
+    price_match = re.search(r"Product price:\s*([\d.]+)GBP", content)
 
     product_code = code_match.group(1).strip() if code_match else "UNKNOWN"
     product_url = url_match.group(1).strip() if url_match else "https://placeholder.url"
+    price_gbp = float(price_match.group(1)) if price_match else None
     gender = detect_gender_from_url(product_url)
 
-    print(f"\n📦 商品编码: {product_code} | 性别识别: {gender}")
+    print(f"\n📦 商品编码: {product_code} | 性别: {gender} | 价格: {price_gbp} GBP")
 
-    # 提取尺码库存块
     size_block = content.split("Size & EAN Info:")[-1].strip()
     size_lines = [line.strip() for line in size_block.splitlines() if line.strip()]
 
@@ -64,15 +64,16 @@ def parse_txt_file(file_path):
                 size,
                 gender,
                 quantity,
-                None,  # last_stock_quantity（由数据库逻辑更新）
-                datetime.now()
+                None,              # last_stock_quantity
+                datetime.now(),
+                price_gbp
             ))
         else:
             print(f"⚠️ 无法解析行: {line}")
     return rows
 
 # ======================
-# 主程序：写入数据库
+# 主函数
 # ======================
 def main():
     all_rows = []
@@ -88,7 +89,8 @@ def main():
         INSERT INTO {TABLE_NAME} (
             product_name, product_url, size,
             gender, stock_quantity,
-            last_stock_quantity, last_checked
+            last_stock_quantity, last_checked,
+            price_gbp
         )
         VALUES %s
         ON CONFLICT (product_name, size)
@@ -97,6 +99,7 @@ def main():
             stock_quantity = EXCLUDED.stock_quantity,
             gender = EXCLUDED.gender,
             product_url = EXCLUDED.product_url,
+            price_gbp = EXCLUDED.price_gbp,
             last_checked = EXCLUDED.last_checked
     """
 

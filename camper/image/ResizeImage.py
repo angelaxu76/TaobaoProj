@@ -2,8 +2,8 @@ import os
 from PIL import Image
 
 # === 配置参数（统一集中管理） ===
-INPUT_FOLDER = 'D:/TB/Products/camper/publication/images/'
-OUTPUT_FOLDER = 'D:/TB/Products/camper/publication/square_images/'
+INPUT_FOLDER = 'D:/TB/Products/camper/ready_to_publish/images/'
+OUTPUT_FOLDER = 'D:/TB/Products/camper/ready_to_publish/square_images/'
 BACKGROUND_COLOR = (255, 255, 255)  # 白色背景
 
 def expand_to_square(img, background_color=(255, 255, 255)):
