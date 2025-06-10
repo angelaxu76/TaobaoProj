@@ -6,7 +6,7 @@ from pathlib import Path
 # ======================
 # 输入参数（可以自行修改）
 # ======================
-base_url = "https://www.camper.com/en_GB/women/shoes?sort=default&page={}"
+base_url = "https://www.camper.com/en_GB/men/shoes?sort=default&page={}"
 total_pages = 30  # 总页数
 output_file = "D:/TB/Products/camper/publication/product_urls.txt"
 SAVE_FILE = Path(output_file)

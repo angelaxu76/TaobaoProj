@@ -1,0 +1,12 @@
+DROP TABLE IF EXISTS camper_inventory;
+
+CREATE TABLE camper_inventory (
+    id SERIAL PRIMARY KEY,
+    product_name VARCHAR(100) NOT NULL,
+    product_url TEXT NOT NULL,
+    size VARCHAR(10) NOT NULL,
+    stock_status VARCHAR(20) NOT NULL,
+    last_stock_status VARCHAR(20),
+    last_checked TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (product_name, size)
+);

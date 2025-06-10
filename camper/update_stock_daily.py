@@ -5,9 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from psycopg2.extras import execute_values
 
-# ======================
-# ✅ 配置区
-# ======================
+# ========== 配置区 ==========
 TXT_FOLDER = r"D:\TB\Products\camper\publication\TXT"
 PGSQL_CONFIG = {
     "host": "192.168.4.55",
@@ -18,62 +16,59 @@ PGSQL_CONFIG = {
 }
 TABLE_NAME = "camper_inventory"
 
-# ======================
-# 提取性别：根据 URL 中是否包含 /women/ 或 /men/
-# ======================
-def detect_gender_from_url(product_url):
-    url = product_url.lower()
-    if "/women/" in url:
-        return "women"
-    elif "/men/" in url:
-        return "men"
-    else:
-        return "unknown"
-
-# ======================
-# 解析 TXT 文件，提取编码、URL、尺码、库存
-# ======================
+# ========== 提取 TXT 尺码库存 ==========
 def parse_txt_file(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    # 提取基础信息
     code_match = re.search(r"Product CODE:\s*(.+)", content)
     url_match = re.search(r"Product URL:\s*(.+)", content)
+    title_match = re.search(r"Product Title:\s*(.+)", content)
 
     product_code = code_match.group(1).strip() if code_match else "UNKNOWN"
     product_url = url_match.group(1).strip() if url_match else "https://placeholder.url"
-    gender = detect_gender_from_url(product_url)
+    title = title_match.group(1).lower() if title_match else ""
 
-    print(f"\n📦 商品编码: {product_code} | 性别识别: {gender}")
+    if "women" in title:
+        gender = "women"
+    elif "men" in title or "man" in title:
+        gender = "men"
+    elif "kid" in title or "child" in title:
+        gender = "kids"
+    else:
+        desc_match = re.search(r"Description:\s*(.+?)(?:\n\n|$)", content, re.DOTALL)
+        desc = desc_match.group(1).lower() if desc_match else ""
+        if "women" in desc:
+            gender = "women"
+        elif "men" in desc or "man" in desc:
+            gender = "men"
+        elif "kid" in desc or "child" in desc:
+            gender = "kids"
+        else:
+            gender = "unknown"
 
-    # 提取尺码库存块
     size_block = content.split("Size & EAN Info:")[-1].strip()
     size_lines = [line.strip() for line in size_block.splitlines() if line.strip()]
 
     rows = []
+    print(f"\n📦 商品编码: {product_code} | 性别: {gender}")
     for line in size_lines:
         match = re.match(r"尺码:\s*(\d+)[^|]*\|\s*EAN:\s*\d+\s*\|\s*可用:\s*\w+\s*\|\s*库存:\s*(\d+)", line)
         if match:
-            size, quantity = match.groups()
-            quantity = int(quantity)
-            print(f"  - 尺码 {size}: 库存 {quantity}")
+            size, qty = match.groups()
+            qty = int(qty)
+            print(f"  - 尺码 {size}: 库存 {qty}")
             rows.append((
-                product_code,
-                product_url,
-                size,
-                gender,
-                quantity,
-                None,  # last_stock_quantity（由数据库逻辑更新）
+                product_code, product_url, size, gender,
+                qty,     # stock_quantity
+                None,    # last_stock_quantity
                 datetime.now()
             ))
         else:
             print(f"⚠️ 无法解析行: {line}")
     return rows
 
-# ======================
-# 主程序：写入数据库
-# ======================
+# ========== 主流程 ==========
 def main():
     all_rows = []
     txt_files = list(Path(TXT_FOLDER).glob("*.txt"))
@@ -81,22 +76,21 @@ def main():
         all_rows.extend(parse_txt_file(file))
 
     if not all_rows:
-        print("⚠️ 没有提取到任何数据，终止执行。")
+        print("⚠️ 没有可更新的数据。")
         return
 
     insert_query = f"""
         INSERT INTO {TABLE_NAME} (
-            product_name, product_url, size,
-            gender, stock_quantity,
-            last_stock_quantity, last_checked
+            product_name, product_url, size, gender,
+            stock_quantity, last_stock_quantity, last_checked
         )
         VALUES %s
         ON CONFLICT (product_name, size)
         DO UPDATE SET
             last_stock_quantity = {TABLE_NAME}.stock_quantity,
             stock_quantity = EXCLUDED.stock_quantity,
-            gender = EXCLUDED.gender,
             product_url = EXCLUDED.product_url,
+            gender = EXCLUDED.gender,
             last_checked = EXCLUDED.last_checked
     """
 
@@ -106,7 +100,7 @@ def main():
         conn.commit()
     conn.close()
 
-    print(f"\n✅ 共处理并写入/更新记录数：{len(all_rows)}")
+    print(f"\n✅ 共处理并写入/更新记录数: {len(all_rows)}")
 
 if __name__ == "__main__":
     main()

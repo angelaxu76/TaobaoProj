@@ -12,19 +12,17 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# ===========================
-# 默认配置参数（可被覆盖）
-# ===========================
+# =========================== 配置区 ===========================
 CHROMEDRIVER_PATH = "D:/Software/chromedriver-win64/chromedriver.exe"
 DEFAULT_TEXT_PATH = "D:/TB/Products/camper/publication/TXT/"
 DEFAULT_IMAGE_PATH = "D:/TB/Products/camper/publication/images/"
+PRODUCT_URLS_FILE = "D:/TB/Products/camper/publication/product_urls.txt"
 IMAGE_BASE_URL = "https://cloud.camper.com/is/image/YnJldW5pbmdlcjAx/"
 IMAGE_SUFFIXES = ['_C.jpg', '_F.jpg', '_L.jpg', '_T.jpg', '_P.jpg']
 
-# ===========================
-# Selenium 多线程驱动管理
-# ===========================
+# ===================== Selenium 多线程驱动 =====================
 thread_local = threading.local()
 
 def get_driver():
@@ -38,9 +36,7 @@ def get_driver():
         thread_local.driver = webdriver.Chrome(service=service, options=options)
     return thread_local.driver
 
-# ===========================
-# 下载商品图片
-# ===========================
+# ===================== 图片下载函数 =====================
 def download_images(product_code, image_path):
     os.makedirs(image_path, exist_ok=True)
     for suffix in IMAGE_SUFFIXES:
@@ -56,10 +52,9 @@ def download_images(product_code, image_path):
         except Exception as e:
             print(f"❌ 图片下载失败: {image_url}，原因: {e}")
 
-# ===========================
-# 主处理函数（核心可复用）
-# ===========================
-def process_product_url(url, save_txt=True, download_img=True, txt_path=DEFAULT_TEXT_PATH, image_path=DEFAULT_IMAGE_PATH):
+# ===================== 页面处理函数 =====================
+def process_product_url(url, save_txt=True, download_img=False,
+                        txt_path=DEFAULT_TEXT_PATH, image_path=DEFAULT_IMAGE_PATH):
     os.makedirs(txt_path, exist_ok=True)
     if download_img:
         os.makedirs(image_path, exist_ok=True)
@@ -78,18 +73,30 @@ def process_product_url(url, save_txt=True, download_img=True, txt_path=DEFAULT_
             return
 
         data = json.loads(script_tag.string)
-        sheet = data["props"]["pageProps"]["productSheet"]
+        sheet = data["props"]["pageProps"].get("productSheet", {})
 
-        product_code = sheet.get("code", "Unknown_Code")
-        title = soup.find("title").text.strip()
-        title = re.sub(r"\s*[-–—].*?Camper.*?$", "", title)
-        brand = sheet.get("brand", "")
-        price = f"{sheet.get('prices', {}).get('current', '')}{sheet.get('prices', {}).get('currency', '')}"
-        description = sheet.get("description", "")
+        product_code = sheet.get("code") or "Unknown_Code"
+        brand = sheet.get("brand") or "Unknown_Brand"
+        description = sheet.get("description") or "No Description"
         features = sheet.get("features", [])
         care = sheet.get("careDetailsArray", [])
         materials = sheet.get("careTextArray", [])
         sizes = sheet.get("sizes", [])
+
+        prices = sheet.get("prices")
+        if isinstance(prices, dict):
+            price_value = prices.get("current", "")
+            currency = prices.get("currency", "")
+            price = f"{price_value}{currency}"
+        else:
+            price = "No Price Info"
+
+        title_tag = soup.find("title")
+        if title_tag:
+            title = title_tag.text.strip()
+            title = re.sub(r"\s*[-–—].*?Camper.*?$", "", title)
+        else:
+            title = "No Title Found"
 
         size_lines = []
         for s in sizes:
@@ -122,18 +129,18 @@ def process_product_url(url, save_txt=True, download_img=True, txt_path=DEFAULT_
     except Exception as e:
         print(f"❌ 页面处理失败: {url}，错误: {e}")
 
-# ===========================
-# CLI 执行入口（可选）
-# ===========================
-if __name__ == "__main__":
-    PRODUCT_URLS_FILE = "D:/TB/Products/camper/publication/product_urls.txt"
-    with open(PRODUCT_URLS_FILE, "r", encoding="utf-8") as f:
+# ===================== 主函数入口 =====================
+def main(product_urls_file=PRODUCT_URLS_FILE, save_txt=True, download_img=False):
+    with open(product_urls_file, "r", encoding="utf-8") as f:
         urls = [line.strip() for line in f if line.strip()]
 
-    from concurrent.futures import ThreadPoolExecutor, as_completed
     with ThreadPoolExecutor(max_workers=6) as executor:
-        futures = [executor.submit(process_product_url, url) for url in urls]
+        futures = [executor.submit(process_product_url, url, save_txt, download_img) for url in urls]
         for future in as_completed(futures):
             future.result()
 
     print("🎯 所有商品处理完成！")
+
+# ===================== CLI 调用入口 =====================
+if __name__ == "__main__":
+    main()
