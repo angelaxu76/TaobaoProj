@@ -5,8 +5,11 @@ CREATE TABLE camper_inventory (
     product_name VARCHAR(100) NOT NULL,
     product_url TEXT NOT NULL,
     size VARCHAR(10) NOT NULL,
-    stock_status VARCHAR(20) NOT NULL,
-    last_stock_status VARCHAR(20),
+    gender VARCHAR(10),
+    stock_quantity INTEGER NOT NULL,
+    last_stock_quantity INTEGER,
+    price_gbp NUMERIC(10, 2),
     last_checked TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_published BOOLEAN DEFAULT FALSE,
     UNIQUE (product_name, size)
 );
