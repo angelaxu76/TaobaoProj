@@ -4,28 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7ad83b3f-8c84-4560-8d4c-2361cece7f17" name="更改" comment="">
-      <change afterPath="$PROJECT_DIR$/camper/core/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/camper/image/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/camper/jingya/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/camper/pipeline/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/camper/scripts/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/camper/stock/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/TaobaoProj.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/TaobaoProj.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/camper/Fetch_Images_TXT_EAN.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/core/Fetch_Images_TXT_EAN.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/camper/GenerateExcelForTaoJingXiao.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/camper/GetProductLink.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/core/GetProductLink.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/camper/PGSQL" beforeDir="false" afterPath="$PROJECT_DIR$/camper/scripts/PGSQL" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/camper/ResizeImage.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/image/ResizeImage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/camper/UpdateSizeToDB.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/stock/UpdateSizeToDB.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/camper/backup_and_clear_publication.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/core/backup_and_clear_publication.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/camper/camper_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/pipeline/camper_pipeline_runner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/camper/camper_pipeline_updateStock.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/pipeline/camper_pipeline_updateStock.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/camper/extract_product_codes_and_unappointProd_from_excel.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/jingya/extract_product_codes_and_unappointProd_from_excel.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/camper/generate_ready_to_publish_batch.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/jingya/generate_ready_to_publish_batch.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/camper/update_stock_daily.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/stock/update_stock_daily.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../pythonProject1/.idea/pythonProject1.iml" beforeDir="false" afterPath="$PROJECT_DIR$/../pythonProject1/.idea/pythonProject1.iml" afterDir="false" />
+    <list default="true" id="7ad83b3f-8c84-4560-8d4c-2361cece7f17" name="更改" comment="Merge remote-tracking branch 'origin/master'">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -41,6 +21,7 @@
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
   &quot;lastFilter&quot;: {
@@ -106,16 +87,29 @@
       <option name="presentableId" value="Default" />
       <updated>1749662977045</updated>
       <workItem from="1749662978240" duration="72000" />
-      <workItem from="1749663063458" duration="2673000" />
+      <workItem from="1749663063458" duration="4304000" />
     </task>
+    <task id="LOCAL-00001" summary="Merge remote-tracking branch 'origin/master'">
+      <option name="closed" value="true" />
+      <created>1749666174749</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1749666174750</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Merge remote-tracking branch 'origin/master'" />
+    <option name="LAST_COMMIT_MESSAGE" value="Merge remote-tracking branch 'origin/master'" />
+  </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/TaobaoProj$camper_pipeline_runner.coverage" NAME="camper_pipeline_runner 覆盖结果" MODIFIED="1749665374172" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/pipeline" />
     <SUITE FILE_PATH="coverage/TaobaoProj$run_camper_pipeline.coverage" NAME="run_camper_pipeline 覆盖结果" MODIFIED="1749664700554" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/camper" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$camper_pipeline_updateStock.coverage" NAME="camper_pipeline_updateStock 覆盖结果" MODIFIED="1749665957965" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/pipeline" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$camper_pipeline_updateStock.coverage" NAME="camper_pipeline_updateStock 覆盖结果" MODIFIED="1749666079299" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/pipeline" />
   </component>
 </project>
