@@ -1,85 +1,121 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
   <component name="ChangeListManager">
-    <list default="true" id="dcd6189c-aefb-4e5a-9a8e-8e87d44a95df" name="Changes" comment="">
+    <list default="true" id="7ad83b3f-8c84-4560-8d4c-2361cece7f17" name="更改" comment="">
+      <change afterPath="$PROJECT_DIR$/camper/core/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/camper/image/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/camper/jingya/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/camper/pipeline/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/camper/scripts/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/camper/stock/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/TaobaoProj.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/TaobaoProj.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/camper/Fetch_Images_TXT_EAN.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/core/Fetch_Images_TXT_EAN.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/camper/GenerateExcelForTaoJingXiao.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/camper/GetProductLink.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/core/GetProductLink.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/camper/PGSQL" beforeDir="false" afterPath="$PROJECT_DIR$/camper/scripts/PGSQL" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/camper/ResizeImage.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/image/ResizeImage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/camper/UpdateSizeToDB.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/stock/UpdateSizeToDB.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/camper/backup_and_clear_publication.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/core/backup_and_clear_publication.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/camper/camper_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/pipeline/camper_pipeline_runner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/camper/camper_pipeline_updateStock.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/pipeline/camper_pipeline_updateStock.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/camper/extract_product_codes_and_unappointProd_from_excel.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/jingya/extract_product_codes_and_unappointProd_from_excel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/camper/generate_ready_to_publish_batch.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/jingya/generate_ready_to_publish_batch.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/camper/update_stock_daily.py" beforeDir="false" afterPath="$PROJECT_DIR$/camper/stock/update_stock_daily.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../pythonProject1/.idea/pythonProject1.iml" beforeDir="false" afterPath="$PROJECT_DIR$/../pythonProject1/.idea/pythonProject1.iml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
-    <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "angelaxu76"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;angelaxu76&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/angelaxu76/TaobaoProj.git",
-    "accountId": "79d005b3-5d47-44b0-85d0-3151c4492b01"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/angelaxu76/TaobaoProj.git&quot;,
+    &quot;accountId&quot;: &quot;ec916920-a659-49dd-9a8e-d1e73db21aeb&quot;
   }
-}]]></component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 4
-}]]></component>
-  <component name="ProjectId" id="2yNDgOgo4oy5mO3g5tBMP1bzAVD" />
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 8
+}</component>
+  <component name="ProjectId" id="2yN73Nl40KLvMLrIgAfksRbCcxo" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.camper_pipeline_runner.executor": "Run",
+    "Python.camper_pipeline_updateStock.executor": "Run",
+    "Python.run_camper_pipeline.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
     "git-widget-placeholder": "main",
-    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "D:/Projects/.venv",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\Projects\TaobaoProj\camper\scripts" />
+      <recent name="D:\Projects\TaobaoProj\camper\image" />
+      <recent name="D:\Projects\TaobaoProj\camper\jingya" />
+      <recent name="D:\Projects\TaobaoProj\camper\stock" />
+      <recent name="D:\Projects\TaobaoProj\camper\core" />
+    </key>
+  </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-f27c65a3e318-JavaScript-PY-251.23774.444" />
-        <option value="bundled-python-sdk-890ed5b35930-d9c5bdb153f4-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.23774.444" />
+        <option value="bundled-js-predefined-d6986cc7102b-5c90d61e3bab-JavaScript-PY-242.23339.19" />
+        <option value="bundled-python-sdk-0029f7779945-399fe30bd8c1-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-242.23339.19" />
       </set>
     </attachedChunks>
   </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="应用程序级" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
-    <task active="true" id="Default" summary="Default task">
-      <changelist id="dcd6189c-aefb-4e5a-9a8e-8e87d44a95df" name="Changes" comment="" />
-      <created>1749666247719</created>
+    <task active="true" id="Default" summary="默认任务">
+      <changelist id="7ad83b3f-8c84-4560-8d4c-2361cece7f17" name="更改" comment="" />
+      <created>1749662977045</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1749666247719</updated>
-      <workItem from="1749666248833" duration="406000" />
+      <updated>1749662977045</updated>
+      <workItem from="1749662978240" duration="72000" />
+      <workItem from="1749663063458" duration="2673000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
-  <component name="Vcs.Log.Tabs.Properties">
-    <option name="TAB_STATES">
-      <map>
-        <entry key="MAIN">
-          <value>
-            <State />
-          </value>
-        </entry>
-      </map>
-    </option>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/TaobaoProj$camper_pipeline_runner.coverage" NAME="camper_pipeline_runner 覆盖结果" MODIFIED="1749665374172" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/pipeline" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$run_camper_pipeline.coverage" NAME="run_camper_pipeline 覆盖结果" MODIFIED="1749664700554" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/camper" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$camper_pipeline_updateStock.coverage" NAME="camper_pipeline_updateStock 覆盖结果" MODIFIED="1749665957965" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/pipeline" />
   </component>
 </project>
