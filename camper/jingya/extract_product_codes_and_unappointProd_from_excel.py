@@ -78,6 +78,11 @@ def main():
 
     gender_map = fetch_gender_map(unique_codes)
 
+    # 构建商品编码 → 渠道产品id 映射（唯一）
+    code_id_map = df.dropna(subset=["商品编码", channel_product_id_column]) \
+                    .drop_duplicates(subset=["商品编码"])[["商品编码", channel_product_id_column]] \
+                    .set_index("商品编码")[channel_product_id_column].to_dict()
+
     # 分类商品编码
     groups = {"women": [], "men": []}
     for code in unique_codes:
@@ -103,7 +108,11 @@ def main():
 
         records = []
         for code in codes:
-            row = {"product_name": code, "价格": price_map.get(code, "")}
+            row = {
+                "商品编码": code,
+                "渠道产品id": code_id_map.get(code, ""),
+                "价格": price_map.get(code, "")
+            }
             for size in sizes:
                 row[size] = inventory.get(code, {}).get(size, 0)
             records.append(row)
