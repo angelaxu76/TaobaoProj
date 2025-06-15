@@ -5,12 +5,30 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7ad83b3f-8c84-4560-8d4c-2361cece7f17" name="更改" comment="Merge remote-tracking branch 'origin/master'">
-      <change afterPath="$PROJECT_DIR$/../pythonProject1/geox/convert_xls_to_xlsx.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../pythonProject1/geox/generate_discount_price_excel.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../pythonProject1/geox/geox_getTxt_image_mutipleThread.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../pythonProject1/geox/import_geox_txt_to_db.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../pythonProject1/clarks/core/GetOutletProductURL.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../pythonProject1/clarks/core/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../pythonProject1/clarks/image/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../pythonProject1/clarks/pipeline/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../pythonProject1/clarks/scripts/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../pythonProject1/clarks/stocksize/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../pythonProject1/clarks/stocksize/export_store_skuid_stock.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../pythonProject1/clarks/stocksize/generate_store_reports.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../pythonProject1/clarks/stocksize/import_clarks_txt_to_db.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../pythonProject1/clarksoutlet/FetchImangeAndInfo.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../pythonProject1/clarksoutlet/GetProductURLs.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/TaobaoProj.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/TaobaoProj.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../pythonProject1/clarks/FetchImangeAndInfo.py" beforeDir="false" afterPath="$PROJECT_DIR$/../pythonProject1/clarks/FetchImangeAndInfo.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../pythonProject1/.idea/pythonProject1.iml" beforeDir="false" afterPath="$PROJECT_DIR$/../pythonProject1/.idea/pythonProject1.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../pythonProject1/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../pythonProject1/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../pythonProject1/clarks/FetchImangeAndInfo.py" beforeDir="false" afterPath="$PROJECT_DIR$/../pythonProject1/clarks/core/FetchImangeAndInfo.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../pythonProject1/clarks/GenerateExcel.py" beforeDir="false" afterPath="$PROJECT_DIR$/../pythonProject1/clarks/core/GenerateExcel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../pythonProject1/clarks/GetProductURLs.py" beforeDir="false" afterPath="$PROJECT_DIR$/../pythonProject1/clarks/core/GetProductURLs.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../pythonProject1/clarks/GroupImage.py" beforeDir="false" afterPath="$PROJECT_DIR$/../pythonProject1/clarks/image/GroupImage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../pythonProject1/clarks/changeImageSize.py" beforeDir="false" afterPath="$PROJECT_DIR$/../pythonProject1/clarks/image/changeImageSize.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../pythonProject1/clarks/database.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../pythonProject1/clarks/scripts/database.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../pythonProject1/clarks/run_clarks_pipeline.py" beforeDir="false" afterPath="$PROJECT_DIR$/../pythonProject1/clarks/pipeline/run_clarks_pipeline.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../pythonProject1/clarksoutlet/GetAllLink.py" beforeDir="false" afterPath="$PROJECT_DIR$/../pythonProject1/clarksoutlet/GetAllLink.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -26,7 +44,7 @@
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../pythonProject1" />
     <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
@@ -37,15 +55,14 @@
 }</component>
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/angelaxu76/TaobaoProj.git&quot;,
-    &quot;accountId&quot;: &quot;ec916920-a659-49dd-9a8e-d1e73db21aeb&quot;
+    &quot;url&quot;: &quot;https://github.com/angelaxu76/pythonProject1.git&quot;,
+    &quot;accountId&quot;: &quot;9f7c89e5-c989-4c40-bd82-77408125929f&quot;
   }
 }</component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 8
 }</component>
   <component name="ProjectId" id="2yN73Nl40KLvMLrIgAfksRbCcxo" />
-  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -55,6 +72,9 @@
     "Python.CamperFilterGoodsExport.executor": "Run",
     "Python.FetchImangeAndInfo.executor": "Run",
     "Python.Find_unbound_unregistered_products.executor": "Run",
+    "Python.GetAllLink.executor": "Run",
+    "Python.GetOutletProductURL.executor": "Run",
+    "Python.GetProductURLs.executor": "Run",
     "Python.GroupImage.executor": "Run",
     "Python.HtmlToPGNBatch.executor": "Run",
     "Python.MergeImages.executor": "Run",
@@ -62,17 +82,22 @@
     "Python.camper_pipeline_updateStock.executor": "Run",
     "Python.convert_xls_to_xlsx.executor": "Run",
     "Python.cutterAllsiderSpace.executor": "Run",
+    "Python.export_store_skuid_stock.executor": "Run",
     "Python.extract_product_codes_and_unappointProd_from_excel.executor": "Run",
     "Python.generate_discount_price_excel.executor": "Run",
+    "Python.generate_store_reports.executor": "Run",
     "Python.geox_DetailAndImages.executor": "Run",
     "Python.geox_detailAndImage_MutipleThread.executor": "Run",
     "Python.geox_getTxt_image_mutipleThread.executor": "Run",
     "Python.get_geox_links.executor": "Run",
+    "Python.import_clarks_txt_to_db.executor": "Run",
     "Python.import_geox_txt_to_db.executor": "Run",
     "Python.run_camper_pipeline.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "main",
-    "last_opened_file_path": "D:/Projects/TaobaoProj/camper/image",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "master",
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "D:/Projects/pythonProject1/clarksoutlet",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -89,22 +114,23 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\Projects\pythonProject1\clarksoutlet" />
       <recent name="D:\Projects\TaobaoProj\camper\image" />
       <recent name="D:\Projects\TaobaoProj\camper\jingya" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\Projects\pythonProject1\clarks\scripts" />
+      <recent name="D:\Projects\pythonProject1\clarks\pipeline" />
+      <recent name="D:\Projects\pythonProject1\clarks\image" />
+      <recent name="D:\Projects\pythonProject1\clarks\core" />
       <recent name="D:\Projects\TaobaoProj\camper\scripts" />
-      <recent name="D:\Projects\TaobaoProj\camper\image" />
-      <recent name="D:\Projects\TaobaoProj\camper\jingya" />
-      <recent name="D:\Projects\TaobaoProj\camper\stock" />
-      <recent name="D:\Projects\TaobaoProj\camper\core" />
     </key>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-5c90d61e3bab-JavaScript-PY-242.23339.19" />
-        <option value="bundled-python-sdk-0029f7779945-399fe30bd8c1-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-242.23339.19" />
+        <option value="bundled-js-predefined-d6986cc7102b-b26f3e71634d-JavaScript-PY-251.26094.141" />
+        <option value="bundled-python-sdk-9f8e2b94138c-36ea0e71a18c-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.26094.141" />
       </set>
     </attachedChunks>
   </component>
@@ -124,6 +150,8 @@
       <workItem from="1749796493226" duration="4047000" />
       <workItem from="1749848972493" duration="122000" />
       <workItem from="1749853226522" duration="3825000" />
+      <workItem from="1749938027272" duration="1248000" />
+      <workItem from="1749963142126" duration="7524000" />
     </task>
     <task id="LOCAL-00001" summary="Merge remote-tracking branch 'origin/master'">
       <option name="closed" value="true" />
@@ -168,23 +196,29 @@
     <option name="LAST_COMMIT_MESSAGE" value="Merge remote-tracking branch 'origin/master'" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/TaobaoProj$MergeImages.coverage" NAME="MergeImages 覆盖结果" MODIFIED="1749668713061" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/image" />
     <SUITE FILE_PATH="coverage/TaobaoProj$convert_xls_to_xlsx.coverage" NAME="convert_xls_to_xlsx 覆盖结果" MODIFIED="1749796606809" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$run_camper_pipeline.coverage" NAME="run_camper_pipeline 覆盖结果" MODIFIED="1749664700554" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/camper" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$HtmlToPGNBatch.coverage" NAME="HtmlToPGNBatch 覆盖结果" MODIFIED="1749677055062" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/commontool" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$cutterAllsiderSpace.coverage" NAME="cutterAllsiderSpace 覆盖结果" MODIFIED="1749677080676" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/commontool" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$generate_discount_price_excel.coverage" NAME="generate_discount_price_excel 覆盖结果" MODIFIED="1749802884578" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$Find_unbound_unregistered_products.coverage" NAME="Find_unbound_unregistered_products 覆盖结果" MODIFIED="1749674829821" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/jingya" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$CamperFilterGoodsExport.coverage" NAME="CamperFilterGoodsExport 覆盖结果" MODIFIED="1749779681734" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/taojingxiao/taojingxiao/core" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$FetchImangeAndInfo.coverage" NAME="FetchImangeAndInfo 覆盖结果" MODIFIED="1749857125971" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$generate_store_reports.coverage" NAME="generate_store_reports Coverage Results" MODIFIED="1749970243599" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/stocksize" />
     <SUITE FILE_PATH="coverage/TaobaoProj$import_geox_txt_to_db.coverage" NAME="import_geox_txt_to_db 覆盖结果" MODIFIED="1749771879223" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$get_geox_links.coverage" NAME="get_geox_links 覆盖结果" MODIFIED="1749763137976" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$geox_detailAndImage_MutipleThread.coverage" NAME="geox_detailAndImage_MutipleThread 覆盖结果" MODIFIED="1749764665735" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$camper_pipeline_runner.coverage" NAME="camper_pipeline_runner 覆盖结果" MODIFIED="1749665374172" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/pipeline" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$FetchImangeAndInfo.coverage" NAME="FetchImangeAndInfo Coverage Results" MODIFIED="1749966869525" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/core" />
     <SUITE FILE_PATH="coverage/TaobaoProj$GroupImage.coverage" NAME="GroupImage 覆盖结果" MODIFIED="1749675466047" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/image" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$cutterAllsiderSpace.coverage" NAME="cutterAllsiderSpace 覆盖结果" MODIFIED="1749677080676" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/commontool" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$camper_pipeline_runner.coverage" NAME="camper_pipeline_runner 覆盖结果" MODIFIED="1749665374172" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/pipeline" />
     <SUITE FILE_PATH="coverage/TaobaoProj$geox_getTxt_image_mutipleThread.coverage" NAME="geox_getTxt_image_mutipleThread 覆盖结果" MODIFIED="1749765294793" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$GetProductURLs.coverage" NAME="GetProductURLs Coverage Results" MODIFIED="1749965608817" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarksoutlet" />
     <SUITE FILE_PATH="coverage/TaobaoProj$geox_DetailAndImages.coverage" NAME="geox_DetailAndImages 覆盖结果" MODIFIED="1749764871137" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$camper_pipeline_updateStock.coverage" NAME="camper_pipeline_updateStock 覆盖结果" MODIFIED="1749666079299" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/pipeline" />
     <SUITE FILE_PATH="coverage/TaobaoProj$extract_product_codes_and_unappointProd_from_excel.coverage" NAME="extract_product_codes_and_unappointProd_from_excel 覆盖结果" MODIFIED="1749763938677" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/jingya" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$HtmlToPGNBatch.coverage" NAME="HtmlToPGNBatch 覆盖结果" MODIFIED="1749677055062" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/commontool" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$export_store_skuid_stock.coverage" NAME="export_store_skuid_stock Coverage Results" MODIFIED="1749970498049" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/stocksize" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$geox_detailAndImage_MutipleThread.coverage" NAME="geox_detailAndImage_MutipleThread 覆盖结果" MODIFIED="1749764665735" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$generate_discount_price_excel.coverage" NAME="generate_discount_price_excel 覆盖结果" MODIFIED="1749802884578" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$GetOutletProductURL.coverage" NAME="GetOutletProductURL Coverage Results" MODIFIED="1749966813323" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/core" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$camper_pipeline_updateStock.coverage" NAME="camper_pipeline_updateStock 覆盖结果" MODIFIED="1749666079299" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/pipeline" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$GetAllLink.coverage" NAME="GetAllLink Coverage Results" MODIFIED="1749965446207" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarksoutlet" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$Find_unbound_unregistered_products.coverage" NAME="Find_unbound_unregistered_products 覆盖结果" MODIFIED="1749674829821" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/jingya" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$import_clarks_txt_to_db.coverage" NAME="import_clarks_txt_to_db Coverage Results" MODIFIED="1749969201357" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/stocksize" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$CamperFilterGoodsExport.coverage" NAME="CamperFilterGoodsExport 覆盖结果" MODIFIED="1749779681734" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/taojingxiao/taojingxiao/core" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$MergeImages.coverage" NAME="MergeImages 覆盖结果" MODIFIED="1749668713061" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/image" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$get_geox_links.coverage" NAME="get_geox_links 覆盖结果" MODIFIED="1749763137976" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$run_camper_pipeline.coverage" NAME="run_camper_pipeline 覆盖结果" MODIFIED="1749664700554" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/camper" />
   </component>
 </project>
