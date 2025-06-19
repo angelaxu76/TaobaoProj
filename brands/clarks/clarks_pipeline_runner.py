@@ -2,12 +2,11 @@
 from brands.clarks.clarks_scraper import ClarksScraper
 from common_taobao.db_import import import_txt_to_db
 from common_taobao.export_discount_price import export_discount_excel
-from common_taobao.export_skuid_stock import export_stock_excel
+from brands.clarks.export_skuid_stock import export_stock_excel
 from common_taobao.prepare_publication import prepare_products
 from common_taobao.generate_reports import generate_publish_report
 from config import CLARKS, PGSQL_CONFIG
 import psycopg2
-from pathlib import Path
 import shutil
 import datetime
 

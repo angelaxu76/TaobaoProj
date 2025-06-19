@@ -1,71 +1,51 @@
+
 import os
 import shutil
-from pathlib import Path
+import psycopg2
 import pandas as pd
+from config import PGSQL_CONFIG
+from common_taobao.classifier import classify_product
 
-def parse_txt(file_path):
-    info = {}
-    with open(file_path, "r", encoding="utf-8") as f:
-        for line in f:
-            if ':' in line:
-                key, val = line.strip().split(":", 1)
-                info[key.strip()] = val.strip()
-    return info
+def prepare_products_for_publication(brand_config, brand_type="shoes"):
+    conn = psycopg2.connect(**PGSQL_CONFIG)
+    cursor = conn.cursor()
 
-def prepare_products(txt_dir, image_dir, output_dir, brand):
-    """
-    准备发布商品：
-    - 按性别将商品信息导出为 Excel
-    - 将图片复制到 output_dir/brand/images 下
-    参数:
-        txt_dir: TXT 文件目录
-        image_dir: 原始图片目录
-        output_dir: 输出路径目录
-        brand: 品牌名
-    """
-    txt_dir = Path(txt_dir)
-    image_dir = Path(image_dir)
-    output_dir = Path(output_dir)
-    excel_out = output_dir / brand
-    image_out = excel_out / "images"
-    image_out.mkdir(parents=True, exist_ok=True)
+    txt_dir = brand_config["TXT_DIR"]
+    output_dir = brand_config["OUTPUT_DIR"]
 
-    men_data, women_data, kids_data = [], [], []
+    # 清空输出目录
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    for file in txt_dir.glob("*.txt"):
-        try:
-            data = parse_txt(file)
-            gender = data.get("Product Gender", "").lower()
-            entry = {
-                "商品编码": data.get("Product Code"),
-                "商品名称": data.get("Product Name"),
-                "价格": data.get("Actual Price"),
-                "颜色": data.get("Color"),
-            }
-            if gender == "men":
-                men_data.append(entry)
-            elif gender == "women":
-                women_data.append(entry)
-            elif gender == "kids":
-                kids_data.append(entry)
+    cursor.execute(f"""
+        SELECT DISTINCT product_name, gender, product_url
+        FROM {brand_config['TABLE_NAME']}
+        WHERE is_published = FALSE
+    """)
 
-            # 图片复制
-            code = data.get("Product Code")
-            for i in range(1, 10):  # 最多复制9张图
-                img_name = f"{code}_{i}.jpg"
-                src = image_dir / img_name
-                dst = image_out / img_name
-                if src.exists():
-                    shutil.copyfile(src, dst)
+    rows = cursor.fetchall()
+    product_map = {}
 
-        except Exception as e:
-            print(f"❌ 错误处理 {file.name}: {e}")
+    for product_name, gender, url in rows:
+        txt_file = txt_dir / f"{product_name}.txt"
+        if not txt_file.exists():
+            continue
 
-    if men_data:
-        pd.DataFrame(men_data).to_excel(excel_out / "men待发布商品.xlsx", index=False)
-    if women_data:
-        pd.DataFrame(women_data).to_excel(excel_out / "women待发布商品.xlsx", index=False)
-    if kids_data:
-        pd.DataFrame(kids_data).to_excel(excel_out / "kids待发布商品.xlsx", index=False)
+        with open(txt_file, "r", encoding="utf-8") as f:
+            content = f.read()
+        text = content.lower()
 
-    print(f"✅ 发布准备完成：输出路径 → {excel_out}")
+        category = classify_product(text, brand_type=brand_type)
+        key = (gender or "unknown", category)
+        product_map.setdefault(key, []).append(product_name)
+
+    for (gender, category), codes in product_map.items():
+        subdir = output_dir / gender / category
+        subdir.mkdir(parents=True, exist_ok=True)
+        for code in codes:
+            src = txt_dir / f"{code}.txt"
+            dst = subdir / f"{code}.txt"
+            shutil.copyfile(src, dst)
+
+    print(f"✅ 准备完成，共生成 {sum(len(v) for v in product_map.values())} 个商品发布文件")
