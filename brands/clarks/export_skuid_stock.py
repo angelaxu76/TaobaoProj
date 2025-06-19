@@ -1,7 +1,7 @@
 
 import psycopg2
 from config import CLARKS, PGSQL_CONFIG
-from common_taobao.export_store_stock import export_store_stock_excel
+from common_taobao.core.export_store_stock import export_store_stock_excel
 
 def main():
     conn = psycopg2.connect(**PGSQL_CONFIG)

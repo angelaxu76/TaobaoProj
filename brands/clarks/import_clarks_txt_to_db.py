@@ -1,8 +1,8 @@
 
 import psycopg2
 from config import CLARKS, PGSQL_CONFIG
-from common_taobao.db_import import import_txt_to_db, import_skuid_from_store_excels
-from pathlib import Path
+from common_taobao.core.db_import import import_txt_to_db, import_skuid_from_store_excels
+
 
 def main():
     conn = psycopg2.connect(**PGSQL_CONFIG)

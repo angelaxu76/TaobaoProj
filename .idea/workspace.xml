@@ -5,28 +5,29 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7ad83b3f-8c84-4560-8d4c-2361cece7f17" name="更改" comment="Merge remote-tracking branch 'origin/master'">
-      <change afterPath="$PROJECT_DIR$/brands/clarks/find_publishable_products.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/brands/clarks/generate_discount_price_excel.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/brands/clarks/generate_product_excels.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/brands/clarks/prepare_products_for_publication.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/brands/clarks/test/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/brands/clarks/test/test_publishable_codes.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/common_taobao/classifier.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/common_taobao/export_store_stock.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/common_taobao/image_utils.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/common_taobao/prepare_products_for_publication_updated.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/common_taobao/prepare_utils.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/common_taobao/prepare_utils_extended.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/common_taobao/price_utils.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/common_taobao/translate.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/common_taobao/txt_parser.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/common_taobao/core/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/brands/clarks/clarks_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks/clarks_pipeline_runner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common_taobao/export_discount_price.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/export_discount_price.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common_taobao/export_skuid_stock.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks/export_skuid_stock.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common_taobao/prepare_publication.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/prepare_publication.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../pythonProject1/clarks/utils/translate.py" beforeDir="false" afterPath="$PROJECT_DIR$/../pythonProject1/clarks/utils/translate.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/download_product_images.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks/test/download_product_images.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/export_skuid_stock.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks/export_skuid_stock.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/find_publishable_products.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks/test/find_publishable_products.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/generate_discount_price_excel.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks/generate_discount_price_excel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/import_clarks_txt_to_db.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks/import_clarks_txt_to_db.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/prepare_products_for_publication.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks/test/prepare_products_for_publication.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/classifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/core/classifier.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/db_import.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/core/db_import.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/export_discount_price.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/core/export_discount_price.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/export_store_stock.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/core/export_store_stock.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/generate_reports.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/image_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/core/image_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/prepare_products_for_publication_updated.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/prepare_publication.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/prepare_utils.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/prepare_utils_extended.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/prepare_utils_extended.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/price_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/core/price_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/translate.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/core/translate.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/txt_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/core/txt_parser.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/TestClarks.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/TestClarks.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -84,6 +85,7 @@
     "Python.camper_pipeline_runner.executor": "Run",
     "Python.camper_pipeline_updateStock.executor": "Run",
     "Python.changeImageSize.executor": "Run",
+    "Python.clarks_pipeline_runner.executor": "Run",
     "Python.clarks_pipepline_size_newproduct.executor": "Run",
     "Python.config.executor": "Run",
     "Python.convert_xls_to_xlsx.executor": "Run",
@@ -139,11 +141,11 @@
       <recent name="D:\Projects\TaobaoProj\camper\jingya" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\Projects\TaobaoProj\brands" />
+      <recent name="D:\Projects\TaobaoProj\brands\clarks\test" />
+      <recent name="D:\Projects\TaobaoProj\common_taobao\core" />
       <recent name="D:\Projects\TaobaoProj\common_taobao" />
       <recent name="D:\Projects\TaobaoProj\brands\clarks" />
-      <recent name="D:\Projects\TaobaoProj\brands\clarks\core" />
-      <recent name="D:\Projects\TaobaoProj\common" />
-      <recent name="D:\Projects\TaobaoProj\common_modules" />
     </key>
   </component>
   <component name="SharedIndexes">
@@ -184,7 +186,7 @@
       <workItem from="1750163499650" duration="41578000" />
       <workItem from="1750322500466" duration="3326000" />
       <workItem from="1750328778118" duration="3006000" />
-      <workItem from="1750337907606" duration="5837000" />
+      <workItem from="1750337907606" duration="8356000" />
     </task>
     <task id="LOCAL-00001" summary="Merge remote-tracking branch 'origin/master'">
       <option name="closed" value="true" />
@@ -266,7 +268,15 @@
       <option name="project" value="LOCAL" />
       <updated>1750297489823</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="Merge remote-tracking branch 'origin/master'">
+      <option name="closed" value="true" />
+      <created>1750350621354</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1750350621354</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -295,6 +305,7 @@
     <SUITE FILE_PATH="coverage/TaobaoProj$export_store_discount_price.coverage" NAME="export_store_discount_price Coverage Results" MODIFIED="1749983888302" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/stocksize" />
     <SUITE FILE_PATH="coverage/TaobaoProj$unified_link_collector.coverage" NAME="unified_link_collector Coverage Results" MODIFIED="1750291940002" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks" />
     <SUITE FILE_PATH="coverage/TaobaoProj$generate_product_excels.coverage" NAME="generate_product_excels Coverage Results" MODIFIED="1750347480087" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$clarks_pipeline_runner.coverage" NAME="clarks_pipeline_runner Coverage Results" MODIFIED="1750351604513" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks" />
     <SUITE FILE_PATH="coverage/TaobaoProj$GetProductURLs.coverage" NAME="GetProductURLs Coverage Results" MODIFIED="1749975468995" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/core" />
     <SUITE FILE_PATH="coverage/TaobaoProj$geox_DetailAndImages.coverage" NAME="geox_DetailAndImages 覆盖结果" MODIFIED="1749764871137" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
     <SUITE FILE_PATH="coverage/TaobaoProj$clarks_pipepline_size_newproduct.coverage" NAME="clarks_pipepline_size_newproduct Coverage Results" MODIFIED="1750023298383" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/pipeline" />

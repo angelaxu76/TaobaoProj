@@ -4,14 +4,13 @@ from pathlib import Path
 import shutil
 import sys
 
-# ==== 配置 ====
-brand = "clarks"
-store_list = ["五小剑", "英国伦敦代购2015"]
-BASE_DIR = Path(f"D:/TB/Products/{brand}")
+brand = "ecco"
+store_list = ["TODO_店铺名称1", "TODO_店铺名称2"]
+BASE_DIR = Path(f"D:/TB/Products/{ecco}")
 BACKUP_DIR = BASE_DIR / "backup"
 REPU_DIR = BASE_DIR / "repulibcation"
 
-def step(msg): print(f"\n🟡 Step: {msg}")
+def step(msg): print(f"\n🟡 Step: {{msg}}")
 
 def run_script(path):
     subprocess.run([sys.executable, path], check=True)
@@ -22,13 +21,13 @@ def backup_and_clear_publication(store):
     backup_path = BACKUP_DIR / timestamp / store
     if pub_dir.exists():
         shutil.copytree(pub_dir, backup_path, dirs_exist_ok=True)
-        print(f"📦 [{store}] 已备份: {pub_dir} → {backup_path}")
+        print(f"📦 [{{store}}] 已备份: {{pub_dir}} → {{backup_path}}")
         for item in pub_dir.iterdir():
             if item.is_file():
                 item.unlink()
             elif item.is_dir():
                 shutil.rmtree(item)
-        print(f"🧹 [{store}] 已清空发布目录")
+        print(f"🧹 [{{store}}] 已清空发布目录")
 
 def main():
     step("1️⃣ 备份并清空所有店铺发布目录")
@@ -42,7 +41,7 @@ def main():
     run_script("fetch_product_info.py")
 
     step("4️⃣ 导入 TXT 信息到数据库")
-    run_script("import_clarks_txt_to_db.py")
+    run_script("import_ecco_txt_to_db.py")
 
     step("5️⃣ 导出定价 Excel")
     run_script("generate_discount_price_excel.py")
@@ -57,6 +56,4 @@ def main():
     print("\n✅ 所有店铺流程执行完毕")
 
 if __name__ == "__main__":
-    if "venv" not in sys.executable:
-        print(f"⚠️ 警告：当前未使用虚拟环境运行，使用的是 {sys.executable}")
     main()

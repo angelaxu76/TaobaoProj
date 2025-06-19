@@ -1,4 +1,4 @@
-from common_taobao.db_import import import_txt_to_db
+from common_taobao.core.db_import import import_txt_to_db
 from config import CLARKS, PGSQL_CONFIG
 import psycopg2
 
