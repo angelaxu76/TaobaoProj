@@ -33,12 +33,15 @@ CAMPER = {
 
 # === Geox 品牌路径配置（可继续扩展） ===
 GEOX = {
-    "BASE": BASE_DIR / "geox",
-    "TXT_DIR": BASE_DIR / "geox" / "publication" / "TXT",
-    "IMAGE_DIR": BASE_DIR / "geox" / "publication" / "images",
-    "STORE_DIR": BASE_DIR / "geox" / "document" / "store",
-    "OUTPUT_DIR": BASE_DIR / "geox" / "output"
+    "TXT_DIR": Path("D:/TB/Products/geox/publication/TXT"),
+    "OUTPUT_DIR": Path("D:/TB/Products/geox/repulibcation"),
+    "STORE_DIR": Path("D:/TB/Products/geox/document/store"),
+    "BASE": Path("D:/TB/Products/geox"),
+    "TABLE_NAME": "geox_inventory",
+    "IMAGE_DIR": Path("D:/TB/Products/geox/document/images"),
+    "PGSQL_CONFIG": PGSQL_CONFIG
 }
+
 
 # === ECCO 品牌路径配置（可继续扩展） ===
 ECCO = {

@@ -36,7 +36,7 @@ def run_script(filename: str, args=None):
 
 def main():
     print("\n🟡 Step: 1️⃣ 备份并清空目录: publication")
-    #backup_and_clear_dir(PUBLICATION_DIR, "publication")
+    # backup_and_clear_dir(PUBLICATION_DIR, "publication")
 
     print("\n🟡 Step: 1️⃣ 备份并清空目录: repulibcation")
     if REPUB_DIR.exists():
@@ -50,8 +50,11 @@ def main():
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
     # run_script("unified_link_collector.py")
 
-    print("\n🟡 Step: 3️⃣ 下载商品信息与图片")
-    run_script("fetch_product_info.py")
+    print("\n🟡 Step: 3️⃣a 下载商品信息（不含图片）")
+    # run_script("fetch_product_info.py")
+
+    print("\n🟡 Step: 3️⃣b 下载商品图片")
+    run_script("download_images_only.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT + SKU ID")
     run_script("import_ecco_txt_to_db.py")
