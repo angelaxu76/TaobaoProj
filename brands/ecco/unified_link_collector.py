@@ -5,6 +5,8 @@ from pathlib import Path
 from config import ECCO, ensure_all_dirs
 import time
 
+
+
 # === 页面配置 ===
 TARGET_URLS = [
     ("https://gb.ecco.com/en-GB/Women/Shoes", "Women"),

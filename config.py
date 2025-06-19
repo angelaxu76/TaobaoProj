@@ -46,8 +46,11 @@ ECCO = {
     "TXT_DIR": BASE_DIR / "ecco" / "publication" / "TXT",
     "IMAGE_DIR": BASE_DIR / "ecco" / "document" / "images",
     "STORE_DIR": BASE_DIR / "ecco" / "document" / "store",
-    "OUTPUT_DIR": BASE_DIR / "ecco" / "output"
+    "OUTPUT_DIR": BASE_DIR / "ecco" / "output",
+    "TABLE_NAME": "ecco_inventory",
+    "PGSQL_CONFIG": PGSQL_CONFIG
 }
+
 
 BRAND_CONFIG = {
     "clarks": CLARKS,
