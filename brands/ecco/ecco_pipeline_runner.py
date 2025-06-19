@@ -44,7 +44,7 @@ def main():
     run_script("import_ecco_txt_to_db.py")
 
     print("\n🟡 Step: 5️⃣ 导出定价 Excel")
-    run_script("export_discount_price_excel.py")
+    run_script("generate_discount_price_excel.py")
 
     print("\n🟡 Step: 6️⃣ 导出库存 Excel")
     run_script("export_skuid_stock.py")
