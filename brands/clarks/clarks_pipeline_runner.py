@@ -52,10 +52,10 @@ def main():
     #run_script("fetch_product_info.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
-    #import_txt_to_db("clarks")
+    import_txt_to_db("clarks")
 
     print("\n🟡 Step: 5️⃣ 导出价格 Excel")
-    #export_discount_price_excel("clarks")
+    export_discount_price_excel("clarks")
 
     print("\n🟡 Step: 6️⃣ 导出库存 Excel")
     export_skuid_stock_excel("clarks")

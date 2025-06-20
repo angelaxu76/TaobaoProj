@@ -18,8 +18,8 @@ PRODUCT_LINKS_FILE = ECCO["BASE"] / "publication" / "product_links.txt"
 TXT_DIR = ECCO["TXT_DIR"]
 IMAGE_DIR = ECCO["IMAGE_DIR"]
 CHROMEDRIVER_PATH = "D:/Software/chromedriver-win64/chromedriver.exe"
-MAX_THREADS = 5
-WAIT = 2
+MAX_THREADS = 20
+WAIT = 0
 DELAY = 0.5
 
 ensure_all_dirs(TXT_DIR, IMAGE_DIR)
@@ -85,7 +85,7 @@ def process_product(url, idx, total):
             raise Exception("未找到编码")
         product_code = code_info.text.strip().split()[2]
         code, color = product_code[:6], product_code[6:]
-        formatted_code = f"{code}-{color}"
+        #formatted_code = f"{code}-{color}"
 
         product_name = soup.select_one("span.product_info__intro-title").get_text(strip=True)
         description = soup.select_one("div.product-description").get_text(strip=True)
@@ -112,7 +112,7 @@ def process_product(url, idx, total):
             gender = "women"
 
         info = {
-            "Product Code": formatted_code,
+            "Product Code": product_code,
             "Product Name": product_name,
             "Product Description": description,
             "Product Gender": gender,
@@ -124,7 +124,7 @@ def process_product(url, idx, total):
             "Source URL": url
         }
 
-        filepath = TXT_DIR / f"{formatted_code}.txt"
+        filepath = TXT_DIR / f"{product_code}.txt"
         format_txt(info, filepath)
         print(f"📄 信息保存: {filepath.name}")
 
@@ -134,7 +134,7 @@ def process_product(url, idx, total):
                     continue
                 img_url = img["src"].replace("DetailsMedium", "ProductDetailslarge3x")
                 match = re.search(r'/([0-9A-Za-z-]+-(?:o|m|b|s|top_left_pair|front_pair))\.webp', img_url)
-                img_code = match.group(1) if match else formatted_code
+                img_code = match.group(1) if match else product_code
                 img_path = IMAGE_DIR / f"{img_code}.webp"
                 if SKIP_EXISTING_IMAGE and img_path.exists():
                     print(f"✅ 已存在图片，跳过: {img_path.name}")
