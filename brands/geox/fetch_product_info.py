@@ -5,9 +5,9 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from config import GEOX, ensure_all_dirs
+from common_taobao.txt_writer import format_txt
 import re
 
-# === 配置 ===
 PRODUCT_LINK_FILE = GEOX["LINKS_FILE"]
 TEXT_OUTPUT_DIR = GEOX["TXT_DIR"]
 CHROMEDRIVER_PATH = GEOX["CHROMEDRIVER_PATH"]
@@ -45,19 +45,19 @@ def extract_product_info(url, driver):
     name = name_tag["alt"].strip() if name_tag else "N/A"
 
     price_tag = soup.select_one("span.product-price span.value")
-    full_price = price_tag["content"].strip() if price_tag else "N/A"
+    full_price = price_tag["content"].strip() if price_tag else ""
 
     discount_tag = soup.select_one("span.sales.discount span.value")
     discount_price = discount_tag["content"].strip() if discount_tag else full_price
 
     color_block = soup.select_one("div.sticky-color")
-    color = color_block.get_text(strip=True).replace("Color:", "") if color_block else "N/A"
+    color = color_block.get_text(strip=True).replace("Color:", "") if color_block else ""
 
     materials_block = soup.select_one("div.materials-container")
-    material_text = materials_block.get_text(" ", strip=True) if materials_block else "N/A"
+    upper_material = materials_block.get_text(" ", strip=True) if materials_block else ""
 
     desc_block = soup.select_one("div.product-description div.value")
-    description = desc_block.get_text(strip=True) if desc_block else "N/A"
+    description = desc_block.get_text(strip=True) if desc_block else ""
 
     size_blocks = soup.select("div.size-value")
     sizes = []
@@ -68,21 +68,22 @@ def extract_product_info(url, driver):
         sizes.append(f"{size}: {available}")
 
     gender = "男款" if "man" in url else "女款" if "woman" in url else "童款"
-    txt_path = TEXT_OUTPUT_DIR / f"{code}.txt"
-    with open(txt_path, "w", encoding="utf-8") as f:
-        f.write(f"编码: {code}\n")
-        f.write(f"名称: {name}\n")
-        f.write(f"原价: {full_price}\n")
-        f.write(f"折扣价: {discount_price}\n")
-        f.write(f"颜色: {color}\n")
-        f.write(f"材质: {material_text}\n")
-        f.write(f"性别: {gender}\n")
-        f.write(f"链接: {url}\n")
-        f.write("尺码库存:\n")
-        for s in sizes:
-            f.write(f"  - {s}\n")
-        f.write(f"描述:\n{description}\n")
 
+    txt_path = TEXT_OUTPUT_DIR / f"{code}.txt"
+    info = {
+        "product_code": code,
+        "product_name": name,
+        "original_price": full_price,
+        "discount_price": discount_price,
+        "color": color,
+        "gender": gender,
+        "product_url": url,
+        "upper_material": upper_material,
+        "product_description": description,
+        "size_stock": sizes
+    }
+
+    format_txt(info, txt_path)
     print(f"📄 信息写入: {txt_path.name}")
 
 def main():

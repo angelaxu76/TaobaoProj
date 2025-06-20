@@ -54,7 +54,7 @@ def main():
     # run_script("fetch_product_info.py")
 
     print("\n🟡 Step: 3️⃣b 下载商品图片")
-    run_script("download_images_only.py")
+    # run_script("download_images_only.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT + SKU ID")
     run_script("import_ecco_txt_to_db.py")

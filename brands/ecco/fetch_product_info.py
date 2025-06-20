@@ -1,50 +1,33 @@
-
-import os
-import re
 import time
+import re
 import json
-import requests
 from bs4 import BeautifulSoup
 from pathlib import Path
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from config import ECCO, ensure_all_dirs
+from common_taobao.txt_writer import format_txt
 
 # ========== 全局路径 & 参数 ==========
 PRODUCT_LINKS_FILE = ECCO["BASE"] / "publication" / "product_links.txt"
 TXT_DIR = ECCO["TXT_DIR"]
-IMAGE_DIR = ECCO["IMAGE_DIR"]
-CHROMEDRIVER_PATH = "D:/Software/chromedriver-win64/chromedriver.exe"
+CHROMEDRIVER_PATH = ECCO["CHROMEDRIVER_PATH"]
 MAX_THREADS = 5
 WAIT = 2
-DELAY = 0.5
 
 # ✅ 确保目录存在
-ensure_all_dirs(TXT_DIR, IMAGE_DIR)
+ensure_all_dirs(TXT_DIR)
 
-# ✅ 控制选项
-SKIP_EXISTING_IMAGE = True
-
-# ========== 工具函数 ==========
 def create_driver():
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--window-size=1920x1080")
-    return webdriver.Chrome(service=Service(CHROMEDRIVER_PATH), options=chrome_options)
-
-def safe_get_text(soup, selector, attr=None):
-    try:
-        tag = soup.select_one(selector)
-        if tag:
-            return tag[attr].strip() if attr else tag.text.strip()
-    except:
-        pass
-    return "No Data"
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--window-size=1920x1080")
+    return webdriver.Chrome(service=Service(CHROMEDRIVER_PATH), options=options)
 
 def size_to_eu(uk_size):
     uk_to_eu = {
@@ -54,11 +37,9 @@ def size_to_eu(uk_size):
     }
     return uk_to_eu.get(uk_size)
 
-def extract_sizes_and_stock_status(html):
-    soup = BeautifulSoup(html, "html.parser")
-    size_div = soup.find("div", class_="size-picker__rows")
+def extract_sizes_and_stock_status(soup):
     results = []
-
+    size_div = soup.find("div", class_="size-picker__rows")
     if size_div:
         for btn in size_div.find_all("button"):
             uk_size = btn.text.strip()
@@ -68,26 +49,18 @@ def extract_sizes_and_stock_status(html):
             is_soldout = "size-picker__item--soldout" in btn.get("class", [])
             status = "无货" if is_soldout else "有货"
             results.append(f"{eu_size}: {status}")
-        return results
-
-    for li in soup.select("div.product-description-list li"):
-        text = li.text.strip()
-        if "Available in European sizes" in text:
-            sizes = re.findall(r"\d{2}-\d{2}", text)
-            if sizes:
-                results.extend([f"{s}: 默认有货" for s in sizes])
     return results
 
 def extract_price_info(html):
     try:
         match = re.search(r'productdetailctrl\.onProductPageInit\((\{.*?\})\)', html, re.DOTALL)
         if not match:
-            return []
+            return None, None
         json_text = match.group(1).replace("&quot;", '"')
         data = json.loads(json_text)
-        return [f"原价: {data.get('Price', 0):.2f}", f"折扣价: {data.get('AdjustedPrice', 0):.2f}"]
+        return f"{data.get('Price', 0):.2f}", f"{data.get('AdjustedPrice', 0):.2f}"
     except:
-        return []
+        return None, None
 
 def process_product(url, idx, total):
     driver = None
@@ -105,27 +78,31 @@ def process_product(url, idx, total):
         code, color = product_code[:6], product_code[6:]
         formatted_code = f"{code}-{color}"
 
-        txt_path = TXT_DIR / f"{formatted_code}.txt"
-        with open(txt_path, "w", encoding="utf-8") as f:
-            f.write(f"Brand Name: ECCO\n")
-            f.write(f"Product Code: {code}\n")
-            f.write(f"Color Code: {color}\n")
-            f.write("Color: {}\n".format(safe_get_text(soup, "span.product_info__color--selected")))
-            f.write("Price: {}\n\n".format(safe_get_text(soup, "span[ng-bind-html='productdetailctrl.origPrice | trusted']")))
-            f.write("product_title: {}\n\n".format(safe_get_text(soup, "span.product_info__intro-title")))
-            f.write("product Short Info:\n{}\n\n".format(safe_get_text(soup, "span.product_info__intro-class")))
-            f.write("product Short Description:\n{}\n\n".format(safe_get_text(soup, "div.product-description")))
-            f.write("Product Detail Descriptions:\n")
-            for i, li in enumerate(soup.select("div.product-description-list li"), 1):
-                f.write(f"{i}. {li.text.strip()}\n")
-            f.write("\nAvailable Sizes:\n")
-            for s in extract_sizes_and_stock_status(driver.page_source):
-                f.write(s + "\n")
-            f.write("\nPrice Info:\n")
-            for p in extract_price_info(driver.page_source):
-                f.write(p + "\n")
+        name = soup.select_one("span.product_info__intro-title").text.strip()
+        color_name = soup.select_one("span.product_info__color--selected").text.strip()
+        description = soup.select_one("div.product-description").text.strip()
+        short_info = soup.select_one("span.product_info__intro-class")
+        gender_text = short_info.text.lower() if short_info else ""
+        gender = "男款" if "men" in gender_text else "女款" if "women" in gender_text else "童款"
 
-        print(f"📄 信息保存: {txt_path.name}")
+        original_price, discount_price = extract_price_info(driver.page_source)
+        sizes = extract_sizes_and_stock_status(soup)
+
+        info = {
+            "product_code": formatted_code,
+            "product_name": name,
+            "original_price": original_price,
+            "discount_price": discount_price,
+            "color": color_name,
+            "gender": gender,
+            "product_url": url,
+            "product_description": description,
+            "size_stock": sizes
+        }
+
+        txt_path = TXT_DIR / f"{formatted_code}.txt"
+        format_txt(info, txt_path)
+        print(f"📄 写入: {txt_path.name}")
 
     except Exception as e:
         print(f"❌ 错误: {url} - {e}")
@@ -135,17 +112,17 @@ def process_product(url, idx, total):
 
 def fetch_product_details():
     if not PRODUCT_LINKS_FILE.exists():
-        print(f"❌ 商品链接文件不存在: {PRODUCT_LINKS_FILE}")
+        print(f"❌ 缺少商品链接文件: {PRODUCT_LINKS_FILE}")
         return
     urls = [u.strip() for u in PRODUCT_LINKS_FILE.read_text(encoding="utf-8").splitlines() if u.strip()]
     total = len(urls)
-    print(f"\n📦 共 {total} 条商品，线程数: {MAX_THREADS}")
+    print(f"📦 共需处理商品: {total} 条")
 
     with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
         futures = [executor.submit(process_product, url, i + 1, total) for i, url in enumerate(urls)]
         for _ in as_completed(futures):
             pass
-    print("\n✅ ECCO 商品信息处理完毕（不含图片）！")
+    print("\n✅ ECCO 商品信息提取完毕（统一格式）")
 
 if __name__ == "__main__":
     fetch_product_details()

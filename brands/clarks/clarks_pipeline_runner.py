@@ -1,62 +1,69 @@
+import os
+import shutil
 import subprocess
 from datetime import datetime
+from config import CLARKS
+from common_taobao.generate_discount_price_excel import export_discount_price_excel
+from common_taobao.export_skuid_stock import export_skuid_stock_excel
+from common_taobao.generate_product_excels import generate_product_excels_main
+from common_taobao.import_txt_to_db import import_txt_to_db
 from pathlib import Path
-import shutil
-import sys
 
-# ==== 配置 ====
-brand = "clarks"
-store_list = ["五小剑", "英国伦敦代购2015"]
-BASE_DIR = Path(f"D:/TB/Products/{brand}")
+BASE_DIR = CLARKS["BASE"]
+PUBLICATION_DIR = BASE_DIR / "publication"
+REPUB_DIR = BASE_DIR / "repulibcation"
 BACKUP_DIR = BASE_DIR / "backup"
-REPU_DIR = BASE_DIR / "repulibcation"
 
-def step(msg): print(f"\n🟡 Step: {msg}")
+def backup_and_clear_dir(dir_path: Path, name: str):
+    if not dir_path.exists():
+        print(f"⚠️ 目录不存在: {dir_path}，跳过")
+        return
 
-def run_script(path):
-    subprocess.run([sys.executable, path], check=True)
-
-def backup_and_clear_publication(store):
-    pub_dir = REPU_DIR / store
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_path = BACKUP_DIR / timestamp / store
-    if pub_dir.exists():
-        shutil.copytree(pub_dir, backup_path, dirs_exist_ok=True)
-        print(f"📦 [{store}] 已备份: {pub_dir} → {backup_path}")
-        for item in pub_dir.iterdir():
-            if item.is_file():
-                item.unlink()
-            elif item.is_dir():
-                shutil.rmtree(item)
-        print(f"🧹 [{store}] 已清空发布目录")
+    backup_path = BACKUP_DIR / timestamp / name
+    shutil.copytree(dir_path, backup_path)
+    print(f"📦 已备份: {dir_path} → {backup_path}")
+    for item in dir_path.iterdir():
+        if item.is_dir():
+            shutil.rmtree(item)
+        else:
+            item.unlink()
+    print(f"🧹 已清空目录: {name}")
+
+def run_script(filename: str):
+    path = os.path.join(os.path.dirname(__file__), filename)
+    print(f"⚙️ 执行脚本: {filename}")
+    subprocess.run(["python", path], check=True)
 
 def main():
-    step("1️⃣ 备份并清空所有店铺发布目录")
+    print("\n🟡 Step: 1️⃣ 清空发布目录")
+    if REPUB_DIR.exists():
+        store_list = [folder.name for folder in REPUB_DIR.iterdir() if folder.is_dir()]
+        #for store in store_list:
+            #backup_and_clear_dir(REPUB_DIR / store, f"repulibcation/{store}")
+    else:
+        print(f"⚠️ 发布目录不存在: {REPUB_DIR}，跳过")
+
+    print("\n🟡 Step: 2️⃣ 抓取商品链接")
+    #run_script("unified_link_collector.py")
+
+    print("\n🟡 Step: 3️⃣ 抓取商品信息")
+    #run_script("fetch_product_info.py")
+
+    print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
+    import_txt_to_db("clarks")
+
+    print("\n🟡 Step: 5️⃣ 导出价格 Excel")
+    export_discount_price_excel("clarks")
+
+    print("\n🟡 Step: 6️⃣ 导出库存 Excel")
+    export_skuid_stock_excel("clarks")
+
+    print("\n🟡 Step: 7️⃣ 为各店铺生成上架 Excel + 拷贝图片")
     for store in store_list:
-        backup_and_clear_publication(store)
+        generate_product_excels_main("clarks", store)
 
-    step("2️⃣ 抓取商品链接")
-    run_script("unified_link_collector.py")
-
-    step("3️⃣ 下载商品 TXT 和图片")
-    run_script("fetch_product_info.py")
-
-    step("4️⃣ 导入 TXT 信息到数据库")
-    run_script("import_clarks_txt_to_db.py")
-
-    step("5️⃣ 导出定价 Excel")
-    run_script("generate_discount_price_excel.py")
-
-    step("6️⃣ 导出库存 Excel")
-    run_script("export_skuid_stock.py")
-
-    step("7️⃣ 为每个店铺生成发布用 Excel + 拷贝图片")
-    for store in store_list:
-        subprocess.run([sys.executable, "generate_product_excels.py", "--brand", brand, "--store", store], check=True)
-
-    print("\n✅ 所有店铺流程执行完毕")
+    print("\n✅ Clarks pipeline 完成")
 
 if __name__ == "__main__":
-    if "venv" not in sys.executable:
-        print(f"⚠️ 警告：当前未使用虚拟环境运行，使用的是 {sys.executable}")
     main()

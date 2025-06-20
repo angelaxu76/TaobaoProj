@@ -1,10 +1,10 @@
-
 import re
 import json
 import requests
 from bs4 import BeautifulSoup
 from pathlib import Path
 from config import CLARKS
+from common_taobao.txt_writer import format_txt
 
 LINK_FILE = CLARKS["BASE"] / "publication" / "product_links.txt"
 TXT_DIR = CLARKS["TXT_DIR"]
@@ -18,6 +18,7 @@ UK_TO_EU_CM = {
     "9": ("43", "27"), "9.5": ("44", "27.5"), "10": ("44.5", "28"),
     "10.5": ("45", "28.5"), "11": ("46", "28.9"), "11.5": ("46.5", "29.3"), "12": ("47", "30")
 }
+
 FEMALE_UK_RANGE = ["3", "3.5", "4", "4.5", "5", "5.5", "6", "6.5", "7", "7.5", "8"]
 MALE_UK_RANGE = ["6", "6.5", "7", "7.5", "8", "8.5", "9", "9.5", "10", "10.5", "11", "11.5", "12"]
 
@@ -93,32 +94,39 @@ def process_product_info(url):
                 status = size_status.get(uk, "无货")
                 size_stock.append(f"{eu_size}:{status}")
 
-        TXT_DIR.mkdir(parents=True, exist_ok=True)
-        with open(TXT_DIR / f"{product_code}.txt", "w", encoding="utf-8") as f:
-            f.write(f"Product Code: {product_code}\n")
-            f.write(f"Product Name: {title}\n")
-            f.write(f"Product Description: {description}\n")
-            f.write(f"Product Gender: {gender}\n")
-            f.write(f"Color: No Data\n")
-            f.write(f"Original Price: {was_price}\n")
-            f.write(f"Actual Price: £{actual_price}\n")
-            f.write(f"Product URL: {url}\n")
-            for field, value in material_info.items():
-                f.write(f"{field}: {value}\n")
-            f.write(f"Size Stock (EU): {';'.join(size_stock)}\n")
+        info = {
+            "Product Code": product_code,
+            "Product Name": title,
+            "Product Description": description,
+            "Product Gender": gender,
+            "Product Color": "No Data",
+            "Product Price": was_price,
+            "Adjusted Price": actual_price,
+            "Product Material": material_info.get("Upper Material", "No Data"),
+            "Product Size": ';'.join(size_stock),
+            "Source URL": url
+        }
+        return info
 
-        print(f"✅ 完成：{product_code}")
     except Exception as e:
         print(f"❌ 失败：{url}，错误：{e}")
+        return None
 
 def main():
-    if not LINK_FILE.exists():
-        print(f"❌ 链接文件不存在：{LINK_FILE}")
-        return
     with open(LINK_FILE, "r", encoding="utf-8") as f:
-        links = [line.strip() for line in f if line.strip()]
-    for url in links:
-        process_product_info(url)
+        urls = [line.strip() for line in f if line.strip()]
+
+    for url in urls:
+        info = process_product_info(url)
+        if info:
+            print(f"\n🔍 {url}")
+            for k, v in info.items():
+                print(f"{k}: {v}")
+            filepath = TXT_DIR / f"{info['Product Code']}.txt"
+            filepath.parent.mkdir(parents=True, exist_ok=True)  # ✅ 确保目录存在
+            format_txt(info, filepath)
+            print(f"✅ 写入成功: {filepath.name}")
+
 
 if __name__ == "__main__":
     main()
