@@ -1,40 +1,53 @@
-import os
-import pandas as pd
-from config import CLARKS, ECCO, GEOX
-from common_taobao.txt_parser import parse_txt_to_record
 
-BRAND_MAP = {
-    "clarks": CLARKS,
-    "ecco": ECCO,
-    "geox": GEOX
-}
+import psycopg2
+import openpyxl
+from config import CLARKS
 
-def export_discount_price_excel(brand_name: str):
-    brand_name = brand_name.lower()
-    if brand_name not in BRAND_MAP:
-        raise ValueError(f"❌ 不支持的品牌: {brand_name}")
+def convert_price(gbp_price):
+    try:
+        gbp_price = float(gbp_price)
+        return round((gbp_price * 1.2 + 18) * 1.1 * 1.2 * 9.7, 2)
+    except Exception as e:
+        print(f"[DEBUG] 价格换算失败: {gbp_price}, 错误: {e}")
+        return 0.0
 
-    config = BRAND_MAP[brand_name]
-    TXT_DIR = config["TXT_DIR"]
-    OUTPUT_DIR = config["OUTPUT_DIR"]
-
-    rows = []
-    for file in TXT_DIR.glob("*.txt"):
-        try:
-            records = parse_txt_to_record(file)
-            if not records:
-                print(f"⚠️ 无有效价格: {file.name}")
-                continue
-            code = records[0][0]  # product_code
-            discount = records[0][7]  # discount_price
-            rows.append((code, discount))
-        except Exception as e:
-            print(f"❌ 解析失败: {file.name} - {e}")
-
-    if not rows:
-        print("⚠️ 没有任何有效数据导出")
+def export_discount_price_excel(brand: str):
+    config = CLARKS if brand.lower() == "clarks" else None
+    if not config:
+        print(f"❌ 不支持的品牌: {brand}")
         return
 
-    df = pd.DataFrame(rows, columns=["商家编码", "优惠后价"])
-    df.to_excel(OUTPUT_DIR / "商品价格.xlsx", index=False)
-    print(f"✅ 已生成: {OUTPUT_DIR / '商品价格.xlsx'}")
+    PGSQL = config["PGSQL_CONFIG"]
+    OUTPUT_FILE = config["OUTPUT_DIR"] / "价格导出_商品编码.xlsx"
+
+    try:
+        conn = psycopg2.connect(**PGSQL)
+        cursor = conn.cursor()
+        cursor.execute(f"""
+            SELECT product_name,
+                   MIN(LEAST(
+                       COALESCE(original_price_gbp, 9999),
+                       COALESCE(discount_price_gbp, 9999)
+                   )) AS lowest_price
+            FROM {config["TABLE_NAME"]}
+            WHERE (original_price_gbp > 0 OR discount_price_gbp > 0)
+            GROUP BY product_name
+        """)
+
+        results = cursor.fetchall()
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "价格"
+        ws.append(["商品编码", "优惠后价"])
+
+        for product_code, gbp in results:
+            if not gbp or gbp == 0:
+                continue
+            rmb = convert_price(gbp)
+            ws.append([product_code, rmb])
+
+        wb.save(OUTPUT_FILE)
+        print(f"✅ 价格 Excel 已导出: {OUTPUT_FILE}")
+    except Exception as e:
+        print(f"❌ 导出失败: {e}")
