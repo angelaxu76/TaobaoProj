@@ -1,8 +1,7 @@
-def calculate_final_price(price):
-    try:
-        return round((price * 1.2 + 18) * 1.1 * 1.2 * 9.7, 2)
-    except:
-        return None
+from common_taobao.core.price_utils import calculate_discount_price
+import os
+import pandas as pd
+
 
 def export_discount_excel(txt_dir, brand, output_excel):
     import os
@@ -33,7 +32,7 @@ def export_discount_excel(txt_dir, brand, output_excel):
             except:
                 continue
 
-            final_price = calculate_final_price(price)
+            final_price = calculate_discount_price(price)
             rows.append([product_code, final_price])
 
     df = pd.DataFrame(rows, columns=["商家编码", "优惠后价"])
