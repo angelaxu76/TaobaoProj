@@ -129,20 +129,37 @@ def classify_shoe(text: str):
 
 
 
+
+
 def copy_images_for_store(config: dict, store_name: str, code_list: list):
     """
     将指定编码的所有图片从共享目录复制到店铺发布目录下的 images 文件夹中。
-    匹配方式：只要文件名中包含该编码即可，不限于 _1.jpg 格式。
+    如果某个编码没有匹配到任何图片，则记录到 missing_images.txt。
     """
     src_dir = config["IMAGE_DIR"]
     dst_dir = config["OUTPUT_DIR"] / store_name / "images"
     dst_dir.mkdir(parents=True, exist_ok=True)
 
+    missing_file = config["OUTPUT_DIR"] / store_name / "missing_images.txt"
+    missing_file.parent.mkdir(parents=True, exist_ok=True)
+    missing_codes = []
+
     copied_count = 0
     for code in code_list:
+        matched = False
         for img in src_dir.glob(f"*{code}*.jpg"):
             shutil.copy(img, dst_dir / img.name)
             copied_count += 1
+            matched = True
+        if not matched:
+            missing_codes.append(code)
+
+    if missing_codes:
+        with open(missing_file, "w", encoding="utf-8") as f:
+            for code in missing_codes:
+                f.write(code + "\n")
+        print(f"⚠️ 缺图商品编码已记录: {missing_file}（共 {len(missing_codes)} 条）")
 
     print(f"✅ 图片拷贝完成，共复制 {copied_count} 张图 → {dst_dir}")
+
 

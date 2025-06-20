@@ -1,7 +1,7 @@
 
 import psycopg2
 import openpyxl
-from config import CLARKS
+from config import CLARKS, ECCO, GEOX, CAMPER
 
 def convert_price(gbp_price):
     try:
@@ -12,7 +12,14 @@ def convert_price(gbp_price):
         return 0.0
 
 def export_discount_price_excel(brand: str):
-    config = CLARKS if brand.lower() == "clarks" else None
+    BRAND_CONFIGS = {
+        "clarks": CLARKS,
+        "ecco": ECCO,
+        "geox": GEOX,
+        "camper": CAMPER,
+    }
+
+    config = BRAND_CONFIGS.get(brand.lower())
     if not config:
         print(f"❌ 不支持的品牌: {brand}")
         return
