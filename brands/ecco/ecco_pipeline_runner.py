@@ -7,6 +7,7 @@ from common_taobao.generate_discount_price_excel import export_discount_price_ex
 from common_taobao.export_skuid_stock import export_skuid_stock_excel
 from common_taobao.generate_product_excels import generate_product_excels_main
 from common_taobao.import_txt_to_db import import_txt_to_db
+from common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
 from pathlib import Path
 
 BASE_DIR = ECCO["BASE"]
@@ -60,9 +61,11 @@ def main():
     export_skuid_stock_excel("ecco")
 
     print("\n🟡 Step: 7️⃣ 为各店铺生成上架 Excel + 拷贝图片")
-    #store_list = ["五小剑", "英国伦敦代购2015"]  # 如需自动读取目录可取消注释
-    #for store in store_list:
-    # generate_product_excels_main("ecco", store)
+    store_list = ["五小剑", "英国伦敦代购2015"]
+    for store in store_list:
+        generate_product_excels(ECCO, store)
+        codes = get_publishable_product_codes(ECCO, store)
+        copy_images_for_store(ECCO, store, codes)
 
     print("\n✅ ECCO pipeline 完成")
 

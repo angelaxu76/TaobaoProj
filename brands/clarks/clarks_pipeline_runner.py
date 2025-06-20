@@ -5,8 +5,8 @@ from datetime import datetime
 from config import CLARKS
 from common_taobao.generate_discount_price_excel import export_discount_price_excel
 from common_taobao.export_skuid_stock import export_skuid_stock_excel
-from common_taobao.generate_product_excels import generate_product_excels_main
 from common_taobao.import_txt_to_db import import_txt_to_db
+from common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
 from pathlib import Path
 
 BASE_DIR = CLARKS["BASE"]
@@ -64,7 +64,9 @@ def main():
     # 手动指定调试店铺
     store_list = ["五小剑", "英国伦敦代购2015"]
     for store in store_list:
-        generate_product_excels_main("clarks", store)
+        generate_product_excels(CLARKS, store)
+        codes = get_publishable_product_codes(CLARKS, store)
+        copy_images_for_store(CLARKS, store, codes)
 
     print("\n✅ Clarks pipeline 完成")
 

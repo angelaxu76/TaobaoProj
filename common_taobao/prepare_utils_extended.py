@@ -119,9 +119,9 @@ def generate_product_excels(config: dict, store_name: str):
 
 def classify_shoe(text: str):
     text = text.lower()
-    if any(k in text for k in ["boot", "chelsea", "ankle", "chukka"]):
+    if any(k in text for k in ["boot","boots" "chelsea", "ankle", "chukka"]):
         return "靴子"
-    elif any(k in text for k in ["sandal", "slide", "凉鞋", "open toe"]):
+    elif any(k in text for k in ["sandal","sandals", "slide", "凉鞋", "open toe"]):
         return "凉鞋"
     else:
         return "其他"
