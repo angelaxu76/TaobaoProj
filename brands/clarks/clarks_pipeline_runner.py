@@ -45,6 +45,7 @@ def main():
         print(f"⚠️ 发布目录不存在: {REPUB_DIR}，跳过")
 
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
+
     #run_script("unified_link_collector.py")
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
@@ -60,6 +61,8 @@ def main():
     export_skuid_stock_excel("clarks")
 
     print("\n🟡 Step: 7️⃣ 为各店铺生成上架 Excel + 拷贝图片")
+    # 手动指定调试店铺
+    store_list = ["五小剑", "英国伦敦代购2015"]
     for store in store_list:
         generate_product_excels_main("clarks", store)
 

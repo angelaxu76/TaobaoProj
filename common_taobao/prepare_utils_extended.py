@@ -11,32 +11,37 @@ def get_publishable_product_codes(config: dict, store_name: str) -> list:
     table_name = config["TABLE_NAME"]
     txt_dir = config["TXT_DIR"]
 
+    # 只获取当前店铺 stock_name 下的未发布商品，且该店铺未发布过该编码的任何尺码
     query = f"""
-        SELECT DISTINCT product_name
+        SELECT product_name
         FROM {table_name}
-        WHERE stock_name = %s
-          AND is_published = FALSE
-          AND product_name NOT IN (
-              SELECT product_name FROM {table_name}
-              WHERE stock_name = %s AND is_published = TRUE
-          )
+        WHERE stock_name = %s AND is_published = FALSE
+        GROUP BY product_name
+        HAVING COUNT(*) = COUNT(*)  -- 强制启用 GROUP BY
+            AND product_name NOT IN (
+                SELECT DISTINCT product_name FROM {table_name}
+                WHERE stock_name = %s AND is_published = TRUE
+            )
     """
     df = pd.read_sql(query, conn, params=(store_name, store_name))
-    codes = df["product_name"].unique().tolist()
+    candidate_codes = df["product_name"].unique().tolist()
 
-    def valid_stock(code):
-        txt_path = txt_dir / f"{code}.txt"
-        if not txt_path.exists():
-            return False
+    # 检查 TXT 文件中是否存在 3 个以上 :有货 的尺码
+    def has_3_or_more_instock(code):
         try:
-            content = txt_path.read_text(encoding="utf-8")
-            stock_line = next((line for line in content.splitlines() if line.startswith("Size Stock (EU):")), "")
-            sizes = [s for s in stock_line.replace("Size Stock (EU):", "").split(";") if ":有货" in s]
-            return len(sizes) >= 3
-        except Exception:
+            txt_path = txt_dir / f"{code}.txt"
+            if not txt_path.exists():
+                return False
+            lines = txt_path.read_text(encoding="utf-8").splitlines()
+            size_line = next((line for line in lines if line.startswith("Product Size:")), "")
+            return size_line.count(":有货") >= 3
+        except:
             return False
 
-    return [code for code in codes if valid_stock(code)]
+    result = [code for code in candidate_codes if has_3_or_more_instock(code)]
+    print(f"🟢 店铺【{store_name}】待发布商品数: {len(result)}")
+    return result
+
 
 def generate_product_excels(config: dict, store_name: str):
     from openpyxl import Workbook
