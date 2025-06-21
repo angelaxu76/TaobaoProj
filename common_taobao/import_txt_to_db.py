@@ -94,6 +94,7 @@ def import_txt_to_db(brand_name: str):
                         stock_status, ori_price, dis_price,
                         stock_name, datetime.now(), is_published
                     )
+                    print(f"🧪 DEBUG: 商品编码={product_code} | SKU={skuid} | 是否发布={is_published}")
                     cur.execute(insert_sql, full_record)
                     inserted += 1
 

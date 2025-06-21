@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 
 # === 配置图片目录 ===
-IMAGE_DIR = Path(r"D:\TB\Products\ECCO\publication\square_images")
+IMAGE_DIR = Path(r"D:\TB\Products\ECCO\document\square_images_new")
 
 # === 支持的图片扩展名
 VALID_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}

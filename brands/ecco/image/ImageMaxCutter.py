@@ -10,8 +10,8 @@ import numpy as np
 # 可配置变量
 # =====================================
 INPUT_FOLDER = r"D:\TB\Products\ECCO\document\images"              # 原始图片文件夹
-PROCESSED_FOLDER = r"D:\TB\Products\ECCO\document\processed_images" # 翻转 + JPG 输出
-SQUARE_FOLDER = r"D:\TB\Products\ECCO\document\square_images"       # 最大化裁剪 + 正方形输出
+PROCESSED_FOLDER = r"D:\TB\Products\ECCO\document\processed_images_new" # 翻转 + JPG 输出
+SQUARE_FOLDER = r"D:\TB\Products\ECCO\document\square_images_new"       # 最大化裁剪 + 正方形输出
 
 SUPPORTED_IMAGE_FORMATS = ('.webp', '.jpg', '.jpeg', '.png')
 
