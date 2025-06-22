@@ -46,22 +46,21 @@ def backup_and_clear_dir(dir_path: Path, backup_root: Path, name: str):
 
 def backup_and_clear_brand_dirs(brand_config: dict):
     """
-    备份并清空指定品牌的 TXT 和 repulibcation 店铺目录。
+    备份并清空指定品牌的 publication 和 repulibcation 整个文件夹。
+    - publication 整个目录（含 TXT/Excel 等）
+    - repulibcation 整个目录（含各店铺图片/Excel）
     """
     BASE = brand_config["BASE"]
-    TXT_DIR = brand_config["TXT_DIR"]
-    REPUB_DIR = BASE / "repulibcation"
     BACKUP_DIR = BASE / "backup"
+
+    publication_dir = BASE / "publication"
+    repub_dir = BASE / "repulibcation"
 
     print(f"\n🧼 清理品牌目录: {BASE.name}")
 
-    # 清空 publication/TXT
-    backup_and_clear_txt(TXT_DIR, BACKUP_DIR)
+    # 整体备份并清空 publication
+    backup_and_clear_dir(publication_dir, BACKUP_DIR, "publication")
 
-    # 清空 repulibcation 各店铺目录
-    if REPUB_DIR.exists():
-        for store_dir in REPUB_DIR.iterdir():
-            if store_dir.is_dir():
-                backup_and_clear_dir(store_dir, BACKUP_DIR, f"repulibcation/{store_dir.name}")
-    else:
-        print(f"⚠️ repulibcation 目录不存在: {REPUB_DIR}")
+    # 整体备份并清空 repulibcation
+    backup_and_clear_dir(repub_dir, BACKUP_DIR, "repulibcation")
+

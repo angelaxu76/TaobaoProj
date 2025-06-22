@@ -1,34 +1,12 @@
 import os
-import shutil
 import subprocess
-from datetime import datetime
 from config import ECCO
+from pathlib import Path
 from common_taobao.generate_discount_price_excel import export_discount_price_excel
 from common_taobao.export_skuid_stock import export_skuid_stock_excel
 from common_taobao.import_txt_to_db import import_txt_to_db
 from common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
-from pathlib import Path
-
-BASE_DIR = ECCO["BASE"]
-PUBLICATION_DIR = BASE_DIR / "publication"
-REPUB_DIR = BASE_DIR / "repulibcation"
-BACKUP_DIR = BASE_DIR / "backup"
-
-def backup_and_clear_dir(dir_path: Path, name: str):
-    if not dir_path.exists():
-        print(f"⚠️ 目录不存在: {dir_path}，跳过")
-        return
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_path = BACKUP_DIR / timestamp / name
-    shutil.copytree(dir_path, backup_path)
-    print(f"📦 已备份: {dir_path} → {backup_path}")
-    for item in dir_path.iterdir():
-        if item.is_dir():
-            shutil.rmtree(item)
-        else:
-            item.unlink()
-    print(f"🧹 已清空目录: {name}")
+from common_taobao.backup_and_clear import backup_and_clear_brand_dirs  # ✅ 新增导入
 
 def run_script(filename: str):
     path = os.path.join(os.path.dirname(__file__), filename)
@@ -36,13 +14,8 @@ def run_script(filename: str):
     subprocess.run(["python", path], check=True)
 
 def main():
-    print("\n🟡 Step: 1️⃣ 清空发布目录")
-    if REPUB_DIR.exists():
-        store_list = [folder.name for folder in REPUB_DIR.iterdir() if folder.is_dir()]
-        #for store in store_list:
-        #    backup_and_clear_dir(REPUB_DIR / store, f"repulibcation/{store}")
-    else:
-        print(f"⚠️ 发布目录不存在: {REPUB_DIR}，跳过")
+    print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
+    backup_and_clear_brand_dirs(ECCO)  # ✅ 使用共享方法
 
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
     #run_script("unified_link_collector.py")
