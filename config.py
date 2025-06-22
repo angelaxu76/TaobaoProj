@@ -40,7 +40,7 @@ GEOX = {
     "STORE_DIR": Path("D:/TB/Products/geox/document/store"),
     "BASE": Path("D:/TB/Products/geox"),
     "TABLE_NAME": "geox_inventory",
-    "IMAGE_DIR": Path("D:/TB/Products/geox/document/images"),
+    "IMAGE_DIR": Path("D:/TB/Products/geox/document/images_orgin"),
     "PGSQL_CONFIG": PGSQL_CONFIG,
 
     # ✅ 缺失的两个关键字段

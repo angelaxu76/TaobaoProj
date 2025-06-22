@@ -16,7 +16,7 @@ def calculate_discount_price(info: dict) -> float:
         else:
             profit = 1.25
 
-        rmb_price = (base_price * custom_rate + delivery_cost) * profit * discount_Space * exchange_rate
+        rmb_price = ((base_price-10) * custom_rate + delivery_cost) * profit * discount_Space * exchange_rate
         rounded_price = int(round(rmb_price / 10.0)) * 10
         return rounded_price
     except:

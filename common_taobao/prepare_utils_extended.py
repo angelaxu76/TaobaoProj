@@ -91,13 +91,13 @@ def generate_product_excels(config: dict, store_name: str):
             "商品名称": cn_title,
             "商品编码": code,
             "价格": price,
-            "up material": upper,
+            "upper material": upper,
             "英文名称": eng_title
         })
         copy_images_by_code(code, image_dir, image_output_dir)
 
     df = pd.DataFrame(records)
-    df = df[["商品名称", "商品编码", "价格", "up material", "英文名称", "gender", "category"]]
+    df = df[["商品名称", "商品编码", "价格", "upper material", "英文名称", "gender", "category"]]
 
     from collections import defaultdict
     group_map = defaultdict(list)
