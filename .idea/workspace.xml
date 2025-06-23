@@ -4,23 +4,15 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7ad83b3f-8c84-4560-8d4c-2361cece7f17" name="更改" comment="clarks全部工作正常">
-      <change afterPath="$PROJECT_DIR$/brands/camper/database" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/brands/geox/image/MaxCutter.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/brands/geox/image/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/brands/geox/image/image_defender_with_flip.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/common_taobao/tools/find_duplicate_codes_in_store.py" afterDir="false" />
+    <list default="true" id="7ad83b3f-8c84-4560-8d4c-2361cece7f17" name="更改" comment="添加 camper 品牌支持">
+      <change afterPath="$PROJECT_DIR$/brands/camper/dbscript" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/common_taobao/import_txt_to_db_supplier.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/brands/camper/camper_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/camper_pipeline_runner.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/brands/camper/fetch_product_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/fetch_product_info.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/brands/camper/unified_link_collector.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/unified_link_collector.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/brands/ecco/ecco_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/ecco/ecco_pipeline_runner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/brands/geox/fetch_product_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/geox/fetch_product_info.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/brands/geox/geox_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/geox/geox_pipeline_runner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common_taobao/core/price_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/core/price_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common_taobao/generate_discount_price_excel.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/generate_discount_price_excel.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common_taobao/tools/GroupImage.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/tools/GroupImage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/import_txt_to_db.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/import_txt_to_db.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/txt_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/txt_parser.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/txt_writer.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/txt_writer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../pythonProject1/camper/camper/core/GetDetailsAndEANFromURL.py" beforeDir="false" afterPath="$PROJECT_DIR$/../pythonProject1/camper/camper/core/GetDetailsAndEANFromURL.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -158,11 +150,11 @@
       <recent name="D:\Projects\TaobaoProj\brands\clarks" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\Projects\TaobaoProj\common_taobao" />
       <recent name="D:\Projects\TaobaoProj\brands\ecco" />
       <recent name="D:\Projects\TaobaoProj\brands\clarks\test" />
       <recent name="D:\Projects\TaobaoProj\brands\geox" />
       <recent name="D:\Projects\TaobaoProj\brands\camper" />
-      <recent name="D:\Projects\TaobaoProj\brands" />
     </key>
   </component>
   <component name="SharedIndexes">
@@ -206,7 +198,7 @@
       <workItem from="1750337907606" duration="11660000" />
       <workItem from="1750356802251" duration="9224000" />
       <workItem from="1750514732221" duration="27643000" />
-      <workItem from="1750582838901" duration="11203000" />
+      <workItem from="1750582838901" duration="19058000" />
     </task>
     <task id="LOCAL-00001" summary="Merge remote-tracking branch 'origin/master'">
       <option name="closed" value="true" />
@@ -408,16 +400,61 @@
       <option name="project" value="LOCAL" />
       <updated>1750552127696</updated>
     </task>
-    <option name="localTasksCounter" value="26" />
+    <task id="LOCAL-00026" summary="添加 camper 品牌支持">
+      <option name="closed" value="true" />
+      <created>1750695254488</created>
+      <option name="number" value="00026" />
+      <option name="presentableId" value="LOCAL-00026" />
+      <option name="project" value="LOCAL" />
+      <updated>1750695254488</updated>
+    </task>
+    <option name="localTasksCounter" value="27" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="OPEN_GENERIC_TABS">
+      <map>
+        <entry key="7d7731a4-9cc8-4746-be8e-f02fb272c159" value="TOOL_WINDOW" />
+      </map>
+    </option>
+    <option name="TAB_STATES">
+      <map>
+        <entry key="7d7731a4-9cc8-4746-be8e-f02fb272c159">
+          <value>
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="HEAD" />
+                      </list>
+                    </value>
+                  </entry>
+                  <entry key="roots">
+                    <value>
+                      <list>
+                        <option value="$PROJECT_DIR$" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+              <option name="SHOW_ONLY_AFFECTED_CHANGES" value="true" />
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Merge remote-tracking branch 'origin/master'" />
     <MESSAGE value="clarks全部工作正常" />
-    <option name="LAST_COMMIT_MESSAGE" value="clarks全部工作正常" />
+    <MESSAGE value="添加 camper 品牌支持" />
+    <option name="LAST_COMMIT_MESSAGE" value="添加 camper 品牌支持" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/TaobaoProj$imageNameFormat.coverage" NAME="imageNameFormat Coverage Results" MODIFIED="1750521469119" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/ecco/image" />
@@ -429,7 +466,7 @@
     <SUITE FILE_PATH="coverage/TaobaoProj$GroupImage.coverage" NAME="GroupImage Coverage Results" MODIFIED="1750583058100" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/tools" />
     <SUITE FILE_PATH="coverage/TaobaoProj$changeImageSize.coverage" NAME="changeImageSize Coverage Results" MODIFIED="1750191654102" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/image" />
     <SUITE FILE_PATH="coverage/TaobaoProj$geox_pipeline_runner.coverage" NAME="geox_pipeline_runner Coverage Results" MODIFIED="1750610214102" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/geox" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$GetDetailsAndEANFromURL.coverage" NAME="GetDetailsAndEANFromURL Coverage Results" MODIFIED="1750693214295" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/camper/camper/core" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$GetDetailsAndEANFromURL.coverage" NAME="GetDetailsAndEANFromURL Coverage Results" MODIFIED="1750703987245" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/camper/camper/core" />
     <SUITE FILE_PATH="coverage/TaobaoProj$geox_getTxt_image_mutipleThread.coverage" NAME="geox_getTxt_image_mutipleThread 覆盖结果" MODIFIED="1749765294793" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
     <SUITE FILE_PATH="coverage/TaobaoProj$generate_product_excels.coverage" NAME="generate_product_excels Coverage Results" MODIFIED="1750347480087" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks" />
     <SUITE FILE_PATH="coverage/TaobaoProj$clarks_pipeline_runner.coverage" NAME="clarks_pipeline_runner Coverage Results" MODIFIED="1750464601428" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks" />
@@ -452,11 +489,11 @@
     <SUITE FILE_PATH="coverage/TaobaoProj$ecco_pipeline_runner.coverage" NAME="ecco_pipeline_runner Coverage Results" MODIFIED="1750604075481" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/ecco" />
     <SUITE FILE_PATH="coverage/TaobaoProj$FetchImangeAndInfo.coverage" NAME="FetchImangeAndInfo Coverage Results" MODIFIED="1749975536678" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/core" />
     <SUITE FILE_PATH="coverage/TaobaoProj$get_ecco_links.coverage" NAME="get_ecco_links Coverage Results" MODIFIED="1750028017689" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/ecco" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$fetch_product_info.coverage" NAME="fetch_product_info Coverage Results" MODIFIED="1750693170932" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$fetch_product_info.coverage" NAME="fetch_product_info Coverage Results" MODIFIED="1750708815202" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper" />
     <SUITE FILE_PATH="coverage/TaobaoProj$image_defender.coverage" NAME="image_defender Coverage Results" MODIFIED="1750523059490" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/tools" />
     <SUITE FILE_PATH="coverage/TaobaoProj$cutterAllsiderSpace.coverage" NAME="cutterAllsiderSpace Coverage Results" MODIFIED="1750614216145" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/commontool" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$camper_pipeline_runner.coverage" NAME="camper_pipeline_runner 覆盖结果" MODIFIED="1749665374172" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/pipeline" />
     <SUITE FILE_PATH="coverage/TaobaoProj$MaxCutter.coverage" NAME="MaxCutter Coverage Results" MODIFIED="1750568443137" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/geox/image" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$camper_pipeline_runner.coverage" NAME="camper_pipeline_runner Coverage Results" MODIFIED="1750710412500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper" />
     <SUITE FILE_PATH="coverage/TaobaoProj$export_store_discount_price.coverage" NAME="export_store_discount_price Coverage Results" MODIFIED="1749983888302" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/stocksize" />
     <SUITE FILE_PATH="coverage/TaobaoProj$FetchEccoDetailAndImage_fixed.coverage" NAME="FetchEccoDetailAndImage_fixed Coverage Results" MODIFIED="1750425180846" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/ecco" />
     <SUITE FILE_PATH="coverage/TaobaoProj$unified_link_collector.coverage" NAME="unified_link_collector Coverage Results" MODIFIED="1750692319042" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper" />

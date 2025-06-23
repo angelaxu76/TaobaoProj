@@ -1,0 +1,16 @@
+DROP TABLE IF EXISTS camper_inventory;
+
+CREATE TABLE camper_inventory (
+    id SERIAL PRIMARY KEY,
+    product_name VARCHAR(200) NOT NULL,               -- 商品编码，如 K800548-003
+    product_url TEXT NOT NULL,                        -- 商品链接
+    size VARCHAR(10) NOT NULL,                        -- 尺码（EU，如 38、39）
+    gender VARCHAR(10),                               -- 性别（男款、女款、童款）
+    ean VARCHAR(50),                                  -- 商品 EAN 码
+    stock_count INTEGER DEFAULT 0,                    -- 库存数量
+    original_price_gbp NUMERIC(10, 2),                -- 原价（单位 GBP）
+    discount_price_gbp NUMERIC(10, 2),                -- 折扣价（单位 GBP）
+    last_checked TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- 上次检测时间
+    is_published BOOLEAN DEFAULT FALSE,               -- 是否已发布
+    UNIQUE (product_name, size)           -- 唯一约束
+);

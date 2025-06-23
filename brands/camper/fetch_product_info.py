@@ -1,63 +1,146 @@
-import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
+import os
+import re
 import time
-from pathlib import Path
+import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 from config import CAMPER
 from common_taobao.txt_writer import format_txt
 
-TXT_DIR = CAMPER["TXT_DIR"]
-LINKS_FILE = CAMPER["LINKS_FILE"]
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
-}
-WAIT = 1
+CHROMEDRIVER_PATH = CAMPER["CHROMEDRIVER_PATH"]
+PRODUCT_URLS_FILE = CAMPER["LINKS_FILE"]
+SAVE_PATH = CAMPER["TXT_DIR"]
+MAX_WORKERS = 6
 
-TXT_DIR.mkdir(parents=True, exist_ok=True)
+os.makedirs(SAVE_PATH, exist_ok=True)
 
-def parse_product_page(url: str) -> dict:
+def infer_gender_from_url(url: str) -> str:
+    url = url.lower()
+    if "men" in url:
+        return "男款"
+    elif "women" in url:
+        return "女款"
+    elif "kids" in url or "children" in url:
+        return "童款"
+    return "未知"
+
+def create_driver():
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--window-size=1920x1080")
+    chrome_options.add_argument("user-agent=Mozilla/5.0")
+    service = Service(CHROMEDRIVER_PATH)
+    return webdriver.Chrome(service=service, options=chrome_options)
+
+thread_local = threading.local()
+def get_driver():
+    if not hasattr(thread_local, "driver"):
+        thread_local.driver = create_driver()
+    return thread_local.driver
+
+def process_product_url(PRODUCT_URL):
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=10)
-        resp.raise_for_status()
-    except Exception as e:
-        print(f"❌ 请求失败: {url}，错误: {e}")
-        return {}
+        driver = get_driver()
+        print(f"\n🔍 正在访问: {PRODUCT_URL}")
+        driver.get(PRODUCT_URL)
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "body")))
+        time.sleep(5)
 
-    soup = BeautifulSoup(resp.text, "html.parser")
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        title_tag = soup.find("title")
+        product_title = re.sub(r"\s*[-–—].*", "", title_tag.text.strip()) if title_tag else "Unknown Title"
 
-    # 🧩 你需要根据页面结构解析数据字段：
-    try:
-        product_code = url.split("/")[-1].split("-")[0]  # 示例处理
-        name = soup.find("h1").text.strip()
-        description = soup.find("div", class_="product-description").get_text(strip=True)
-        upper_material = "No Data"  # 你可以解析真实数据
-        color = "No Data"
+        script_tag = soup.find("script", {"id": "__NEXT_DATA__", "type": "application/json"})
+        if not script_tag:
+            print("⚠️ 未找到 JSON 数据")
+            return
 
-        return {
+        json_data = json.loads(script_tag.string)
+        data = json_data["props"]["pageProps"]["productSheet"]
+
+        product_code = data.get("code", "Unknown_Code")
+        product_url = PRODUCT_URL
+        description = data.get("description", "")
+
+        price_info = data.get("prices", {})
+        original_price = price_info.get("previous", 0)
+        discount_price = price_info.get("current", 0)
+
+        color_data = data.get("color", "")
+        color = color_data.get("name", "") if isinstance(color_data, dict) else str(color_data)
+
+        materials = data.get("materials", [])
+
+        # 优先从 features 中提取 Upper 材质
+        upper_material = "No Data"
+        for feature in data.get("features", []):
+            if "upper" in feature.get("name", "").lower():
+                upper_material = BeautifulSoup(feature.get("value", ""), "html.parser").get_text(strip=True)
+                break
+
+        size_map = {}
+        size_detail = {}
+        for size in data.get("sizes", []):
+            value = size.get("value", "").strip()
+            available = size.get("available", False)
+            quantity = size.get("quantity", 0)
+            ean = size.get("ean", "")
+            size_map[value] = "有货" if available else "无货"
+            size_detail[value] = {
+                "stock_count": quantity,
+                "ean": ean
+            }
+
+        gender = infer_gender_from_url(PRODUCT_URL)
+
+        info = {
             "Product Code": product_code,
-            "Product Name": name,
+            "Product Name": product_title,
             "Product Description": description,
-            "Upper Material": upper_material,
+            "Product URL": product_url,
             "Color": color,
-            "Product URL": url
+            "Upper Material": upper_material,
+            "Price": str(original_price),
+            "Adjusted Price": str(discount_price),
+            "Gender": gender,
+            "SizeMap": size_map,
+            "SizeDetail": size_detail
         }
+
+        # ✅ DEBUG 输出
+        print("🧪 DEBUG: 即将写入 TXT 的字段信息：")
+        for k, v in info.items():
+            if isinstance(v, dict):
+                print(f"{k}:")
+                for subk, subv in v.items():
+                    print(f"  {subk} → {subv}")
+            else:
+                print(f"{k}: {v}")
+
+        filepath = SAVE_PATH / f"{product_code}.txt"
+        format_txt(info, filepath, brand="camper")
+
     except Exception as e:
-        print(f"❌ 解析失败: {url}，错误: {e}")
-        return {}
+        print(f"❌ 错误: {PRODUCT_URL} - {e}")
 
 def main():
-    with open(LINKS_FILE, "r", encoding="utf-8") as f:
-        urls = list(set(line.strip() for line in f if line.strip()))
+    with open(PRODUCT_URLS_FILE, "r", encoding="utf-8") as f:
+        urls = [line.strip() for line in f if line.strip()]
 
-    for i, url in enumerate(urls, 1):
-        print(f"[{i}/{len(urls)}] 正在处理: {url}")
-        info = parse_product_page(url)
-        if info:
-            product_code = info.get("Product Code", f"unknown_{i}")
-            filepath = TXT_DIR / f"{product_code}.txt"
-            format_txt(info, filepath)
-        time.sleep(WAIT)
-
-    print("\n✅ 所有商品信息已抓取并写入 TXT")
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = [executor.submit(process_product_url, url) for url in urls]
+        for future in as_completed(futures):
+            future.result()
 
 if __name__ == "__main__":
     main()

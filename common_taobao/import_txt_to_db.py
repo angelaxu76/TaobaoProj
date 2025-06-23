@@ -1,16 +1,16 @@
-
 import os
 import psycopg2
 from pathlib import Path
 from datetime import datetime
 import pandas as pd
-from config import CLARKS, ECCO, GEOX
+from config import CLARKS, ECCO, GEOX, CAMPER
 from common_taobao.txt_parser import parse_txt_to_record
 
 BRAND_MAP = {
     "clarks": CLARKS,
     "ecco": ECCO,
-    "geox": GEOX
+    "geox": GEOX,
+    "camper": CAMPER
 }
 
 def load_sku_mapping_from_store(store_path: Path):
@@ -41,21 +41,40 @@ def import_txt_to_db(brand_name: str):
     conn = psycopg2.connect(**PGSQL)
     cur = conn.cursor()
 
-    insert_sql = f"""
-        INSERT INTO {TABLE_NAME} (
-            product_name, product_url, size, gender, skuid,
-            stock_status, original_price_gbp, discount_price_gbp,
-            stock_name, last_checked, is_published
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT (product_name, size, stock_name)
-        DO UPDATE SET
-            stock_status = EXCLUDED.stock_status,
-            discount_price_gbp = EXCLUDED.discount_price_gbp,
-            original_price_gbp = EXCLUDED.original_price_gbp,
-            skuid = EXCLUDED.skuid,
-            last_checked = EXCLUDED.last_checked,
-            is_published = EXCLUDED.is_published;
-    """
+    # ✅ Camper 插入语句多一个字段：ean
+    if brand_name == "camper":
+        insert_sql = f"""
+            INSERT INTO {TABLE_NAME} (
+                product_name, product_url, size, gender, skuid,
+                stock_status, original_price_gbp, discount_price_gbp,
+                stock_name, last_checked, is_published, ean
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (product_name, size, stock_name)
+            DO UPDATE SET
+                stock_status = EXCLUDED.stock_status,
+                discount_price_gbp = EXCLUDED.discount_price_gbp,
+                original_price_gbp = EXCLUDED.original_price_gbp,
+                skuid = EXCLUDED.skuid,
+                last_checked = EXCLUDED.last_checked,
+                is_published = EXCLUDED.is_published,
+                ean = EXCLUDED.ean;
+        """
+    else:
+        insert_sql = f"""
+            INSERT INTO {TABLE_NAME} (
+                product_name, product_url, size, gender, skuid,
+                stock_status, original_price_gbp, discount_price_gbp,
+                stock_name, last_checked, is_published
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (product_name, size, stock_name)
+            DO UPDATE SET
+                stock_status = EXCLUDED.stock_status,
+                discount_price_gbp = EXCLUDED.discount_price_gbp,
+                original_price_gbp = EXCLUDED.original_price_gbp,
+                skuid = EXCLUDED.skuid,
+                last_checked = EXCLUDED.last_checked,
+                is_published = EXCLUDED.is_published;
+        """
 
     txt_files = list(TXT_DIR.glob("*.txt"))
     if not txt_files:
@@ -73,14 +92,20 @@ def import_txt_to_db(brand_name: str):
 
         for file in txt_files:
             try:
-                records = parse_txt_to_record(file)
+                records = parse_txt_to_record(file, brand_name)
                 if not records:
                     print(f"⚠️ 无数据: {file.name}")
                     continue
 
                 inserted = 0
                 for r in records:
-                    product_name, url, size, gender, product_code, stock_status, ori_price, dis_price, _ = r
+                    # ✅ Camper 的记录多一个字段：ean
+                    if brand_name == "camper":
+                        product_name, url, size, gender, product_code, stock_status, ori_price, dis_price, _, ean = r
+                    else:
+                        product_name, url, size, gender, product_code, stock_status, ori_price, dis_price, _ = r
+                        ean = None  # 用于构建参数
+
                     spec_key = f"{product_code},{size}"
                     skuid = sku_map.get(spec_key)
                     is_published = skuid is not None
@@ -94,7 +119,10 @@ def import_txt_to_db(brand_name: str):
                         stock_status, ori_price, dis_price,
                         stock_name, datetime.now(), is_published
                     )
-                    print(f"🧪 DEBUG: 商品编码={product_code} | SKU={skuid} | 是否发布={is_published}")
+
+                    if brand_name == "camper":
+                        full_record += (ean,)
+
                     cur.execute(insert_sql, full_record)
                     inserted += 1
 
