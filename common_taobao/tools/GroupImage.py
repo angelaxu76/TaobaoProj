@@ -3,10 +3,10 @@ import shutil
 from math import ceil
 
 # 原始图片目录
-source_dir = r"D:\TB\Products\ECCO\repulibcation\五小剑\images"
+source_dir = r"D:\TB\Products\geox\repulibcation\五小剑\images"
 
 # 目标根目录（可以修改为其他路径）
-target_root_dir = r"D:\TB\Products\ECCO\repulibcation\五小剑\分组图片"
+target_root_dir = r"D:\TB\Products\geox\repulibcation\五小剑\分组图片"
 
 # 每组的图片数量
 group_size = 250
