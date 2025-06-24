@@ -23,11 +23,11 @@ os.makedirs(SAVE_PATH, exist_ok=True)
 
 def infer_gender_from_url(url: str) -> str:
     url = url.lower()
-    if "men" in url:
-        return "男款"
-    elif "women" in url:
+    if "/women/" in url:
         return "女款"
-    elif "kids" in url or "children" in url:
+    elif "/men/" in url:
+        return "男款"
+    elif "/kids/" in url or "/children/" in url:
         return "童款"
     return "未知"
 
@@ -68,7 +68,19 @@ def process_product_url(PRODUCT_URL):
         json_data = json.loads(script_tag.string)
         data = json_data["props"]["pageProps"]["productSheet"]
 
+
         product_code = data.get("code", "Unknown_Code")
+
+        # 🧪 DEBUG: 打印原始 features
+        features_raw = data.get("features")
+        if not features_raw:
+            print(f"⚠️ features 为空或不存在: {product_code}")
+        else:
+            print(f"✅ features 存在，共 {len(features_raw)} 条")
+            for f in features_raw:
+                print(f"- name: {f.get('name')} | value: {f.get('value')}")
+
+
         product_url = PRODUCT_URL
         description = data.get("description", "")
 
@@ -83,9 +95,12 @@ def process_product_url(PRODUCT_URL):
 
         # 优先从 features 中提取 Upper 材质
         upper_material = "No Data"
-        for feature in data.get("features", []):
-            if "upper" in feature.get("name", "").lower():
-                upper_material = BeautifulSoup(feature.get("value", ""), "html.parser").get_text(strip=True)
+        features = data.get("features") or []
+        for feature in features:
+            name = (feature.get("name") or "").lower()
+            if "upper" in name:
+                raw_html = feature.get("value") or ""
+                upper_material = BeautifulSoup(raw_html, "html.parser").get_text(strip=True)
                 break
 
         size_map = {}
@@ -119,13 +134,13 @@ def process_product_url(PRODUCT_URL):
 
         # ✅ DEBUG 输出
         print("🧪 DEBUG: 即将写入 TXT 的字段信息：")
-        for k, v in info.items():
-            if isinstance(v, dict):
-                print(f"{k}:")
-                for subk, subv in v.items():
-                    print(f"  {subk} → {subv}")
-            else:
-                print(f"{k}: {v}")
+        #for k, v in info.items():
+        #if isinstance(v, dict):
+        # print(f"{k}:")
+        #  for subk, subv in v.items():
+        #     print(f"  {subk} → {subv}")
+        #  else:
+        #     print(f"{k}: {v}")
 
         filepath = SAVE_PATH / f"{product_code}.txt"
         format_txt(info, filepath, brand="camper")
