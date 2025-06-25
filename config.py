@@ -30,6 +30,8 @@ CLARKS = {
 CAMPER = {
     "BASE": BASE_DIR / "camper",
     "TXT_DIR": BASE_DIR / "camper" / "publication" / "TXT",
+    "ORG_IMAGE_DIR": BASE_DIR / "camper" / "document" / "orgin_images",
+    "DEF_IMAGE_DIR": BASE_DIR / "camper" / "document" / "DEF_images",
     "IMAGE_DIR": BASE_DIR / "camper" / "document" / "images",
     "STORE_DIR": BASE_DIR / "camper" / "document" / "store",
     "OUTPUT_DIR": BASE_DIR / "camper" / "repulibcation",

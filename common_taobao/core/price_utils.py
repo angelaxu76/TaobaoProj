@@ -1,5 +1,5 @@
 from decimal import Decimal
-
+from math import floor
 
 def calculate_discount_price(info: dict) -> float:
     """
@@ -50,3 +50,26 @@ def calculate_discount_price_from_float(base_price: float) -> float:
     except Exception as e:
         print(f"❌ [price_utils] 错误: base_price={base_price}, 错误: {e}")
         return 0.0
+
+
+def calculate_camper_untaxed_and_retail(
+    base_price: float,
+    delivery_cost: float = 7,
+    exchange_rate: float = 9.7,
+) -> tuple[float, float]:
+    """
+    Camper 专用双价格计算逻辑（供货未税价 + 淘宝零售价）
+
+    1. 供货未税价 = (基准价 * 0.75 + 运费) × 1.15 × 汇率，向下取整到10
+    2. 淘宝零售价 = 未税价 × 1.45，向下取整到10
+    """
+    if base_price <= 0:
+        return 0.0, 0.0
+
+    untaxed = (base_price * 0.75 + delivery_cost) * 1.15 * exchange_rate
+    untaxed = floor(untaxed / 10) * 10
+
+    retail = untaxed * 1.45
+    retail = floor(retail / 10) * 10
+
+    return untaxed, retail

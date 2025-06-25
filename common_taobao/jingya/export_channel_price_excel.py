@@ -1,7 +1,7 @@
 import psycopg2
 import pandas as pd
-from math import floor
 from config import CAMPER, CLARKS, ECCO, GEOX
+from common_taobao.core.price_utils import calculate_camper_untaxed_and_retail  # ✅ 引入统一定价逻辑
 
 BRAND_MAP = {
     "camper": CAMPER,
@@ -9,23 +9,6 @@ BRAND_MAP = {
     "ecco": ECCO,
     "geox": GEOX
 }
-
-def calculate_prices(row, delivery_cost=7, exchange_rate=9.7):
-    original = row["original_price_gbp"] or 0
-    discount = row["discount_price_gbp"] or 0
-    if original > 0 and discount > 0:
-        low = min(original, discount)
-        high = max(original, discount)
-        #base_price = min(low * 1.1, high)
-        base_price = min(low , high)
-    else:
-        base_price = discount if discount > 0 else original
-
-    untaxed = (base_price * 0.75 + delivery_cost) * 1.15 * exchange_rate
-    untaxed = floor(untaxed / 10) * 10
-    retail = untaxed * 1.45
-    retail = floor(retail / 10) * 10
-    return pd.Series([untaxed, retail], index=["未税价格", "零售价"])
 
 
 def export_channel_price_excel(brand: str):
@@ -48,8 +31,19 @@ def export_channel_price_excel(brand: str):
         "product_name": "first"
     }).reset_index()
 
-    df_prices = df_grouped.join(df_grouped.apply(calculate_prices, axis=1))
-    df_prices_full = df_prices[["channel_product_id", "product_name", "未税价格", "零售价"]]
+    # ✅ 使用统一价格函数替代 calculate_prices
+    df_grouped[["未税价格", "零售价"]] = df_grouped.apply(
+        lambda row: pd.Series(
+            calculate_camper_untaxed_and_retail(
+                base_price=min(row["original_price_gbp"] or 0, row["discount_price_gbp"] or 0),
+                delivery_cost=7,
+                exchange_rate=9.7
+            )
+        ),
+        axis=1
+    )
+
+    df_prices_full = df_grouped[["channel_product_id", "product_name", "未税价格", "零售价"]]
     df_prices_full.columns = ["渠道产品ID", "商家编码", "未税价格", "零售价"]
 
     out_path = config["OUTPUT_DIR"] / f"{brand.lower()}_channel_prices.xlsx"
@@ -83,14 +77,24 @@ def export_all_sku_price_excel(brand: str):
         "product_name": "first"
     }).reset_index()
 
-    df_prices = df_grouped.join(df_grouped.apply(calculate_prices, axis=1))
-    df_prices["product_name"] = df_prices["product_name"].astype(str).str.strip().str.upper()
-    df_prices_filtered = df_prices[~df_prices["product_name"].isin(excluded_names)]
+    # ✅ 使用统一价格函数
+    df_grouped[["未税价格", "零售价"]] = df_grouped.apply(
+        lambda row: pd.Series(
+            calculate_camper_untaxed_and_retail(
+                base_price=min(row["original_price_gbp"] or 0, row["discount_price_gbp"] or 0),
+                delivery_cost=7,
+                exchange_rate=9.7
+            )
+        ),
+        axis=1
+    )
 
-    df_sku = df_prices_filtered[["product_name", "零售价"]]
+    df_grouped["product_name"] = df_grouped["product_name"].astype(str).str.strip().str.upper()
+    df_filtered = df_grouped[~df_grouped["product_name"].isin(excluded_names)]
+
+    df_sku = df_filtered[["product_name", "零售价"]]
     df_sku.columns = ["商家编码", "优惠后价"]
 
-    # 分割保存每个最多150行
     max_rows = 150
     total_parts = (len(df_sku) + max_rows - 1) // max_rows
 
