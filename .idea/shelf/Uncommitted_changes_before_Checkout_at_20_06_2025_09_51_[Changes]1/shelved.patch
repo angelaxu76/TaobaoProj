@@ -1,0 +1,19 @@
+Index: brands/ecco/unified_link_collector.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from selenium import webdriver\r\nfrom selenium.webdriver.common.by import By\r\nfrom selenium.webdriver.chrome.options import Options\r\nfrom pathlib import Path\r\nfrom config import ECCO, ensure_all_dirs\r\nimport time\r\n\r\n\r\n\r\n# === 页面配置 ===\r\nTARGET_URLS = [\r\n    (\"https://gb.ecco.com/en-GB/Women/Shoes\", \"Women\"),\r\n    (\"https://gb.ecco.com/en-GB/Men/Shoes\", \"Men\"),\r\n    (\"https://gb.ecco.com/en-GB/Outdoor/Women\", \"Women Outdoor\"),\r\n    (\"https://gb.ecco.com/en-GB/Outdoor/Men\", \"Men Outdoor\"),\r\n    (\"https://gb.ecco.com/en-GB/Golf\", \"Golf\")\r\n]\r\nBASE_URL = \"https://gb.ecco.com\"\r\nOUTPUT_FILE = ECCO[\"BASE\"] / \"publication\" / \"product_links.txt\"\r\n\r\ndef collect_links_from_page(driver):\r\n    elements = driver.find_elements(By.CLASS_NAME, \"product-item__link\")\r\n    links = set()\r\n    for elem in elements:\r\n        href = elem.get_attribute(\"href\") or elem.get_attribute(\"ng-href\")\r\n        if href and \"/product/\" in href:\r\n            if not href.startswith(\"http\"):\r\n                href = BASE_URL + href\r\n            links.add(href)\r\n    return links\r\n\r\ndef main():\r\n    ensure_all_dirs(OUTPUT_FILE.parent)\r\n\r\n    options = Options()\r\n    # options.add_argument(\"--headless\")  # 显示窗口，方便人工操作\r\n    options.add_argument(\"--disable-gpu\")\r\n    driver = webdriver.Chrome(options=options)\r\n\r\n    try:\r\n        all_links = set()\r\n\r\n        for url, label in TARGET_URLS:\r\n            print(f\"\\n\uD83D\uDD0D 正在打开 [{label}]: {url}\")\r\n            driver.get(url)\r\n            time.sleep(5)\r\n\r\n            print(\"\uD83D\uDFE1 请在浏览器中手动点击 [Accept Cookies] 和不断点击 [Show More] 直到加载完成\")\r\n            input(f\"⏸\uFE0F 加载 [{label}] 页面完成后，请按回车继续提取链接 >>> \")\r\n\r\n            links = collect_links_from_page(driver)\r\n            all_links.update(links)\r\n            print(f\"✅ [{label}] 页面提取到 {len(links)} 条链接\")\r\n\r\n        # 保存全部链接\r\n        with open(OUTPUT_FILE, \"w\", encoding=\"utf-8\") as f:\r\n            for link in sorted(all_links):\r\n                f.write(link + \"\\n\")\r\n\r\n        print(f\"\\n\uD83C\uDF89 所有页面共采集产品链接 {len(all_links)} 条\")\r\n        print(f\"\uD83D\uDCC4 已保存至: {OUTPUT_FILE}\")\r\n\r\n    finally:\r\n        driver.quit()\r\n\r\nif __name__ == \"__main__\":\r\n    main()\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/brands/ecco/unified_link_collector.py b/brands/ecco/unified_link_collector.py
+--- a/brands/ecco/unified_link_collector.py	(revision f76583786dd9a51fa28f4c369d5aa2bbf3dec2c1)
++++ b/brands/ecco/unified_link_collector.py	(date 1750409443530)
+@@ -5,8 +5,6 @@
+ from config import ECCO, ensure_all_dirs
+ import time
+ 
+-
+-
+ # === 页面配置 ===
+ TARGET_URLS = [
+     ("https://gb.ecco.com/en-GB/Women/Shoes", "Women"),

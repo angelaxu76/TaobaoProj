@@ -1,0 +1,19 @@
+Index: brands/camper/camper_pipeline_runner.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import os\r\nimport subprocess\r\nfrom config import CAMPER\r\nfrom common_taobao.prepare_utils_extended import get_publishable_product_codes\r\nfrom common_taobao.jingya.import_channel_info_from_excel import parse_and_update_excel\r\nfrom common_taobao.jingya.export_channel_price_excel import export_channel_price_excel,export_all_sku_price_excel\r\n\r\ndef run_script(filename: str):\r\n    path = os.path.join(os.path.dirname(__file__), filename)\r\n    print(f\"⚙\uFE0F 执行脚本: {filename}\")\r\n    subprocess.run([\"python\", path], check=True)\r\n\r\ndef main():\r\n    print(\"\\n\uD83D\uDFE1 Step: 1\uFE0F⃣ 清空 TXT + 发布目录\")\r\n    # backup_and_clear_brand_dirs(CAMPER)\r\n\r\n    print(\"\\n\uD83D\uDFE1 Step: 2\uFE0F⃣ 抓取商品链接\")\r\n    # run_script(\"unified_link_collector.py\")\r\n\r\n    print(\"\\n\uD83D\uDFE1 Step: 3\uFE0F⃣ 抓取商品信息\")\r\n    #run_script(\"fetch_product_info.py\")\r\n\r\n    print(\"\\n\uD83D\uDFE1 Step: 4\uFE0F⃣ 导入 TXT → 数据库\")\r\n    #import_txt_to_db_supplier(\"camper\")  # ✅ 新逻辑\r\n\r\n    print(\"\\n\uD83D\uDFE1 Step: 5\uFE0F⃣ 绑定渠道 SKU 信息（淘经销 Excel）\")\r\n    #parse_and_update_excel(\"camper\")\r\n\r\n    print(\"\\\\n\uD83D\uDFE1 Step: 6\uFE0F⃣ 导出渠道价格 Excel（含零售价与商家编码）\")\r\n    export_channel_price_excel(\"camper\")  # 导出价格明细（已发布）\r\n    export_all_sku_price_excel(\"camper\")  # 导出商家编码价格表（所有商品）\r\n\r\n    print(\"\\n\uD83D\uDFE1 Step: 6\uFE0F⃣ 导出库存 Excel\")\r\n    # export_skuid_stock_excel(\"camper\")\r\n\r\n    print(\"\\n\uD83D\uDFE1 Step: 7\uFE0F⃣ 为各店铺生成上架 Excel + 拷贝图片\")\r\n    store_list = [\"五小剑\", \"英国伦敦代购2015\"]\r\n    for store in store_list:\r\n        # export_store_discount_price(\"camper\", store)  # ✅ 导出价格文件\r\n    # generate_product_excels(CAMPER, store)\r\n          codes = get_publishable_product_codes(CAMPER, store)\r\n    #  copy_images_for_store(CAMPER, store, codes)\r\n\r\n    print(\"\\n✅ CAMPER pipeline 完成\")\r\n\r\nif __name__ == \"__main__\":\r\n    main()\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/brands/camper/camper_pipeline_runner.py b/brands/camper/camper_pipeline_runner.py
+--- a/brands/camper/camper_pipeline_runner.py	(revision 2c9efff5cc7020efb4dbc4868823d66f18ec0b59)
++++ b/brands/camper/camper_pipeline_runner.py	(date 1750949779464)
+@@ -12,7 +12,7 @@
+ 
+ def main():
+     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
+-    # backup_and_clear_brand_dirs(CAMPER)
++    backup_and_clear_brand_dirs(CAMPER)
+ 
+     print("\n🟡 Step: 2️⃣ 抓取商品链接")
+     # run_script("unified_link_collector.py")

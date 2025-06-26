@@ -1,0 +1,57 @@
+Index: brands/ecco/ecco_pipeline_runner.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import os\r\nimport subprocess\r\nfrom config import ECCO\r\nfrom pathlib import Path\r\nfrom common_taobao.generate_discount_price_excel import export_store_discount_price\r\nfrom common_taobao.export_skuid_stock import export_skuid_stock_excel\r\nfrom common_taobao.import_txt_to_db import import_txt_to_db\r\nfrom common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes\r\nfrom common_taobao.backup_and_clear import backup_and_clear_brand_dirs  # ✅ 新增导入\r\n\r\ndef run_script(filename: str):\r\n    path = os.path.join(os.path.dirname(__file__), filename)\r\n    print(f\"⚙\uFE0F 执行脚本: {filename}\")\r\n    subprocess.run([\"python\", path], check=True)\r\n\r\ndef main():\r\n    print(\"\\n\uD83D\uDFE1 Step: 1\uFE0F⃣ 清空 TXT + 发布目录\")\r\n    #backup_and_clear_brand_dirs(ECCO)  # ✅ 使用共享方法\r\n\r\n    print(\"\\n\uD83D\uDFE1 Step: 2\uFE0F⃣ 抓取商品链接\")\r\n    #run_script(\"unified_link_collector.py\")\r\n\r\n    print(\"\\n\uD83D\uDFE1 Step: 3\uFE0F⃣ 抓取商品信息\")\r\n    #run_script(\"fetch_product_info.py\")\r\n\r\n    print(\"\\n\uD83D\uDFE1 Step: 4\uFE0F⃣ 导入 TXT → 数据库\")\r\n    import_txt_to_db(\"ecco\")\r\n\r\n    print(\"\\n\uD83D\uDFE1 Step: 5\uFE0F⃣ 导出价格 Excel\")\r\n\r\n    print(\"\\n\uD83D\uDFE1 Step: 6\uFE0F⃣ 导出库存 Excel\")\r\n    export_skuid_stock_excel(\"ecco\")\r\n\r\n    print(\"\\n\uD83D\uDFE1 Step: 7\uFE0F⃣ 为各店铺生成上架 Excel + 拷贝图片\")\r\n    store_list = [\"五小剑\", \"英国伦敦代购2015\"]\r\n    for store in store_list:\r\n        export_store_discount_price(\"ecco\",store)\r\n        generate_product_excels(ECCO, store)\r\n        codes = get_publishable_product_codes(ECCO, store)\r\n        copy_images_for_store(ECCO, store, codes)\r\n\r\n    print(\"\\n✅ ECCO pipeline 完成\")\r\n\r\nif __name__ == \"__main__\":\r\n    main()\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/brands/ecco/ecco_pipeline_runner.py b/brands/ecco/ecco_pipeline_runner.py
+--- a/brands/ecco/ecco_pipeline_runner.py	(revision 4e56cc6ced59a537762975deaf3f3e2abdf529de)
++++ b/brands/ecco/ecco_pipeline_runner.py	(date 1750935852267)
+@@ -15,13 +15,13 @@
+ 
+ def main():
+     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
+-    #backup_and_clear_brand_dirs(ECCO)  # ✅ 使用共享方法
++    backup_and_clear_brand_dirs(ECCO)  # ✅ 使用共享方法
+ 
+     print("\n🟡 Step: 2️⃣ 抓取商品链接")
+-    #run_script("unified_link_collector.py")
++    run_script("unified_link_collector.py")
+ 
+     print("\n🟡 Step: 3️⃣ 抓取商品信息")
+-    #run_script("fetch_product_info.py")
++    run_script("fetch_product_info.py")
+ 
+     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
+     import_txt_to_db("ecco")
+Index: brands/clarks/clarks_pipeline_runner.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import os\r\nimport shutil\r\nimport subprocess\r\nfrom datetime import datetime\r\nfrom config import CLARKS\r\nfrom common_taobao.generate_discount_price_excel import export_store_discount_price\r\nfrom common_taobao.export_skuid_stock import export_skuid_stock_excel\r\nfrom common_taobao.import_txt_to_db import import_txt_to_db\r\nfrom common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes\r\nfrom pathlib import Path\r\n\r\nBASE_DIR = CLARKS[\"BASE\"]\r\nPUBLICATION_DIR = BASE_DIR / \"publication\"\r\nREPUB_DIR = BASE_DIR / \"repulibcation\"\r\nBACKUP_DIR = BASE_DIR / \"backup\"\r\n\r\ndef backup_and_clear_dir(dir_path: Path, name: str):\r\n    if not dir_path.exists():\r\n        print(f\"⚠\uFE0F 目录不存在: {dir_path}，跳过\")\r\n        return\r\n\r\n    timestamp = datetime.now().strftime(\"%Y%m%d_%H%M%S\")\r\n    backup_path = BACKUP_DIR / timestamp / name\r\n    shutil.copytree(dir_path, backup_path)\r\n    print(f\"\uD83D\uDCE6 已备份: {dir_path} → {backup_path}\")\r\n    for item in dir_path.iterdir():\r\n        if item.is_dir():\r\n            shutil.rmtree(item)\r\n        else:\r\n            item.unlink()\r\n    print(f\"\uD83E\uDDF9 已清空目录: {name}\")\r\n\r\ndef run_script(filename: str):\r\n    path = os.path.join(os.path.dirname(__file__), filename)\r\n    print(f\"⚙\uFE0F 执行脚本: {filename}\")\r\n    subprocess.run([\"python\", path], check=True)\r\n\r\ndef main():\r\n    print(\"\\n\uD83D\uDFE1 Step: 1\uFE0F⃣ 清空发布目录\")\r\n    if REPUB_DIR.exists():\r\n        store_list = [folder.name for folder in REPUB_DIR.iterdir() if folder.is_dir()]\r\n        for store in store_list:\r\n            backup_and_clear_dir(REPUB_DIR / store, f\"repulibcation/{store}\")\r\n    else:\r\n        print(f\"⚠\uFE0F 发布目录不存在: {REPUB_DIR}，跳过\")\r\n\r\n    print(\"\\n\uD83D\uDFE1 Step: 2\uFE0F⃣ 抓取商品链接\")\r\n\r\n    run_script(\"unified_link_collector.py\")\r\n\r\n    print(\"\\n\uD83D\uDFE1 Step: 3\uFE0F⃣ 抓取商品信息\")\r\n    run_script(\"fetch_product_info.py\")\r\n\r\n    print(\"\\n\uD83D\uDFE1 Step: 4\uFE0F⃣ 导入 TXT → 数据库\")\r\n    import_txt_to_db(\"clarks\")\r\n\r\n    print(\"\\n\uD83D\uDFE1 Step: 5\uFE0F⃣ 导出价格 Excel\")\r\n    export_store_discount_price(\"clarks\")\r\n\r\n    print(\"\\n\uD83D\uDFE1 Step: 6\uFE0F⃣ 导出库存 Excel\")\r\n    export_skuid_stock_excel(\"clarks\")\r\n\r\n    print(\"\\n\uD83D\uDFE1 Step: 7\uFE0F⃣ 为各店铺生成上架 Excel + 拷贝图片\")\r\n    # 手动指定调试店铺\r\n    store_list = [\"五小剑\", \"英国伦敦代购2015\"]\r\n    for store in store_list:\r\n        generate_product_excels(CLARKS, store)\r\n        codes = get_publishable_product_codes(CLARKS, store)\r\n        copy_images_for_store(CLARKS, store, codes)\r\n\r\n    print(\"\\n✅ Clarks pipeline 完成\")\r\n\r\nif __name__ == \"__main__\":\r\n    main()
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/brands/clarks/clarks_pipeline_runner.py b/brands/clarks/clarks_pipeline_runner.py
+--- a/brands/clarks/clarks_pipeline_runner.py	(revision 4e56cc6ced59a537762975deaf3f3e2abdf529de)
++++ b/brands/clarks/clarks_pipeline_runner.py	(date 1750934842675)
+@@ -38,15 +38,15 @@
+ def main():
+     print("\n🟡 Step: 1️⃣ 清空发布目录")
+     if REPUB_DIR.exists():
+-        store_list = [folder.name for folder in REPUB_DIR.iterdir() if folder.is_dir()]
+-        for store in store_list:
+-            backup_and_clear_dir(REPUB_DIR / store, f"repulibcation/{store}")
++         store_list = [folder.name for folder in REPUB_DIR.iterdir() if folder.is_dir()]
++        #  for store in store_list:
++    #    backup_and_clear_dir(REPUB_DIR / store, f"repulibcation/{store}")
+     else:
+         print(f"⚠️ 发布目录不存在: {REPUB_DIR}，跳过")
+ 
+     print("\n🟡 Step: 2️⃣ 抓取商品链接")
+ 
+-    run_script("unified_link_collector.py")
++    # run_script("unified_link_collector.py")
+ 
+     print("\n🟡 Step: 3️⃣ 抓取商品信息")
+     run_script("fetch_product_info.py")
