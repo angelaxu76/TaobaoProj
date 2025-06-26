@@ -1,3 +1,9 @@
+# 文件顶部
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+
 import os
 import psycopg2
 from pathlib import Path
