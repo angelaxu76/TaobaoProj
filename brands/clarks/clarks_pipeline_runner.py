@@ -39,17 +39,17 @@ def main():
     print("\n🟡 Step: 1️⃣ 清空发布目录")
     if REPUB_DIR.exists():
         store_list = [folder.name for folder in REPUB_DIR.iterdir() if folder.is_dir()]
-        #for store in store_list:
-            #backup_and_clear_dir(REPUB_DIR / store, f"repulibcation/{store}")
+        for store in store_list:
+            backup_and_clear_dir(REPUB_DIR / store, f"repulibcation/{store}")
     else:
         print(f"⚠️ 发布目录不存在: {REPUB_DIR}，跳过")
 
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
 
-    #run_script("unified_link_collector.py")
+    run_script("unified_link_collector.py")
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    #run_script("fetch_product_info.py")
+    run_script("fetch_product_info.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
     import_txt_to_db("clarks")

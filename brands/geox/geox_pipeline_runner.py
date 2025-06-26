@@ -2,7 +2,7 @@ import os
 import subprocess
 from config import GEOX
 from pathlib import Path
-from common_taobao.generate_discount_price_excel import export_discount_price_excel
+from common_taobao.generate_discount_price_excel import export_price_with_itemid,export_store_discount_price
 from common_taobao.export_skuid_stock import export_skuid_stock_excel
 from common_taobao.import_txt_to_db import import_txt_to_db
 from common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
@@ -21,13 +21,10 @@ def main():
     #run_script("unified_link_collector.py")
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    run_script("fetch_product_info.py")
+    #run_script("fetch_product_info.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
-    import_txt_to_db("geox")
-
-    print("\n🟡 Step: 5️⃣ 导出价格 Excel")
-    #export_discount_price_excel("geox")
+    #import_txt_to_db("geox")
 
     print("\n🟡 Step: 6️⃣ 导出库存 Excel")
     #export_skuid_stock_excel("geox")
@@ -35,9 +32,10 @@ def main():
     print("\n🟡 Step: 7️⃣ 为各店铺生成上架 Excel + 拷贝图片")
     store_list = ["五小剑", "英国伦敦代购2015"]
     for store in store_list:
-        #generate_product_excels(GEOX, store)
+        # export_store_discount_price("geox", store)  # ✅ 加入价格导出
+        generate_product_excels(GEOX, store)
         codes = get_publishable_product_codes(GEOX, store)
-        #copy_images_for_store(GEOX, store, codes)
+        copy_images_for_store(GEOX, store, codes)
 
     print("\n✅ GEOX pipeline 完成")
 

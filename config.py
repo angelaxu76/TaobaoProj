@@ -9,6 +9,14 @@ PGSQL_CONFIG = {
     "dbname": "taobao_inventory_db"
 }
 
+API_KEYS = {
+    "DEEPL": "35bb3d6c-c839-49f6-9a8f-7e00aecf24eb"
+}
+
+SETTINGS = {
+    "EXCHANGE_RATE": 9.7
+}
+
 # === 项目根路径 ===
 BASE_DIR = Path("D:/TB/Products")
 
@@ -24,13 +32,21 @@ CLARKS = {
     "LINKS_FILE": Path("D:/TB/Products/clarks/publication/product_links.txt"),
     "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe"
 }
-# === Camper 品牌路径配置（可继续扩展） ===
+
+
+# === Camper 品牌路径配置（已补全） ===
 CAMPER = {
     "BASE": BASE_DIR / "camper",
     "TXT_DIR": BASE_DIR / "camper" / "publication" / "TXT",
-    "IMAGE_DIR": BASE_DIR / "camper" / "publication" / "images",
+    "ORG_IMAGE_DIR": BASE_DIR / "camper" / "document" / "orgin_images",
+    "DEF_IMAGE_DIR": BASE_DIR / "camper" / "document" / "DEF_images",
+    "IMAGE_DIR": BASE_DIR / "camper" / "document" / "images",
     "STORE_DIR": BASE_DIR / "camper" / "document" / "store",
-    "OUTPUT_DIR": BASE_DIR / "camper" / "output"
+    "OUTPUT_DIR": BASE_DIR / "camper" / "repulibcation",
+    "TABLE_NAME": "camper_inventory",
+    "PGSQL_CONFIG": PGSQL_CONFIG,
+    "LINKS_FILE": BASE_DIR / "camper" / "publication" / "product_links.txt",
+    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe"
 }
 
 # === Geox 品牌路径配置（可继续扩展） ===
@@ -40,7 +56,7 @@ GEOX = {
     "STORE_DIR": Path("D:/TB/Products/geox/document/store"),
     "BASE": Path("D:/TB/Products/geox"),
     "TABLE_NAME": "geox_inventory",
-    "IMAGE_DIR": Path("D:/TB/Products/geox/document/images_orgin"),
+    "IMAGE_DIR": Path("D:/TB/Products/geox/document/images"),
     "PGSQL_CONFIG": PGSQL_CONFIG,
 
     # ✅ 缺失的两个关键字段
