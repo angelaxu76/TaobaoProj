@@ -94,7 +94,7 @@ def process_product(url):
             "Price": original_price,
             "Adjusted Price": discount_price,
             "Product Size": ";".join(sizes),
-            "Source URL": url
+            "Product URL": url
         }
 
     except Exception as e:
