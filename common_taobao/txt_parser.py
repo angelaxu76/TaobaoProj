@@ -15,11 +15,12 @@ FIELD_MAP = {
     "Product Size Detail": "size_detail"
 }
 
-def parse_txt_to_record(filepath: Path) -> list:
+def parse_txt_to_record(filepath: Path, brand_name=None) -> list:
     records = []
     with open(filepath, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
+    # 通用字段
     product_code = ""
     product_name = ""
     product_description = ""
@@ -75,17 +76,32 @@ def parse_txt_to_record(filepath: Path) -> list:
                 }
 
     for size, status in size_map.items():
-        record = (
-            product_name,
-            url,
-            size,
-            gender,
-            product_code,
-            status,
-            original_price_gbp,
-            discount_price_gbp,
-            None  # stock_name (外部赋值)
-        )
+        if brand_name == "camper":
+            ean = size_detail.get(size, {}).get("ean", "")
+            record = (
+                product_name,
+                url,
+                size,
+                gender,
+                product_code,
+                status,
+                original_price_gbp,
+                discount_price_gbp,
+                None,  # stock_name 外部补充
+                ean
+            )
+        else:
+            record = (
+                product_name,
+                url,
+                size,
+                gender,
+                product_code,
+                status,
+                original_price_gbp,
+                discount_price_gbp,
+                None  # stock_name 外部补充
+            )
         records.append(record)
 
     return records

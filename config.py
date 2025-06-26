@@ -20,6 +20,17 @@ SETTINGS = {
 # === 项目根路径 ===
 BASE_DIR = Path("D:/TB/Products")
 
+DISCOUNT_EXCEL_DIR = Path("D:/TB/DiscountCandidates")
+
+
+
+# === 通用工具函数（可选） ===
+def ensure_all_dirs(*dirs):
+    for d in dirs:
+        d.mkdir(parents=True, exist_ok=True)
+
+
+# === Clarks 品牌路径配置 ===
 # === Clarks 品牌路径配置 ===
 CLARKS = {
     "BRAND": "clarks",
@@ -28,14 +39,21 @@ CLARKS = {
     "STORE_DIR": Path("D:/TB/Products/clarks/document/store"),
     "BASE": Path("D:/TB/Products/clarks"),
     "TABLE_NAME": "clarks_inventory",
-    "IMAGE_DIR": Path("D:/TB/Products/clarks/document/images"),  # ✅ 添加这个
-    "PGSQL_CONFIG": PGSQL_CONFIG,  # ✅ 加上这一行
+    "IMAGE_DIR": Path("D:/TB/Products/clarks/document/images"),
+    "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": Path("D:/TB/Products/clarks/publication/product_links.txt"),
-    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe"
+    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "FIELDS": {
+        "product_code": "product_name",
+        "url": "product_url",
+        "discount_price": "discount_price_gbp",
+        "original_price": "original_price_gbp",
+        "size": "size",
+        "stock": "stock_status"  # ✅ 文本类型，有货/无货
+    }
 }
 
-
-# === Camper 品牌路径配置（已补全） ===
+# === Camper 品牌路径配置 ===
 CAMPER = {
     "BASE": BASE_DIR / "camper",
     "TXT_DIR": BASE_DIR / "camper" / "publication" / "TXT",
@@ -47,10 +65,18 @@ CAMPER = {
     "TABLE_NAME": "camper_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": BASE_DIR / "camper" / "publication" / "product_links.txt",
-    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe"
+    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "FIELDS": {
+        "product_code": "product_name",
+        "url": "product_url",
+        "discount_price": "discount_price_gbp",
+        "original_price": "original_price_gbp",
+        "size": "size",
+        "stock": "stock_count"  # ✅ 数值类型，>0 表示有货
+    }
 }
 
-# === Geox 品牌路径配置（可继续扩展） ===
+# === Geox 品牌路径配置 ===
 GEOX = {
     "TXT_DIR": Path("D:/TB/Products/geox/publication/TXT"),
     "OUTPUT_DIR": Path("D:/TB/Products/geox/repulibcation"),
@@ -59,14 +85,19 @@ GEOX = {
     "TABLE_NAME": "geox_inventory",
     "IMAGE_DIR": Path("D:/TB/Products/geox/document/images"),
     "PGSQL_CONFIG": PGSQL_CONFIG,
-
-    # ✅ 缺失的两个关键字段
     "LINKS_FILE": Path("D:/TB/Products/geox/publication/product_links.txt"),
-    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe"
+    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "FIELDS": {
+        "product_code": "product_name",
+        "url": "product_url",
+        "discount_price": "discount_price_gbp",
+        "original_price": "original_price_gbp",
+        "size": "size",
+        "stock": "stock_status"  # ✅ 请确保 GEOX 表使用文本库存状态
+    }
 }
 
-
-# === ECCO 品牌路径配置（可继续扩展） ===
+# === ECCO 品牌路径配置 ===
 ECCO = {
     "TXT_DIR": Path("D:/TB/Products/ecco/publication/TXT"),
     "OUTPUT_DIR": Path("D:/TB/Products/ecco/repulibcation"),
@@ -75,11 +106,19 @@ ECCO = {
     "TABLE_NAME": "ecco_inventory",
     "IMAGE_DIR": Path("D:/TB/Products/ecco/document/images"),
     "PGSQL_CONFIG": PGSQL_CONFIG,
-
-    # ✅ 缺失字段：添加以下两行
     "LINKS_FILE": Path("D:/TB/Products/ecco/publication/product_links.txt"),
-    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe"
+    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "FIELDS": {
+        "product_code": "product_name",
+        "url": "product_url",
+        "discount_price": "discount_price_gbp",
+        "original_price": "original_price_gbp",
+        "size": "size",
+        "stock": "stock_status"  # ✅ 如果 ECCO 使用数值库存，请改为 stock_count
+    }
 }
+
+
 
 
 BRAND_CONFIG = {
@@ -88,8 +127,3 @@ BRAND_CONFIG = {
     "geox": GEOX,
     "ecco": ECCO
 }
-
-# === 通用工具函数（可选） ===
-def ensure_all_dirs(*dirs):
-    for d in dirs:
-        d.mkdir(parents=True, exist_ok=True)
