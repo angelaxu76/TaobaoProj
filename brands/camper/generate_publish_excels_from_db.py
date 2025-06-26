@@ -1,20 +1,20 @@
 import os
 import re
+import shutil
 import pandas as pd
-import requests
-import deepl
-from config import CAMPER
+from pathlib import Path
+from config import CAMPER, API_KEYS,SETTINGS
 from sqlalchemy import create_engine
 from common_taobao.core.price_utils import calculate_camper_untaxed_and_retail
+from common_taobao.core.translate import safe_translate
 
-# ===== 参数配置 =====
+# ==== 参数 ====
 txt_folder = CAMPER["TXT_DIR"]
 output_base = CAMPER["OUTPUT_DIR"] / "publication_excels"
+image_src_dir = CAMPER["IMAGE_DIR"]
+image_dst_dir = output_base / "images"
 pg_cfg = CAMPER["PGSQL_CONFIG"]
-auth_key = "fbeb00ce-2b94-42c8-9126-65daaaf0e7dd:fx"
-translator = deepl.Translator(auth_key)
 
-# 固定字段
 上市季节 = "2025春季"
 季节 = "春秋"
 款式 = "休闲"
@@ -33,19 +33,8 @@ translator = deepl.Translator(auth_key)
 外底材料 = "EVA"
 内底长度 = "27"
 品牌 = "camper"
-default_exchange_rate = 9.1
 
-# 获取实时汇率
-def get_exchange_rate():
-    try:
-        res = requests.get('https://api.exchangerate.host/latest?base=GBP&symbols=CNY', timeout=5)
-        return res.json()['rates']['CNY']
-    except:
-        return default_exchange_rate
-
-exchange_rate = get_exchange_rate()
-print(f"\n📈 当前英镑兑人民币汇率: {exchange_rate}")
-
+# ==== 连接数据库 ====
 print("\n🔌 正在连接数据库...")
 engine = create_engine(
     f"postgresql+psycopg2://{pg_cfg['user']}:{pg_cfg['password']}@{pg_cfg['host']}:{pg_cfg['port']}/{pg_cfg['dbname']}"
@@ -72,7 +61,7 @@ WHERE ci.is_published = FALSE
 """
 df_codes = pd.read_sql(query, engine)
 product_codes = df_codes["product_name"].tolist()
-print(f"✅ 获取到符合条件的商品数: {len(product_codes)}")
+print(f"✅ 获取到商品数: {len(product_codes)}")
 
 price_map = df_codes.set_index("product_name")[["original_price_gbp", "discount_price_gbp"]].to_dict("index")
 
@@ -84,18 +73,9 @@ gender_map = {
 }
 
 def extract_field(name, content):
-    start = content.find(name)
-    if start == -1:
-        return ""
-    start = content.find(':', start) + 1
-    end = content.find('\n', start)
-    return content[start:end].strip()
-
-def translate_text(text):
-    try:
-        return translator.translate_text(text, source_lang="EN", target_lang="ZH").text
-    except:
-        return text
+    pattern = re.compile(rf"{name}\s*[:：]\s*(.+)", re.IGNORECASE)
+    match = pattern.search(content)
+    return match.group(1).strip() if match else ""
 
 def get_category_v2(title: str, content: str, heel_height: str) -> str:
     t = title.lower()
@@ -117,21 +97,19 @@ for idx, code in enumerate(product_codes, 1):
         print(f"❌ 缺少 TXT 文件: {txt_path}")
         continue
 
-    if idx % 50 == 0:
-        print(f"...已处理 {idx} 个商品")
-
     with open(txt_path, 'r', encoding='utf-8') as f:
         content = f.read()
 
-    title_en = extract_field("Product Name", content).strip()
-    title_cn = translate_text(title_en)
+    title_en = extract_field("Product Name", content)
+    title_cn = safe_translate(title_en)
+    print(f"[{code_clean}] EN: {title_en} → CN: {title_cn}")
 
     price_info = price_map.get(code, {"original_price_gbp": 0, "discount_price_gbp": 0})
     original = price_info.get("original_price_gbp", 0) or 0
     discount = price_info.get("discount_price_gbp", 0) or 0
     base_price = min(original, discount) if original and discount else discount or original
     try:
-        _, rmb_price = calculate_camper_untaxed_and_retail(base_price, exchange_rate=exchange_rate)
+        _, rmb_price = calculate_camper_untaxed_and_retail(base_price, exchange_rate=SETTINGS["EXCHANGE_RATE"])
     except:
         rmb_price = ""
 
@@ -151,6 +129,7 @@ for idx, code in enumerate(product_codes, 1):
         heel_height = ""
 
     row = {
+        "英文标题": title_en,
         "标题": title_cn,
         "商品编码": code,
         "价格": rmb_price,
@@ -181,11 +160,12 @@ for idx, code in enumerate(product_codes, 1):
     }
     rows.append(row)
 
-os.makedirs(output_base, exist_ok=True)
 df_all = pd.DataFrame(rows)
-print("\n📊 分类分布统计：")
+print("\n📊 分类统计：")
 print(df_all.groupby(["性别", "类目"]).size())
 
+# 输出 Excel
+os.makedirs(output_base, exist_ok=True)
 print("\n📤 正在导出 Excel 文件...")
 for (gender, category), sub_df in df_all.groupby(["性别", "类目"]):
     out_file = output_base / f"camper_{gender}_{category}.xlsx"
@@ -193,3 +173,17 @@ for (gender, category), sub_df in df_all.groupby(["性别", "类目"]):
         out_file.unlink()
     sub_df.drop(columns=["性别", "类目"]).to_excel(out_file, index=False)
     print(f"✅ 导出：{out_file}")
+
+# 拷贝图片
+image_dst_dir.mkdir(parents=True, exist_ok=True)
+print("\n🖼️ 正在复制商品图片...")
+for code in product_codes:
+    code_clean = code.strip().upper()
+    matched_images = list(image_src_dir.glob(f"{code_clean}*.jpg"))
+    if not matched_images:
+        print(f"⚠️ 未找到图片: {code_clean}")
+        continue
+    for img_path in matched_images:
+        shutil.copy(img_path, image_dst_dir / img_path.name)
+
+print("\n✅ 所有操作完成。")

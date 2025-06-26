@@ -9,6 +9,14 @@ PGSQL_CONFIG = {
     "dbname": "taobao_inventory_db"
 }
 
+API_KEYS = {
+    "DEEPL": "35bb3d6c-c839-49f6-9a8f-7e00aecf24eb"
+}
+
+SETTINGS = {
+    "EXCHANGE_RATE": 9.7
+}
+
 # === 项目根路径 ===
 BASE_DIR = Path("D:/TB/Products")
 
