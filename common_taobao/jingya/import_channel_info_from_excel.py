@@ -2,14 +2,8 @@ import os
 import psycopg2
 import pandas as pd
 from pathlib import Path
-from config import CAMPER, CLARKS, ECCO, GEOX
+from config import CAMPER, CLARKS, ECCO, GEOX,BRAND_CONFIG
 
-BRAND_MAP = {
-    "camper": CAMPER,
-    "clarks": CLARKS,
-    "ecco": ECCO,
-    "geox": GEOX
-}
 
 def find_latest_gei_file(document_dir: Path) -> Path:
     files = list(document_dir.glob("GEI@sales_catalogue_export@*.xlsx"))
@@ -21,10 +15,10 @@ def find_latest_gei_file(document_dir: Path) -> Path:
 
 def parse_and_update_excel(brand: str):
     brand = brand.lower()
-    if brand not in BRAND_MAP:
+    if brand not in BRAND_CONFIG:
         raise ValueError(f"❌ 不支持的品牌: {brand}")
 
-    config = BRAND_MAP[brand]
+    config = BRAND_CONFIG[brand]
     document_dir = Path(config["BASE"]) / "document"
     db_config = config["PGSQL_CONFIG"]
     table_name = config["TABLE_NAME"]

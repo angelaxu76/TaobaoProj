@@ -1,18 +1,12 @@
 import psycopg2
 import pandas as pd
-from config import CAMPER, CLARKS, ECCO, GEOX
+from config import CAMPER, CLARKS, ECCO, GEOX,BRAND_CONFIG
 from common_taobao.core.price_utils import calculate_camper_untaxed_and_retail  # ✅ 引入统一定价逻辑
 
-BRAND_MAP = {
-    "camper": CAMPER,
-    "clarks": CLARKS,
-    "ecco": ECCO,
-    "geox": GEOX
-}
 
 
 def export_channel_price_excel(brand: str):
-    config = BRAND_MAP[brand.lower()]
+    config = BRAND_CONFIG[brand.lower()]
     pg_cfg = config["PGSQL_CONFIG"]
     table_name = config["TABLE_NAME"]
 
@@ -52,7 +46,7 @@ def export_channel_price_excel(brand: str):
 
 
 def export_all_sku_price_excel(brand: str):
-    config = BRAND_MAP[brand.lower()]
+    config = BRAND_CONFIG[brand.lower()]
     pg_cfg = config["PGSQL_CONFIG"]
     table_name = config["TABLE_NAME"]
 

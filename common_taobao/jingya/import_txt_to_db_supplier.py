@@ -2,14 +2,8 @@ import os
 import psycopg2
 from pathlib import Path
 from psycopg2.extras import execute_batch
-from config import CAMPER, CLARKS, ECCO, GEOX
+from config import CAMPER, CLARKS, ECCO, GEOX,BRAND_CONFIG
 
-BRAND_MAP = {
-    "camper": CAMPER,
-    "clarks": CLARKS,
-    "ecco": ECCO,
-    "geox": GEOX
-}
 
 def parse_txt_file(txt_path: Path) -> list:
     with open(txt_path, "r", encoding="utf-8") as f:
@@ -64,10 +58,10 @@ def parse_txt_file(txt_path: Path) -> list:
 
 def import_txt_to_db_supplier(brand_name: str):
     brand_name = brand_name.lower()
-    if brand_name not in BRAND_MAP:
+    if brand_name not in BRAND_CONFIG:
         raise ValueError(f"❌ 不支持的品牌: {brand_name}")
 
-    config = BRAND_MAP[brand_name]
+    config = BRAND_CONFIG[brand_name]
     txt_dir = config["TXT_DIR"]
     pg_config = config["PGSQL_CONFIG"]
     table_name = config["TABLE_NAME"]

@@ -1,16 +1,9 @@
 import psycopg2
 import pandas as pd
-from config import CAMPER, CLARKS, ECCO, GEOX
-
-BRAND_MAP = {
-    "camper": CAMPER,
-    "clarks": CLARKS,
-    "ecco": ECCO,
-    "geox": GEOX
-}
+from config import CAMPER, CLARKS, ECCO, GEOX,BRAND_CONFIG
 
 def export_gender_split_excel(brand: str):
-    config = BRAND_MAP[brand.lower()]
+    config = BRAND_CONFIG[brand.lower()]
     pg_cfg = config["PGSQL_CONFIG"]
     table_name = config["TABLE_NAME"]
 
