@@ -5,12 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7ad83b3f-8c84-4560-8d4c-2361cece7f17" name="更改" comment="可以导出excel，可以下载图片">
+      <change afterPath="$PROJECT_DIR$/pipeline.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/brands/camper/generate_publish_excels_from_db.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/generate_publish_excels_from_db.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/brands/clarks/clarks_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks/clarks_pipeline_runner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common_taobao/core/translate.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/core/translate.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common_taobao/tools/GroupImage.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/tools/GroupImage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -32,6 +29,7 @@
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RESET_MODE" value="HARD" />
     <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
@@ -445,10 +443,36 @@
     <option name="OPEN_GENERIC_TABS">
       <map>
         <entry key="7d7731a4-9cc8-4746-be8e-f02fb272c159" value="TOOL_WINDOW" />
+        <entry key="4eade2c3-91b9-4b94-aff3-7719e328b75d" value="TOOL_WINDOW" />
       </map>
     </option>
     <option name="TAB_STATES">
       <map>
+        <entry key="4eade2c3-91b9-4b94-aff3-7719e328b75d">
+          <value>
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="HEAD" />
+                      </list>
+                    </value>
+                  </entry>
+                  <entry key="roots">
+                    <value>
+                      <list>
+                        <option value="$PROJECT_DIR$" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+              <option name="SHOW_ONLY_AFFECTED_CHANGES" value="true" />
+            </State>
+          </value>
+        </entry>
         <entry key="7d7731a4-9cc8-4746-be8e-f02fb272c159">
           <value>
             <State>
