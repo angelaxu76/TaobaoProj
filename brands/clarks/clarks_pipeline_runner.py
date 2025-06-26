@@ -7,6 +7,7 @@ from common_taobao.generate_discount_price_excel import export_store_discount_pr
 from common_taobao.export_skuid_stock import export_skuid_stock_excel
 from common_taobao.import_txt_to_db import import_txt_to_db
 from common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
+from common_taobao.mark_offline_products import mark_offline_products
 from pathlib import Path
 
 BASE_DIR = CLARKS["BASE"]
@@ -39,7 +40,7 @@ def main():
     print("\n🟡 Step: 1️⃣ 清空发布目录")
     if REPUB_DIR.exists():
         store_list = [folder.name for folder in REPUB_DIR.iterdir() if folder.is_dir()]
-        #  for store in store_list:
+        #for store in store_list:
         #   backup_and_clear_dir(REPUB_DIR / store, f"repulibcation/{store}")
     else:
         print(f"⚠️ 发布目录不存在: {REPUB_DIR}，跳过")
@@ -68,6 +69,8 @@ def main():
         codes = get_publishable_product_codes(CLARKS, store)
         copy_images_for_store(CLARKS, store, codes)
 
+    # 导出需要下架的产品
+    mark_offline_products("clarks")
     print("\n✅ Clarks pipeline 完成")
 
 if __name__ == "__main__":
