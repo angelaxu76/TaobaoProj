@@ -1,7 +1,7 @@
 
 import psycopg2
 import openpyxl
-from config import CLARKS, ECCO, GEOX, CAMPER,BRAND_CONFIG
+from config import CLARKS, ECCO, GEOX, CAMPER
 from pathlib import Path
 
 # === ✅ 可配置的库存值 ===
@@ -9,8 +9,14 @@ IN_STOCK_VALUE = 3
 OUT_OF_STOCK_VALUE = 0
 
 def export_skuid_stock_excel(brand: str):
+    BRAND_CONFIGS = {
+        "clarks": CLARKS,
+        "ecco": ECCO,
+        "geox": GEOX,
+        "camper": CAMPER,
+    }
 
-    config = BRAND_CONFIG.get(brand.lower())
+    config = BRAND_CONFIGS.get(brand.lower())
     if not config:
         print(f"❌ 不支持的品牌: {brand}")
         return

@@ -4,15 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7ad83b3f-8c84-4560-8d4c-2361cece7f17" name="更改" comment="clarks全部工作正常">
-      <change afterPath="$PROJECT_DIR$/common_taobao/mark_offline_products.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/brands/clarks/clarks_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks/clarks_pipeline_runner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/brands/ecco/ecco_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/ecco/ecco_pipeline_runner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common_taobao/export_skuid_stock.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/export_skuid_stock.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common_taobao/generate_discount_price_excel.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/generate_discount_price_excel.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common_taobao/import_txt_to_db.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/import_txt_to_db.py" afterDir="false" />
-    </list>
+    <list default="true" id="7ad83b3f-8c84-4560-8d4c-2361cece7f17" name="更改" comment="clarks全部工作正常" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -153,8 +145,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-f27c65a3e318-JavaScript-PY-251.23774.444" />
-        <option value="bundled-python-sdk-890ed5b35930-d9c5bdb153f4-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.23774.444" />
+        <option value="bundled-js-predefined-d6986cc7102b-b26f3e71634d-JavaScript-PY-251.26094.141" />
+        <option value="bundled-python-sdk-9f8e2b94138c-36ea0e71a18c-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.26094.141" />
       </set>
     </attachedChunks>
   </component>
@@ -191,6 +183,7 @@
       <workItem from="1750337907606" duration="11660000" />
       <workItem from="1750356802251" duration="9224000" />
       <workItem from="1750514732221" duration="12308000" />
+      <workItem from="1750952311993" duration="7000" />
     </task>
     <task id="LOCAL-00001" summary="Merge remote-tracking branch 'origin/master'">
       <option name="closed" value="true" />

@@ -1,10 +1,3 @@
-# 文件顶部
-import sys
-from pathlib import Path
-from config import BRAND_CONFIG
-sys.path.append(str(Path(__file__).resolve().parents[1]))
-
-
 import os
 import psycopg2
 from pathlib import Path
@@ -13,6 +6,12 @@ import pandas as pd
 from config import CLARKS, ECCO, GEOX, CAMPER
 from common_taobao.txt_parser import parse_txt_to_record
 
+BRAND_MAP = {
+    "clarks": CLARKS,
+    "ecco": ECCO,
+    "geox": GEOX,
+    "camper": CAMPER
+}
 
 def load_sku_mapping_from_store(store_path: Path):
     sku_map = {}
@@ -30,10 +29,10 @@ def load_sku_mapping_from_store(store_path: Path):
 
 def import_txt_to_db(brand_name: str):
     brand_name = brand_name.lower()
-    if brand_name not in BRAND_CONFIG:
+    if brand_name not in BRAND_MAP:
         raise ValueError(f"❌ 不支持的品牌: {brand_name}")
 
-    config = BRAND_CONFIG[brand_name]
+    config = BRAND_MAP[brand_name]
     TXT_DIR = config["TXT_DIR"]
     PGSQL = config["PGSQL_CONFIG"]
     TABLE_NAME = config["TABLE_NAME"]

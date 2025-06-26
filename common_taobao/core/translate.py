@@ -1,9 +1,9 @@
 import time
 import deepl
-from config import API_KEYS
 
 # ✅ 替换成你的实际 DeepL API Key（已填入）
-translator = deepl.Translator(API_KEYS["DEEPL"])
+DEEPL_API_KEY = "35bb3d6c-c839-49f6-9a8f-7e00aecf24eb"
+translator = deepl.Translator(DEEPL_API_KEY)
 
 def safe_translate(text, target_lang="ZH"):
     """
