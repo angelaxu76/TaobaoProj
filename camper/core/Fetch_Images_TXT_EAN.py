@@ -130,7 +130,7 @@ def process_product_url(url, save_txt=True, download_img=False,
         print(f"❌ 页面处理失败: {url}，错误: {e}")
 
 # ===================== 主函数入口 =====================
-def main(product_urls_file=PRODUCT_URLS_FILE, save_txt=True, download_img=False):
+def main(product_urls_file=PRODUCT_URLS_FILE, save_txt=True, download_img=True):
     with open(product_urls_file, "r", encoding="utf-8") as f:
         urls = [line.strip() for line in f if line.strip()]
 
