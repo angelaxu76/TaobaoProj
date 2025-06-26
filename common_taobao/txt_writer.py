@@ -17,12 +17,14 @@ def format_txt(info: dict, filepath: Path, brand: str = None):
     write_line("Price", info.get("Price"))
     write_line("Adjusted Price", info.get("Adjusted Price"))
 
-    # 只写入简单尺码状态
+    # ✅ 写入 Product Size：通用格式（Clarks, ECCO 等）
     if "SizeMap" in info:
         size_str = ";".join(f"{size}:{status}" for size, status in info["SizeMap"].items())
         lines.append(f"Product Size: {size_str}")
+    elif "Product Size" in info:  # fallback
+        lines.append(f"Product Size: {info['Product Size']}")
 
-    # ✅ Camper: 只写库存数字和 EAN（不再写有货/无货）
+    # ✅ Camper 专用格式（带库存数字和 EAN）
     if brand == "camper" and "SizeDetail" in info:
         detail_lines = []
         for size, detail in info["SizeDetail"].items():

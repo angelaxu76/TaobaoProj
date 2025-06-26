@@ -115,17 +115,17 @@ def process_product(url):
             "Product Code": code,
             "Product Name": name,
             "Product Description": description,
-            "Product Gender": gender,
-            "Product Color": color,
-            "Product Price": full_price,
-            "Adjusted Price": discount_price,
-            "Product Material": material_text,
+            "Upper Material": material_text,  # ✅ 改名
+            "Gender": gender,  # ✅ 改名
+            "Color": color,  # ✅ 改名
+            "Price": full_price,  # ✅ 改名
+            "Adjusted Price": discount_price,  # ✅ 改名
             "Product Size": size_str,
-            "Source URL": url
+            "Product URL": url  # ✅ 改名
         }
 
         txt_path = TXT_OUTPUT_DIR / f"{code}.txt"
-        format_txt(info, txt_path)
+        format_txt(info, txt_path,brand="geox")
         print(f"✅ 写入成功: {code}.txt")
 
     except Exception as e:

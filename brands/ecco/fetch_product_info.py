@@ -125,7 +125,7 @@ def process_product(url, idx, total):
         }
 
         filepath = TXT_DIR / f"{product_code}.txt"
-        format_txt(info, filepath)
+        format_txt(info, filepath,brand="ecco")
         print(f"📄 信息保存: {filepath.name}")
 
         if DOWNLOAD_IMAGE:

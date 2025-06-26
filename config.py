@@ -22,6 +22,7 @@ BASE_DIR = Path("D:/TB/Products")
 
 # === Clarks 品牌路径配置 ===
 CLARKS = {
+    "BRAND": "clarks",
     "TXT_DIR": Path("D:/TB/Products/clarks/publication/TXT"),
     "OUTPUT_DIR": Path("D:/TB/Products/clarks/repulibcation"),
     "STORE_DIR": Path("D:/TB/Products/clarks/document/store"),

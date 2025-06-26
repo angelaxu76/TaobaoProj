@@ -14,6 +14,7 @@ from common_taobao.txt_writer import format_txt
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 LINK_FILE = CLARKS["BASE"] / "publication" / "product_links.txt"
 TXT_DIR = CLARKS["TXT_DIR"]
+BRAND = CLARKS["BRAND"]
 
 UK_TO_EU_CM = {
     "3": "35.5", "3.5": "36", "4": "37", "4.5": "37.5", "5": "38",
@@ -112,7 +113,7 @@ def main():
                 print(f"{k}: {v}")
             filepath = TXT_DIR / f"{info['Product Code']}.txt"
             filepath.parent.mkdir(parents=True, exist_ok=True)
-            format_txt(info, filepath)
+            format_txt(info, filepath, BRAND)
             print(f"✅ 写入: {filepath.name}")
 
 if __name__ == "__main__":
