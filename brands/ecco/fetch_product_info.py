@@ -18,7 +18,7 @@ PRODUCT_LINKS_FILE = ECCO["BASE"] / "publication" / "product_links.txt"
 TXT_DIR = ECCO["TXT_DIR"]
 IMAGE_DIR = ECCO["IMAGE_DIR"]
 CHROMEDRIVER_PATH = "D:/Software/chromedriver-win64/chromedriver.exe"
-MAX_THREADS = 20
+MAX_THREADS = 10
 WAIT = 0
 DELAY = 0.5
 

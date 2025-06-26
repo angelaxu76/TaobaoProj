@@ -3,7 +3,7 @@ import shutil
 import subprocess
 from datetime import datetime
 from config import CLARKS
-from common_taobao.generate_discount_price_excel import export_discount_price_excel
+from common_taobao.generate_discount_price_excel import export_store_discount_price
 from common_taobao.export_skuid_stock import export_skuid_stock_excel
 from common_taobao.import_txt_to_db import import_txt_to_db
 from common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
@@ -55,7 +55,7 @@ def main():
     import_txt_to_db("clarks")
 
     print("\n🟡 Step: 5️⃣ 导出价格 Excel")
-    export_discount_price_excel("clarks")
+    export_store_discount_price("clarks")
 
     print("\n🟡 Step: 6️⃣ 导出库存 Excel")
     export_skuid_stock_excel("clarks")
