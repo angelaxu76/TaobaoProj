@@ -122,6 +122,14 @@ def import_txt_to_db(brand_name: str):
                     if brand_name == "camper":
                         full_rec += (ean,)
 
+                    print(
+                        f"{'🔑' if skuid else '⚠️'} {spec_key:<18} "
+                        f"| stock_status={stock_status:<4} "
+                        f"| skuid={skuid or 'N/A':<12} "
+                        f"| is_published={is_published} "
+                        f"| ean={ean or '-'}"
+                    )
+
                     cur.execute(insert_sql, full_rec)
                     inserted += 1
 
