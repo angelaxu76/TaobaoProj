@@ -22,7 +22,7 @@ BASE_DIR = Path("D:/TB/Products")
 
 DISCOUNT_EXCEL_DIR = Path("D:/TB/DiscountCandidates")
 
-
+TAOBAO_STORES = ["五小剑", "英国伦敦代购"]
 
 # === 通用工具函数（可选） ===
 def ensure_all_dirs(*dirs):

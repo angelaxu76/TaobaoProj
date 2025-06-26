@@ -2,7 +2,7 @@ import os
 import shutil
 import subprocess
 from datetime import datetime
-from config import CLARKS
+from config import CLARKS,TAOBAO_STORES
 from common_taobao.generate_discount_price_excel import export_store_discount_price
 from common_taobao.export_skuid_stock import export_skuid_stock_excel
 from common_taobao.import_txt_to_db import import_txt_to_db
@@ -50,21 +50,24 @@ def main():
     # run_script("unified_link_collector.py")
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    run_script("fetch_product_info.py")
+    # run_script("fetch_product_info.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
-    import_txt_to_db("clarks")
+    #import_txt_to_db("clarks")
+
 
     print("\n🟡 Step: 5️⃣ 导出价格 Excel")
-    export_store_discount_price("clarks")
+    for store in TAOBAO_STORES:
+        export_store_discount_price("clarks",store)
 
     print("\n🟡 Step: 6️⃣ 导出库存 Excel")
     export_skuid_stock_excel("clarks")
 
     print("\n🟡 Step: 7️⃣ 为各店铺生成上架 Excel + 拷贝图片")
     # 手动指定调试店铺
-    store_list = ["五小剑", "英国伦敦代购2015"]
-    for store in store_list:
+
+    for store in TAOBAO_STORES:
+        export_store_discount_price("clarks",store)
         generate_product_excels(CLARKS, store)
         codes = get_publishable_product_codes(CLARKS, store)
         copy_images_for_store(CLARKS, store, codes)

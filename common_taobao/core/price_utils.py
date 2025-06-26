@@ -19,7 +19,7 @@ def calculate_discount_price(info: dict) -> float:
         else:
             profit = 1.25
 
-        rmb_price = ((base_price-10) * custom_rate + delivery_cost) * profit * discount_Space * exchange_rate
+        rmb_price = (base_price * custom_rate + delivery_cost) * profit * discount_Space * exchange_rate
         rounded_price = int(round(rmb_price / 10.0)) * 10
         return rounded_price
     except:
@@ -35,17 +35,24 @@ def calculate_discount_price_from_float(base_price: float) -> float:
         discount_space = 1.15
         exchange_rate = 9.8
 
-        if base_price > 50:
-            profit = 1.07
-        else:
-            profit = 1.25
+        profit = 1.10
+
+
 
         print(f"🧪 [DEBUG] base_price={base_price}, profit={profit}")
 
-        rmb_price = ((base_price - 10) * custom_rate + delivery_cost) * profit * discount_space * exchange_rate
+        rmb_price = (base_price * custom_rate + delivery_cost) * profit * discount_space * exchange_rate
         print(f"🧮 [DEBUG] 计算后 rmb_price={rmb_price}")
 
         rounded_price = int(round(rmb_price / 10.0)) * 10
+
+        if base_price < 30:
+           rounded_price = rounded_price + 100
+        elif 30 < base_price < 50:
+           rounded_price = rounded_price+80
+        elif 50 < base_price < 80:
+           rounded_price = rounded_price+50
+
         return rounded_price
     except Exception as e:
         print(f"❌ [price_utils] 错误: base_price={base_price}, 错误: {e}")
