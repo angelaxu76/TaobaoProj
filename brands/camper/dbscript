@@ -4,7 +4,7 @@ CREATE TABLE camper_inventory (
     id SERIAL PRIMARY KEY,
 
     -- 基础信息
-    product_name VARCHAR(200) NOT NULL,               -- 商品编码，如 K800548-001
+    product_code VARCHAR(200) NOT NULL,               -- 商品编码，如 K800548-001
     product_url TEXT NOT NULL,                        -- 商品链接
     size VARCHAR(10) NOT NULL,                        -- 尺码（EU，如 38、39）
     gender VARCHAR(10),                               -- 性别：男款、女款、童款
@@ -26,5 +26,5 @@ CREATE TABLE camper_inventory (
     is_published BOOLEAN DEFAULT FALSE,               -- 是否已发布（平台上架状态）
 
     -- 唯一约束：同一商品+尺码唯一
-    UNIQUE (product_name, size)
+    UNIQUE (product_code, size)
 );

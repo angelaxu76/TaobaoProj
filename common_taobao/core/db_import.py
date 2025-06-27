@@ -24,7 +24,7 @@ def insert_to_db(conn, product):
         cur.execute(
             '''
             INSERT INTO product_info (
-                product_code, product_name, product_description, product_gender,
+                product_code, product_code, product_description, product_gender,
                 color, original_price, actual_price, product_url,
                 upper_material, lining_material, sole_material, midsole_material,
                 fastening_type, trims, sock_material, size_stock, brand
@@ -92,11 +92,11 @@ def import_txt_to_db(txt_dir: Path, brand: str, conn, stock_name: str = None):
 
                 cursor.execute(f"""
                     INSERT INTO {table_name} (
-                        product_name, product_url, size, gender,
+                        product_code, product_url, size, gender,
                         original_price_gbp, discount_price_gbp,
                         stock_status, stock_name
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (product_name, size, stock_name) DO UPDATE
+                    ON CONFLICT (product_code, size, stock_name) DO UPDATE
                     SET
                         product_url = EXCLUDED.product_url,
                         gender = EXCLUDED.gender,
@@ -149,7 +149,7 @@ def import_skuid_from_store_excels(store_dir: Path, brand: str, conn):
                     update_sql = f'''
                         UPDATE {table_name}
                         SET skuid = %s, is_published = TRUE
-                        WHERE product_name = %s AND size = %s
+                        WHERE product_code = %s AND size = %s
                     '''
                     cursor.execute(update_sql, (skuid, product_code, size))
 

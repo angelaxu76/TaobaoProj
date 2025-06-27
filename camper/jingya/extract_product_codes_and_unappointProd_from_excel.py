@@ -32,9 +32,9 @@ def fetch_gender_map(codes):
     conn = psycopg2.connect(**PGSQL_CONFIG)
     cursor = conn.cursor()
     cursor.execute(f"""
-        SELECT DISTINCT product_name, gender
+        SELECT DISTINCT product_code, gender
         FROM {TABLE_NAME}
-        WHERE product_name = ANY(%s)
+        WHERE product_code = ANY(%s)
     """, (codes,))
     rows = cursor.fetchall()
     conn.close()
@@ -45,16 +45,16 @@ def fetch_inventory(codes, sizes):
     conn = psycopg2.connect(**PGSQL_CONFIG)
     cursor = conn.cursor()
     cursor.execute(f"""
-        SELECT product_name, size, stock_quantity
+        SELECT product_code, size, stock_quantity
         FROM {TABLE_NAME}
-        WHERE product_name = ANY(%s) AND size = ANY(%s)
+        WHERE product_code = ANY(%s) AND size = ANY(%s)
     """, (codes, sizes))
     rows = cursor.fetchall()
     conn.close()
 
     inventory = {}
-    for product_name, size, qty in rows:
-        inventory.setdefault(product_name, {})[size] = qty
+    for product_code, size, qty in rows:
+        inventory.setdefault(product_code, {})[size] = qty
     return inventory
 
 # === 获取商品价格 ===
@@ -62,9 +62,9 @@ def fetch_price_map(codes):
     conn = psycopg2.connect(**PGSQL_CONFIG)
     cursor = conn.cursor()
     cursor.execute(f"""
-        SELECT DISTINCT product_name, price_gbp
+        SELECT DISTINCT product_code, price_gbp
         FROM {TABLE_NAME}
-        WHERE product_name = ANY(%s)
+        WHERE product_code = ANY(%s)
     """, (codes,))
     rows = cursor.fetchall()
     conn.close()
@@ -151,7 +151,7 @@ def main():
             cursor.execute(f"""
                 UPDATE {TABLE_NAME}
                 SET is_published = TRUE
-                WHERE product_name = ANY(%s)
+                WHERE product_code = ANY(%s)
             """, (all_codes,))
             conn.commit()
             conn.close()

@@ -1,6 +1,6 @@
-DROP TABLE IF EXISTS clarks_inventory;
+DROP TABLE IF EXISTS geox_inventory;
 
-CREATE TABLE clarks_inventory (
+CREATE TABLE geox_inventory (
     id SERIAL PRIMARY KEY,
     product_code VARCHAR(200) NOT NULL,               -- 商品编码，如 206503-01001
     product_url TEXT NOT NULL,                        -- 商品页面 URL

@@ -115,13 +115,13 @@ def process_product(url):
             "Product Code": code,
             "Product Name": name,
             "Product Description": description,
-            "Upper Material": material_text,  # ✅ 改名
-            "Gender": gender,  # ✅ 改名
-            "Color": color,  # ✅ 改名
-            "Price": full_price,  # ✅ 改名
-            "Adjusted Price": discount_price,  # ✅ 改名
+            "Product Gender": gender,
+            "Product Color": color,
+            "Product Price": full_price,
+            "Adjusted Price": discount_price,
+            "Product Material": material_text,
             "Product Size": size_str,
-            "Product URL": url  # ✅ 改名
+            "Source URL": url
         }
 
         txt_path = TXT_OUTPUT_DIR / f"{code}.txt"

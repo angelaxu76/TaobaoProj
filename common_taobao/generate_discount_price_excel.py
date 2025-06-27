@@ -47,14 +47,14 @@ def export_price_with_itemid(brand: str, store_name: str):
         conn = psycopg2.connect(**PGSQL)
         cursor = conn.cursor()
         cursor.execute(f"""
-            SELECT product_name,
+            SELECT product_code,
                    MIN(LEAST(
                        COALESCE(original_price_gbp, 9999),
                        COALESCE(discount_price_gbp, 9999)
                    )) AS lowest_price
             FROM {table}
             WHERE stock_name = %s AND is_published = TRUE
-            GROUP BY product_name
+            GROUP BY product_code
         """, (store_name,))
         results = cursor.fetchall()
         print(f"🔍 已发布商品数: {len(results)}")
@@ -113,7 +113,7 @@ def export_store_discount_price(brand: str, store_name: str):
 
         # 第一步：获取该店铺已发布商品编码（is_published = True）
         cursor.execute(f"""
-            SELECT DISTINCT product_name
+            SELECT DISTINCT product_code
             FROM {table}
             WHERE stock_name = %s AND is_published = TRUE
         """, (store_name,))
@@ -126,14 +126,14 @@ def export_store_discount_price(brand: str, store_name: str):
 
         # 第二步：获取所有商品最低价格
         cursor.execute(f"""
-            SELECT product_name,
+            SELECT product_code,
                    MIN(LEAST(
                        COALESCE(original_price_gbp, 9999),
                        COALESCE(discount_price_gbp, 9999)
                    )) AS lowest_price
             FROM {table}
             WHERE (original_price_gbp > 0 OR discount_price_gbp > 0)
-            GROUP BY product_name
+            GROUP BY product_code
         """)
         all_prices = cursor.fetchall()
 

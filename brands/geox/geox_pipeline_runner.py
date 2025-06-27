@@ -1,6 +1,6 @@
 import os
 import subprocess
-from config import GEOX
+from config import GEOX,TAOBAO_STORES
 from pathlib import Path
 from common_taobao.generate_discount_price_excel import export_price_with_itemid,export_store_discount_price
 from common_taobao.export_skuid_stock import export_skuid_stock_excel
@@ -24,15 +24,14 @@ def main():
     #run_script("fetch_product_info.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
-    #import_txt_to_db("geox")
+    import_txt_to_db("geox")
 
     print("\n🟡 Step: 6️⃣ 导出库存 Excel")
-    #export_skuid_stock_excel("geox")
+    export_skuid_stock_excel("geox")
 
     print("\n🟡 Step: 7️⃣ 为各店铺生成上架 Excel + 拷贝图片")
-    store_list = ["五小剑", "英国伦敦代购2015"]
-    for store in store_list:
-        # export_store_discount_price("geox", store)  # ✅ 加入价格导出
+    for store in TAOBAO_STORES:
+        export_store_discount_price("geox", store)  # ✅ 加入价格导出
         generate_product_excels(GEOX, store)
         codes = get_publishable_product_codes(GEOX, store)
         copy_images_for_store(GEOX, store, codes)

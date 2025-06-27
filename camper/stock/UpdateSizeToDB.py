@@ -87,13 +87,13 @@ def main():
 
     insert_query = f"""
         INSERT INTO {TABLE_NAME} (
-            product_name, product_url, size,
+            product_code, product_url, size,
             gender, stock_quantity,
             last_stock_quantity, last_checked,
             price_gbp
         )
         VALUES %s
-        ON CONFLICT (product_name, size)
+        ON CONFLICT (product_code, size)
         DO UPDATE SET
             last_stock_quantity = {TABLE_NAME}.stock_quantity,
             stock_quantity = EXCLUDED.stock_quantity,

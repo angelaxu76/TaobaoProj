@@ -22,7 +22,7 @@ BASE_DIR = Path("D:/TB/Products")
 
 DISCOUNT_EXCEL_DIR = Path("D:/TB/DiscountCandidates")
 
-TAOBAO_STORES = ["五小剑", "英国伦敦代购"]
+TAOBAO_STORES = ["五小剑", "英国伦敦代购2015"]
 
 # === 通用工具函数（可选） ===
 def ensure_all_dirs(*dirs):
@@ -44,12 +44,13 @@ CLARKS = {
     "LINKS_FILE": Path("D:/TB/Products/clarks/publication/product_links.txt"),
     "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
-        "product_code": "product_name",
+        "product_code": "product_code",
         "url": "product_url",
         "discount_price": "discount_price_gbp",
         "original_price": "original_price_gbp",
         "size": "size",
-        "stock": "stock_status"  # ✅ 文本类型，有货/无货
+        "stock": "stock_status",  # ✅ 文本类型，有货/无货
+        "gender": "gender"  # ✅ 加上这一行
     }
 }
 
@@ -67,12 +68,13 @@ CAMPER = {
     "LINKS_FILE": BASE_DIR / "camper" / "publication" / "product_links.txt",
     "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
-        "product_code": "product_name",
+        "product_code": "product_code",
         "url": "product_url",
         "discount_price": "discount_price_gbp",
         "original_price": "original_price_gbp",
         "size": "size",
-        "stock": "stock_count"  # ✅ 数值类型，>0 表示有货
+        "stock": "stock_count",  # ✅ 数值类型，>0 表示有货
+        "gender": "gender"  # ✅ 加上这一行
     }
 }
 
@@ -88,12 +90,13 @@ GEOX = {
     "LINKS_FILE": Path("D:/TB/Products/geox/publication/product_links.txt"),
     "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
-        "product_code": "product_name",
+        "product_code": "product_code",
         "url": "product_url",
         "discount_price": "discount_price_gbp",
         "original_price": "original_price_gbp",
         "size": "size",
-        "stock": "stock_status"  # ✅ 请确保 GEOX 表使用文本库存状态
+        "stock": "stock_status",  # ✅ 请确保 GEOX 表使用文本库存状态
+        "gender": "gender"  # ✅ 加上这一行
     }
 }
 
@@ -109,12 +112,13 @@ ECCO = {
     "LINKS_FILE": Path("D:/TB/Products/ecco/publication/product_links.txt"),
     "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
-        "product_code": "product_name",
+        "product_code": "product_code",
         "url": "product_url",
         "discount_price": "discount_price_gbp",
         "original_price": "original_price_gbp",
         "size": "size",
-        "stock": "stock_status"  # ✅ 如果 ECCO 使用数值库存，请改为 stock_count
+        "stock": "stock_status",  # ✅ 如果 ECCO 使用数值库存，请改为 stock_count
+        "gender": "gender"  # ✅ 加上这一行
     }
 }
 

@@ -56,7 +56,7 @@ def parse_and_update_excel(brand: str):
                             sku_name = %s,
                             is_published = TRUE,
                             last_checked = CURRENT_TIMESTAMP
-                        WHERE product_name = %s AND size = %s
+                        WHERE product_code = %s AND size = %s
                     """
                     params = (
                         str(row.get("渠道产品id")),

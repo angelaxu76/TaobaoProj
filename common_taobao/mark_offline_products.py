@@ -20,7 +20,7 @@ def mark_offline_products(brand_name: str):
     # 2. 查询数据库中所有编码
     conn = psycopg2.connect(**pg_config)
     cur = conn.cursor()
-    cur.execute(f"SELECT DISTINCT product_name FROM {table_name}")
+    cur.execute(f"SELECT DISTINCT product_code FROM {table_name}")
     db_codes = set(row[0] for row in cur.fetchall())
 
     # 3. 第一类：数据库中存在但 TXT 中缺失的编码（官网已下架）
@@ -28,10 +28,10 @@ def mark_offline_products(brand_name: str):
 
     # 4. 第二类：有货尺码数量 < 2 的编码
     cur.execute(f"""
-        SELECT product_name
+        SELECT product_code
         FROM {table_name}
         WHERE stock_status = '有货'
-        GROUP BY product_name
+        GROUP BY product_code
         HAVING COUNT(DISTINCT size) < 2
     """)
     offline_by_low_stock = set(row[0] for row in cur.fetchall())

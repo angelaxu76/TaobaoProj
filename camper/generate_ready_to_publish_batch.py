@@ -34,10 +34,10 @@ def get_eligible_products():
     conn = psycopg2.connect(**DB_CONFIG)
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT product_name, gender, SUM(stock_quantity) AS total_stock
+        SELECT product_code, gender, SUM(stock_quantity) AS total_stock
         FROM camper_inventory
         WHERE is_published = FALSE
-        GROUP BY product_name, gender
+        GROUP BY product_code, gender
         HAVING SUM(stock_quantity) > 20
     """)
     rows = cursor.fetchall()

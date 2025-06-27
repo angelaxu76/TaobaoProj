@@ -2,7 +2,7 @@ DROP TABLE IF EXISTS geox_inventory;
 
 CREATE TABLE geox_inventory (
     id SERIAL PRIMARY KEY,
-    product_name VARCHAR(200) NOT NULL,               -- 商品编码，如 U35ABC00043C9999
+    product_code VARCHAR(200) NOT NULL,               -- 商品编码，如 U35ABC00043C9999
     product_url TEXT NOT NULL,                        -- 商品链接
     size VARCHAR(10) NOT NULL,                        -- 尺码（EU，如 38、39）
     gender VARCHAR(10),                               -- 性别（男款、女款）
@@ -13,5 +13,5 @@ CREATE TABLE geox_inventory (
     stock_name VARCHAR(100),                          -- 店铺名称或库存仓名称
     last_checked TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- 上次检测时间
     is_published BOOLEAN DEFAULT FALSE,               -- 是否已发布到平台
-    UNIQUE (product_name, size, stock_name)           -- 唯一约束：同一商品+尺码+店铺
+    UNIQUE (product_code, size, stock_name)           -- 唯一约束：同一商品+尺码+店铺
 );

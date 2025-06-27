@@ -19,13 +19,13 @@ def get_unpublished_codes():
     conn = psycopg2.connect(**PGSQL_CONFIG)
     cursor = conn.cursor()
     cursor.execute(f"""
-        SELECT product_name
+        SELECT product_code
         FROM {TABLE_NAME}
         WHERE stock_name = %s AND is_published = FALSE
-        GROUP BY product_name
+        GROUP BY product_code
         HAVING COUNT(*) = COUNT(*)  -- 保证 GROUP BY 生效
-          AND product_name NOT IN (
-              SELECT DISTINCT product_name FROM {TABLE_NAME}
+          AND product_code NOT IN (
+              SELECT DISTINCT product_code FROM {TABLE_NAME}
               WHERE stock_name = %s AND is_published = TRUE
           )
     """, (STORE_NAME, STORE_NAME))

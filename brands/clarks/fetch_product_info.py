@@ -1,5 +1,7 @@
 import sys
 from pathlib import Path
+import re
+import json
 
 # ✅ 加入项目根目录
 sys.path.append(str(Path(__file__).resolve().parents[2]))
@@ -72,6 +74,26 @@ def process_product(url):
 
         material = extract_material(soup)
 
+        color_name = "No Data"
+        try:
+            html = r.text  # ✅ 添加这行以定义 html 原始源码
+
+            # 使用正则匹配颜色信息
+            pattern = r'{"key":"(\d+)",\s*"color\.en-GB":"(.*?)",\s*"image":"(https://cdn\.media\.amplience\.net/i/clarks/[^"]+)"}'
+            matches = re.findall(pattern, html)
+
+            print(f"🟢 找到 {len(matches)} 个颜色选项")
+            for key, color, img_url in matches:
+                print(f"🔹 key: {key}, color: {color}")
+                if key == code:
+                    color_name = color
+                    print(f"✅ 匹配到当前商品颜色: {color_name}")
+                    break
+            if color_name == "No Data":
+                print(f"❌ 未匹配到当前商品编码: {code}")
+        except Exception as e:
+            print(f"⚠️ 解析颜色出错: {e}")
+
         size_map = {}
         for btn in soup.find_all("button", {"data-testid": "sizeItem"}):
             uk = btn.get("title", "").strip()
@@ -86,16 +108,19 @@ def process_product(url):
                 sizes.append(f"{eu}:{status}")
 
         return {
-            "Product Code": code,
-            "Product Name": name,
-            "Product Description": desc,
-            "Upper Material": material,
-            "Gender": gender,
-            "Price": original_price,
-            "Adjusted Price": discount_price,
-            "Product Size": ";".join(sizes),
-            "Product URL": url
-        }
+        "Product Code": code,
+        "Product Name": name,
+        "Product Description": desc,
+        "Product Gender": gender,
+        "Product Color": color_name,
+        "Product Price": original_price,
+        "Adjusted Price": discount_price,
+        "Product Material": material,
+        "Product Size": ";".join(sizes),
+        "Source URL": url
+    }
+
+
 
     except Exception as e:
         print(f"❌ 错误: {url}，{e}")

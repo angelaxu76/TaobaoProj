@@ -89,12 +89,12 @@ def import_txt_to_db_supplier(brand_name: str):
         with conn.cursor() as cur:
             sql = f"""
                 INSERT INTO {table_name} (
-                    product_name, product_url, size, gender,
+                    product_code, product_url, size, gender,
                     ean, stock_count,
                     original_price_gbp, discount_price_gbp, is_published
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (product_name, size)
+                ON CONFLICT (product_code, size)
                 DO UPDATE SET
                     ean = EXCLUDED.ean,
                     stock_count = EXCLUDED.stock_count,

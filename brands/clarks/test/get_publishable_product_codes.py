@@ -9,14 +9,14 @@ def get_publishable_product_codes(config: dict, store_name: str) -> list:
 
     # ✅ 只选取“所有尺码都未发布”的商品编码
     query = f"""
-        SELECT product_name
+        SELECT product_code
         FROM {table_name}
         WHERE stock_name = %s
-        GROUP BY product_name
+        GROUP BY product_code
         HAVING SUM(CASE WHEN is_published THEN 1 ELSE 0 END) = 0
     """
     df = pd.read_sql(query, conn, params=(store_name,))
-    codes = df["product_name"].unique().tolist()
+    codes = df["product_code"].unique().tolist()
 
     def valid_stock(code):
         txt_path = txt_dir / f"{code}.txt"

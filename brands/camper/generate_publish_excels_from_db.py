@@ -43,31 +43,31 @@ engine = create_engine(
 print("\n📊 正在查询符合条件的商品...")
 query = """
 WITH size_counts AS (
-    SELECT product_name,
+    SELECT product_code,
            COUNT(*) AS available_sizes,
            SUM(stock_count) AS total_stock
     FROM camper_inventory
     WHERE stock_count > 1
-    GROUP BY product_name
+    GROUP BY product_code
 )
-SELECT DISTINCT ci.product_name,
+SELECT DISTINCT ci.product_code,
        ci.original_price_gbp,
        ci.discount_price_gbp
 FROM camper_inventory ci
-JOIN size_counts sc ON ci.product_name = sc.product_name
+JOIN size_counts sc ON ci.product_code = sc.product_code
 WHERE ci.is_published = FALSE
   AND sc.available_sizes >= 4
   AND sc.total_stock > 20
 """
 df_codes = pd.read_sql(query, engine)
-product_codes = df_codes["product_name"].tolist()
+product_codes = df_codes["product_code"].tolist()
 print(f"✅ 获取到商品数: {len(product_codes)}")
 
-price_map = df_codes.set_index("product_name")[["original_price_gbp", "discount_price_gbp"]].to_dict("index")
+price_map = df_codes.set_index("product_code")[["original_price_gbp", "discount_price_gbp"]].to_dict("index")
 
 gender_map = {
     k.strip().upper(): v for k, v in
-    pd.read_sql("SELECT DISTINCT product_name, gender FROM camper_inventory", engine)
+    pd.read_sql("SELECT DISTINCT product_code, gender FROM camper_inventory", engine)
     .dropna()
     .values
 }

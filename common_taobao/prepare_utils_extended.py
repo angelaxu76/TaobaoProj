@@ -13,18 +13,18 @@ def get_publishable_product_codes(config: dict, store_name: str) -> list:
 
     # 只获取当前店铺 stock_name 下的未发布商品，且该店铺未发布过该编码的任何尺码
     query = f"""
-        SELECT product_name
+        SELECT product_code
         FROM {table_name}
         WHERE stock_name = %s AND is_published = FALSE
-        GROUP BY product_name
+        GROUP BY product_code
         HAVING COUNT(*) = COUNT(*)  -- 强制启用 GROUP BY
-            AND product_name NOT IN (
-                SELECT DISTINCT product_name FROM {table_name}
+            AND product_code NOT IN (
+                SELECT DISTINCT product_code FROM {table_name}
                 WHERE stock_name = %s AND is_published = TRUE
             )
     """
     df = pd.read_sql(query, conn, params=(store_name, store_name))
-    candidate_codes = df["product_name"].unique().tolist()
+    candidate_codes = df["product_code"].unique().tolist()
 
     # 检查 TXT 文件中是否存在 3 个以上 :有货 的尺码
     def has_3_or_more_instock(code):
@@ -61,13 +61,13 @@ def generate_product_excels(config: dict, store_name: str):
     conn = psycopg2.connect(**config["PGSQL_CONFIG"])
     table = config["TABLE_NAME"]
     query = f"""
-        SELECT product_name, gender, original_price_gbp, discount_price_gbp
+        SELECT product_code, gender, original_price_gbp, discount_price_gbp
         FROM {table}
         WHERE stock_name = %s
     """
     df = pd.read_sql(query, conn, params=(store_name,))
     price_map = {
-        row["product_name"]: {
+        row["product_code"]: {
             "gender": row["gender"],
             "Price": row["original_price_gbp"],
             "AdjustedPrice": row["discount_price_gbp"]
