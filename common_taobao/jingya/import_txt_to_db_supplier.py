@@ -15,11 +15,11 @@ def parse_txt_file(txt_path: Path) -> list:
     for line in lines:
         if line.startswith("Product Code:"):
             info["product_code"] = line.split(":", 1)[1].strip()
-        elif line.startswith("Product URL:"):
+        elif line.startswith("Source URL:") or line.startswith("Product URL:"):
             info["product_url"] = line.split(":", 1)[1].strip()
-        elif line.startswith("Gender:"):
+        elif line.startswith("Product Gender:"):
             info["gender"] = line.split(":", 1)[1].strip()
-        elif line.startswith("Price:"):
+        elif line.startswith("Product Price:"):
             try:
                 info["original_price_gbp"] = float(line.split(":", 1)[1].strip())
             except:

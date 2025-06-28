@@ -122,15 +122,16 @@ def process_product_url(PRODUCT_URL):
             "Product Code": product_code,
             "Product Name": product_title,
             "Product Description": description,
-            "Product URL": product_url,
-            "Color": color,
-            "Upper Material": upper_material,
-            "Price": str(original_price),
+            "Product Gender": gender,
+            "Product Color": color,
+            "Product Price": str(original_price),
             "Adjusted Price": str(discount_price),
-            "Gender": gender,
+            "Product Material": upper_material,
             "SizeMap": size_map,
-            "SizeDetail": size_detail
+            "SizeDetail": size_detail,  # ✅ 加上这一行！
+            "Source URL": product_url
         }
+
 
         # ✅ DEBUG 输出
         print("🧪 DEBUG: 即将写入 TXT 的字段信息：")

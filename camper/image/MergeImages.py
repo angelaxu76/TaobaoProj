@@ -4,8 +4,8 @@ from PIL import Image, ImageDraw
 from collections import defaultdict
 
 # === 参数设置 ===
-IMAGE_DIR = Path(r"D:\TB\Products\camper\BACKUP\20250505\square_images")
-OUTPUT_DIR = Path(r"D:\TB\Products\camper\BACKUP\20250505\merges")
+IMAGE_DIR = Path(r"D:\TB\Products\camper\document\images")
+OUTPUT_DIR = Path(r"D:\TB\Products\camper\document\merges")
 OUTPUT_WIDTH = 750
 PADDING = 10  # 四周和图片间距
 MAX_COLS = 2  # 每行最多显示2张图片

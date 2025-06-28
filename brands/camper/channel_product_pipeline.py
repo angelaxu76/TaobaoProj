@@ -2,11 +2,18 @@
 此脚本用于渠道产品管理，按性别导出商品 Excel（不影响主产品发布流程）
 """
 
-from common_taobao.jingya.export_gender_split_excel import export_gender_split_excel
+from common_taobao.jingya.export_gender_split_excel import export_recently_published_excel
+from common_taobao.jingya.import_channel_info_from_excel import parse_and_update_excel
+from common_taobao.jingya.copy_product_images_for_recent_publication import copy_product_images_for_recent_publication
 
 def run_channel_product_split():
     print("\n📦 渠道产品管理：导出男女款商品编码与渠道ID")
-    export_gender_split_excel("camper")
+    export_recently_published_excel("camper")
 
 if __name__ == "__main__":
-    run_channel_product_split()
+    # 将GEI excel中的产品的货品ID等鲸牙这边的数据导入数据库
+    #parse_and_update_excel("camper")
+
+    #run_channel_product_split()
+
+    copy_product_images_for_recent_publication("camper")
