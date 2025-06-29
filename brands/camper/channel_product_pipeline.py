@@ -5,6 +5,8 @@
 from common_taobao.jingya.export_gender_split_excel import export_recently_published_excel
 from common_taobao.jingya.import_channel_info_from_excel import parse_and_update_excel
 from common_taobao.jingya.copy_product_images_for_recent_publication import copy_product_images_for_recent_publication
+from common_taobao.jingya.export_channel_price_excel import export_channel_price_excel,export_all_sku_price_excel
+from common_taobao.jingya.export_gender_split_excel import export_gender_split_excel
 
 def run_channel_product_split():
     print("\n📦 渠道产品管理：导出男女款商品编码与渠道ID")
@@ -16,4 +18,11 @@ if __name__ == "__main__":
 
     #run_channel_product_split()
 
-    copy_product_images_for_recent_publication("camper")
+    #copy_product_images_for_recent_publication("camper")
+
+    #export_channel_price_excel("camper")
+    #export_all_sku_price_excel("camper")
+
+    export_gender_split_excel("camper")
+
+

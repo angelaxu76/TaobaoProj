@@ -25,13 +25,15 @@ def export_channel_price_excel(brand: str):
         "product_code": "first"
     }).reset_index()
 
+    print(df_grouped[["product_code", "original_price_gbp", "discount_price_gbp"]])
     # ✅ 使用统一价格函数替代 calculate_prices
     df_grouped[["未税价格", "零售价"]] = df_grouped.apply(
         lambda row: pd.Series(
             calculate_camper_untaxed_and_retail(
-                base_price=min(row["original_price_gbp"] or 0, row["discount_price_gbp"] or 0),
-                delivery_cost=7,
-                exchange_rate=9.7
+                row["original_price_gbp"] if pd.notnull(row["original_price_gbp"]) else 0,
+                row["discount_price_gbp"] if pd.notnull(row["discount_price_gbp"]) else 0,
+                7,
+                9.7
             )
         ),
         axis=1
@@ -71,13 +73,17 @@ def export_all_sku_price_excel(brand: str):
         "product_code": "first"
     }).reset_index()
 
+
+
+    print(df_grouped[["product_code", "original_price_gbp", "discount_price_gbp"]])
     # ✅ 使用统一价格函数
     df_grouped[["未税价格", "零售价"]] = df_grouped.apply(
         lambda row: pd.Series(
             calculate_camper_untaxed_and_retail(
-                base_price=min(row["original_price_gbp"] or 0, row["discount_price_gbp"] or 0),
-                delivery_cost=7,
-                exchange_rate=9.7
+                row["original_price_gbp"] if pd.notnull(row["original_price_gbp"]) else 0,
+                row["discount_price_gbp"] if pd.notnull(row["discount_price_gbp"]) else 0,
+                7,
+                9.7
             )
         ),
         axis=1
