@@ -5,6 +5,11 @@ import time
 from pathlib import Path
 from config import CAMPER  # ✅ 根据品牌切换
 
+import sys
+sys.stdout.reconfigure(encoding='utf-8')
+
+
+
 # ========= 参数配置 =========
 LINKS_FILE = CAMPER["LINKS_FILE"]
 TOTAL_PAGES = 15

@@ -3,6 +3,7 @@ import importlib
 import sys
 from pathlib import Path
 
+sys.stdout.reconfigure(encoding='utf-8')
 # === 设置根路径 ===
 PROJECT_ROOT = Path(__file__).resolve().parent
 BRANDS_DIR = PROJECT_ROOT / "brands"

@@ -20,7 +20,8 @@ if __name__ == "__main__":
 
     #copy_product_images_for_recent_publication("camper")
 
-    #export_channel_price_excel("camper")
+    export_channel_price_excel("camper")
+
     #export_all_sku_price_excel("camper")
 
     export_gender_split_excel("camper")

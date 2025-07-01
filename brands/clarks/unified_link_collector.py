@@ -1,6 +1,9 @@
 import sys
 from pathlib import Path
 
+import sys
+sys.stdout.reconfigure(encoding='utf-8')
+
 # 添加项目根目录到 sys.path（假设当前文件在 brands/clarks/ 下）
 sys.path.insert(0, str(Path(__file__).resolve().parents[1].parent))
 

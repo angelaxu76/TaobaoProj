@@ -4,6 +4,9 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import requests
 from pathlib import Path
+import sys
+sys.stdout.reconfigure(encoding='utf-8')
+
 
 # === 配置项 ===
 BASE_URL = "https://www.geox.com"

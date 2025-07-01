@@ -8,6 +8,7 @@ from common_taobao.export_skuid_stock import export_skuid_stock_excel
 from common_taobao.import_txt_to_db import import_txt_to_db
 from common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
 from common_taobao.mark_offline_products import mark_offline_products
+from common_taobao.backup_and_clear import backup_and_clear_brand_dirs
 from pathlib import Path
 
 BASE_DIR = CLARKS["BASE"]
@@ -37,20 +38,14 @@ def run_script(filename: str):
     subprocess.run(["python", path], check=True)
 
 def main():
-    print("\n🟡 Step: 1️⃣ 清空发布目录")
-    if REPUB_DIR.exists():
-        store_list = [folder.name for folder in REPUB_DIR.iterdir() if folder.is_dir()]
-        #for store in store_list:
-        #   backup_and_clear_dir(REPUB_DIR / store, f"repulibcation/{store}")
-    else:
-        print(f"⚠️ 发布目录不存在: {REPUB_DIR}，跳过")
+    print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
+    backup_and_clear_brand_dirs(CLARKS)  # ✅ 使用共享方法
 
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
-
-    # run_script("unified_link_collector.py")
+    run_script("unified_link_collector.py")
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    #run_script("fetch_product_info.py")
+    run_script("fetch_product_info.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
     import_txt_to_db("clarks")

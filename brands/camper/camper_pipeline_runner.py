@@ -31,8 +31,8 @@ def main():
     parse_and_update_excel("camper")
 
     print("\\n🟡 Step: 6️⃣ 导出渠道价格 Excel（含零售价与商家编码）")
-    export_channel_price_excel("camper")  # 导出价格明细（已发布）
-    export_all_sku_price_excel("camper")  # 导出商家编码价格表（所有商品）
+    #export_channel_price_excel("camper")  # 导出价格明细（已发布）
+    #export_all_sku_price_excel("camper")  # 导出商家编码价格表（所有商品）
 
     print("\n🟡 Step: 6️⃣ 导出库存 Excel")
     # export_skuid_stock_excel("camper")
