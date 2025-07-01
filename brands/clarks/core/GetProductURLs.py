@@ -32,12 +32,15 @@ def get_links_from_page(url):
     soup = BeautifulSoup(response.text, "html.parser")
     product_links = []
 
-    for a in soup.find_all("a", class_=TARGET_LINK_CLASS):
-        href = a.get("href")
-        if href and href.startswith("/en-gb/"):
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if href.startswith("https://www.clarks.com/en-gb/") and href.endswith("-p"):
+            product_links.append(href)
+        elif href.startswith("/en-gb/") and href.endswith("-p"):
             product_links.append(LINK_PREFIX + href)
 
     return product_links
+
 
 def get_regular_product_links():
     all_links = set()
