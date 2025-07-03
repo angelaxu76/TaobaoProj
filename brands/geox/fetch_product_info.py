@@ -19,7 +19,7 @@ from common_taobao.txt_writer import format_txt
 PRODUCT_LINK_FILE = GEOX["BASE"] / "publication" / "product_links.txt"
 TXT_OUTPUT_DIR = GEOX["TXT_DIR"]
 CHROMEDRIVER_PATH = "D:/Software/chromedriver-win64/chromedriver.exe"
-MAX_THREADS = 12
+MAX_THREADS = 5
 
 TXT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 

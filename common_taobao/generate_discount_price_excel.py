@@ -164,3 +164,87 @@ def export_store_discount_price(brand: str, store_name: str):
 
     except Exception as e:
         print(f"❌ 导出失败: {e}")
+
+
+
+def export_discount_price_with_skuids(brand: str, store_name: str):
+    from openpyxl import Workbook
+
+    config = BRAND_CONFIG.get(brand.lower())
+    if not config:
+        print(f"❌ 不支持的品牌: {brand}")
+        return
+
+    PGSQL = config["PGSQL_CONFIG"]
+    table = config["TABLE_NAME"]
+    OUTPUT_DIR = config["OUTPUT_DIR"]
+    store_folder = config["STORE_DIR"] / store_name
+    OUTPUT_FILE = OUTPUT_DIR / f"价格导出_宝贝ID_SKUID_{store_name}.xlsx"
+
+    # Step 1️⃣ 查找 Excel 文件（任意 .xlsx）
+    item_mapping_file = None
+    for file in store_folder.glob("*.xlsx"):
+        if file.name.startswith("~$"):
+            continue
+        item_mapping_file = file
+        break
+
+    if not item_mapping_file:
+        print(f"⚠️ 未找到宝贝ID Excel 文件: {store_folder}")
+        return
+    print(f"📄 读取宝贝ID文件: {item_mapping_file.name}")
+
+    try:
+        df = pd.read_excel(item_mapping_file, dtype=str)
+        df = df.dropna(subset=["商家编码", "宝贝ID"])
+        df["商家编码"] = df["商家编码"].str.strip()
+        df["宝贝ID"] = df["宝贝ID"].str.strip()
+
+        # 1个编码 → 1个宝贝ID
+        itemid_map = dict(df[["商家编码", "宝贝ID"]].values)
+        print(f"📦 宝贝ID映射数: {len(itemid_map)}")
+
+        # Step 2️⃣ 查数据库：编码 → 所有 skuid + 最低价
+        conn = psycopg2.connect(**PGSQL)
+        cursor = conn.cursor()
+        cursor.execute(f"""
+            SELECT product_code, skuid,
+                   LEAST(
+                       COALESCE(original_price_gbp, 9999),
+                       COALESCE(discount_price_gbp, 9999)
+                   ) AS lowest_price
+            FROM {table}
+            WHERE stock_name = %s AND is_published = TRUE
+              AND skuid IS NOT NULL AND skuid <> ''
+        """, (store_name,))
+        rows = cursor.fetchall()
+        print(f"🔍 匹配数据库 SKU 行数: {len(rows)}")
+
+        # Step 3️⃣ 组装导出数据
+        export_rows = []
+        for product_code, skuid, gbp in rows:
+            if not gbp or gbp == 0:
+                continue
+            item_id = itemid_map.get(product_code)
+            if not item_id:
+                continue  # 编码在 Excel 中未找到宝贝ID
+            rmb = calculate_discount_price_from_float(gbp)
+            export_rows.append([item_id, skuid, rmb])
+
+        if not export_rows:
+            print("⚠️ 无可导出的商品")
+            return
+
+        # Step 4️⃣ 写入 Excel
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Sheet1"
+        ws.append(["宝贝ID", "skuID", "调整后价格"])
+        for row in export_rows:
+            ws.append(row)
+
+        wb.save(OUTPUT_FILE)
+        print(f"✅ 导出成功: {OUTPUT_FILE}")
+
+    except Exception as e:
+        print(f"❌ 导出失败: {e}")

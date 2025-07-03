@@ -3,7 +3,7 @@ import shutil
 import subprocess
 from datetime import datetime
 from config import CLARKS,TAOBAO_STORES
-from common_taobao.generate_discount_price_excel import export_store_discount_price
+from common_taobao.generate_discount_price_excel import export_store_discount_price,export_discount_price_with_skuids
 from common_taobao.export_skuid_stock import export_skuid_stock_excel
 from common_taobao.import_txt_to_db import import_txt_to_db
 from common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
@@ -53,7 +53,7 @@ def main():
 
     print("\n🟡 Step: 5️⃣ 导出价格 Excel")
     for store in TAOBAO_STORES:
-        export_store_discount_price("clarks",store)
+        export_discount_price_with_skuids("clarks",store)
 
     print("\n🟡 Step: 6️⃣ 导出库存 Excel")
     export_skuid_stock_excel("clarks")
@@ -62,7 +62,6 @@ def main():
     # 手动指定调试店铺
 
     for store in TAOBAO_STORES:
-        export_store_discount_price("clarks",store)
         generate_product_excels(CLARKS, store)
         codes = get_publishable_product_codes(CLARKS, store)
         copy_images_for_store(CLARKS, store, codes)

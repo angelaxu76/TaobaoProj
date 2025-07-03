@@ -5,6 +5,8 @@ from bs4 import BeautifulSoup
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from config import CLARKS, ensure_all_dirs
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 # === 配置 ===
 PRODUCT_LINKS_FILE = CLARKS["BASE"] / "publication" / "product_links.txt"
@@ -24,9 +26,11 @@ UK_TO_EU_CM = {
     "10.5": ("45", "28.5"), "11": ("46", "28.9"), "11.5": ("46.5", "29.3"), "12": ("47", "30")
 }
 
+
 def extract_product_code(url):
     match = re.search(r'/([0-9]+)-p', url)
     return match.group(1) if match else "unknown"
+
 
 def extract_image_urls(soup):
     image_urls = []
@@ -38,6 +42,7 @@ def extract_image_urls(soup):
         except Exception as e:
             print(f"⚠️ 图片 JSON 提取失败: {e}")
     return image_urls
+
 
 def download_image(url, save_path):
     try:
@@ -53,6 +58,7 @@ def download_image(url, save_path):
             print(f"⚠️ 图片请求失败（{r.status_code}）: {url}")
     except Exception as e:
         print(f"❌ 下载失败: {url} → {e}")
+
 
 def process_image_only(url):
     print(f"📷 处理图片: {url}")
@@ -70,6 +76,56 @@ def process_image_only(url):
     except Exception as e:
         print(f"❌ 图片处理失败: {url} → {e}")
 
+
+def fetch_urls_from_db_by_codes(code_file_path, pgsql_config, table_name):
+    code_list = [line.strip() for line in Path(code_file_path).read_text(encoding="utf-8").splitlines() if line.strip()]
+    print(f"🔍 共读取到 {len(code_list)} 个商品编码")
+
+    urls = set()
+    try:
+        conn = psycopg2.connect(**pgsql_config)
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        placeholders = ",".join(["%s"] * len(code_list))
+        query = f"""
+            SELECT DISTINCT product_code, product_url
+            FROM {table_name}
+            WHERE product_code IN ({placeholders})
+        """
+        cursor.execute(query, code_list)
+        rows = cursor.fetchall()
+
+        code_to_url = {row["product_code"]: row["product_url"] for row in rows}
+        for code in code_list:
+            url = code_to_url.get(code)
+            if url:
+                urls.add(url)
+            else:
+                print(f"⚠️ 编码未找到: {code}")
+
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"❌ 数据库查询失败: {e}")
+
+    return list(urls)
+
+
+def download_images_by_code_file(code_txt_path):
+    pgsql_config = CLARKS["PGSQL_CONFIG"]
+    table_name = CLARKS["TABLE_NAME"]
+
+    urls = fetch_urls_from_db_by_codes(code_txt_path, pgsql_config, table_name)
+    print(f"📦 共需下载 {len(urls)} 个商品的图片\n")
+
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = [executor.submit(process_image_only, url) for url in urls]
+        for future in as_completed(futures):
+            future.result()
+
+    print("\n✅ 所有指定商品图片下载完成")
+
+
 def main():
     if not PRODUCT_LINKS_FILE.exists():
         print(f"❌ 链接文件不存在: {PRODUCT_LINKS_FILE}")
@@ -84,5 +140,10 @@ def main():
 
     print("\n✅ 所有图片下载完成")
 
+
 if __name__ == "__main__":
-    main()
+    # main()  # 处理 product_links.txt 中所有链接
+
+    # 👇 或者只处理指定编码的商品补图
+    code_txt_path = CLARKS["BASE"] / "publication" / "补图编码.txt"
+    download_images_by_code_file(code_txt_path)

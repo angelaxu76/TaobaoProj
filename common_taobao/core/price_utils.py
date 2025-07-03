@@ -13,14 +13,18 @@ def calculate_discount_price(info: dict) -> float:
         delivery_cost = 12
         discount_Space = 1.15
         exchange_rate = 9.8
-
-        if base_price > 50:
-            profit = 1.07
-        else:
-            profit = 1.25
+        profit = 1.1
 
         rmb_price = (base_price * custom_rate + delivery_cost) * profit * discount_Space * exchange_rate
         rounded_price = int(round(rmb_price / 10.0)) * 10
+
+        if base_price < 30:
+           rounded_price = rounded_price + 100
+        elif 30 < base_price < 50:
+           rounded_price = rounded_price+80
+        elif 50 < base_price < 80:
+           rounded_price = rounded_price+50
+
         return rounded_price
     except:
         return 0.0
