@@ -3,7 +3,7 @@ from pathlib import Path
 
 # === 配置参数 ===
 INPUT_DIR = Path(r"D:\TB\Products\geox\document\images_def")
-OUTPUT_DIR = Path(r"D:\TB\Products\geox\document\images")
+OUTPUT_DIR = Path(r"D:\TB\Products\geox\document\images_ready")
 BG_COLOR = (240, 240, 240)
 TOLERANCE = 35
 OUTPUT_QUALITY = 80  # 输出图片压缩质量（1-100）

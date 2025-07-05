@@ -74,6 +74,59 @@ def process_image_download(url):
         if driver:
             driver.quit()
 
+
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
+def fetch_geox_urls_by_codes(code_file_path, pgsql_config, table_name):
+    code_list = [line.strip() for line in Path(code_file_path).read_text(encoding="utf-8").splitlines() if line.strip()]
+    print(f"🔍 GEOX编码读取完毕，共 {len(code_list)} 条")
+
+    urls = set()
+    try:
+        conn = psycopg2.connect(**pgsql_config)
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        placeholders = ",".join(["%s"] * len(code_list))
+        query = f"""
+            SELECT DISTINCT product_code, product_url
+            FROM {table_name}
+            WHERE product_code IN ({placeholders})
+        """
+        cursor.execute(query, code_list)
+        rows = cursor.fetchall()
+
+        code_to_url = {row["product_code"]: row["product_url"] for row in rows}
+        for code in code_list:
+            url = code_to_url.get(code)
+            if url:
+                urls.add(url)
+            else:
+                print(f"⚠️ 未找到编码: {code}")
+
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"❌ 数据库查询出错: {e}")
+
+    return list(urls)
+
+def download_geox_images_by_code_file(code_txt_path):
+    print(f"🟢 补图函数开始运行，读取路径: {code_txt_path}")
+    pgsql_config = GEOX["PGSQL_CONFIG"]
+    table_name = GEOX["TABLE_NAME"]
+
+    urls = fetch_geox_urls_by_codes(code_txt_path, pgsql_config, table_name)
+    print(f"📦 GEOX补图任务，共 {len(urls)} 个商品\n")
+
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = [executor.submit(process_image_download, url) for url in urls]
+        for future in as_completed(futures):
+            pass  # 内部已打印日志
+
+    print("\n✅ GEOX 指定商品图片补图完成。")
+
+
 def main():
     if not PRODUCT_LINK_FILE.exists():
         print(f"❌ 缺少链接文件: {PRODUCT_LINK_FILE}")
