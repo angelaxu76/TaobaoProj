@@ -1,4 +1,3 @@
-
 import os
 import psycopg2
 from pathlib import Path
@@ -7,6 +6,7 @@ import pandas as pd
 from config import CLARKS, ECCO, GEOX, CAMPER, BRAND_CONFIG
 from common_taobao.txt_parser import parse_txt_to_record
 
+
 def load_sku_mapping_from_store(store_path: Path):
     sku_map = {}
     for file in store_path.glob("*.xls*"):
@@ -14,12 +14,15 @@ def load_sku_mapping_from_store(store_path: Path):
             continue
         print(f"📂 读取映射文件: {file.name}")
         df = pd.read_excel(file, dtype=str)
+        df = df.fillna(method="ffill")  # 修复合并单元格中缺失的宝贝ID、商家编码
         for _, row in df.iterrows():
             spec = str(row.get("sku规格", "")).replace("，", ",").strip().rstrip(",")
             skuid = str(row.get("skuID", "")).strip()
+            itemid = str(row.get("宝贝ID", "")).strip()
             if spec and skuid:
-                sku_map[spec] = skuid
+                sku_map[spec] = (skuid, itemid if itemid else None)
     return sku_map
+
 
 def import_txt_to_db(brand_name: str):
     brand_name = brand_name.lower()
@@ -40,14 +43,15 @@ def import_txt_to_db(brand_name: str):
             INSERT INTO {TABLE_NAME} (
                 product_code, product_url, size, gender, skuid,
                 stock_status, original_price_gbp, discount_price_gbp,
-                stock_name, last_checked, is_published, ean
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                stock_name, last_checked, is_published, ean, item_id
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (product_code, size, stock_name)
             DO UPDATE SET
                 stock_status = EXCLUDED.stock_status,
                 discount_price_gbp = EXCLUDED.discount_price_gbp,
                 original_price_gbp = EXCLUDED.original_price_gbp,
                 skuid = EXCLUDED.skuid,
+                item_id = EXCLUDED.item_id,
                 last_checked = EXCLUDED.last_checked,
                 is_published = EXCLUDED.is_published,
                 ean = EXCLUDED.ean;
@@ -57,14 +61,15 @@ def import_txt_to_db(brand_name: str):
             INSERT INTO {TABLE_NAME} (
                 product_code, product_url, size, gender, skuid,
                 stock_status, original_price_gbp, discount_price_gbp,
-                stock_name, last_checked, is_published
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                stock_name, last_checked, is_published, item_id
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (product_code, size, stock_name)
             DO UPDATE SET
                 stock_status = EXCLUDED.stock_status,
                 discount_price_gbp = EXCLUDED.discount_price_gbp,
                 original_price_gbp = EXCLUDED.original_price_gbp,
                 skuid = EXCLUDED.skuid,
+                item_id = EXCLUDED.item_id,
                 last_checked = EXCLUDED.last_checked,
                 is_published = EXCLUDED.is_published;
         """
@@ -109,12 +114,18 @@ def import_txt_to_db(brand_name: str):
                         dis_price = None
 
                     spec_key = f"{product_code},{size}"
-                    skuid = sku_map.get(spec_key)
-                    is_published = skuid is not None
-                    if not skuid:
-                        print(f"⚠️ 未匹配 SKU: {spec_key}")
+                    sku_entry = sku_map.get(spec_key)
+
+                    if sku_entry:
+                        skuid, item_id = sku_entry
+                        if not item_id and skuid:
+                            item_id = next((iid for sid, iid in sku_map.values() if sid == skuid and iid), None)
+                        print(f"🔑 匹配成功: {spec_key} → SKU ID: {skuid}, 宝贝ID: {item_id}")
                     else:
-                        print(f"🔑 匹配成功: {spec_key} → SKU ID: {skuid}")
+                        skuid = item_id = None
+                        print(f"⚠️ 未匹配 SKU: {spec_key}")
+
+                    is_published = skuid is not None
 
                     full_record = (
                         product_code, url, size, gender, skuid,
@@ -123,7 +134,9 @@ def import_txt_to_db(brand_name: str):
                     )
 
                     if brand_name == "camper":
-                        full_record += (ean,)
+                        full_record += (ean, item_id)
+                    else:
+                        full_record += (item_id,)
 
                     try:
                         cur.execute(insert_sql, full_record)

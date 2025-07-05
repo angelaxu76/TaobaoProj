@@ -6,6 +6,7 @@ CREATE TABLE ecco_inventory (
     product_url TEXT NOT NULL,                        -- 商品页面 URL
     size VARCHAR(10) NOT NULL,                        -- 尺码，如 39, 40
     gender VARCHAR(10),                               -- 男款/女款
+    item_id VARCHAR(50),							  -- 淘宝宝贝ID
     skuid VARCHAR(50),                                -- 淘宝 SKU ID（选填）
     stock_status VARCHAR(10) NOT NULL,                -- “有货” / “无货”
     original_price_gbp NUMERIC(10, 2),                -- 原价

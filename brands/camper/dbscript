@@ -12,6 +12,7 @@ CREATE TABLE camper_inventory (
     -- 淘宝&渠道绑定信息（用于淘经销对接）
     channel_product_id VARCHAR(50),                   -- 渠道产品 ID（整个商品）
     channel_item_id VARCHAR(50),                      -- 渠道货品 ID（SKU 对应）
+    item_id VARCHAR(50),							  -- 淘宝宝贝ID
     skuid VARCHAR(50),                                -- 淘宝 SKU ID
     sku_name VARCHAR(200),                            -- SKU 规格名，如 黑色42码
 
