@@ -1,10 +1,9 @@
-
 DROP TABLE IF EXISTS all_inventory;
 
 CREATE TABLE all_inventory (
     id SERIAL PRIMARY KEY,
 
-    item_id VARCHAR(50),                            -- 淘宝宝贝ID
+    item_id VARCHAR(50) UNIQUE,                            -- 淘宝宝贝ID
     product_code VARCHAR(200) NOT NULL,             -- 商品编码，如 206503-01001
     product_title VARCHAR(300) NOT NULL,            -- 商品标题
     price_gbp NUMERIC(10, 2),                       -- 商品价格（英镑）
