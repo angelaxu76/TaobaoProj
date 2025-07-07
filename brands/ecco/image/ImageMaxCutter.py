@@ -9,9 +9,9 @@ import numpy as np
 # =====================================
 # 可配置变量
 # =====================================
-INPUT_FOLDER = r"D:\TB\Products\ECCO\document\images"              # 原始图片文件夹
-PROCESSED_FOLDER = r"D:\TB\Products\ECCO\document\processed_images_new" # 翻转 + JPG 输出
-SQUARE_FOLDER = r"D:\TB\Products\ECCO\document\square_images_new"       # 最大化裁剪 + 正方形输出
+INPUT_FOLDER = r"D:\TB\Products\ECCO\document\images_download"              # 原始图片文件夹
+PROCESSED_FOLDER = r"D:\TB\Products\ECCO\document\processed_images" # 翻转 + JPG 输出
+SQUARE_FOLDER = r"D:\TB\Products\ECCO\document\square_images"       # 最大化裁剪 + 正方形输出
 
 SUPPORTED_IMAGE_FORMATS = ('.webp', '.jpg', '.jpeg', '.png')
 
@@ -34,7 +34,7 @@ def convert_webp_to_jpg_flip(input_path, output_path):
     try:
         with Image.open(input_path) as img:
             img = img.convert("RGBA")
-            img = ImageOps.mirror(img)
+            #img = ImageOps.mirror(img)
             white_bg = Image.new("RGB", img.size, (255, 255, 255))
             alpha = img.split()[-1]
             white_bg.paste(img.convert("RGB"), mask=alpha)

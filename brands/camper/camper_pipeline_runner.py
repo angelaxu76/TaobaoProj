@@ -25,7 +25,7 @@ def main():
     #run_script("fetch_product_info.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
-    #import_txt_to_db_supplier("camper")  # ✅ 新逻辑
+    import_txt_to_db_supplier("camper")  # ✅ 新逻辑
 
     print("\n🟡 Step: 5️⃣ 绑定渠道 SKU 信息（淘经销 Excel）")
     parse_and_update_excel("camper")

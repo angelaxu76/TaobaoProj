@@ -25,17 +25,17 @@ def main():
     #run_script("fetch_product_info.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
-    #import_txt_to_db("geox")
+    import_txt_to_db("geox")
 
     print("\n🟡 Step: 6️⃣ 导出库存 Excel")
-    #export_skuid_stock_excel("geox")
+    export_skuid_stock_excel("geox")
 
-    #for store in TAOBAO_STORES:
-        #export_discount_price_with_skuids("geox", store)
+    for store in TAOBAO_STORES:
+        export_discount_price_with_skuids("geox", store)
 
     print("\n🟡 Step: 7️⃣ 为各店铺生成上架 Excel + 拷贝图片")
     for store in TAOBAO_STORES:
-        #generate_product_excels(GEOX, store)
+        generate_product_excels(GEOX, store)
         codes = get_publishable_product_codes(GEOX, store)
         copy_images_for_store(GEOX, store, codes)
 

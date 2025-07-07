@@ -111,6 +111,8 @@ ECCO = {
     "BASE": Path("D:/TB/Products/ecco"),
     "TABLE_NAME": "ecco_inventory",
     "IMAGE_DIR": Path("D:/TB/Products/ecco/document/images"),
+    "IMAGE_DIR_download": Path("D:/TB/Products/ecco/document/images_download"),
+    "IMAGE_DIR_defence": Path("D:/TB/Products/ecco/document/image_defence"),
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": Path("D:/TB/Products/ecco/publication/product_links.txt"),
     "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
