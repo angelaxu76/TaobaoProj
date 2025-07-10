@@ -5,5 +5,6 @@
     <orderEntry type="jdk" jdkName="Python 3.13 virtualenv at D:\Projects\.venv" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="pythonProject1" />
+    <orderEntry type="module" module-name="jingya" />
   </component>
 </module>

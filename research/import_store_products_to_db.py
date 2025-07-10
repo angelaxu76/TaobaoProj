@@ -16,6 +16,12 @@ def extract_brand(title: str) -> str:
             return brand
     return "其他"
 
+def clean_code(value):
+    try:
+        return str(value).split(".")[0].strip()
+    except:
+        return str(value).strip()
+
 def import_store_products_to_db(base_path: str):
     base = Path(base_path)
     conn = psycopg2.connect(**PGSQL_CONFIG)
@@ -34,8 +40,8 @@ def import_store_products_to_db(base_path: str):
 
                     records = []
                     for _, row in df.iterrows():
-                        item_id = str(row["宝贝ID"]).strip()
-                        product_code = str(row["商家编码"]).strip()
+                        item_id = clean_code(row["宝贝ID"])
+                        product_code = clean_code(row["商家编码"])
                         product_title = str(row["宝贝标题"]).strip()
                         brand = extract_brand(product_title)
 

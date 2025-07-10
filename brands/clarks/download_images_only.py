@@ -10,7 +10,7 @@ from psycopg2.extras import RealDictCursor
 
 # === 配置 ===
 PRODUCT_LINKS_FILE = CLARKS["BASE"] / "publication" / "product_links.txt"
-IMAGE_DIR = CLARKS["IMAGE_DIR"]
+IMAGE_DIR = CLARKS["IMAGE_DOWNLOAD"]
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 MAX_WORKERS = 5
 SKIP_EXISTING_IMAGE = True
