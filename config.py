@@ -30,6 +30,34 @@ def ensure_all_dirs(*dirs):
         d.mkdir(parents=True, exist_ok=True)
 
 
+
+# === BIRKENSTOCK 品牌路径配置 ===
+
+BIRKENSTOCK = {
+    "BRAND": "birkenstock",
+    "TXT_DIR": Path("D:/TB/Products/birkenstock/publication/TXT"),
+    "OUTPUT_DIR": Path("D:/TB/Products/birkenstock/repulibcation"),
+    "STORE_DIR": Path("D:/TB/Products/birkenstock/document/store"),
+    "BASE": Path("D:/TB/Products/birkenstock"),
+    "TABLE_NAME": "birkenstock_inventory",
+    "IMAGE_DIR": Path("D:/TB/Products/birkenstock/document/images"),
+    "IMAGE_DOWNLOAD": Path("D:/TB/Products/birkenstock/document/images_download"),
+    "IMAGE_PROCESS": Path("D:/TB/Products/birkenstock/document/images_process"),
+    "IMAGE_CUTTER": Path("D:/TB/Products/birkenstock/document/images_cutter"),
+    "PGSQL_CONFIG": PGSQL_CONFIG,
+    "LINKS_FILE": Path("D:/TB/Products/birkenstock/publication/product_links.txt"),
+    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "FIELDS": {
+        "product_code": "product_code",
+        "url": "product_url",
+        "discount_price": "discount_price_gbp",
+        "original_price": "original_price_gbp",
+        "size": "size",
+        "stock": "stock_status",
+        "gender": "gender"
+    }
+}
+
 # === Clarks 品牌路径配置 ===
 # === Clarks 品牌路径配置 ===
 CLARKS = {
@@ -135,5 +163,6 @@ BRAND_CONFIG = {
     "clarks": CLARKS,
     "camper": CAMPER,
     "geox": GEOX,
-    "ecco": ECCO
+    "ecco": ECCO,
+    "birkenstock": BIRKENSTOCK  # ✅ 加入这一行
 }

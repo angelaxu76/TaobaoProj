@@ -1,7 +1,7 @@
 import os
 
 # 替换为你的图片目录路径
-IMAGE_DIR = r"D:\TB\Products\ECCO\document\images"
+IMAGE_DIR = r"D:\TB\Products\ECCO\document\image_defence"
 
 def rename_images(directory):
     for filename in os.listdir(directory):
