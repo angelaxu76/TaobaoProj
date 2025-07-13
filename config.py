@@ -31,6 +31,32 @@ def ensure_all_dirs(*dirs):
 
 
 
+
+
+# === Camper Global（调货）路径配置 ===
+CAMPER_GLOBAL = {
+    "BRAND": "camper_global",
+    "BASE": BASE_DIR / "camper_global",
+    "TXT_DIR": BASE_DIR / "camper_global" / "txt",
+    "OUTPUT_DIR": BASE_DIR / "camper_global" / "repulibcation",
+    "STORE_DIR": BASE_DIR / "camper_global" / "document" / "store",
+    "IMAGE_DIR": BASE_DIR / "camper_global" / "image",  # 所有国家共用一份图片
+    "TABLE_NAME": "camper_inventory_global",
+    "PGSQL_CONFIG": PGSQL_CONFIG,
+    "LINKS_FILE": BASE_DIR / "camper_global" / "publication" / "product_links.txt",
+    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "FIELDS": {
+        "product_code": "product_code",
+        "url": "product_url",
+        "discount_price": "discount_price_gbp",
+        "original_price": "original_price_gbp",
+        "size": "size",
+        "stock": "stock_status",  # ✅ 文本型，合并库存判断为“有货”或“无货”
+        "gender": "gender"
+    }
+}
+
+
 # === BIRKENSTOCK 品牌路径配置 ===
 
 BIRKENSTOCK = {
@@ -162,6 +188,7 @@ ECCO = {
 BRAND_CONFIG = {
     "clarks": CLARKS,
     "camper": CAMPER,
+    "camper_global": CAMPER_GLOBAL,  # ✅ 新增这一行
     "geox": GEOX,
     "ecco": ECCO,
     "birkenstock": BIRKENSTOCK  # ✅ 加入这一行

@@ -3,24 +3,39 @@ import requests
 from bs4 import BeautifulSoup
 import time
 from pathlib import Path
-from config import CAMPER  # ✅ 根据品牌切换
+from config import CAMPER_GLOBAL  # ✅ 根据品牌切换
 import sys
 
 sys.stdout.reconfigure(encoding='utf-8')
 
 # ========= 参数配置 =========
-LINKS_FILE = CAMPER["LINKS_FILE"]
+LINKS_FILE = CAMPER_GLOBAL["LINKS_FILE"]
 TOTAL_PAGES = 15
 WAIT = 1
 MAX_EMPTY_PAGES = 3
 LINK_PREFIX = "https://www.camper.com"
 
 BASE_URLS = [
-    "https://www.camper.com/en_GB/women/shoes?sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes?sort=default&page={}",
-    "https://www.camper.com/en_GB/kids/shoes?sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/all_shoes_lab_women?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes/all_shoes_lab_men?filter.collection=allabw&sort=default&page={}"
+    # 🇩🇪 德国
+    "https://www.camper.com/en_DE/women/shoes?sort=default&page={}",
+    "https://www.camper.com/en_DE/men/shoes?sort=default&page={}",
+    "https://www.camper.com/en_DE/kids/shoes?sort=default&page={}",
+    "https://www.camper.com/en_DE/women/shoes/all_shoes_lab_women?filter.collection=allabw&sort=default&page={}",
+    "https://www.camper.com/en_DE/men/shoes/all_shoes_lab_men?filter.collection=allabw&sort=default&page={}",
+
+    # 🇨🇦 加拿大
+    "https://www.camper.com/en_CA/women/shoes?sort=default&page={}",
+    "https://www.camper.com/en_CA/men/shoes?sort=default&page={}",
+    "https://www.camper.com/en_CA/kids/shoes?sort=default&page={}",
+    "https://www.camper.com/en_CA/women/shoes/all_shoes_lab_women?filter.collection=allabw&sort=default&page={}",
+    "https://www.camper.com/en_CA/men/shoes/all_shoes_lab_men?filter.collection=allabw&sort=default&page={}",
+
+    # 🇦🇺 澳洲（如需添加）
+    "https://www.camper.com/en_AU/women/shoes?sort=default&page={}",
+    "https://www.camper.com/en_AU/men/shoes?sort=default&page={}",
+    "https://www.camper.com/en_AU/kids/shoes?sort=default&page={}",
+    "https://www.camper.com/en_AU/women/shoes/all_shoes_lab_women?filter.collection=allabw&sort=default&page={}",
+    "https://www.camper.com/en_AU/men/shoes/all_shoes_lab_men?filter.collection=allabw&sort=default&page={}"
 ]
 
 HEADERS = {
