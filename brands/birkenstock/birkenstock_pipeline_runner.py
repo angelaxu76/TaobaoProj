@@ -24,14 +24,14 @@ def main():
     #run_script("fetch_product_info.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
-    import_txt_to_db("birkenstock")
+    #import_txt_to_db("birkenstock")
 
     print("\n🟡 Step: 6️⃣ 导出库存 Excel")
-    export_skuid_stock_excel("ecco")
+    #export_skuid_stock_excel("birkenstock")
 
     print("\n🟡 Step: 5️⃣ 导出价格 Excel")
     #for store in TAOBAO_STORES:
-        #export_discount_price_with_skuids("ecco", store)
+        #export_discount_price_with_skuids("birkenstock", store)
 
     print("\n🟡 Step: 7️⃣ 为各店铺生成上架 Excel + 拷贝图片")
     for store in TAOBAO_STORES:
