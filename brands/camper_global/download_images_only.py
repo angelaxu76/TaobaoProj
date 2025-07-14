@@ -1,12 +1,12 @@
 import os
 import requests
 import time
-from config import CAMPER
+from config import CAMPER_GLOBAL
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 配置路径
-input_file = CAMPER["LINKS_FILE"]
-image_folder = CAMPER["IMAGE_DIR"]
+input_file = CAMPER_GLOBAL["LINKS_FILE"]
+image_folder = CAMPER_GLOBAL["IMAGE_DOWNLOAD"]
 image_suffixes = ['_C.jpg', '_F.jpg', '_L.jpg', '_T.jpg', '_P.jpg']
 base_url = "https://cloud.camper.com/is/image/YnJldW5pbmdlcjAx/"
 
