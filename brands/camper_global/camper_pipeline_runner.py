@@ -4,7 +4,7 @@ from config import CAMPER_GLOBAL
 from common_taobao.jingya.import_channel_info_from_excel import parse_and_update_excel
 from common_taobao.jingya.export_channel_price_excel import export_channel_price_excel,export_all_sku_price_excel
 from common_taobao.backup_and_clear import backup_and_clear_brand_dirs
-from common_taobao.jingya.import_txt_to_db_supplier import import_txt_to_db_supplier
+from brands.camper_global.import_txt_to_db_camper import import_camper_global_txt_to_db
 from common_taobao.generate_discount_price_excel import export_store_discount_price
 from common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
 
@@ -22,10 +22,10 @@ def main():
     # run_script("unified_link_collector.py")
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    run_script("fetch_product_info.py")
+    #run_script("fetch_product_info.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
-    #import_txt_to_db_supplier("camper")  # ✅ 新逻辑
+    import_camper_global_txt_to_db()  # ✅ 新逻辑
 
     print("\n🟡 Step: 5️⃣ 绑定渠道 SKU 信息（淘经销 Excel）")
     #parse_and_update_excel("camper")
