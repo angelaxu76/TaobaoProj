@@ -5,7 +5,7 @@ PGSQL_CONFIG = {
     "host": "192.168.5.9",
     "port": 5432,
     "user": "postgres",
-    "password": "516518",  # 请根据实际情况替换
+    "password": "516518",
     "dbname": "taobao_inventory_db"
 }
 
@@ -19,31 +19,27 @@ SETTINGS = {
 
 # === 项目根路径 ===
 BASE_DIR = Path("D:/TB/Products")
-
 DISCOUNT_EXCEL_DIR = Path("D:/TB/DiscountCandidates")
-
 TAOBAO_STORES = ["五小剑", "英国伦敦代购2015"]
 
-# === 通用工具函数（可选） ===
 def ensure_all_dirs(*dirs):
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)
 
-
-
-
-
-# === Camper Global（调货）路径配置 ===
-CAMPER_GLOBAL = {
-    "BRAND": "camper_global",
-    "BASE": BASE_DIR / "camper_global",
-    "TXT_DIR": BASE_DIR / "camper_global" / "txt",
-    "OUTPUT_DIR": BASE_DIR / "camper_global" / "repulibcation",
-    "STORE_DIR": BASE_DIR / "camper_global" / "document" / "store",
-    "IMAGE_DIR": BASE_DIR / "camper_global" / "image",  # 所有国家共用一份图片
-    "TABLE_NAME": "camper_inventory_global",
+# === Camper 经销商路径配置 ===
+CAMPER_BASE = BASE_DIR / "camper"
+CAMPER = {
+    "BRAND": "camper",
+    "BASE": CAMPER_BASE,
+    "TXT_DIR": CAMPER_BASE / "publication" / "TXT",
+    "ORG_IMAGE_DIR": CAMPER_BASE / "document" / "orgin_images",
+    "DEF_IMAGE_DIR": CAMPER_BASE / "document" / "DEF_images",
+    "IMAGE_DIR": CAMPER_BASE / "document" / "images",
+    "STORE_DIR": CAMPER_BASE / "document" / "store",
+    "OUTPUT_DIR": CAMPER_BASE / "repulibcation",
+    "TABLE_NAME": "camper_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
-    "LINKS_FILE": BASE_DIR / "camper_global" / "publication" / "product_links.txt",
+    "LINKS_FILE": CAMPER_BASE / "publication" / "product_links.txt",
     "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
@@ -51,27 +47,77 @@ CAMPER_GLOBAL = {
         "discount_price": "discount_price_gbp",
         "original_price": "original_price_gbp",
         "size": "size",
-        "stock": "stock_status",  # ✅ 文本型，合并库存判断为“有货”或“无货”
+        "stock": "stock_count",  # ✅ 实数库存
         "gender": "gender"
     }
 }
 
+# === Camper Global（调货）路径配置 ===
+CAMPER_GLOBAL_BASE = BASE_DIR / "camper_global"
+CAMPER_GLOBAL = {
+    "BRAND": "camper_global",
+    "BASE": CAMPER_GLOBAL_BASE,
+    "TXT_DIR": CAMPER_GLOBAL_BASE / "publication" / "TXT",
+    "OUTPUT_DIR": CAMPER_GLOBAL_BASE / "repulibcation",
+    "STORE_DIR": CAMPER_GLOBAL_BASE / "document" / "store",
+    "IMAGE_DIR": CAMPER_GLOBAL_BASE / "document" / "image",
+    "TABLE_NAME": "camper_inventory_global",
+    "PGSQL_CONFIG": PGSQL_CONFIG,
+    "LINKS_FILE": CAMPER_GLOBAL_BASE / "publication" / "product_links.txt",
+    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "FIELDS": {
+        "product_code": "product_code",
+        "url": "product_url",
+        "discount_price": "discount_price_gbp",
+        "original_price": "original_price_gbp",
+        "size": "size",
+        "stock": "stock_count",  # ✅ 改为数值型
+        "gender": "gender"
+    }
+}
+
+# === Clarks 品牌路径配置 ===
+CLARKS_BASE = BASE_DIR / "clarks"
+CLARKS = {
+    "BRAND": "clarks",
+    "BASE": CLARKS_BASE,
+    "TXT_DIR": CLARKS_BASE / "publication" / "TXT",
+    "OUTPUT_DIR": CLARKS_BASE / "repulibcation",
+    "STORE_DIR": CLARKS_BASE / "document" / "store",
+    "IMAGE_DIR": CLARKS_BASE / "document" / "images",
+    "IMAGE_DOWNLOAD": CLARKS_BASE / "document" / "images_download",
+    "IMAGE_TEMP": CLARKS_BASE / "document" / "images_TEMP",
+    "IMAGE_CUTTER": CLARKS_BASE / "document" / "images_CUTTER",
+    "TABLE_NAME": "clarks_inventory",
+    "PGSQL_CONFIG": PGSQL_CONFIG,
+    "LINKS_FILE": CLARKS_BASE / "publication" / "product_links.txt",
+    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "FIELDS": {
+        "product_code": "product_code",
+        "url": "product_url",
+        "discount_price": "discount_price_gbp",
+        "original_price": "original_price_gbp",
+        "size": "size",
+        "stock": "stock_status",  # 仍为文本
+        "gender": "gender"
+    }
+}
 
 # === BIRKENSTOCK 品牌路径配置 ===
-
+BIRKENSTOCK_BASE = BASE_DIR / "birkenstock"
 BIRKENSTOCK = {
     "BRAND": "birkenstock",
-    "TXT_DIR": Path("D:/TB/Products/birkenstock/publication/TXT"),
-    "OUTPUT_DIR": Path("D:/TB/Products/birkenstock/repulibcation"),
-    "STORE_DIR": Path("D:/TB/Products/birkenstock/document/store"),
-    "BASE": Path("D:/TB/Products/birkenstock"),
+    "BASE": BIRKENSTOCK_BASE,
+    "TXT_DIR": BIRKENSTOCK_BASE / "publication" / "TXT",
+    "OUTPUT_DIR": BIRKENSTOCK_BASE / "repulibcation",
+    "STORE_DIR": BIRKENSTOCK_BASE / "document" / "store",
+    "IMAGE_DIR": BIRKENSTOCK_BASE / "document" / "images",
+    "IMAGE_DOWNLOAD": BIRKENSTOCK_BASE / "document" / "images_download",
+    "IMAGE_PROCESS": BIRKENSTOCK_BASE / "document" / "images_process",
+    "IMAGE_CUTTER": BIRKENSTOCK_BASE / "document" / "images_cutter",
     "TABLE_NAME": "birkenstock_inventory",
-    "IMAGE_DIR": Path("D:/TB/Products/birkenstock/document/images"),
-    "IMAGE_DOWNLOAD": Path("D:/TB/Products/birkenstock/document/images_download"),
-    "IMAGE_PROCESS": Path("D:/TB/Products/birkenstock/document/images_process"),
-    "IMAGE_CUTTER": Path("D:/TB/Products/birkenstock/document/images_cutter"),
     "PGSQL_CONFIG": PGSQL_CONFIG,
-    "LINKS_FILE": Path("D:/TB/Products/birkenstock/publication/product_links.txt"),
+    "LINKS_FILE": BIRKENSTOCK_BASE / "publication" / "product_links.txt",
     "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
@@ -84,68 +130,19 @@ BIRKENSTOCK = {
     }
 }
 
-# === Clarks 品牌路径配置 ===
-# === Clarks 品牌路径配置 ===
-CLARKS = {
-    "BRAND": "clarks",
-    "TXT_DIR": Path("D:/TB/Products/clarks/publication/TXT"),
-    "OUTPUT_DIR": Path("D:/TB/Products/clarks/repulibcation"),
-    "STORE_DIR": Path("D:/TB/Products/clarks/document/store"),
-    "BASE": Path("D:/TB/Products/clarks"),
-    "TABLE_NAME": "clarks_inventory",
-    "IMAGE_DOWNLOAD": Path("D:/TB/Products/clarks/document/images_download"),
-    "IMAGE_TEMP": Path("D:/TB/Products/clarks/document/images_TEMP"),
-    "IMAGE_CUTTER": Path("D:/TB/Products/clarks/document/images_CUTTER"),
-    "IMAGE_DIR": Path("D:/TB/Products/clarks/document/images"),
-    "PGSQL_CONFIG": PGSQL_CONFIG,
-    "LINKS_FILE": Path("D:/TB/Products/clarks/publication/product_links.txt"),
-    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
-    "FIELDS": {
-        "product_code": "product_code",
-        "url": "product_url",
-        "discount_price": "discount_price_gbp",
-        "original_price": "original_price_gbp",
-        "size": "size",
-        "stock": "stock_status",  # ✅ 文本类型，有货/无货
-        "gender": "gender"  # ✅ 加上这一行
-    }
-}
-
-# === Camper 品牌路径配置 ===
-CAMPER = {
-    "BASE": BASE_DIR / "camper",
-    "TXT_DIR": BASE_DIR / "camper" / "publication" / "TXT",
-    "ORG_IMAGE_DIR": BASE_DIR / "camper" / "document" / "orgin_images",
-    "DEF_IMAGE_DIR": BASE_DIR / "camper" / "document" / "DEF_images",
-    "IMAGE_DIR": BASE_DIR / "camper" / "document" / "images",
-    "STORE_DIR": BASE_DIR / "camper" / "document" / "store",
-    "OUTPUT_DIR": BASE_DIR / "camper" / "repulibcation",
-    "TABLE_NAME": "camper_inventory",
-    "PGSQL_CONFIG": PGSQL_CONFIG,
-    "LINKS_FILE": BASE_DIR / "camper" / "publication" / "product_links.txt",
-    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
-    "FIELDS": {
-        "product_code": "product_code",
-        "url": "product_url",
-        "discount_price": "discount_price_gbp",
-        "original_price": "original_price_gbp",
-        "size": "size",
-        "stock": "stock_count",  # ✅ 数值类型，>0 表示有货
-        "gender": "gender"  # ✅ 加上这一行
-    }
-}
-
-# === Geox 品牌路径配置 ===
+# === GEOX 品牌路径配置 ===
+GEOX_BASE = BASE_DIR / "geox"
 GEOX = {
-    "TXT_DIR": Path("D:/TB/Products/geox/publication/TXT"),
-    "OUTPUT_DIR": Path("D:/TB/Products/geox/repulibcation"),
-    "STORE_DIR": Path("D:/TB/Products/geox/document/store"),
-    "BASE": Path("D:/TB/Products/geox"),
+    "BRAND": "geox",
+    "BASE": GEOX_BASE,
+    "TXT_DIR": GEOX_BASE / "publication" / "TXT",
+    "OUTPUT_DIR": GEOX_BASE / "repulibcation",
+    "STORE_DIR": GEOX_BASE / "document" / "store",
+    "IMAGE_DIR": GEOX_BASE / "document" / "images",
+    "IMAGE_DOWNLOAD": GEOX_BASE / "document" / "images_DOWNLOAD",
     "TABLE_NAME": "geox_inventory",
-    "IMAGE_DIR": Path("D:/TB/Products/geox/document/images"),
-    "IMAGE_DOWNLOAD": Path("D:/TB/Products/geox/document/images_DOWNLOAD"),
     "PGSQL_CONFIG": PGSQL_CONFIG,
-    "LINKS_FILE": Path("D:/TB/Products/geox/publication/product_links.txt"),
+    "LINKS_FILE": GEOX_BASE / "publication" / "product_links.txt",
     "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
@@ -153,23 +150,25 @@ GEOX = {
         "discount_price": "discount_price_gbp",
         "original_price": "original_price_gbp",
         "size": "size",
-        "stock": "stock_status",  # ✅ 请确保 GEOX 表使用文本库存状态
-        "gender": "gender"  # ✅ 加上这一行
+        "stock": "stock_status",
+        "gender": "gender"
     }
 }
 
 # === ECCO 品牌路径配置 ===
+ECCO_BASE = BASE_DIR / "ecco"
 ECCO = {
-    "TXT_DIR": Path("D:/TB/Products/ecco/publication/TXT"),
-    "OUTPUT_DIR": Path("D:/TB/Products/ecco/repulibcation"),
-    "STORE_DIR": Path("D:/TB/Products/ecco/document/store"),
-    "BASE": Path("D:/TB/Products/ecco"),
+    "BRAND": "ecco",
+    "BASE": ECCO_BASE,
+    "TXT_DIR": ECCO_BASE / "publication" / "TXT",
+    "OUTPUT_DIR": ECCO_BASE / "repulibcation",
+    "STORE_DIR": ECCO_BASE / "document" / "store",
+    "IMAGE_DIR": ECCO_BASE / "document" / "images",
+    "IMAGE_DIR_download": ECCO_BASE / "document" / "images_download",
+    "IMAGE_DIR_defence": ECCO_BASE / "document" / "image_defence",
     "TABLE_NAME": "ecco_inventory",
-    "IMAGE_DIR": Path("D:/TB/Products/ecco/document/images"),
-    "IMAGE_DIR_download": Path("D:/TB/Products/ecco/document/images_download"),
-    "IMAGE_DIR_defence": Path("D:/TB/Products/ecco/document/image_defence"),
     "PGSQL_CONFIG": PGSQL_CONFIG,
-    "LINKS_FILE": Path("D:/TB/Products/ecco/publication/product_links.txt"),
+    "LINKS_FILE": ECCO_BASE / "publication" / "product_links.txt",
     "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
@@ -177,19 +176,17 @@ ECCO = {
         "discount_price": "discount_price_gbp",
         "original_price": "original_price_gbp",
         "size": "size",
-        "stock": "stock_status",  # ✅ 如果 ECCO 使用数值库存，请改为 stock_count
-        "gender": "gender"  # ✅ 加上这一行
+        "stock": "stock_status",  # 若改为数值库存请统一成 stock_count
+        "gender": "gender"
     }
 }
 
-
-
-
+# === 品牌映射 ===
 BRAND_CONFIG = {
     "clarks": CLARKS,
     "camper": CAMPER,
-    "camper_global": CAMPER_GLOBAL,  # ✅ 新增这一行
+    "camper_global": CAMPER_GLOBAL,
     "geox": GEOX,
     "ecco": ECCO,
-    "birkenstock": BIRKENSTOCK  # ✅ 加入这一行
+    "birkenstock": BIRKENSTOCK
 }
