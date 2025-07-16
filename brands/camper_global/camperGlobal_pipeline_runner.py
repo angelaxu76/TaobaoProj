@@ -6,6 +6,7 @@ from common_taobao.jingya.export_channel_price_excel import export_channel_price
 from common_taobao.backup_and_clear import backup_and_clear_brand_dirs
 from brands.camper_global.import_txt_to_db_camper import import_camper_global_txt_to_db
 from common_taobao.generate_discount_price_excel import export_store_discount_price
+from brands.camper_global.generate_camper_publish_excel import generate_camper_publish_excel
 from common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
 
 
@@ -25,7 +26,7 @@ def main():
     #run_script("fetch_product_info.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
-    import_camper_global_txt_to_db()  # ✅ 新逻辑
+    #import_camper_global_txt_to_db()  # ✅ 新逻辑
 
     print("\n🟡 Step: 5️⃣ 绑定渠道 SKU 信息（淘经销 Excel）")
     #parse_and_update_excel("camper")
@@ -38,12 +39,12 @@ def main():
     # export_skuid_stock_excel("camper")
 
     print("\n🟡 Step: 7️⃣ 为各店铺生成上架 Excel + 拷贝图片")
-    # store_list = ["五小剑", "英国伦敦代购2015"]
-    #for store in store_list:
-    # export_store_discount_price("camper", store)  # ✅ 导出价格文件
-    # generate_product_excels(CAMPER, store)
-    #  codes = get_publishable_product_codes(CAMPER, store)
-    #  copy_images_for_store(CAMPER, store, codes)
+    store_list = ["五小剑", "英国伦敦代购2015"]
+    for store in store_list:
+     #export_store_discount_price("camper", store)  # ✅ 导出价格文件
+     generate_camper_publish_excel(store)
+     codes = get_publishable_product_codes(CAMPER_GLOBAL, store)
+     copy_images_for_store(CAMPER_GLOBAL, store, codes)
 
     print("\n✅ CAMPER pipeline 完成")
 
