@@ -4,8 +4,8 @@ import os
 import re
 
 # === 配置 ===
-input_folder = r"D:\TB\brandresearch\化妆品\dest"  # Excel文件目录
-output_file = r"D:\TB\brandresearch\化妆品\\brand_summary.xlsx"
+input_folder = r"D:\TB\brandresearch\品牌大全\dest"  # Excel文件目录
+output_file = r"D:\TB\brandresearch\品牌大全\brand_summary.xlsx"
 
 
 # === 数据清洗函数 ===

@@ -72,6 +72,7 @@ def import_txt_to_db_supplier(brand_name: str):
     pg_config = config["PGSQL_CONFIG"]
     table_name = config["TABLE_NAME"]
 
+    # 1. 读取所有 TXT
     all_records = []
     for file in Path(txt_dir).glob("*.txt"):
         records = parse_txt_file(file)
@@ -84,9 +85,15 @@ def import_txt_to_db_supplier(brand_name: str):
 
     print(f"📥 共准备导入 {len(all_records)} 条记录")
 
+    # 2. 连接数据库
     conn = psycopg2.connect(**pg_config)
     with conn:
         with conn.cursor() as cur:
+            # ✅ 清空表（TRUNCATE 更高效）
+            cur.execute(f"TRUNCATE TABLE {table_name}")
+            print(f"🧹 已清空表 {table_name}")
+
+            # ✅ 插入数据
             sql = f"""
                 INSERT INTO {table_name} (
                     product_code, product_url, size, gender,
@@ -94,17 +101,10 @@ def import_txt_to_db_supplier(brand_name: str):
                     original_price_gbp, discount_price_gbp, is_published
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (product_code, size)
-                DO UPDATE SET
-                    ean = EXCLUDED.ean,
-                    stock_count = EXCLUDED.stock_count,
-                    original_price_gbp = EXCLUDED.original_price_gbp,
-                    discount_price_gbp = EXCLUDED.discount_price_gbp,
-                    gender = EXCLUDED.gender,
-                    last_checked = CURRENT_TIMESTAMP
             """
             execute_batch(cur, sql, all_records, page_size=100)
-    print(f"✅ [{brand_name.upper()}] 已成功导入 TXT 到数据库")
+
+    print(f"✅ [{brand_name.upper()}] 已成功导入 TXT 数据到数据库（共 {len(all_records)} 条）")
 
 if __name__ == "__main__":
     import_txt_to_db_supplier("camper")

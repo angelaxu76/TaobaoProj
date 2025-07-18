@@ -16,13 +16,13 @@ def run_script(filename: str):
 
 def main():
     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    backup_and_clear_brand_dirs(CAMPER)
+    #backup_and_clear_brand_dirs(CAMPER)
 
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    run_script("unified_link_collector.py")
+    #run_script("unified_link_collector.py")
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    run_script("fetch_product_info.py")
+    #run_script("fetch_product_info.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
     import_txt_to_db_supplier("camper")  # ✅ 新逻辑
