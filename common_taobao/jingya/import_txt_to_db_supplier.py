@@ -2,8 +2,10 @@ import os
 import psycopg2
 from pathlib import Path
 from psycopg2.extras import execute_batch
-from config import CAMPER, CLARKS, ECCO, GEOX,BRAND_CONFIG
+from config import BRAND_CONFIG
 
+# ✅ 库存阈值配置
+MIN_STOCK_THRESHOLD = 3  # 小于该值的库存将置为0
 
 def parse_txt_file(txt_path: Path) -> list:
     with open(txt_path, "r", encoding="utf-8") as f:
@@ -35,8 +37,17 @@ def parse_txt_file(txt_path: Path) -> list:
                 parts = item.strip().split(":")
                 if len(parts) == 3:
                     size, stock_count, ean = parts
+                    try:
+                        stock_count = int(stock_count)
+                    except:
+                        stock_count = 0
+
+                    # ✅ 如果库存小于阈值，置为0
+                    if stock_count < MIN_STOCK_THRESHOLD:
+                        stock_count = 0
+
                     size_detail_map[size] = {
-                        "stock_count": int(stock_count),
+                        "stock_count": stock_count,
                         "ean": ean
                     }
 
@@ -78,9 +89,15 @@ def import_txt_to_db_supplier(brand_name: str):
 
     print(f"📥 共准备导入 {len(all_records)} 条记录")
 
+    # ✅ 连接数据库
     conn = psycopg2.connect(**pg_config)
     with conn:
         with conn.cursor() as cur:
+            # ✅ 清空表（TRUNCATE）
+            cur.execute(f"TRUNCATE TABLE {table_name}")
+            print(f"🧹 已清空表 {table_name}")
+
+            # ✅ 插入数据
             sql = f"""
                 INSERT INTO {table_name} (
                     product_code, product_url, size, gender,
@@ -88,17 +105,10 @@ def import_txt_to_db_supplier(brand_name: str):
                     original_price_gbp, discount_price_gbp, is_published
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (product_code, size)
-                DO UPDATE SET
-                    ean = EXCLUDED.ean,
-                    stock_count = EXCLUDED.stock_count,
-                    original_price_gbp = EXCLUDED.original_price_gbp,
-                    discount_price_gbp = EXCLUDED.discount_price_gbp,
-                    gender = EXCLUDED.gender,
-                    last_checked = CURRENT_TIMESTAMP
             """
             execute_batch(cur, sql, all_records, page_size=100)
-    print(f"✅ [{brand_name.upper()}] 已成功导入 TXT 到数据库")
+
+    print(f"✅ [{brand_name.upper()}] 已完成数据导入并处理库存阈值")
 
 if __name__ == "__main__":
     import_txt_to_db_supplier("camper")
