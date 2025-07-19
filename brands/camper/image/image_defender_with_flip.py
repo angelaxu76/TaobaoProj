@@ -6,8 +6,8 @@ import numpy as np
 from config import CAMPER
 
 # === 输入输出路径配置 ===
-INPUT_DIR = Path(CAMPER["ORG_IMAGE_DIR"])
-OUTPUT_DIR = Path(CAMPER["DEF_IMAGE_DIR"])
+INPUT_DIR = Path(CAMPER["IMAGE_DOWNLOAD"])
+OUTPUT_DIR = Path(CAMPER["IMAGE_PROCESS"])
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # === 图像处理参数 ===

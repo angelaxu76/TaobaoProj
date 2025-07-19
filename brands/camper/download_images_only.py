@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 配置路径
 input_file = CAMPER["LINKS_FILE"]
-image_folder = CAMPER["IMAGE_DIR"]
+image_folder = CAMPER["IMAGE_DOWNLOAD"]
 image_suffixes = ['_C.jpg', '_F.jpg', '_L.jpg', '_T.jpg', '_P.jpg']
 base_url = "https://cloud.camper.com/is/image/YnJldW5pbmdlcjAx/"
 
@@ -29,7 +29,7 @@ def download_image(code, suffix, idx, max_retries=3, delay=1.0):
             else:
                 return f"❌ {idx:04d} - 下载失败: {image_name}，原因: {e}"
 
-# 主任务函数
+# 从 URL 文件中下载
 def download_camper_images(max_workers: int = 10):
     os.makedirs(image_folder, exist_ok=True)
 
@@ -44,7 +44,20 @@ def download_camper_images(max_workers: int = 10):
             codes.append(code)
 
     print(f"📦 共 {len(codes)} 个编码，开始多线程下载图片...")
+    _download_images(codes, max_workers)
 
+# 从编码文件中下载（新增方法）
+def download_images_from_codes(codes_file: str, max_workers: int = 10):
+    os.makedirs(image_folder, exist_ok=True)
+
+    with open(codes_file, 'r', encoding='utf-8') as f:
+        codes = [line.strip() for line in f if line.strip()]
+
+    print(f"📦 从文件中读取 {len(codes)} 个编码，开始多线程下载图片...")
+    _download_images(codes, max_workers)
+
+# 通用下载方法
+def _download_images(codes, max_workers):
     tasks = []
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         for idx, code in enumerate(codes, 1):
@@ -57,4 +70,8 @@ def download_camper_images(max_workers: int = 10):
     print("🎯 所有图片多线程下载任务完成！")
 
 if __name__ == "__main__":
+    # 默认从 product_links.txt 下载
     download_camper_images()
+
+    # 如果需要从指定文件下载，取消注释以下代码
+    # download_images_from_codes("D:/TB/camper_missing_codes.txt")

@@ -11,7 +11,7 @@ BRAND_MAP = {
 }
 
 # ✅ 可配置变量
-MIN_SIZES = 3  # 如果有效尺码数 <= 这个值，商品下架（库存清零 + is_published=False）
+MIN_SIZES = 1  # 如果有效尺码数 <= 这个值，商品下架（库存清零 + is_published=False）
 
 def disable_low_stock_products(brand_name: str):
     brand_name = brand_name.lower()
