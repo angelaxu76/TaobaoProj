@@ -17,6 +17,7 @@ SETTINGS = {
     "EXCHANGE_RATE": 9.7
 }
 
+
 # === 项目根路径 ===
 BASE_DIR = Path("D:/TB/Products")
 DISCOUNT_EXCEL_DIR = Path("D:/TB/DiscountCandidates")
@@ -26,6 +27,36 @@ def ensure_all_dirs(*dirs):
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)
 
+
+
+
+# === Terraces（Barbour）路径配置 ===
+TERRACES_BASE = BASE_DIR / "terraces"
+TERRACES = {
+    "BRAND": "terraces",
+    "BASE": TERRACES_BASE,
+    "TXT_DIR": TERRACES_BASE / "publication" / "TXT",
+    "OUTPUT_DIR": TERRACES_BASE / "repulibcation",
+    "STORE_DIR": TERRACES_BASE / "document" / "store",
+    "IMAGE_DIR": TERRACES_BASE / "document" / "images",
+    "IMAGE_DOWNLOAD": TERRACES_BASE / "document" / "images_download",
+    "IMAGE_PROCESS": TERRACES_BASE / "document" / "images_process",
+    "IMAGE_CUTTER": TERRACES_BASE / "document" / "images_cutter",
+    "TABLE_NAME": "terraces_inventory",  # ✅ 数据库表名
+    "PGSQL_CONFIG": PGSQL_CONFIG,
+    "LINKS_FILE": TERRACES_BASE / "publication" / "product_links.txt",  # ✅ 商品链接文件
+    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "FIELDS": {
+        "product_code": "product_code",  # 商品编码
+        "url": "product_url",
+        "discount_price": "discount_price_gbp",
+        "original_price": "original_price_gbp",
+        "size": "size",
+        "stock": "stock_status",  # 可改 stock_count
+        "gender": "gender"
+    }
+}
+
 # === Camper 经销商路径配置 ===
 CAMPER_BASE = BASE_DIR / "camper"
 CAMPER = {
@@ -34,10 +65,11 @@ CAMPER = {
     "TXT_DIR": CAMPER_BASE / "publication" / "TXT",
     "ORG_IMAGE_DIR": CAMPER_BASE / "document" / "orgin_images",
     "DEF_IMAGE_DIR": CAMPER_BASE / "document" / "DEF_images",
-    "IMAGE_DIR": CAMPER_BASE / "document" / "image",
+    "IMAGE_DIR": CAMPER_BASE / "document" / "images",
     "IMAGE_DOWNLOAD": CAMPER_BASE / "document" / "image_download",
     "IMAGE_PROCESS": CAMPER_BASE / "document" / "image_process",
     "IMAGE_CUTTER": CAMPER_BASE / "document" / "image_cutter",
+    "MERGED_DIR": CAMPER_BASE / "document" / "image_merged",
     "STORE_DIR": CAMPER_BASE / "document" / "store",
     "OUTPUT_DIR": CAMPER_BASE / "repulibcation",
     "TABLE_NAME": "camper_inventory",
