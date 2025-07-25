@@ -5,7 +5,7 @@ from psycopg2.extras import execute_batch
 from config import BRAND_CONFIG
 
 # ✅ 库存阈值配置
-MIN_STOCK_THRESHOLD = 2  # 小于该值的库存将置为0
+MIN_STOCK_THRESHOLD = 1  # 小于该值的库存将置为0
 
 def parse_txt_file(txt_path: Path) -> list:
     with open(txt_path, "r", encoding="utf-8") as f:

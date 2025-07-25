@@ -1,7 +1,7 @@
 import os
 import subprocess
 from config import CAMPER_GLOBAL
-from common_taobao.jingya.import_channel_info_from_excel import parse_and_update_excel
+from common_taobao.jingya.import_channel_info_from_excel import insert_JingyaId_toDB
 from common_taobao.jingya.export_channel_price_excel import export_channel_price_excel,export_all_sku_price_excel
 from common_taobao.backup_and_clear import backup_and_clear_brand_dirs
 from brands.camper_global.import_txt_to_db_camper import import_camper_global_txt_to_db

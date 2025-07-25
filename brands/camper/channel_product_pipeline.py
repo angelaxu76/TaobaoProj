@@ -3,7 +3,7 @@
 """
 
 from common_taobao.jingya.export_gender_split_excel import export_recently_published_excel
-from common_taobao.jingya.import_channel_info_from_excel import parse_and_update_excel
+from common_taobao.jingya.import_channel_info_from_excel import insert_JingyaId_toDB
 from common_taobao.jingya.copy_product_images_for_recent_publication import copy_product_images_for_recent_publication
 from common_taobao.jingya.export_channel_price_excel import export_channel_price_excel,export_all_sku_price_excel
 from common_taobao.jingya.export_gender_split_excel import export_gender_split_excel
