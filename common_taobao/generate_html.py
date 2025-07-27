@@ -184,10 +184,11 @@ def find_image_path(code, image_dir):
     img_f = image_dir / f"{code}_F.jpg"
     img_c = image_dir / f"{code}_C.jpg"
     if img_f.exists():
-        return img_f.as_posix()
+        return f"file:///{img_f.as_posix()}"
     elif img_c.exists():
-        return img_c.as_posix()
-    return PLACEHOLDER_IMG
+        return f"file:///{img_c.as_posix()}"
+    return "https://via.placeholder.com/500x500?text=No+Image"
+
 
 def extract_features(description_en):
     if not description_en:
