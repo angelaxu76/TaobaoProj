@@ -1,6 +1,8 @@
 import sys
 import re
+import os
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from common_taobao.core.translate import safe_translate
 from config import BRAND_CONFIG
 
@@ -129,7 +131,6 @@ HTML_TEMPLATE = """
         font-weight: 600;
         margin-right: 8px;
     }}
-    /* 标签小图标 */
     .color-dot {{
         display:inline-block;
         width:10px;
@@ -187,8 +188,7 @@ def find_image_path(code, image_dir):
         return f"file:///{img_f.as_posix()}"
     elif img_c.exists():
         return f"file:///{img_c.as_posix()}"
-    return "https://via.placeholder.com/500x500?text=No+Image"
-
+    return PLACEHOLDER_IMG
 
 def extract_features(description_en):
     if not description_en:
@@ -208,7 +208,6 @@ def generate_html(data, output_path, image_dir):
     code = data.get("Product Code", "")
     image_path = find_image_path(code, image_dir)
 
-    # 优先 Feature
     feature_field = data.get("Feature", "")
     if feature_field and feature_field.lower() != "no data":
         feature_list = [clean_ad_sensitive(safe_translate(f.strip())) for f in feature_field.split("|") if f.strip()]
@@ -229,9 +228,20 @@ def generate_html(data, output_path, image_dir):
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html)
-    print(f"✅ 生成 HTML: {output_path}")
+    return output_path
 
-def main(brand=None):
+# === 多线程处理 ===
+def process_file(txt_file, image_dir, html_dir):
+    try:
+        data = parse_txt(txt_file)
+        code = data.get("Product Code", txt_file.stem)
+        output_file = html_dir / f"{code}.html"
+        generate_html(data, output_file, image_dir)
+        return f"✅ {output_file.name}"
+    except Exception as e:
+        return f"❌ {txt_file.name}: {e}"
+
+def main(brand=None, max_workers=4):
     if brand is None:
         if len(sys.argv) < 2:
             print("❌ 用法: python generate_html.py [brand]")
@@ -255,11 +265,13 @@ def main(brand=None):
         print(f"❌ 未找到 TXT 文件: {txt_dir}")
         return
 
-    for txt_file in files:
-        data = parse_txt(txt_file)
-        code = data.get("Product Code", txt_file.stem)
-        output_file = html_dir / f"{code}.html"
-        generate_html(data, output_file, image_dir)
+    print(f"开始处理 {len(files)} 个文件，使用 {max_workers} 个线程...")
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(process_file, txt_file, image_dir, html_dir): txt_file for txt_file in files}
+        for future in as_completed(futures):
+            print(future.result())
+
+    print(f"✅ 所有 HTML 已生成到：{html_dir}")
 
 if __name__ == "__main__":
     main()
