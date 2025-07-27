@@ -71,6 +71,8 @@ CAMPER = {
     "IMAGE_CUTTER": CAMPER_BASE / "document" / "image_cutter",
     "MERGED_DIR": CAMPER_BASE / "document" / "image_merged",
     "HTML_DIR": CAMPER_BASE / "document" / "html",
+    "HTML_IMAGE": CAMPER_BASE / "document" / "html_image",
+    "HTML_CUTTER": CAMPER_BASE / "document" / "html_cutter",
     "STORE_DIR": CAMPER_BASE / "document" / "store",
     "OUTPUT_DIR": CAMPER_BASE / "repulibcation",
     "TABLE_NAME": "camper_inventory",

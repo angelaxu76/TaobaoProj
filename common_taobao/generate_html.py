@@ -5,7 +5,27 @@ from common_taobao.core.translate import safe_translate
 from config import BRAND_CONFIG
 
 PLACEHOLDER_IMG = "https://via.placeholder.com/500x500?text=No+Image"
+AD_WORDS_FILE = Path(r"D:\TB\Products\config\ad_sensitive_words.txt")
 
+# === 加载敏感词 ===
+def load_sensitive_words():
+    if AD_WORDS_FILE.exists():
+        with open(AD_WORDS_FILE, "r", encoding="utf-8") as f:
+            return [line.strip() for line in f if line.strip()]
+    else:
+        print(f"⚠️ 未找到敏感词文件，使用默认列表")
+        return ["国家级", "世界级", "顶级", "最佳", "绝对", "唯一", "独家", "首个", "第一", "最先进", "最优", "最高级",
+                "极致", "至尊", "顶尖", "终极", "空前", "史上最", "无敌", "完美", "王牌", "冠军", "首选", "权威", "专家推荐",
+                "全球领先", "全国领先"]
+
+SENSITIVE_WORDS = load_sensitive_words()
+
+def clean_ad_sensitive(text: str) -> str:
+    for word in SENSITIVE_WORDS:
+        text = text.replace(word, "")
+    return text.strip()
+
+# === HTML 模板 ===
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -14,18 +34,117 @@ HTML_TEMPLATE = """
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{product_name}</title>
 <style>
-    body {{ font-family:"Comic Sans MS","微软雅黑",sans-serif;background:#f6f9fc;display:flex;justify-content:center;padding:30px; }}
-    .card {{ width:700px;background:#fff;border-radius:20px;box-shadow:0 8px 20px rgba(0,0,0,0.1);padding:20px;display:flex;flex-direction:column;gap:20px; }}
-    .card h1 {{ text-align:center;font-size:28px;color:#2c3e50; }}
-    .top-section {{ display:flex;gap:20px; }}
-    .product-img {{ flex:1;background:#e3f8e0;border-radius:15px;display:flex;align-items:center;justify-content:center;padding:15px; }}
-    .product-img img {{ max-width:100%;border-radius:10px; }}
-    .features {{ flex:1;background:#f9f9f9;border-radius:15px;padding:15px; }}
-    .features h2 {{ font-size:20px;margin-bottom:10px; }}
-    .features ul {{ padding-left:20px;font-size:16px;line-height:1.8; }}
-    .description {{ background:#fdfdfd;border-radius:10px;padding:15px;font-size:16px;line-height:1.6;color:#444; }}
-    .info-section {{ display:grid;grid-template-columns:repeat(2,1fr);gap:10px; }}
-    .info-box {{ background:#f0f9ff;border-radius:10px;padding:10px 15px;font-size:16px; }}
+    body {{
+        font-family: "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+        background: #F5F5F5;
+        margin: 0;
+        padding: 40px;
+        display: flex;
+        justify-content: center;
+        color: #2B2B2B;
+    }}
+    .card {{
+        width: 800px;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+        padding: 32px 36px;
+    }}
+    .card h1 {{
+        font-size: 28px;
+        font-weight: 700;
+        color: #2B2B2B;
+        margin-bottom: 18px;
+        text-align: left;
+        border-bottom: 0.5pt dashed #ccc;
+        padding-bottom: 10px;
+    }}
+    .top-section {{
+        display: flex;
+        gap: 24px;
+        margin-bottom: 28px;
+    }}
+    .product-img {{
+        flex: 1;
+        background: #fafafa;
+        border-radius: 10px;
+        border: 1px solid #e0e0e0;
+        padding: 12px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }}
+    .product-img img {{
+        max-width: 100%;
+        border-radius: 8px;
+    }}
+    .features {{
+        flex: 1;
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 14px;
+    }}
+    .features h2 {{
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: #2B2B2B;
+        border-bottom: 0.5pt dashed #ddd;
+        padding-bottom: 6px;
+    }}
+    .features ul {{
+        padding-left: 18px;
+        font-size: 15px;
+        line-height: 1.8;
+        margin: 0;
+    }}
+    .features ul li {{
+        margin-bottom: 6px;
+    }}
+    .description {{
+        font-size: 15px;
+        line-height: 1.8;
+        color: #444;
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 18px;
+        margin-bottom: 18px;
+    }}
+    .info-section {{
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+    }}
+    .info-box {{
+        flex: 1;
+        font-size: 15px;
+        background: #f9f9f9;
+        border-radius: 8px;
+        padding: 12px 14px;
+        border: 1px solid #e0e0e0;
+    }}
+    .info-box strong {{
+        font-weight: 600;
+        margin-right: 8px;
+    }}
+    /* 标签小图标 */
+    .color-dot {{
+        display:inline-block;
+        width:10px;
+        height:10px;
+        border-radius:50%;
+        background:#2B2B2B;
+        margin-right:6px;
+    }}
+    .material-square {{
+        display:inline-block;
+        width:10px;
+        height:10px;
+        background:#999;
+        margin-right:6px;
+    }}
 </style>
 </head>
 <body>
@@ -42,16 +161,16 @@ HTML_TEMPLATE = """
     </div>
     <div class="description"><strong>商品描述：</strong><br>{description}</div>
     <div class="info-section">
-        <div class="info-box"><strong>颜色：</strong>{color}</div>
+        <div class="info-box"><strong>颜色：</strong><span class="color-dot"></span>{color}</div>
+        <div class="info-box"><strong>材质：</strong><span class="material-square"></span>{material}</div>
         <div class="info-box"><strong>性别：</strong>{gender}</div>
-        <div class="info-box"><strong>材质：</strong>{material}</div>
-        <div class="info-box"><strong>尺码：</strong>{size}</div>
     </div>
 </div>
 </body>
 </html>
 """
 
+# === 工具函数 ===
 def parse_txt(txt_path):
     data = {}
     with open(txt_path, "r", encoding="utf-8") as f:
@@ -76,26 +195,26 @@ def extract_features(description_en):
     description_en = re.sub(r"<[^>]*>", "", description_en)
     first_sentence = description_en.split(".")[0]
     parts = re.split(r",| and ", first_sentence)
-    features = []
-    for p in parts:
-        text = p.strip()
-        if text:
-            translated = safe_translate(text)
-            features.append(translated)
-    return features
+    return [clean_ad_sensitive(safe_translate(p.strip())) for p in parts if p.strip()]
 
 def generate_html(data, output_path, image_dir):
     product_name = data.get("Product Name", "")
     description_en = data.get("Product Description", "")
-    description_zh = safe_translate(description_en)
+    description_zh = clean_ad_sensitive(safe_translate(description_en))
     gender = data.get("Product Gender", "")
     color = data.get("Product Color", "")
     material = data.get("Product Material", "")
-    size = data.get("Product Size", "")
     code = data.get("Product Code", "")
     image_path = find_image_path(code, image_dir)
 
-    features_html = "".join([f"<li>{f}</li>" for f in extract_features(description_en)])
+    # 优先 Feature
+    feature_field = data.get("Feature", "")
+    if feature_field and feature_field.lower() != "no data":
+        feature_list = [clean_ad_sensitive(safe_translate(f.strip())) for f in feature_field.split("|") if f.strip()]
+    else:
+        feature_list = extract_features(description_en)
+
+    features_html = "".join([f"<li>{f}</li>" for f in feature_list])
 
     html = HTML_TEMPLATE.format(
         product_name=product_name,
@@ -104,7 +223,6 @@ def generate_html(data, output_path, image_dir):
         color=color,
         gender=gender,
         material=material,
-        size=size,
         features=features_html
     )
 
@@ -112,36 +230,8 @@ def generate_html(data, output_path, image_dir):
         f.write(html)
     print(f"✅ 生成 HTML: {output_path}")
 
-def main():
-    if len(sys.argv) < 2:
-        print("❌ 用法: python generate_html.py [brand] (如: camper, clarks)")
-        return
-
-    brand = sys.argv[1].lower()
-    if brand not in BRAND_CONFIG:
-        print(f"❌ 未找到品牌配置: {brand}")
-        return
-
-    cfg = BRAND_CONFIG[brand]
-    txt_dir = cfg["TXT_DIR"]
-    image_dir = cfg["IMAGE_DIR"]
-    html_dir = cfg["HTML_DIR"]
-    html_dir.mkdir(parents=True, exist_ok=True)
-
-    files = list(txt_dir.glob("*.txt"))
-    if not files:
-        print(f"❌ 未找到 TXT 文件: {txt_dir}")
-        return
-
-    for txt_file in files:
-        data = parse_txt(txt_file)
-        code = data.get("Product Code", txt_file.stem)
-        output_file = html_dir / f"{code}.html"
-        generate_html(data, output_file, image_dir)
-
 def main(brand=None):
     if brand is None:
-        import sys
         if len(sys.argv) < 2:
             print("❌ 用法: python generate_html.py [brand]")
             return

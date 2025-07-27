@@ -2,6 +2,8 @@ from brands.camper.download_images_only import download_images_from_codes,downlo
 from brands.camper.image.image_defender_with_flip import batch_process_images
 from brands.camper_global.ResizeImage import expand_images_in_folder
 from common_taobao.tools.merge_product_images import batch_merge_images
+from common_taobao.tools.HtmlToPGNBatch import  process_html_folder
+from common_taobao.tools.cutterAllsiderSpace import trim_images_in_folder
 from common_taobao.generate_html import main as generate_html_main
 from config import CAMPER
 from pathlib import Path
@@ -25,8 +27,13 @@ def main():
     print("将图片merge到一张图片中")
     #batch_merge_images(CAMPER, width=750)
 
-    print("生成产品详情卡")
-    generate_html_main("camper")
+    print("生成产品详情卡HTML")
+    #generate_html_main("camper")
+
+    print("生成产品详情卡图片")
+    GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径
+    process_html_folder( CAMPER["HTML_DIR"], CAMPER["HTML_IMAGE"],GECKODRIVER_PATH)
+    trim_images_in_folder(CAMPER["HTML_IMAGE"],CAMPER["HTML_CUTTER"],file_pattern="*.png", tolerance=5)
 
 
 if __name__ == "__main__":
