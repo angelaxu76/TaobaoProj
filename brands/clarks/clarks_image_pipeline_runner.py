@@ -9,7 +9,7 @@ def main():
     #download_images_by_code_file(r"D:\TB\Products\clarks\repulibcation\五小剑\missing_images.txt")
 
     print("图抖动加上水平翻转")
-    #batch_process_images(CLARKS["IMAGE_DOWNLOAD"],CLARKS["IMAGE_TEMP"])
+    batch_process_images(CLARKS["IMAGE_DOWNLOAD"],CLARKS["IMAGE_PROCESS"])
 
 
 
@@ -19,7 +19,7 @@ def main():
     tolerance = 35
     quality = 85
 
-    run_crop_and_expand(CLARKS["IMAGE_TEMP"], CLARKS["IMAGE_CUTTER"], bg_color, tolerance, quality)
+    run_crop_and_expand(CLARKS["IMAGE_PROCESS"], CLARKS["IMAGE_CUTTER"], bg_color, tolerance, quality)
 
 
 if __name__ == "__main__":

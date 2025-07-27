@@ -2,6 +2,7 @@ from brands.camper.download_images_only import download_images_from_codes,downlo
 from brands.camper.image.image_defender_with_flip import batch_process_images
 from brands.camper_global.ResizeImage import expand_images_in_folder
 from common_taobao.tools.merge_product_images import batch_merge_images
+from common_taobao.generate_html import main as generate_html_main
 from config import CAMPER
 from pathlib import Path
 
@@ -22,7 +23,10 @@ def main():
     #expand_images_in_folder(input_folder, output_folder)
 
     print("将图片merge到一张图片中")
-    batch_merge_images(CAMPER, width=750)
+    #batch_merge_images(CAMPER, width=750)
+
+    print("生成产品详情卡")
+    generate_html_main("camper")
 
 
 if __name__ == "__main__":
