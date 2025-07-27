@@ -15,6 +15,7 @@ def format_txt(info: dict, filepath: Path, brand: str = None):
     write_line("Product Price", info.get("Product Price"))
     write_line("Adjusted Price", info.get("Adjusted Price"))
     write_line("Product Material", info.get("Product Material"))
+    write_line("Feature", info.get("Feature"))
 
 
 

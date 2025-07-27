@@ -66,21 +66,13 @@ def process_product_url(PRODUCT_URL):
             return
 
         json_data = json.loads(script_tag.string)
-        data = json_data["props"]["pageProps"]["productSheet"]
-
+        product_sheet = json_data.get("props", {}).get("pageProps", {}).get("productSheet")
+        if not product_sheet:
+            print(f"⚠️ 未找到 productSheet，跳过: {PRODUCT_URL}")
+            return
+        data = product_sheet
 
         product_code = data.get("code", "Unknown_Code")
-
-        # 🧪 DEBUG: 打印原始 features
-        features_raw = data.get("features")
-        if not features_raw:
-            print(f"⚠️ features 为空或不存在: {product_code}")
-        else:
-            print(f"✅ features 存在，共 {len(features_raw)} 条")
-            for f in features_raw:
-                print(f"- name: {f.get('name')} | value: {f.get('value')}")
-
-
         product_url = PRODUCT_URL
         description = data.get("description", "")
 
@@ -91,18 +83,26 @@ def process_product_url(PRODUCT_URL):
         color_data = data.get("color", "")
         color = color_data.get("name", "") if isinstance(color_data, dict) else str(color_data)
 
-        materials = data.get("materials", [])
+        # === 提取 features ===
+        features_raw = data.get("features", [])
+        feature_texts = []
+        for f in features_raw:
+            value_html = f.get("value", "")
+            clean_text = BeautifulSoup(value_html, "html.parser").get_text(strip=True)
+            if clean_text:
+                feature_texts.append(clean_text)
+        feature_str = " | ".join(feature_texts) if feature_texts else "No Data"
 
-        # 优先从 features 中提取 Upper 材质
+        # === 提取 Upper 材质（优先 features） ===
         upper_material = "No Data"
-        features = data.get("features") or []
-        for feature in features:
+        for feature in features_raw:
             name = (feature.get("name") or "").lower()
             if "upper" in name:
                 raw_html = feature.get("value") or ""
                 upper_material = BeautifulSoup(raw_html, "html.parser").get_text(strip=True)
                 break
 
+        # === 提取尺码、库存、EAN ===
         size_map = {}
         size_detail = {}
         for size in data.get("sizes", []):
@@ -118,6 +118,7 @@ def process_product_url(PRODUCT_URL):
 
         gender = infer_gender_from_url(PRODUCT_URL)
 
+        # === 整理 info 字典 ===
         info = {
             "Product Code": product_code,
             "Product Name": product_title,
@@ -127,24 +128,16 @@ def process_product_url(PRODUCT_URL):
             "Product Price": str(original_price),
             "Adjusted Price": str(discount_price),
             "Product Material": upper_material,
+            "Feature": feature_str,  # ✅ 新增
             "SizeMap": size_map,
-            "SizeDetail": size_detail,  # ✅ 加上这一行！
+            "SizeDetail": size_detail,
             "Source URL": product_url
         }
 
-
-        # ✅ DEBUG 输出
-        print("🧪 DEBUG: 即将写入 TXT 的字段信息：")
-        #for k, v in info.items():
-        #if isinstance(v, dict):
-        # print(f"{k}:")
-        #  for subk, subv in v.items():
-        #     print(f"  {subk} → {subv}")
-        #  else:
-        #     print(f"{k}: {v}")
-
+        # === 写入 TXT 文件 ===
         filepath = SAVE_PATH / f"{product_code}.txt"
         format_txt(info, filepath, brand="camper")
+        print(f"✅ 完成 TXT: {filepath.name}")
 
     except Exception as e:
         print(f"❌ 错误: {PRODUCT_URL} - {e}")

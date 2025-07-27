@@ -23,6 +23,7 @@ def parse_generic_txt(filepath: Path) -> List[Tuple]:
     material = ""
     sizes_line = ""
     url = ""
+    feature = ""  # ✅ 新增变量
 
     for line in lines:
         line = line.strip()
@@ -42,6 +43,8 @@ def parse_generic_txt(filepath: Path) -> List[Tuple]:
             discount_price = line.split(":", 1)[1].strip()
         elif line.startswith("Product Material:"):
             material = line.split(":", 1)[1].strip()
+        elif line.startswith("Feature:"):  # ✅ 新增解析
+            feature = line.split(":", 1)[1].strip()
         elif line.startswith("Product Size:"):
             sizes_line = line.split(":", 1)[1].strip()
         elif line.startswith("Source URL:"):
@@ -76,6 +79,7 @@ def parse_camper_txt(filepath: Path) -> List[Tuple]:
     sizes_line = ""
     ean_line = ""
     url = ""
+    feature = ""
 
     for line in lines:
         line = line.strip()
@@ -95,6 +99,8 @@ def parse_camper_txt(filepath: Path) -> List[Tuple]:
             discount_price = line.split(":", 1)[1].strip()
         elif line.startswith("Product Material:"):
             material = line.split(":", 1)[1].strip()
+        elif line.startswith("Feature:"):  # ✅ 新增解析
+            feature = line.split(":", 1)[1].strip()
         elif line.startswith("Product Size:"):
             sizes_line = line.split(":", 1)[1].strip()
         elif line.startswith("Product Size Detail:"):
