@@ -11,7 +11,7 @@ import time
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
-from config import CAMPER
+from config import CAMPER, SIZE_RANGE_CONFIG  # ✅ 引入标准尺码配置
 from common_taobao.txt_writer import format_txt
 
 CHROMEDRIVER_PATH = CAMPER["CHROMEDRIVER_PATH"]
@@ -84,13 +84,17 @@ def process_product_url(PRODUCT_URL):
         color = color_data.get("name", "") if isinstance(color_data, dict) else str(color_data)
 
         # === 提取 features ===
-        features_raw = data.get("features", [])
+        # === 提取 features ===
+        features_raw = data.get("features") or []  # ✅ 保证是列表
         feature_texts = []
         for f in features_raw:
-            value_html = f.get("value", "")
-            clean_text = BeautifulSoup(value_html, "html.parser").get_text(strip=True)
-            if clean_text:
-                feature_texts.append(clean_text)
+            try:
+                value_html = f.get("value", "")
+                clean_text = BeautifulSoup(value_html, "html.parser").get_text(strip=True)
+                if clean_text:
+                    feature_texts.append(clean_text)
+            except Exception as e:
+                print(f"⚠️ Feature 解析失败: {e}")
         feature_str = " | ".join(feature_texts) if feature_texts else "No Data"
 
         # === 提取 Upper 材质（优先 features） ===
@@ -118,6 +122,16 @@ def process_product_url(PRODUCT_URL):
 
         gender = infer_gender_from_url(PRODUCT_URL)
 
+        # ✅ 尺码补全逻辑
+        standard_sizes = SIZE_RANGE_CONFIG.get("camper", {}).get(gender, [])
+        if standard_sizes:
+            missing_sizes = [s for s in standard_sizes if s not in size_detail]
+            for s in missing_sizes:
+                size_map[s] = "无货"
+                size_detail[s] = {"stock_count": 0, "ean": ""}
+            if missing_sizes:
+                print(f"⚠️ {product_code} 补全尺码: {', '.join(missing_sizes)}")
+
         # === 整理 info 字典 ===
         info = {
             "Product Code": product_code,
@@ -128,7 +142,7 @@ def process_product_url(PRODUCT_URL):
             "Product Price": str(original_price),
             "Adjusted Price": str(discount_price),
             "Product Material": upper_material,
-            "Feature": feature_str,  # ✅ 新增
+            "Feature": feature_str,
             "SizeMap": size_map,
             "SizeDetail": size_detail,
             "Source URL": product_url
