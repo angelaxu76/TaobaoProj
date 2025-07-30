@@ -12,7 +12,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-
+from config import SIZE_RANGE_CONFIG
 from config import GEOX
 from common_taobao.txt_writer import format_txt
 
@@ -22,6 +22,14 @@ CHROMEDRIVER_PATH = "D:/Software/chromedriver-win64/chromedriver.exe"
 MAX_THREADS = 5
 
 TXT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+def supplement_geox_sizes(size_stock: dict, gender: str) -> dict:
+    brand = "geox"
+    standard_sizes = SIZE_RANGE_CONFIG.get(brand, {}).get(gender, [])
+    for size in standard_sizes:
+        if size not in size_stock:
+            size_stock[size] = "0"  # 无货
+    return size_stock
 
 def create_driver():
     options = Options()
@@ -96,6 +104,9 @@ def process_product(url):
             size = size.strip().replace(",", ".") if size else "Unknown"
             available = "1" if "disabled" not in sb.get("class", []) else "0"
             size_stock[size] = available
+
+        # 根据 config 中的尺码补全
+        size_stock = supplement_geox_sizes(size_stock, gender)
 
         size_str = ";".join(
             f"{size}:{'有货' if flag == '1' else '无货'}"
