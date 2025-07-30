@@ -1,6 +1,6 @@
 import os
 import subprocess
-from config import GEOX,TAOBAO_STORES
+from config import GEOX,TAOBAO_STORES,BRAND_CONFIG
 from pathlib import Path
 from common_taobao.generate_discount_price_excel import export_price_with_itemid,export_store_discount_price
 from common_taobao.export_skuid_stock import export_skuid_stock_excel
@@ -8,6 +8,7 @@ from common_taobao.import_txt_to_db import import_txt_to_db
 from common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
 from common_taobao.generate_discount_price_excel import export_store_discount_price,export_discount_price_with_skuids
 from common_taobao.backup_and_clear import backup_and_clear_brand_dirs
+from common_taobao.mark_offline_products_from_store_excels import mark_offline_products_from_store_excels
 
 def run_script(filename: str):
     path = os.path.join(os.path.dirname(__file__), filename)
@@ -38,6 +39,10 @@ def main():
         generate_product_excels(GEOX, store)
         codes = get_publishable_product_codes(GEOX, store)
         copy_images_for_store(GEOX, store, codes)
+
+    # 导出需要下架的产品
+    mark_offline_products_from_store_excels(BRAND_CONFIG["geox"])
+    print("\n✅ Clarks pipeline 完成")
 
     print("\n✅ GEOX pipeline 完成")
 
