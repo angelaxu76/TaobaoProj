@@ -54,9 +54,8 @@ def truncate_to_max_bytes(text: str, max_bytes: int) -> str:
     return result
 
 def generate_taobao_title(product_code: str, content: str, brand_key: str) -> dict:
-    """
-    生成中文展示标题和淘宝合规标题（返回相同值）
-    """
+    from common_taobao.generate_taobao_title import get_byte_length, truncate_to_max_bytes
+
     brand_en, brand_cn = BRAND_NAME_MAP.get(brand_key.lower(), (brand_key.upper(), brand_key))
     brand_full = f"{brand_en}{brand_cn}"
 
@@ -74,24 +73,25 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
     banned = ["最", "唯一", "首个", "国家级", "世界级", "顶级"]
     features_str = " ".join([f for f in features if not any(b in f for b in banned)])
 
-    # 拼接基础标题
     base_title = f"{brand_full}{gender_str}{style_name}{color_cn}{material_cn}{features_str}{product_code}".strip()
 
-    max_bytes = 60
+    max_bytes = 60  # 淘宝计算中文一个字符两个字节
+
+    # 如果超长，先裁掉 features
     if get_byte_length(base_title) > max_bytes:
-        # 截去 features 后重新拼接并按字节截断
-        base_title = f"{brand_full}{gender_str}{style_name}{color_cn}{material_cn}{product_code}"
-        base_title = truncate_to_max_bytes(base_title, max_bytes)
-    else:
-        # 补充流量词
-        filler_words = ["新款", "百搭", "舒适", "潮流", "轻奢", "经典"]
-        for word in filler_words:
-            if get_byte_length(base_title + word) <= max_bytes:
-                base_title += word
-            else:
-                break
+        base_title = f"{brand_full}{gender_str}{style_name}{color_cn}{material_cn}{product_code}".strip()
+
+    # 如果仍不足 60 字节，补充流量词
+    filler_words = ["新款", "百搭", "舒适", "潮流", "轻奢", "经典"]
+    for word in filler_words:
+        new_title = base_title + word
+        if get_byte_length(new_title) <= max_bytes:
+            base_title = new_title
+        else:
+            break
 
     return {
         "title_cn": base_title,
         "taobao_title": base_title
     }
+
