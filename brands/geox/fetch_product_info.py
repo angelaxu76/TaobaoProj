@@ -97,6 +97,15 @@ def process_product(url):
         desc_block = soup.select_one("div.product-description div.value")
         description = desc_block.get_text(strip=True) if desc_block else "No Data"
 
+        if code.startswith("D"):
+            gender = "女款"
+        elif code.startswith("U"):
+            gender = "男款"
+        elif code.startswith("J"):
+            gender = "童款"
+        else:
+            gender = "未知"
+
         size_blocks = soup.select("div.size-value")
         size_stock = {}
         for sb in size_blocks:
@@ -113,14 +122,6 @@ def process_product(url):
             for size, flag in size_stock.items()
         )
 
-        if code.startswith("D"):
-            gender = "女款"
-        elif code.startswith("U"):
-            gender = "男款"
-        elif code.startswith("J"):
-            gender = "童款"
-        else:
-            gender = "未知"
 
         info = {
             "Product Code": code,
