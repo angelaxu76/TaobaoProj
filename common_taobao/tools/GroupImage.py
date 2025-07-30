@@ -3,10 +3,10 @@ import shutil
 from math import ceil
 
 # 原始图片目录
-source_dir = r"D:\TB\Products\clarks\repulibcation\英国伦敦代购2015\images"
+source_dir = r"D:\TB\Products\camper\repulibcation\publication_excels\images"
 
 # 目标根目录（可以修改为其他路径）
-target_root_dir = r"D:\TB\Products\clarks\repulibcation\英国伦敦代购2015\images分组图片"
+target_root_dir = r"D:\TB\Products\camper\repulibcation\publication_excels\images分组图片"
 
 # 每组的图片数量
 group_size = 200

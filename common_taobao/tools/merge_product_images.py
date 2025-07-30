@@ -3,65 +3,60 @@ from collections import defaultdict
 from PIL import Image, ImageDraw, ImageFont
 
 def merge_images_grid(img_files, export_file, product_name, width=750, margin=10, gap=10, title_height=150):
-    """
-    img_files: 图片路径列表
-    export_file: 输出文件路径
-    product_name: 商品标题
-    width: 画布总宽度（默认750）
-    margin: 边距（默认10px）
-    gap: 图片之间的间距（默认10px）
-    title_height: 标题区域高度（默认150px）
-    """
+    from PIL import Image, ImageDraw, ImageFont
 
-    # 每列图片宽度
-    img_size = (width - margin * 2 - gap) // 2  # (750 - 20 - 10) / 2 = 360
+    img_size = (width - margin * 2 - gap) // 2
     num_images = len(img_files)
-    rows = (num_images + 1) // 2  # 每行两列
+    is_odd = (num_images % 2 == 1)
 
-    # 总高度 = 标题高度 + 图片行数 * (图片高度 + 间距) + 底部边距
-    total_height = title_height + rows * img_size + (rows - 1) * gap + margin
+    # 最后一张大图高度等于两列宽度（为正方形）
+    last_row_extra_height = (img_size * 2 + gap) if is_odd else 0
+    rows = num_images // 2
+    total_height = title_height + rows * (img_size + gap) + last_row_extra_height + margin
 
-    # 创建白底画布
     dest_img = Image.new("RGB", (width, total_height), (255, 255, 255))
     draw = ImageDraw.Draw(dest_img)
 
-    # 绘制标题
     try:
         font = ImageFont.truetype("arial.ttf", 32)
     except:
         font = ImageFont.load_default()
     draw.text((margin, 50), product_name, font=font, fill=(0, 0, 0))
 
-    # 起始 Y 坐标
     y_offset = title_height
+    i = 0
+    while i < num_images:
+        if i == num_images - 1 and is_odd:
+            # 最后一张大图（正方形），宽 = 2张图 + gap，高 = 同宽
+            img = Image.open(img_files[i]).convert("RGB")
 
-    # 布局：两列
-    for i, img_file in enumerate(img_files):
-        img = Image.open(img_file).convert("RGB")
-        img_resized = img.resize((img_size, img_size))
+            big_size = img_size * 2 + gap
+            img = img.resize((big_size, big_size))  # 放大为正方形
 
-        if i % 2 == 0:  # 左列
-            x = margin
-        else:  # 右列
-            x = margin + img_size + gap
-
-        dest_img.paste(img_resized, (x, y_offset))
-
-        # 换行
-        if i % 2 == 1:
+            dest_img.paste(img, (margin, y_offset))
+            y_offset += big_size + gap
+            i += 1
+        else:
+            # 左图
+            img1 = Image.open(img_files[i]).convert("RGB").resize((img_size, img_size))
+            dest_img.paste(img1, (margin, y_offset))
+            # 右图
+            if i + 1 < num_images:
+                img2 = Image.open(img_files[i + 1]).convert("RGB").resize((img_size, img_size))
+                dest_img.paste(img2, (margin + img_size + gap, y_offset))
             y_offset += img_size + gap
-
-    # 如果奇数，最后一张图片独占一行，仍然放在左边
-    if num_images % 2 == 1:
-        y_offset += img_size + gap
+            i += 2
 
     dest_img.save(export_file, quality=95)
     print(f"✅ 合并完成: {export_file}")
 
 
-def batch_merge_images(brand_config, width=750):
-    image_dir = brand_config["IMAGE_CUTTER"]
-    merged_dir = brand_config["MERGED_DIR"]
+
+
+
+def batch_merge_images(image_dir, merged_dir, width=750):
+    from collections import defaultdict
+    import os
 
     os.makedirs(merged_dir, exist_ok=True)
 
@@ -76,6 +71,7 @@ def batch_merge_images(brand_config, width=750):
         files.sort()
         export_file = os.path.join(merged_dir, f"{code}_merged.jpg")
         merge_images_grid(files, export_file, code, width=width)
+
 
 
 if __name__ == "__main__":

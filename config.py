@@ -36,6 +36,45 @@ SIZE_RANGE_CONFIG = {
         "童款": ["20", "21", "22", "23", "24", "25","26", "27", "28","29", "30", "31", "32",  "33", "34", "35", "36", "37", "38"]
     },
     # 后续可在这里加其他品牌，如 clarks, ecco, geox
+        "clarks": {
+        "女款": [  # FEMALE_RANGE 映射
+            "35.5", "36", "37", "37.5", "38", "39", "39.5", "40", "41", "41.5", "42"
+        ],
+        "男款": [  # MALE_RANGE 映射
+            "39", "39.5", "40", "41", "41.5", "42", "42.5", "43", "44", "44.5", "45", "46", "46.5", "47"
+        ],
+        "童款": []  # Clarks 暂不处理童款时可留空或补上
+    }
+}
+
+# === Barbour 品牌路径配置 ===
+BARBOUR_BASE = BASE_DIR / "barbour"
+BARBOUR = {
+    "BRAND": "barbour",
+    "BASE": BARBOUR_BASE,
+    "TXT_DIR": BARBOUR_BASE / "publication" / "TXT",
+    "OUTPUT_DIR": BARBOUR_BASE / "repulibcation",
+    "STORE_DIR": BARBOUR_BASE / "document" / "store",
+    "IMAGE_DIR": BARBOUR_BASE / "document" / "images",
+    "IMAGE_DOWNLOAD": BARBOUR_BASE / "document" / "images_download",
+    "IMAGE_PROCESS": BARBOUR_BASE / "document" / "images_process",
+    "IMAGE_CUTTER": BARBOUR_BASE / "document" / "images_cutter",
+    "HTML_IMAGE": BARBOUR_BASE / "document" / "html_image",
+    "HTML_CUTTER": BARBOUR_BASE / "document" / "html_cutter",
+    "HTML_DIR": BARBOUR_BASE / "document" / "html",
+    "TABLE_NAME": "barbour_inventory",
+    "PGSQL_CONFIG": PGSQL_CONFIG,
+    "LINKS_FILE": BARBOUR_BASE / "publication" / "product_links.txt",
+    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "FIELDS": {
+        "product_code": "product_code",
+        "url": "product_url",
+        "discount_price": "discount_price_gbp",
+        "original_price": "original_price_gbp",
+        "size": "size",
+        "stock": "stock_status",
+        "gender": "gender"
+    }
 }
 
 
@@ -240,5 +279,6 @@ BRAND_CONFIG = {
     "camper_global": CAMPER_GLOBAL,
     "geox": GEOX,
     "ecco": ECCO,
-    "birkenstock": BIRKENSTOCK
+    "birkenstock": BIRKENSTOCK,
+    "barbour": BARBOUR  # ✅ 加这一行
 }

@@ -25,16 +25,16 @@ def main():
     #expand_images_in_folder(input_folder, output_folder)
 
     print("将图片merge到一张图片中")
-    #batch_merge_images(CAMPER, width=750)
+    batch_merge_images(CAMPER["IMAGE_CUTTER"],CAMPER["MERGED_DIR"], width=750)
 
     print("生成产品详情卡HTML")
     #generate_html_main("camper")
 
     print("生成产品详情卡图片")
-    GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径
-    convert_html_to_images( CAMPER["HTML_DIR"], CAMPER["HTML_IMAGE"],GECKODRIVER_PATH, 10)
+    #GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径
+    #convert_html_to_images( CAMPER["HTML_DIR"], CAMPER["HTML_IMAGE"],GECKODRIVER_PATH, 10)
 
-    trim_images_in_folder(CAMPER["HTML_IMAGE"],CAMPER["HTML_CUTTER"],file_pattern="*.png", tolerance=5)
+    #trim_images_in_folder(CAMPER["HTML_IMAGE"],CAMPER["HTML_CUTTER"],file_pattern="*.png", tolerance=5)
 
 
 if __name__ == "__main__":

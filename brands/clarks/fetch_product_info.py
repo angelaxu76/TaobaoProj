@@ -1,145 +1,138 @@
-import sys
-from pathlib import Path
+import os
 import re
 import json
-
-# ✅ 加入项目根目录
-sys.path.append(str(Path(__file__).resolve().parents[2]))
-
-import re
-import json
-import requests
+import threading
 from bs4 import BeautifulSoup
-from config import CLARKS
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from config import CLARKS, SIZE_RANGE_CONFIG
 from common_taobao.txt_writer import format_txt
 
-HEADERS = {"User-Agent": "Mozilla/5.0"}
-LINK_FILE = CLARKS["BASE"] / "publication" / "product_links.txt"
-TXT_DIR = CLARKS["TXT_DIR"]
-BRAND = CLARKS["BRAND"]
+CHROMEDRIVER_PATH = CLARKS["CHROMEDRIVER_PATH"]
+PRODUCT_URLS_FILE = CLARKS["LINKS_FILE"]
+SAVE_PATH = CLARKS["TXT_DIR"]
+MAX_WORKERS = 6
+BRAND = "clarks"
 
-UK_TO_EU_CM = {
-    "3": "35.5", "3.5": "36", "4": "37", "4.5": "37.5", "5": "38",
-    "5.5": "39", "6": "39.5", "6.5": "40", "7": "41", "7.5": "41.5",
-    "8": "42", "8.5": "42.5", "9": "43", "9.5": "44", "10": "44.5",
-    "10.5": "45", "11": "46", "11.5": "46.5", "12": "47"
-}
+os.makedirs(SAVE_PATH, exist_ok=True)
 
-FEMALE_RANGE = ["3", "3.5", "4", "4.5", "5", "5.5", "6", "6.5", "7", "7.5", "8"]
-MALE_RANGE = ["6", "6.5", "7", "7.5", "8", "8.5", "9", "9.5", "10", "10.5", "11", "11.5", "12"]
-
-def extract_product_code(url):
-    match = re.search(r"/(\d+)-p", url)
-    return match.group(1) if match else "unknown"
-
-def extract_material(soup):
-    tags = soup.select("li.sc-ac92809-1 span")
-    for i in range(0, len(tags) - 1, 2):
-        key = tags[i].get_text(strip=True)
-        val = tags[i+1].get_text(strip=True)
-        if "Upper Material" in key:
-            return val
-    return "No Data"
-
-def detect_gender(text):
-    text = text.lower()
-    if "women" in text:
+# ======= 辅助函数 ========
+def infer_gender_from_url(url: str) -> str:
+    url = url.lower()
+    if "/women/" in url:
         return "女款"
-    elif "men" in text:
+    elif "/men/" in url:
         return "男款"
-    elif "girl" in text or "boy" in text:
+    elif "/kids/" in url:
         return "童款"
     return "未知"
 
-def process_product(url):
+def supplement_sizes(size_map_raw, gender, brand=BRAND):
+    full_sizes = SIZE_RANGE_CONFIG.get(brand, {}).get(gender, [])
+    supplemented = {}
+    for size in full_sizes:
+        supplemented[size] = size_map_raw.get(size, "无货")
+    return supplemented
+
+# ======= Selenium 驱动配置 ========
+def create_driver():
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--window-size=1920x1080")
+    chrome_options.add_argument("user-agent=Mozilla/5.0")
+    service = Service(CHROMEDRIVER_PATH)
+    return webdriver.Chrome(service=service, options=chrome_options)
+
+thread_local = threading.local()
+def get_driver():
+    if not hasattr(thread_local, "driver"):
+        thread_local.driver = create_driver()
+    return thread_local.driver
+
+# ======= 主处理函数 ========
+def process_product_url(PRODUCT_URL):
     try:
-        r = requests.get(url, headers=HEADERS, timeout=15)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "html.parser")
+        driver = get_driver()
+        print(f"\n🔍 正在访问: {PRODUCT_URL}")
+        driver.get(PRODUCT_URL)
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "body")))
 
-        code = extract_product_code(url)
-        title = soup.title.get_text(strip=True) if soup.title else "No Title"
-        name = title.replace("| Clarks UK", "").strip()
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        title_tag = soup.find("title")
+        product_title = re.sub(r"\s*[-–—].*", "", title_tag.text.strip()) if title_tag else "Unknown Title"
 
-        json_ld = soup.find("script", type="application/ld+json")
-        data = json.loads(json_ld.string) if json_ld else {}
-        desc = data.get("description", "No Description")
-        discount_price = data.get("offers", {}).get("price", "")
+        script_tag = soup.find("script", text=re.compile("window\.__PRELOADED_STATE__"))
+        if not script_tag:
+            print("⚠️ 未找到商品 JSON 数据")
+            return
 
-        gender = detect_gender(title + " " + desc)
-        size_range = FEMALE_RANGE if gender == "女款" else MALE_RANGE
+        json_text = re.search(r"window\.__PRELOADED_STATE__\s*=\s*(\{.*?\})\s*;", script_tag.string, re.DOTALL)
+        if not json_text:
+            print("⚠️ 无法解析 JSON 内容")
+            return
 
-        price_tag = soup.find("span", {"data-testid": "wasPrice"})
-        original_price = price_tag.get_text(strip=True).replace("\xa3", "") if price_tag else ""
+        data = json.loads(json_text.group(1))
+        product_data = data.get("product", {})
 
-        material = extract_material(soup)
+        product_code = product_data.get("code", "Unknown")
+        product_url = PRODUCT_URL
+        description = product_data.get("description", "")
 
-        color_name = "No Data"
-        try:
-            html = r.text  # ✅ 添加这行以定义 html 原始源码
+        price_info = product_data.get("price", {})
+        original_price = price_info.get("was", 0)
+        discount_price = price_info.get("now", 0)
 
-            # 使用正则匹配颜色信息
-            pattern = r'{"key":"(\d+)",\s*"color\.en-GB":"(.*?)",\s*"image":"(https://cdn\.media\.amplience\.net/i/clarks/[^"]+)"}'
-            matches = re.findall(pattern, html)
+        color = product_data.get("colour", {}).get("label", "")
 
-            print(f"🟢 找到 {len(matches)} 个颜色选项")
-            for key, color, img_url in matches:
-                print(f"🔹 key: {key}, color: {color}")
-                if key == code:
-                    color_name = color
-                    print(f"✅ 匹配到当前商品颜色: {color_name}")
-                    break
-            if color_name == "No Data":
-                print(f"❌ 未匹配到当前商品编码: {code}")
-        except Exception as e:
-            print(f"⚠️ 解析颜色出错: {e}")
-
+        # 提取尺码与库存状态
         size_map = {}
-        for btn in soup.find_all("button", {"data-testid": "sizeItem"}):
-            uk = btn.get("title", "").strip()
-            sold_out = "currently unavailable" in btn.get("aria-label", "").lower()
-            size_map[uk] = "无货" if sold_out else "有货"
+        for el in soup.select(".product-sizes li"):
+            size_text = el.get_text(strip=True)
+            class_attr = el.get("class", [])
+            available = "unavailable" not in class_attr
+            size_map[size_text] = "有货" if available else "无货"
 
-        sizes = []
-        for uk in size_range:
-            eu = UK_TO_EU_CM.get(uk, "")
-            if eu:
-                status = size_map.get(uk, "无货")
-                sizes.append(f"{eu}:{status}")
+        gender = infer_gender_from_url(PRODUCT_URL)
+        size_map = supplement_sizes(size_map, gender)
 
-        return {
-        "Product Code": code,
-        "Product Name": name,
-        "Product Description": desc,
-        "Product Gender": gender,
-        "Product Color": color_name,
-        "Product Price": original_price,
-        "Adjusted Price": discount_price,
-        "Product Material": material,
-        "Product Size": ";".join(sizes),
-        "Source URL": url
-    }
+        info = {
+            "Product Code": product_code,
+            "Product Name": product_title,
+            "Product Description": description,
+            "Product Gender": gender,
+            "Product Color": color,
+            "Product Price": str(original_price),
+            "Adjusted Price": str(discount_price),
+            "Product Material": "No Data",
+            "Feature": "No Data",
+            "SizeMap": size_map,
+            "Source URL": product_url
+        }
 
-
+        filepath = SAVE_PATH / f"{product_code}.txt"
+        format_txt(info, filepath, brand=BRAND)
+        print(f"✅ 完成 TXT: {filepath.name}")
 
     except Exception as e:
-        print(f"❌ 错误: {url}，{e}")
-        return None
+        print(f"❌ 错误: {PRODUCT_URL} - {e}")
 
+# ======= 主入口 ========
 def main():
-    with open(LINK_FILE, "r", encoding="utf-8") as f:
+    with open(PRODUCT_URLS_FILE, "r", encoding="utf-8") as f:
         urls = [line.strip() for line in f if line.strip()]
 
-    for url in urls:
-        info = process_product(url)
-        if info:
-            print(f"\n🔍 {url}")
-            for k, v in info.items():
-                print(f"{k}: {v}")
-            filepath = TXT_DIR / f"{info['Product Code']}.txt"
-            filepath.parent.mkdir(parents=True, exist_ok=True)
-            format_txt(info, filepath, BRAND)
-            print(f"✅ 写入: {filepath.name}")
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = [executor.submit(process_product_url, url) for url in urls]
+        for future in as_completed(futures):
+            future.result()
 
 if __name__ == "__main__":
     main()
