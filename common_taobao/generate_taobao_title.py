@@ -36,7 +36,7 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
     生成中文展示标题和淘宝合规标题（返回相同值）
     """
     brand_en, brand_cn = BRAND_NAME_MAP.get(brand_key.lower(), (brand_key.upper(), brand_key))
-    brand_full = f"{brand_en}/{brand_cn}"
+    brand_full = f"{brand_en}{brand_cn}"
 
     title_en = extract_field_from_content(content, "Product Name")
     material_en = extract_field_from_content(content, "Product Material")
@@ -55,7 +55,7 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
 
     prefix = f"{product_code} {brand_full} {style_name} {gender_str}"
     tail = f"{color_cn} {material_cn} {features_str}"
-    full_title = f"{brand_full}{gender_str}{style_name}{color_cn}{material_cn}{features_str}{product_code}".strip()[:60]
+    full_title = f"{brand_full}{gender_str}{style_name}{color_cn}{material_cn}{product_code}".strip()[:60]
 
 
     return {
