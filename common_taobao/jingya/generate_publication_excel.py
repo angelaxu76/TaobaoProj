@@ -7,6 +7,7 @@ from sqlalchemy import create_engine
 from config import BRAND_CONFIG, SETTINGS
 from common_taobao.core.price_utils import calculate_camper_untaxed_and_retail
 from common_taobao.core.translate import safe_translate
+from common_taobao.generate_taobao_title import generate_taobao_title
 
 # ==== 固定参数 ====
 上市季节 = "2025春季"
@@ -121,7 +122,8 @@ def generate_publication_excels(brand: str):
             content = f.read()
 
         title_en = extract_field("Product Name", content)
-        title_cn = safe_translate(title_en)
+        title_cn = generate_taobao_title(brand, code)
+
         print(f"[{code_clean}] EN: {title_en} → CN: {title_cn}")
 
         price_info = price_map.get(code, {"original_price_gbp": 0, "discount_price_gbp": 0})

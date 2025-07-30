@@ -297,3 +297,13 @@ BRAND_CONFIG = {
     "birkenstock": BIRKENSTOCK,
     "barbour": BARBOUR  # ✅ 加这一行
 }
+
+# === 品牌中英文名映射 ===
+BRAND_NAME_MAP = {
+    "camper": ("Camper", "看步"),
+    "clarks": ("Clarks", "其乐"),
+    "geox": ("GEOX", "健乐士"),
+    "ecco": ("ECCO", "爱步"),
+    "barbour": ("Barbour", "巴伯尔"),
+    "birkenstock": ("BIRKENSTOCK", "勃肯")
+}
