@@ -21,7 +21,6 @@ def get_primary_material_cn(material_en: str) -> str:
             return MATERIAL_MAP[part_clean]
     return parts[0] if parts else "材质未知"
 
-
 def extract_field_from_content(content: str, field: str) -> str:
     pattern = re.compile(rf"{field}[:：]?\s*(.+)", re.IGNORECASE)
     match = pattern.search(content)
@@ -39,6 +38,20 @@ def extract_features_from_content(content: str) -> list[str]:
     if "ballet" in content_lower: features.append("芭蕾风")
     if "removable" in content_lower: features.append("可拆鞋垫")
     return features
+
+def get_byte_length(text: str) -> int:
+    return len(text.encode("gbk"))
+
+def truncate_to_max_bytes(text: str, max_bytes: int) -> str:
+    result = ''
+    total = 0
+    for char in text:
+        char_len = len(char.encode("gbk"))
+        if total + char_len > max_bytes:
+            break
+        result += char
+        total += char_len
+    return result
 
 def generate_taobao_title(product_code: str, content: str, brand_key: str) -> dict:
     """
@@ -61,20 +74,22 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
     banned = ["最", "唯一", "首个", "国家级", "世界级", "顶级"]
     features_str = " ".join([f for f in features if not any(b in f for b in banned)])
 
-    prefix = f"{product_code} {brand_full} {style_name} {gender_str}"
-    tail = f"{color_cn} {material_cn} {features_str}"
+    # 拼接基础标题
     base_title = f"{brand_full}{gender_str}{style_name}{color_cn}{material_cn}{features_str}{product_code}".strip()
 
-    # 如果超长，优先保留核心内容（不截断 product_code），裁掉 features
-    if len(base_title) > 60:
-        base_title = f"{brand_full}{gender_str}{style_name}{color_cn}{material_cn}{product_code}".strip()
-
-    # 如果仍不足 60，可补充流量词
-    if len(base_title) < 60:
+    max_bytes = 60
+    if get_byte_length(base_title) > max_bytes:
+        # 截去 features 后重新拼接并按字节截断
+        base_title = f"{brand_full}{gender_str}{style_name}{color_cn}{material_cn}{product_code}"
+        base_title = truncate_to_max_bytes(base_title, max_bytes)
+    else:
+        # 补充流量词
         filler_words = ["新款", "百搭", "舒适", "潮流", "轻奢", "经典"]
         for word in filler_words:
-            if len(base_title) + len(word) <= 60:
+            if get_byte_length(base_title + word) <= max_bytes:
                 base_title += word
+            else:
+                break
 
     return {
         "title_cn": base_title,
