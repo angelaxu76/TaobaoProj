@@ -13,6 +13,15 @@ MATERIAL_MAP = {
     "Suede": "反毛皮", "Canvas": "帆布", "Mesh": "网布", "Synthetic": "合成材质"
 }
 
+def get_primary_material_cn(material_en: str) -> str:
+    parts = re.split(r"[ /,|]+", material_en)
+    for part in parts:
+        part_clean = part.strip().capitalize()
+        if part_clean in MATERIAL_MAP:
+            return MATERIAL_MAP[part_clean]
+    return parts[0] if parts else "材质未知"
+
+
 def extract_field_from_content(content: str, field: str) -> str:
     pattern = re.compile(rf"{field}[:：]?\s*(.+)", re.IGNORECASE)
     match = pattern.search(content)
@@ -45,8 +54,7 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
     style_name = title_en.split()[0].capitalize() if title_en else "系列"
 
     color_cn = COLOR_MAP.get(color_en, color_en)
-    material_parts = re.split(r"[ /,]+", material_en)
-    material_cn = "、".join([MATERIAL_MAP.get(part, part) for part in material_parts if part])
+    material_cn = get_primary_material_cn(material_en)
     gender_str = {"女款": "女鞋", "男款": "男鞋", "童款": "童鞋"}.get(gender_raw, "鞋")
 
     features = extract_features_from_content(content)
@@ -55,10 +63,20 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
 
     prefix = f"{product_code} {brand_full} {style_name} {gender_str}"
     tail = f"{color_cn} {material_cn} {features_str}"
-    full_title = f"{brand_full}{gender_str}{style_name}{color_cn}{material_cn}{product_code}".strip()[:60]
+    base_title = f"{brand_full}{gender_str}{style_name}{color_cn}{material_cn}{features_str}{product_code}".strip()
 
+    # 如果超长，优先保留核心内容（不截断 product_code），裁掉 features
+    if len(base_title) > 60:
+        base_title = f"{brand_full}{gender_str}{style_name}{color_cn}{material_cn}{product_code}".strip()
+
+    # 如果仍不足 60，可补充流量词
+    if len(base_title) < 60:
+        filler_words = ["新款", "百搭", "舒适", "潮流", "轻奢", "经典"]
+        for word in filler_words:
+            if len(base_title) + len(word) <= 60:
+                base_title += word
 
     return {
-        "title_cn": full_title,
-        "taobao_title": full_title
+        "title_cn": base_title,
+        "taobao_title": base_title
     }
