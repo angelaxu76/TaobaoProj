@@ -40,13 +40,13 @@ def extract_features_from_content(content: str) -> list[str]:
     return features
 
 def get_byte_length(text: str) -> int:
-    return len(text.encode("gbk"))
+    return len(text.encode("gbk", errors='ignore'))
 
 def truncate_to_max_bytes(text: str, max_bytes: int) -> str:
     result = ''
     total = 0
     for char in text:
-        char_len = len(char.encode("gbk"))
+        char_len = len(char.encode("gbk", errors='ignore'))
         if total + char_len > max_bytes:
             break
         result += char
