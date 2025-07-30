@@ -122,7 +122,7 @@ def generate_publication_excels(brand: str):
             content = f.read()
 
         title_en = extract_field("Product Name", content)
-        title_cn = generate_taobao_title(brand, code)
+        title_cn = generate_taobao_title(code, content, brand)["taobao_title"]
 
         print(f"[{code_clean}] EN: {title_en} → CN: {title_cn}")
 
