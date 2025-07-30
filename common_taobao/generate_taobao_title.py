@@ -1,107 +1,64 @@
 import re
-from pathlib import Path
-from config import BRAND_CONFIG
+from config import BRAND_NAME_MAP
 from common_taobao.core.translate import safe_translate
 
-# ✅ 材质和颜色映射（可持续扩充）
-MATERIAL_MAP = {
-    "Calfskin": "小牛皮",
-    "Leather": "牛皮",
-    "Nubuck": "磨砂皮",
-    "Suede": "反毛皮",
-    "Textile": "织物",
-    "Canvas": "帆布",
-    "Polyester": "聚酯纤维",
-    "Mesh": "网布",
-    "Rubber": "橡胶",
-    "EVA": "EVA"
-}
-
 COLOR_MAP = {
-    "Black": "黑色",
-    "White": "白色",
-    "Brown": "棕色",
-    "Navy": "藏青",
-    "Beige": "米色",
-    "Green": "绿色",
-    "Red": "红色",
-    "Yellow": "黄色",
-    "Grey": "灰色",
-    "Blue": "蓝色"
+    "White": "白色", "Black": "黑色", "Blue": "蓝色", "Red": "红色",
+    "Brown": "棕色", "Beige": "米色", "Green": "绿色", "Grey": "灰色",
+    "Yellow": "黄色", "Pink": "粉色", "Orange": "橙色", "Purple": "紫色"
 }
 
-# ✅ 去重材质函数
-def deduplicate_material(material_list):
-    result = []
-    seen = set()
-    leather_keywords = {"牛皮", "小牛皮", "磨砂皮", "反毛皮"}
-    for m in material_list:
-        if m in seen:
-            continue
-        if m in leather_keywords and any(x in result for x in leather_keywords):
-            continue
-        result.append(m)
-        seen.add(m)
-    return result
+MATERIAL_MAP = {
+    "Calfskin": "小牛皮", "Leather": "牛皮", "Nubuck": "磨砂皮", "Textile": "织物",
+    "Suede": "反毛皮", "Canvas": "帆布", "Mesh": "网布", "Synthetic": "合成材质"
+}
 
-# ✅ 从TXT中提取字段
-def extract_field(name, content):
-    pattern = re.compile(rf"{name}\s*[:：]\s*(.+)", re.IGNORECASE)
+def extract_field_from_content(content: str, field: str) -> str:
+    pattern = re.compile(rf"{field}[:：]?\s*(.+)", re.IGNORECASE)
     match = pattern.search(content)
     return match.group(1).strip() if match else ""
 
-# ✅ 主函数：传入品牌名和商品编码，返回淘宝标题
-def generate_taobao_title(brand: str, product_code: str) -> str:
-    brand = brand.lower()
-    if brand not in BRAND_CONFIG:
-        raise ValueError(f"❌ 不支持的品牌: {brand}")
-    config = BRAND_CONFIG[brand]
-    txt_folder: Path = config["TXT_DIR"]
-    txt_path = txt_folder / f"{product_code.upper()}.txt"
+def extract_features_from_content(content: str) -> list[str]:
+    features = []
+    content_lower = content.lower()
+    if "eva" in content_lower: features.append("EVA大底")
+    if "light" in content_lower: features.append("轻盈缓震")
+    if "extra height" in content_lower or "3cm" in content_lower: features.append("增高")
+    if "sneaker" in content_lower or "runner" in content_lower: features.append("复古慢跑鞋")
+    if "recycled" in content_lower: features.append("环保材质")
+    if "rubber" in content_lower: features.append("防滑橡胶底")
+    if "ballet" in content_lower: features.append("芭蕾风")
+    if "removable" in content_lower: features.append("可拆鞋垫")
+    return features
 
-    if not txt_path.exists():
-        raise FileNotFoundError(f"❌ TXT 文件不存在: {txt_path}")
-
-    with open(txt_path, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    title_en = extract_field("Product Name", content)
-    brand_en = title_en.split()[0] if title_en else brand.upper()
-    brand_cn = "看步" if brand == "camper" else "未知品牌"
+def generate_taobao_title(product_code: str, content: str, brand_key: str) -> dict:
+    """
+    生成中文展示标题和淘宝合规标题（返回相同值）
+    """
+    brand_en, brand_cn = BRAND_NAME_MAP.get(brand_key.lower(), (brand_key.upper(), brand_key))
     brand_full = f"{brand_en}/{brand_cn}"
 
-    # 提取样式名
-    style_match = re.search(r"\b([A-Z][a-zA-Z]+)\b", product_code)
-    style_name = style_match.group(1) if style_match else ""
+    title_en = extract_field_from_content(content, "Product Name")
+    material_en = extract_field_from_content(content, "Product Material")
+    color_en = extract_field_from_content(content, "Product Color")
+    gender_raw = extract_field_from_content(content, "Product Gender") or "女款"
+    style_name = title_en.split()[0].capitalize() if title_en else "系列"
 
-    # 提取颜色和材质
-    color_en = extract_field("Colour", content)
-    material_en = extract_field("Product Material", content)
+    color_cn = COLOR_MAP.get(color_en, color_en)
+    material_parts = re.split(r"[ /,]+", material_en)
+    material_cn = "、".join([MATERIAL_MAP.get(part, part) for part in material_parts if part])
+    gender_str = {"女款": "女鞋", "男款": "男鞋", "童款": "童鞋"}.get(gender_raw, "鞋")
 
-    color_cn = COLOR_MAP.get(color_en.strip().title(), color_en.strip())
-    material_parts = re.split(r"[ /,]+", material_en.strip())
-    material_cn_list = [MATERIAL_MAP.get(m.strip(), m.strip()) for m in material_parts if m]
-    material_cn_list = deduplicate_material(material_cn_list)
-    material_cn = "、".join(material_cn_list)
+    features = extract_features_from_content(content)
+    banned = ["最", "唯一", "首个", "国家级", "世界级", "顶级"]
+    features_str = " ".join([f for f in features if not any(b in f for b in banned)])
 
-    # 翻译特征（如 feature、描述等字段）
-    features_raw = extract_field("Feature", content)
-    features = [f.strip() for f in re.split(r"[|｜]", features_raw) if f.strip()]
-    features_cn = [safe_translate(f) for f in features]
-    features_cn = [f for f in features_cn if not any(b in f for b in ["最", "唯一", "国家级", "顶级", "第一"])]
+    prefix = f"{product_code} {brand_full} {style_name} {gender_str}"
+    tail = f"{color_cn} {material_cn} {features_str}"
+    full_title = f"{brand_full}{gender_str}{style_name}{color_cn}{material_cn}{features_str}{product_code}".strip()[:60]
 
-    # 构建基础标题
-    gender = "女鞋" if "女性" in content.lower() or "女" in content.lower() else "男鞋"
-    base = f"{brand_full}{gender}{style_name}{color_cn}{material_cn}"
-    suffix = product_code.upper()
-    full_title = f"{base}{''.join(features_cn)}{suffix}"
 
-    # 控制字数不超过 60 字
-    while len(full_title) > 60 and features_cn:
-        features_cn.pop()
-        full_title = f"{base}{''.join(features_cn)}{suffix}"
-
-    if len(full_title) > 60:
-        full_title = full_title[:60]
-
-    return full_title
+    return {
+        "title_cn": full_title,
+        "taobao_title": full_title
+    }
