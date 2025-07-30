@@ -23,15 +23,25 @@ def mark_offline_products_from_store_excels(config: dict):
         for excel_file in excel_files:
             try:
                 df = pd.read_excel(excel_file)
+
+                # 自动寻找包含“编码”的列，如“商家编码”、“商品编码”
                 code_column = None
                 for col in df.columns:
                     if "编码" in col:
                         code_column = col
                         break
+
                 if code_column:
-                    store_codes.update(str(code).strip() for code in df[code_column].dropna())
+                    # ⚠️ 将 float → int → str，避免 "26175424.0" 的误判
+                    for code in df[code_column].dropna():
+                        try:
+                            clean_code = str(int(float(code)))  # 去掉小数点
+                            store_codes.add(clean_code)
+                        except:
+                            continue
                 else:
-                    print(f"⚠️ Excel 未找到包含“编码”的列: {excel_file.name}")
+                    print(f"⚠️ 未找到“编码”列: {excel_file.name}")
+
             except Exception as e:
                 print(f"❌ 读取失败: {excel_file} - {e}")
 
