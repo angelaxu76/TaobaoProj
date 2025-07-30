@@ -1,5 +1,6 @@
 import re
 from config import BRAND_NAME_MAP
+import random
 from common_taobao.core.translate import safe_translate
 
 COLOR_MAP = {
@@ -53,9 +54,13 @@ def truncate_to_max_bytes(text: str, max_bytes: int) -> str:
         total += char_len
     return result
 
-def generate_taobao_title(product_code: str, content: str, brand_key: str) -> dict:
-    from common_taobao.generate_taobao_title import get_byte_length, truncate_to_max_bytes
 
+
+FILLER_WORDS = [
+    "新款", "百搭", "舒适", "潮流", "轻奢", "经典", "时尚", "透气", "柔软", "减震", "轻盈", "日常", "通勤", "耐穿"
+]
+
+def generate_taobao_title(product_code: str, content: str, brand_key: str) -> dict:
     brand_en, brand_cn = BRAND_NAME_MAP.get(brand_key.lower(), (brand_key.upper(), brand_key))
     brand_full = f"{brand_en}{brand_cn}"
 
@@ -73,25 +78,30 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
     banned = ["最", "唯一", "首个", "国家级", "世界级", "顶级"]
     features_str = " ".join([f for f in features if not any(b in f for b in banned)])
 
+    # 拼接主干标题
     base_title = f"{brand_full}{gender_str}{style_name}{color_cn}{material_cn}{features_str}{product_code}".strip()
 
-    max_bytes = 60  # 淘宝计算中文一个字符两个字节
-
-    # 如果超长，先裁掉 features
-    if get_byte_length(base_title) > max_bytes:
+    # 裁剪逻辑：先去掉 features 确保不过长
+    if get_byte_length(base_title) > 60:
         base_title = f"{brand_full}{gender_str}{style_name}{color_cn}{material_cn}{product_code}".strip()
 
-    # 如果仍不足 60 字节，补充流量词
-    filler_words = ["新款", "百搭", "舒适", "潮流", "轻奢", "经典"]
-    for word in filler_words:
-        new_title = base_title + word
-        if get_byte_length(new_title) <= max_bytes:
-            base_title = new_title
-        else:
-            break
+    # 如仍不足60，可随机补充流量词
+    if get_byte_length(base_title) < 60:
+        available_bytes = 60 - get_byte_length(base_title)
+
+        # 随机打乱并挑选最多3个词补充（依次追加，直到满）
+        random.shuffle(FILLER_WORDS)
+        for word in FILLER_WORDS:
+            word_bytes = get_byte_length(word)
+            if available_bytes >= word_bytes:
+                base_title += word
+                available_bytes -= word_bytes
+            else:
+                break
 
     return {
         "title_cn": base_title,
         "taobao_title": base_title
     }
+
 
