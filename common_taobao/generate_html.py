@@ -27,7 +27,6 @@ def clean_ad_sensitive(text: str) -> str:
         text = text.replace(word, "")
     return text.strip()
 
-# === HTML 模板 ===
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -88,7 +87,7 @@ HTML_TEMPLATE = """
         padding: 14px;
     }}
     .features h2 {{
-        font-size: 18px;
+        font-size: 24px;
         font-weight: 600;
         margin-bottom: 10px;
         color: #2B2B2B;
@@ -96,8 +95,8 @@ HTML_TEMPLATE = """
         padding-bottom: 6px;
     }}
     .features ul {{
-        padding-left: 18px;
-        font-size: 15px;
+        padding-left: 24px;
+        font-size: 24px;
         line-height: 1.8;
         margin: 0;
     }}
@@ -105,8 +104,8 @@ HTML_TEMPLATE = """
         margin-bottom: 6px;
     }}
     .description {{
-        font-size: 15px;
-        line-height: 1.8;
+        font-size: 24px;
+        line-height: 1.9;
         color: #444;
         background: #fff;
         border: 1px solid #e0e0e0;
@@ -121,7 +120,7 @@ HTML_TEMPLATE = """
     }}
     .info-box {{
         flex: 1;
-        font-size: 15px;
+        font-size: 18px;
         background: #f9f9f9;
         border-radius: 8px;
         padding: 12px 14px;
@@ -170,6 +169,8 @@ HTML_TEMPLATE = """
 </body>
 </html>
 """
+
+
 
 # === 工具函数 ===
 def parse_txt(txt_path):

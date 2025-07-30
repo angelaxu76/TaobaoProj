@@ -25,10 +25,10 @@ def main():
     #expand_images_in_folder(input_folder, output_folder)
 
     print("将图片merge到一张图片中")
-    batch_merge_images(CAMPER["IMAGE_CUTTER"],CAMPER["MERGED_DIR"], width=750)
+    #batch_merge_images(CAMPER["IMAGE_CUTTER"],CAMPER["MERGED_DIR"], width=750)
 
     print("生成产品详情卡HTML")
-    #generate_html_main("camper")
+    generate_html_main("camper")
 
     print("生成产品详情卡图片")
     #GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径
