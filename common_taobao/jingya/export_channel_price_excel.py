@@ -75,7 +75,7 @@ def export_channel_price_excel_from_txt(brand: str, txt_path: str):
     query = f"""
         SELECT channel_product_id, original_price_gbp, discount_price_gbp, product_code
         FROM {table_name}
-        WHERE is_published = TRUE AND channel_product_id IS NOT NULL
+        WHERE channel_product_id IS NOT NULL
     """
     df = pd.read_sql_query(query, conn)
     conn.close()
