@@ -32,4 +32,4 @@ def generate_product_links(brand: str):
 
 
 if __name__ == "__main__":
-    generate_product_links("clarks")
+    generate_product_links("clarks_jingya")
