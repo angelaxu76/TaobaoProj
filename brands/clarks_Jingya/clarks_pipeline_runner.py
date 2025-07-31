@@ -14,6 +14,7 @@ from common_taobao.tools.merge_product_images import batch_merge_images
 from common_taobao.tools.HTMLToPGNBatchMutipleThread import convert_html_to_images
 from common_taobao.tools.cutterAllsiderSpace import trim_images_in_folder
 from common_taobao.generate_html import main as generate_html_main
+from brands.clarks_Jingya.unified_link_collector import generate_product_links
 from pathlib import Path
 
 BASE_DIR = CLARKS_JINGYA["BASE"]
@@ -47,10 +48,10 @@ def main():
     backup_and_clear_brand_dirs(CLARKS_JINGYA)  # ✅ 使用共享方法
 
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    run_script("unified_link_collector.py")
+    generate_product_links("clarks")
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    run_script("fetch_product_info.py")
+    #run_script("fetch_product_info.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
     #import_txt_to_db("clarks")
