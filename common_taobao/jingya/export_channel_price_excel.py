@@ -19,6 +19,11 @@ def export_channel_price_excel(brand: str):
     df = pd.read_sql_query(query, conn)
     conn.close()
 
+    # 🔽 ✅ 在这里加 debug
+    print(f"📊 原始记录总数（未分组）: {len(df)}")
+    print(f"📊 不重复的 channel_product_id 数量: {df['channel_product_id'].nunique()}")
+    print(f"📊 缺失价格字段数量: {(df['original_price_gbp'].isnull() | df['discount_price_gbp'].isnull()).sum()}")
+
     df_grouped = df.groupby("channel_product_id").agg({
         "original_price_gbp": "first",
         "discount_price_gbp": "first",
