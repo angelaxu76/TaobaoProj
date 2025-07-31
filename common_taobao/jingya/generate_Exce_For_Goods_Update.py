@@ -5,6 +5,7 @@ import psycopg2
 from config import CAMPER  # ✅ 引入 camper 品牌配置
 from pathlib import Path
 
+# === 货品文件请放到 D:\TB\taofenxiao\goods 目录下===
 # === 目录与路径 ===
 base_dir = Path("D:/TB/taofenxiao/goods")
 output_excel_path = base_dir / "更新后的货品导入.xlsx"

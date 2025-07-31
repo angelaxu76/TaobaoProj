@@ -88,11 +88,11 @@ def calculate_camper_untaxed_and_retail(original_price, discount_price, delivery
 
     try:
         # 不含税价计算逻辑
-        untaxed = (base_price * 0.75 + delivery_cost) * 1.15 * exchange_rate
+        untaxed = (base_price * 0.75 + delivery_cost) * 1.1 * exchange_rate
         untaxed = floor(untaxed / 10) * 10
 
         # 零售价计算逻辑
-        retail = untaxed * 1.45
+        retail = untaxed * 1.40
         retail = floor(retail / 10) * 10
 
         return untaxed, retail

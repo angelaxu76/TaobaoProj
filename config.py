@@ -209,6 +209,41 @@ CLARKS = {
     }
 }
 
+
+# === Clarks 鲸芽供货商模式路径配置 ===
+CLARKS_JINGYA_BASE = BASE_DIR / "clarks_jingya"
+CLARKS_JINGYA = {
+    "BRAND": "clarks_jingya",
+    "BASE": CLARKS_JINGYA_BASE,
+    "TXT_DIR": CLARKS_JINGYA_BASE / "publication" / "TXT",
+    "ORG_IMAGE_DIR": CLARKS_JINGYA_BASE / "document" / "orgin_images",
+    "DEF_IMAGE_DIR": CLARKS_JINGYA_BASE / "document" / "DEF_images",
+    "IMAGE_DIR": CLARKS_JINGYA_BASE / "document" / "images",
+    "IMAGE_DOWNLOAD": CLARKS_JINGYA_BASE / "publication" / "image_download",
+    "IMAGE_PROCESS": CLARKS_JINGYA_BASE / "publication" / "image_process",
+    "IMAGE_CUTTER": CLARKS_JINGYA_BASE / "publication" / "image_cutter",
+    "MERGED_DIR": CLARKS_JINGYA_BASE / "document" / "image_merged",
+    "HTML_DIR": CLARKS_JINGYA_BASE / "publication" / "html",
+    "HTML_IMAGE": CLARKS_JINGYA_BASE / "publication" / "html_image",
+    "HTML_CUTTER": CLARKS_JINGYA_BASE / "document" / "html_cutter",
+    "STORE_DIR": CLARKS_JINGYA_BASE / "document" / "store",
+    "OUTPUT_DIR": CLARKS_JINGYA_BASE / "repulibcation",
+    "TABLE_NAME": "clarks_jingya_inventory",
+    "PGSQL_CONFIG": PGSQL_CONFIG,
+    "LINKS_FILE": CLARKS_JINGYA_BASE / "publication" / "product_links.txt",
+    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "FIELDS": {
+        "product_code": "product_code",
+        "url": "product_url",
+        "discount_price": "discount_price_gbp",
+        "original_price": "original_price_gbp",
+        "size": "size",
+        "stock": "stock_count",  # ✅ 改为数值库存
+        "gender": "gender"
+    }
+}
+
+
 # === BIRKENSTOCK 品牌路径配置 ===
 BIRKENSTOCK_BASE = BASE_DIR / "birkenstock"
 BIRKENSTOCK = {
@@ -290,6 +325,7 @@ ECCO = {
 # === 品牌映射 ===
 BRAND_CONFIG = {
     "clarks": CLARKS,
+    "clarks_jingya": CLARKS_JINGYA,
     "camper": CAMPER,
     "camper_global": CAMPER_GLOBAL,
     "geox": GEOX,
@@ -302,6 +338,7 @@ BRAND_CONFIG = {
 BRAND_NAME_MAP = {
     "camper": ("Camper", "看步"),
     "clarks": ("Clarks", "其乐"),
+    "clarks_jingya": ("Clarks", "其乐"),
     "geox": ("GEOX", "健乐士"),
     "ecco": ("ECCO", "爱步"),
     "barbour": ("Barbour", "巴伯尔"),
