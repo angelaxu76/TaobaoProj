@@ -7,8 +7,8 @@ sys.stdout.reconfigure(encoding='utf-8')
 sys.path.insert(0, str(Path(__file__).resolve().parents[1].parent))
 
 from config import BRAND_CONFIG
-from brands.clarks.core.GetProductURLs import get_regular_product_links
-from brands.clarks.core.GetOutletProductURL import get_outlet_product_links
+from brands.clarks_Jingya.core.GetProductURLs import get_regular_product_links
+from brands.clarks_Jingya.core.GetOutletProductURL import get_outlet_product_links
 
 
 def generate_product_links(brand: str):

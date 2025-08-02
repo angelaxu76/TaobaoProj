@@ -11,13 +11,13 @@ import re
 import json
 import requests
 from bs4 import BeautifulSoup
-from config import CLARKS
+from config import CLARKS_JINGYA
 from common_taobao.txt_writer import format_txt
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
-LINK_FILE = CLARKS["BASE"] / "publication" / "product_links.txt"
-TXT_DIR = CLARKS["TXT_DIR"]
-BRAND = CLARKS["BRAND"]
+LINK_FILE = CLARKS_JINGYA["BASE"] / "publication" / "product_links.txt"
+TXT_DIR = CLARKS_JINGYA["TXT_DIR"]
+BRAND = CLARKS_JINGYA["BRAND"]
 
 UK_TO_EU_CM = {
     "3": "35.5", "3.5": "36", "4": "37", "4.5": "37.5", "5": "38",
