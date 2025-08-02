@@ -52,6 +52,24 @@ def detect_gender(text):
         return "童款"
     return "未知"
 
+def extract_simple_color(name: str) -> str:
+    """
+    从商品名称中提取颜色关键词（英文）。
+    如果未匹配到，则返回 "No Data"
+    """
+    name = name.lower()
+    color_keywords = [
+        "black", "tan", "navy", "brown", "white", "grey",
+        "blue", "silver", "red", "green", "beige",
+        "pink", "burgundy", "orange", "yellow"
+    ]
+    for color in color_keywords:
+        if color in name:
+            return color
+    return "No Data"
+
+
+
 def process_product(url):
     try:
         r = requests.get(url, headers=HEADERS, timeout=15)
@@ -60,6 +78,7 @@ def process_product(url):
 
         code = extract_product_code(url)
         title = soup.title.get_text(strip=True) if soup.title else "No Title"
+        color_name = extract_simple_color(title)
         name = title.replace("| Clarks UK", "").strip()
 
         json_ld = soup.find("script", type="application/ld+json")
@@ -75,11 +94,8 @@ def process_product(url):
 
         material = extract_material(soup)
 
-        color_name = "No Data"
         try:
-            html = r.text  # ✅ 添加这行以定义 html 原始源码
-
-            # 使用正则匹配颜色信息
+            html = r.text  # ✅ 定义 html 原始源码
             pattern = r'{"key":"(\d+)",\s*"color\.en-GB":"(.*?)",\s*"image":"(https://cdn\.media\.amplience\.net/i/clarks/[^"]+)"}'
             matches = re.findall(pattern, html)
 
@@ -90,10 +106,19 @@ def process_product(url):
                     color_name = color
                     print(f"✅ 匹配到当前商品颜色: {color_name}")
                     break
+
+            # fallback 从标题中提取
             if color_name == "No Data":
                 print(f"❌ 未匹配到当前商品编码: {code}")
+                color_name = extract_simple_color(title)
+                if color_name != "No Data":
+                    print(f"🔁 回退提取颜色: {color_name}")
+
         except Exception as e:
             print(f"⚠️ 解析颜色出错: {e}")
+            color_name = extract_simple_color(title)
+            if color_name != "No Data":
+                print(f"🔁 回退提取颜色: {color_name}")
 
         size_map = {}
         for btn in soup.find_all("button", {"data-testid": "sizeItem"}):

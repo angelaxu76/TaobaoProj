@@ -13,20 +13,20 @@ def main():
     #download_images_by_code_file(r"D:\TB\Products\clarks\repulibcation\五小剑\missing_images.txt")
 
     print("图抖动加上水平翻转")
-    batch_process_images(CLARKS["IMAGE_DOWNLOAD"],CLARKS["IMAGE_PROCESS"])
+    #batch_process_images(CLARKS["IMAGE_DOWNLOAD"],CLARKS["IMAGE_PROCESS"])
 
     print("最大化灰度裁剪图片")
     bg_color = (240, 240, 240)
     tolerance = 35
     quality = 85
 
-    run_crop_and_expand(CLARKS["IMAGE_PROCESS"], CLARKS["IMAGE_CUTTER"], bg_color, tolerance, quality)
+    #run_crop_and_expand(CLARKS["IMAGE_PROCESS"], CLARKS["IMAGE_CUTTER"], bg_color, tolerance, quality)
 
     print("将图片merge到一张图片中")
     batch_merge_images(CLARKS["IMAGE_CUTTER"], CLARKS["MERGED_DIR"], width=750)
 
     print("生成产品详情卡HTML")
-    generate_html_main("camper")
+    generate_html_main("clarks")
 
     print("生成产品详情卡图片")
     GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径

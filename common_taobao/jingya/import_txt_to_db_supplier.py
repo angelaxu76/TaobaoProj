@@ -35,7 +35,7 @@ def parse_txt_file(txt_path: Path) -> list:
             raw = line.split(":", 1)[1]
             for item in raw.split(";"):
                 parts = item.strip().split(":")
-                if len(parts) == 3:
+                if len(parts) == 2:
                     size, stock_count, ean = parts
                     try:
                         stock_count = int(stock_count)
