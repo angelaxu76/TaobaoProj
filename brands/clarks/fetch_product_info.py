@@ -4,7 +4,7 @@ from config import SIZE_RANGE_CONFIG
 import re
 import json
 
-# ✅ 加入项目根目录
+## ✅ 加入项目根目录
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 import re
