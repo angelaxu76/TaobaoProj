@@ -52,6 +52,18 @@ def detect_gender(text):
         return "童款"
     return "未知"
 
+def extract_simple_color(name: str) -> str:
+    name = name.lower()
+    color_keywords = [
+        "black", "tan", "navy", "brown", "white", "grey",
+        "blue", "silver", "red", "green", "beige",
+        "pink", "burgundy", "orange", "yellow"
+    ]
+    for color in color_keywords:
+        if color in name:
+            return color
+    return "No Data"
+
 def process_product(url):
     try:
         r = requests.get(url, headers=HEADERS, timeout=15)
@@ -60,6 +72,7 @@ def process_product(url):
 
         code = extract_product_code(url)
         title = soup.title.get_text(strip=True) if soup.title else "No Title"
+        color_name = extract_simple_color(title)
         name = title.replace("| Clarks UK", "").strip()
 
         json_ld = soup.find("script", type="application/ld+json")
@@ -75,7 +88,6 @@ def process_product(url):
 
         material = extract_material(soup)
 
-        color_name = "No Data"
         try:
             html = r.text  # ✅ 添加这行以定义 html 原始源码
 
