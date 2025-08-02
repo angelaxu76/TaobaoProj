@@ -45,10 +45,10 @@ def run_script(filename: str):
 
 def main():
     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    backup_and_clear_brand_dirs(CLARKS_JINGYA)  # ✅ 使用共享方法
+    #backup_and_clear_brand_dirs(CLARKS_JINGYA)  # ✅ 使用共享方法
 
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    generate_product_links("clarks_jingya")
+    #generate_product_links("clarks_jingya")
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
     run_script("fetch_product_info.py")

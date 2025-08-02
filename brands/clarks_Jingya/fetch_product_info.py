@@ -102,10 +102,12 @@ def process_product(url):
             size_map[uk] = "无货" if sold_out else "有货"
 
         sizes = []
+        size_detail = []
         eu_range = SIZE_RANGE_CONFIG.get("clarks", {}).get(gender, [])
         for eu in eu_range:
-            status = "有货" if eu in [UK_TO_EU_CM.get(k) for k, v in size_map.items() if v == "有货"] else "无货"
-            sizes.append(f"{eu}:{status}")
+            stock = 3 if eu in [UK_TO_EU_CM.get(k) for k, v in size_map.items() if v == "有货"] else 0
+            sizes.append(f"{eu}:{stock}")
+            size_detail.append(f"{eu}:{stock}:0000000000000")  # 占位EAN码
 
         return {
         "Product Code": code,
@@ -117,6 +119,7 @@ def process_product(url):
         "Adjusted Price": discount_price,
         "Product Material": material,
         "Product Size": ";".join(sizes),
+        "Product Size Detail": ";".join(size_detail),
         "Source URL": url
     }
 

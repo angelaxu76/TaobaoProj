@@ -133,10 +133,9 @@ def main():
 
     print("\n✅ 所有图片下载完成")
 
+def download_all_images_from_product_links():
+    main()
+
 
 if __name__ == "__main__":
-    # main()  # 处理 product_links.txt 中所有链接
-
-    # 👇 或者只处理指定编码的商品补图
-    code_txt_path = CLARKS_JINGYA["BASE"] / "publication" / "补图编码.txt"
-    download_images_by_code_file(code_txt_path)
+    main()  # 处理 product_links.txt 中所有链接

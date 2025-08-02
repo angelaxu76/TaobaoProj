@@ -7,10 +7,12 @@ LINK_PATTERN = r"https://www\.clarksoutlet\.co\.uk/[\w\-]+/\d+-p"
 
 URLS = {
     "women_shoes": "https://www.clarksoutlet.co.uk/womens/womens-shoes/w_shoes_uko-c?page=5",
+    "women_new": "https://www.clarksoutlet.co.uk/womens/womens-new-in/w_new_uko-c?page=5",
     "women_sandals": "https://www.clarksoutlet.co.uk/womens/womens-sandals/w_sandals_uko-c?page=3",
     "women_originals": "https://www.clarksoutlet.co.uk/womens-originals/wo_allstyles_uko-c?page=3",
     "women_boots": "https://www.clarksoutlet.co.uk/womens/womens-boots/w_boots_uko-c?page=3",
     "men_shoes": "https://www.clarksoutlet.co.uk/mens/mens-shoes/m_shoes_uko-c?page=5",
+    "men_new": "https://www.clarksoutlet.co.uk/mens/mens-new-in/m_new_uko-c?page=5",
     "men_boots": "https://www.clarksoutlet.co.uk/mens/mens-boots/m_boots_uko-c?page=3",
     "men_originals": "https://www.clarksoutlet.co.uk/mens-originals/mo_allstyles_uko-c?page=3"
 }
