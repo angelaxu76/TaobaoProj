@@ -182,14 +182,27 @@ def parse_txt(txt_path):
                 data[key.strip()] = val.strip()
     return data
 
-def find_image_path(code, image_dir):
-    img_f = image_dir / f"{code}_F.jpg"
-    img_c = image_dir / f"{code}_C.jpg"
-    if img_f.exists():
-        return f"file:///{img_f.as_posix()}"
-    elif img_c.exists():
-        return f"file:///{img_c.as_posix()}"
+def find_image_path(code, brand):
+    from config import BRAND_CONFIG
+    from pathlib import Path
+
+    PLACEHOLDER_IMG = "https://via.placeholder.com/500x500?text=No+Image"
+
+    cfg = BRAND_CONFIG.get(brand.lower(), {})
+    priority = cfg.get("IMAGE_PRIORITY", ["F", "C", "1", "01"])
+    image_dir = Path(cfg.get("IMAGE_DIR", ""))
+
+    if not image_dir.exists():
+        return PLACEHOLDER_IMG
+
+    for suffix in priority:
+        candidate = image_dir / f"{code}_{suffix}.jpg"
+        if candidate.exists():
+            return f"file:///{candidate.as_posix()}"
+
     return PLACEHOLDER_IMG
+
+
 
 def extract_features(description_en):
     if not description_en:
@@ -199,7 +212,7 @@ def extract_features(description_en):
     parts = re.split(r",| and ", first_sentence)
     return [clean_ad_sensitive(safe_translate(p.strip())) for p in parts if p.strip()]
 
-def generate_html(data, output_path, image_dir):
+def generate_html(data, output_path, image_dir,brand):
     product_name = data.get("Product Name", "")
     description_en = data.get("Product Description", "")
     description_zh = clean_ad_sensitive(safe_translate(description_en))
@@ -207,7 +220,7 @@ def generate_html(data, output_path, image_dir):
     color = data.get("Product Color", "")
     material = data.get("Product Material", "")
     code = data.get("Product Code", "")
-    image_path = find_image_path(code, image_dir)
+    image_path = find_image_path(code, image_dir, brand)
 
     feature_field = data.get("Feature", "")
     if feature_field and feature_field.lower() != "no data":
