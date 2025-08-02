@@ -55,9 +55,10 @@ def detect_gender(text):
 def extract_simple_color(name: str) -> str:
     name = name.lower()
     color_keywords = [
-        "black", "tan", "navy", "brown", "white", "grey",
-        "blue", "silver", "red", "green", "beige",
-        "pink", "burgundy", "orange", "yellow"
+        "black", "tan", "navy", "brown", "white", "grey", "off white", "blue",
+        "silver", "olive", "cream", "red", "green", "beige", "cola", "pink",
+        "burgundy", "taupe", "stone", "bronze", "orange", "walnut", "pewter",
+        "plum", "yellow", "rust"
     ]
     for color in color_keywords:
         if color in name:
