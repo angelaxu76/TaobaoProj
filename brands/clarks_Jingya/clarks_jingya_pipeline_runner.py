@@ -3,18 +3,15 @@ import shutil
 import subprocess
 from datetime import datetime
 from config import CLARKS_JINGYA,TAOBAO_STORES,BRAND_CONFIG
-from common_taobao.generate_discount_price_excel import export_store_discount_price,export_discount_price_with_skuids
-from common_taobao.export_skuid_stock import export_skuid_stock_excel
-from common_taobao.import_txt_to_db import import_txt_to_db
-from common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
-from common_taobao.mark_offline_products import mark_offline_products
-from common_taobao.mark_offline_products_from_store_excels import mark_offline_products_from_store_excels
+from common_taobao.jingya.import_channel_info_from_excel import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
+from common_taobao.jingya.export_channel_price_excel import export_channel_price_excel,export_all_sku_price_excel
 from common_taobao.backup_and_clear import backup_and_clear_brand_dirs
-from common_taobao.tools.merge_product_images import batch_merge_images
-from common_taobao.tools.HTMLToPGNBatchMutipleThread import convert_html_to_images
-from common_taobao.tools.cutterAllsiderSpace import trim_images_in_folder
-from common_taobao.generate_html import main as generate_html_main
-from brands.clarks_Jingya.unified_link_collector import generate_product_links
+from common_taobao.jingya.import_txt_to_db_supplier import import_txt_to_db_supplier
+from common_taobao.jingya.disable_low_stock_product import disable_low_stock_products
+from common_taobao.jingya.export_gender_split_excel import export_gender_split_excel
+from common_taobao.generate_discount_price_excel import export_store_discount_price
+from common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
+from common_taobao.jingya.generate_publication_excel import generate_publication_excels
 from pathlib import Path
 
 BASE_DIR = CLARKS_JINGYA["BASE"]
@@ -53,8 +50,8 @@ def main():
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
     run_script("fetch_product_info.py")
 
-    print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
-    #import_txt_to_db("clarks")
+    print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
+    #import_txt_to_db_supplier("clarks_jingya")  # ✅ 新逻辑
 
 
     print("\n🟡 Step: 5️⃣ 导出价格 Excel")

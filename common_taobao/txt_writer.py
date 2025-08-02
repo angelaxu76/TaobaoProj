@@ -28,7 +28,7 @@ def format_txt(info: dict, filepath: Path, brand: str = None):
         lines.append(f"Product Size: {info['Product Size']}")
 
     # ✅ Camper 专用格式（带库存数字和 EAN）
-    if brand == "camper" and "SizeDetail" in info:
+    if  "SizeDetail" in info:
         detail_lines = []
         for size, detail in info["SizeDetail"].items():
             stock_count = detail.get("stock_count", 0)
