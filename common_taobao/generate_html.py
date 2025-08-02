@@ -161,7 +161,9 @@ HTML_TEMPLATE = """
     </div>
     <div class="description"><strong>商品描述：</strong><br>{description}</div>
     <div class="info-section">
+    <!--
         <div class="info-box"><strong>颜色：</strong><span class="color-dot"></span>{color}</div>
+        -->
         <div class="info-box"><strong>材质：</strong><span class="material-square"></span>{material}</div>
         <div class="info-box"><strong>性别：</strong>{gender}</div>
     </div>
@@ -182,7 +184,7 @@ def parse_txt(txt_path):
                 data[key.strip()] = val.strip()
     return data
 
-def find_image_path(code, brand):
+def find_image_path(code, image_dir, brand):
     from config import BRAND_CONFIG
     from pathlib import Path
 
@@ -190,7 +192,6 @@ def find_image_path(code, brand):
 
     cfg = BRAND_CONFIG.get(brand.lower(), {})
     priority = cfg.get("IMAGE_PRIORITY", ["F", "C", "1", "01"])
-    image_dir = Path(cfg.get("IMAGE_DIR", ""))
 
     if not image_dir.exists():
         return PLACEHOLDER_IMG
@@ -201,6 +202,7 @@ def find_image_path(code, brand):
             return f"file:///{candidate.as_posix()}"
 
     return PLACEHOLDER_IMG
+
 
 
 
@@ -245,15 +247,16 @@ def generate_html(data, output_path, image_dir,brand):
     return output_path
 
 # === 多线程处理 ===
-def process_file(txt_file, image_dir, html_dir):
+def process_file(txt_file, image_dir, html_dir, brand):
     try:
         data = parse_txt(txt_file)
         code = data.get("Product Code", txt_file.stem)
         output_file = html_dir / f"{code}.html"
-        generate_html(data, output_file, image_dir)
+        generate_html(data, output_file, image_dir, brand)
         return f"✅ {output_file.name}"
     except Exception as e:
         return f"❌ {txt_file.name}: {e}"
+
 
 def main(brand=None, max_workers=4):
     if brand is None:
@@ -281,7 +284,12 @@ def main(brand=None, max_workers=4):
 
     print(f"开始处理 {len(files)} 个文件，使用 {max_workers} 个线程...")
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(process_file, txt_file, image_dir, html_dir): txt_file for txt_file in files}
+        # ✅ 正确版本
+        futures = {
+            executor.submit(process_file, txt_file, image_dir, html_dir, brand): txt_file
+            for txt_file in files
+        }
+
         for future in as_completed(futures):
             print(future.result())
 

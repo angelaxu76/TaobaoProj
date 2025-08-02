@@ -216,7 +216,7 @@ CLARKS_JINGYA_BASE = BASE_DIR / "clarks_jingya"
 CLARKS_JINGYA = {
     "BRAND": "clarks_jingya",
     "BASE": CLARKS_JINGYA_BASE,
-    "IMAGE_PRIORITY": ["4", "6", "1", "2"],
+    "IMAGE_PRIORITY": ["1", "6", "4", "2"],
     "TXT_DIR": CLARKS_JINGYA_BASE / "publication" / "TXT",
     "ORG_IMAGE_DIR": CLARKS_JINGYA_BASE / "document" / "orgin_images",
     "DEF_IMAGE_DIR": CLARKS_JINGYA_BASE / "document" / "DEF_images",
