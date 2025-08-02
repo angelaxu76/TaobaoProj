@@ -12,6 +12,7 @@ from common_taobao.jingya.export_gender_split_excel import export_gender_split_e
 from common_taobao.generate_discount_price_excel import export_store_discount_price
 from common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
 from common_taobao.jingya.generate_publication_excel import generate_publication_excels
+
 from pathlib import Path
 
 BASE_DIR = CLARKS_JINGYA["BASE"]
@@ -48,11 +49,13 @@ def main():
     #generate_product_links("clarks_jingya")
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    run_script("fetch_product_info.py")
+    #run_script("clarks_jinya_fetch_product_info.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
     #import_txt_to_db_supplier("clarks_jingya")  # ✅ 新逻辑
 
+    print("\\n🟡 Step: 6️⃣生成发布产品的excel")
+    generate_publication_excels("clarks_jingya")
 
     print("\n🟡 Step: 5️⃣ 导出价格 Excel")
     #for store in TAOBAO_STORES:

@@ -35,7 +35,7 @@ def parse_txt_file(txt_path: Path) -> list:
             raw = line.split(":", 1)[1]
             for item in raw.split(";"):
                 parts = item.strip().split(":")
-                if len(parts) == 2:
+                if len(parts) == 3:
                     size, stock_count, ean = parts
                     try:
                         stock_count = int(stock_count)
@@ -110,5 +110,4 @@ def import_txt_to_db_supplier(brand_name: str):
 
     print(f"✅ [{brand_name.upper()}] 已完成数据导入并处理库存阈值")
 
-if __name__ == "__main__":
-    import_txt_to_db_supplier("camper")
+

@@ -161,9 +161,7 @@ HTML_TEMPLATE = """
     </div>
     <div class="description"><strong>商品描述：</strong><br>{description}</div>
     <div class="info-section">
-    <!--
         <div class="info-box"><strong>颜色：</strong><span class="color-dot"></span>{color}</div>
-        -->
         <div class="info-box"><strong>材质：</strong><span class="material-square"></span>{material}</div>
         <div class="info-box"><strong>性别：</strong>{gender}</div>
     </div>

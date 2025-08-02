@@ -2,7 +2,7 @@ import os
 import psycopg2
 import pandas as pd
 from pathlib import Path
-from config import CAMPER, CLARKS, ECCO, GEOX,BRAND_CONFIG
+from config import CAMPER, CLARKS_JINGYA, ECCO, GEOX,BRAND_CONFIG
 
 
 def find_latest_gei_file(document_dir: Path) -> Path:
