@@ -77,6 +77,11 @@ BARBOUR = {
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": BARBOUR_BASE / "publication" / "product_links.txt",
     "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "LINKS_FILES": {
+        "outdoorandcountry": BARBOUR_BASE / "publication" / "outdoorandcountry" / "product_links.txt",
+        "countryattire": BARBOUR_BASE / "publication" / "countryattire" / "product_links.txt",
+        "nortonbarrie": BARBOUR_BASE / "publication" / "nortonbarrie" / "product_links.txt"
+    },
     "FIELDS": {
         "product_code": "product_code",
         "url": "product_url",

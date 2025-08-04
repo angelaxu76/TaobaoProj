@@ -1,0 +1,25 @@
+# pipeline_outdoorandcountry.py
+# ✅ 用于抓取 Outdoor and Country 网站的 Barbour 商品链接并后续处理
+
+import subprocess
+from pathlib import Path
+from config import BARBOUR
+from barbour.supplier.get_outdoorandcountry_links import outdoorandcountry_fetch_and_save_links
+
+def run_step(desc, cmd):
+    print(f"\n🟢 {desc}")
+    result = subprocess.run(cmd, shell=True)
+    if result.returncode != 0:
+        print(f"❌ 步骤失败: {desc}")
+        exit(1)
+
+def main():
+    print("🚀 启动 Barbour - Outdoor and Country 抓取商品URL")
+    outdoorandcountry_fetch_and_save_links()
+    # Step 2: TODO 后续可集成 fetch_product_info.py（解析库存、价格）
+    # run_step("抓取商品信息", "python fetch_outdoorandcountry_info.py")
+
+    print("\n✅ 全部流程完成")
+
+if __name__ == "__main__":
+    main()
