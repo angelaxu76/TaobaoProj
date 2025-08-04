@@ -6,6 +6,7 @@ from pathlib import Path
 from config import BARBOUR
 from barbour.supplier.get_outdoorandcountry_links import outdoorandcountry_fetch_and_save_links
 from barbour.supplier.outdoorcountry_fetch_info import fetch_outdoor_product_offers_concurrent
+from barbour.import_supplier_to_db_stock import import_txt_for_supplier
 def run_step(desc, cmd):
     print(f"\n🟢 {desc}")
     result = subprocess.run(cmd, shell=True)
@@ -18,8 +19,10 @@ def main():
     #outdoorandcountry_fetch_and_save_links()
 
     # Step 2: TODO 后续可集成 fetch_product_info.py（解析库存、价格）
-    fetch_outdoor_product_offers_concurrent(max_workers=5)
+    #fetch_outdoor_product_offers_concurrent(max_workers=5)
 
+    # Step 2: TODO 将txt中数据导入数据库offers
+    import_txt_for_supplier("outdoorandcountry")
 
     print("\n✅ 全部流程完成")
 
