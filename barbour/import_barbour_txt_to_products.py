@@ -1,4 +1,5 @@
 from pathlib import Path
+from color_utils import normalize_color
 import psycopg2
 import re
 import unicodedata
