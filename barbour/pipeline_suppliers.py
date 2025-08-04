@@ -14,7 +14,7 @@ def run_step(desc, cmd):
         exit(1)
 
 def main():
-    print("🚀 启动 Barbour - Outdoor and Country 抓取商品URL")
+    print("🚀 启动 Barbour - Outdoor and Country 抓取shan")
     outdoorandcountry_fetch_and_save_links()
     # Step 2: TODO 后续可集成 fetch_product_info.py（解析库存、价格）
     # run_step("抓取商品信息", "python fetch_outdoorandcountry_info.py")

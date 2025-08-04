@@ -13,14 +13,14 @@ BASE_URLS = {
 
 TOTAL_PAGES = 50
 WAIT = 2
+BASE_DOMAIN = "https://www.outdoorandcountry.co.uk"
 OUTPUT_FILE = BARBOUR["LINKS_FILES"]["outdoorandcountry"]
 CHROMEDRIVER_PATH = str(BARBOUR["CHROMEDRIVER_PATH"])
 DEBUG_DIR = OUTPUT_FILE.parent / "debug_pages"
 
 def outdoorandcountry_fetch_and_save_links():
     chrome_options = Options()
-    # ✅ 调试时可注释掉 headless
-    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--headless")  # 可取消注释调试
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument(
@@ -29,7 +29,6 @@ def outdoorandcountry_fetch_and_save_links():
 
     driver = webdriver.Chrome(service=ChromeService(executable_path=CHROMEDRIVER_PATH), options=chrome_options)
 
-    # ✅ 启用 Stealth 模式绕过 Cloudflare 检测
     stealth(driver,
         languages=["en-US", "en"],
         vendor="Google Inc.",
@@ -51,22 +50,26 @@ def outdoorandcountry_fetch_and_save_links():
                 time.sleep(WAIT)
                 page_source = driver.page_source
 
-                # ✅ 保存本地调试 HTML
+                # 保存本地 HTML 页面以供调试
                 debug_file = DEBUG_DIR / f"debug_page_{section}_{page}.html"
                 with debug_file.open("w", encoding="utf-8") as f:
                     f.write(page_source)
 
-                # ✅ 解析商品链接
+                # 提取商品链接（支持相对路径）
                 soup = BeautifulSoup(page_source, "html.parser")
-                links = [
-                    a.get("href").strip()
-                    for a in soup.select("a.image")
-                    if a.get("href", "").startswith("http")
-                ]
+                links = []
+                for a in soup.select("a.image"):
+                    href = a.get("href", "").strip()
+                    if href:
+                        full_url = href if href.startswith("http") else BASE_DOMAIN + href
+                        links.append(full_url)
+
                 if not links:
                     print(f"⚠️ 第 {page} 页无商品，HTML 已保存: {debug_file}")
-                    break
+                    continue  # 跳过当前页，但不终止整个循环
+
                 all_links.update(links)
+
             except Exception as e:
                 print(f"❌ 抓取失败: {e}")
 
@@ -76,4 +79,5 @@ def outdoorandcountry_fetch_and_save_links():
     with OUTPUT_FILE.open("w", encoding="utf-8") as f:
         for link in sorted(all_links):
             f.write(link + "\n")
+
     print(f"\n✅ 共抓取链接: {len(all_links)}，写入: {OUTPUT_FILE}")
