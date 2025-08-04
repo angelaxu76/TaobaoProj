@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 from config import BARBOUR
 from barbour.supplier.get_outdoorandcountry_links import outdoorandcountry_fetch_and_save_links
-
+from barbour.supplier.outdoorcountry_fetch_info import fetch_outdoor_product_offers
 def run_step(desc, cmd):
     print(f"\n🟢 {desc}")
     result = subprocess.run(cmd, shell=True)
@@ -15,8 +15,10 @@ def run_step(desc, cmd):
 
 def main():
     print("🚀 启动 Barbour - Outdoor and Country 抓取流程")
-    outdoorandcountry_fetch_and_save_links()
+    #outdoorandcountry_fetch_and_save_links()
+
     # Step 2: TODO 后续可集成 fetch_product_info.py（解析库存、价格）
+    fetch_outdoor_product_offers()
 
 
     print("\n✅ 全部流程完成")

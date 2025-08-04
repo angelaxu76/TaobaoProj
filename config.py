@@ -82,6 +82,11 @@ BARBOUR = {
         "countryattire": BARBOUR_BASE / "publication" / "countryattire" / "product_links.txt",
         "nortonbarrie": BARBOUR_BASE / "publication" / "nortonbarrie" / "product_links.txt"
     },
+    "TXT_DIRS": {
+        "outdoorandcountry": BARBOUR_BASE/ "publication" / "outdoorandcountry" / "TXT",
+        "countryattire": BARBOUR_BASE/ "publication" / "outdoorandcountry" / "TXT",
+        "nortonbarrie": BARBOUR_BASE/ "publication" / "outdoorandcountry" / "TXT"
+    },
     "FIELDS": {
         "product_code": "product_code",
         "url": "product_url",
