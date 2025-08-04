@@ -1,9 +1,9 @@
 from pathlib import Path
-from color_utils import normalize_color
 import psycopg2
 import re
 import unicodedata
 from config import PGSQL_CONFIG  # ✅ 从 config 中读取连接配置
+from barbour.color_utils import normalize_color
 
 # === 通用词过滤（不纳入关键词） ===
 COMMON_WORDS = {
@@ -38,7 +38,8 @@ def parse_txt_file(filepath: Path):
         elif line.startswith("Product Name:"):
             info["style_name"] = line.split(":", 1)[1].strip()
         elif line.startswith("Product Color:"):
-            info["color"] = line.split(":", 1)[1].replace("-", "").strip()
+            raw_color = line.split(":", 1)[1].replace("-", "").strip()
+            info["color"] = normalize_color(raw_color)
         elif line.startswith("Product Size:"):
             size_part = line.split(":", 1)[1]
             info["sizes"] = [s.split(":")[0].strip() for s in size_part.split(";") if s.strip()]
