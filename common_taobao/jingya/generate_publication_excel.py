@@ -214,5 +214,3 @@ def generate_publication_excels(brand: str):
 
     print("\n✅ 所有操作完成。")
 
-if __name__ == "__main__":
-    generate_publication_excels("camper")

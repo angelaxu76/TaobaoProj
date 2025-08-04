@@ -3,10 +3,11 @@ from typing import List, Tuple
 from pathlib import Path
 
 def parse_txt_to_record(filepath: Path, brand: str) -> List[Tuple]:
-    if brand == "camper":
-        return parse_camper_txt(filepath)
+    if brand in ["camper", "clarks_jingya"]:  # 🟢 支持鲸芽统一格式
+        return parse_jingya_txt(filepath)
     else:
         return parse_generic_txt(filepath)
+
 
 def parse_generic_txt(filepath: Path) -> List[Tuple]:
     records = []
@@ -63,7 +64,7 @@ def parse_generic_txt(filepath: Path) -> List[Tuple]:
         ))
     return records
 
-def parse_camper_txt(filepath: Path) -> List[Tuple]:
+def parse_jingya_txt(filepath: Path) -> List[Tuple]:
     records = []
     with open(filepath, "r", encoding="utf-8") as f:
         lines = f.readlines()

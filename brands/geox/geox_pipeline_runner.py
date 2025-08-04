@@ -23,7 +23,7 @@ def main():
     #run_script("unified_link_collector.py")
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    #run_script("fetch_product_info.py")
+    #run_script("clarks_jinya_fetch_product_info.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
     import_txt_to_db("geox")

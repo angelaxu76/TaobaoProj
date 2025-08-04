@@ -65,6 +65,8 @@ def extract_simple_color(name: str) -> str:
             return color
     return "No Data"
 
+# === 省略上半部分保持不变 ===
+
 def process_product(url):
     try:
         r = requests.get(url, headers=HEADERS, timeout=15)
@@ -79,68 +81,74 @@ def process_product(url):
         json_ld = soup.find("script", type="application/ld+json")
         data = json.loads(json_ld.string) if json_ld else {}
         desc = data.get("description", "No Description")
-        discount_price = data.get("offers", {}).get("price", "")
 
         gender = detect_gender(title + " " + desc)
         size_range = FEMALE_RANGE if gender == "女款" else MALE_RANGE
 
+        # 折扣价
+        discount_price_raw = data.get("offers", {}).get("price", "")
+        discount_price = str(discount_price_raw).strip()
+
+        # 原价
         price_tag = soup.find("span", {"data-testid": "wasPrice"})
-        original_price = price_tag.get_text(strip=True).replace("\xa3", "") if price_tag else ""
+        if price_tag:
+            original_price = price_tag.get_text(strip=True).replace("£", "").strip()
+        else:
+            original_price = discount_price  # ✅ fallback 为折扣价
 
         material = extract_material(soup)
 
-        try:
-            html = r.text  # ✅ 添加这行以定义 html 原始源码
+        # ✅ Feature 占位（Clarks 没有结构化 feature）
+        feature_str = "No Data"
 
-            # 使用正则匹配颜色信息
+        # ✅ 提取颜色（通过 JSON）
+        try:
+            html = r.text
             pattern = r'{"key":"(\d+)",\s*"color\.en-GB":"(.*?)",\s*"image":"(https://cdn\.media\.amplience\.net/i/clarks/[^"]+)"}'
             matches = re.findall(pattern, html)
-
-            print(f"🟢 找到 {len(matches)} 个颜色选项")
             for key, color, img_url in matches:
-                print(f"🔹 key: {key}, color: {color}")
                 if key == code:
                     color_name = color
-                    print(f"✅ 匹配到当前商品颜色: {color_name}")
                     break
-            if color_name == "No Data":
-                print(f"❌ 未匹配到当前商品编码: {code}")
         except Exception as e:
             print(f"⚠️ 解析颜色出错: {e}")
 
+        # ✅ 提取尺码库存
         size_map = {}
         for btn in soup.find_all("button", {"data-testid": "sizeItem"}):
             uk = btn.get("title", "").strip()
             sold_out = "currently unavailable" in btn.get("aria-label", "").lower()
             size_map[uk] = "无货" if sold_out else "有货"
 
-        sizes = []
-        size_detail = []
         eu_range = SIZE_RANGE_CONFIG.get("clarks", {}).get(gender, [])
+        size_detail_dict = {}
+        size_map_str = {}
         for eu in eu_range:
-            stock = 3 if eu in [UK_TO_EU_CM.get(k) for k, v in size_map.items() if v == "有货"] else 0
-            sizes.append(f"{eu}:{stock}")
-            size_detail.append(f"{eu}:{stock}:0000000000000")  # 占位EAN码
+            # UK => EU 反向映射
+            matched = [uk for uk, status in size_map.items() if UK_TO_EU_CM.get(uk) == eu and status == "有货"]
+            stock = 3 if matched else 0
+            size_map_str[eu] = "有货" if stock > 0 else "无货"
+            size_detail_dict[eu] = {"stock_count": stock, "ean": "0000000000000"}
 
         return {
-        "Product Code": code,
-        "Product Name": name,
-        "Product Description": desc,
-        "Product Gender": gender,
-        "Product Color": color_name,
-        "Product Price": original_price,
-        "Adjusted Price": discount_price,
-        "Product Material": material,
-        "Product Size": ";".join(sizes),
-        "Product Size Detail": ";".join(size_detail),
-        "Source URL": url
-    }
-
-
+            "Product Code": code,
+            "Product Name": name,
+            "Product Description": desc,
+            "Product Gender": gender,
+            "Product Color": color_name,
+            "Product Price": original_price,
+            "Adjusted Price": discount_price,
+            "Product Material": material,
+            "Feature": feature_str,
+            "SizeMap": size_map_str,
+            "SizeDetail": size_detail_dict,
+            "Source URL": url
+        }
 
     except Exception as e:
         print(f"❌ 错误: {url}，{e}")
         return None
+
 
 def main():
     with open(LINK_FILE, "r", encoding="utf-8") as f:
