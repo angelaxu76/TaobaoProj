@@ -1,11 +1,12 @@
-from common_taobao.core.db_import import import_txt_to_db
-from config import CLARKS, PGSQL_CONFIG
-import psycopg2
+from pathlib import Path
 
-conn = psycopg2.connect(**PGSQL_CONFIG)
+def main():
+    txt_dir = Path(r"D:\TB\Products\barbour\publication\outdoorandcountry\TXT")
+    txt_files = sorted(txt_dir.glob("*.txt"))
 
-import_txt_to_db(
-    txt_dir=CLARKS["TXT_DIR"],
-    brand="clarks",
-    conn=conn
-)
+    print(f"📂 读取到的 TXT 文件数量: {len(txt_files)}\n")
+    for fpath in txt_files:
+        print(f" - {fpath.name}")
+
+if __name__ == "__main__":
+    main()

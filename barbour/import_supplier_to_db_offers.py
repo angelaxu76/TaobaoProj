@@ -143,11 +143,11 @@ def import_txt_for_supplier(supplier: str):
 
     txt_dir = BARBOUR["TXT_DIRS"][supplier]
     conn = get_connection()
-    files = [f for f in os.listdir(txt_dir) if f.endswith(".txt")]
+    files = sorted(Path(txt_dir).glob("*.txt"))
     missing = []
 
-    for fname in files:
-        fpath = os.path.join(txt_dir, fname)
+    for fpath in files:
+        fname = fpath.name  # ✅ 若你后续用到文件名
         try:
             print(f"\n=== 📄 正在处理文件: {fname} ===")
             info = parse_txt(fpath)
