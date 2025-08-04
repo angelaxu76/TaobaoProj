@@ -75,7 +75,8 @@ def find_color_code_by_keywords(conn, style_name: str, color: str):
         best_match = None
         best_score = 0
 
-        print(f"\n🔍 正在匹配 supplier 商品标题: \"{style_name}\"")
+        print(f"\n🔍 正在匹配 supplier 商品标题: \"{style_name}\" (颜色: {color})")
+        print("关键词:", ", ".join(keywords))
 
         for color_code, candidate_title, match_kw in candidates:
             if not match_kw:
@@ -107,7 +108,7 @@ def insert_offer(info, conn, missing_log: list):
             missing_log.append((
                 "NO_CODE", offer["size"], site, style_name, color, offer_url
             ))
-        return
+        return False  # ❗添加这一行
 
     for offer in info["offers"]:
         size = offer["size"]
@@ -133,6 +134,7 @@ def insert_offer(info, conn, missing_log: list):
             ))
 
     conn.commit()
+    return True  # ✅ 成功导入则返回 True
 
 def import_txt_for_supplier(supplier: str):
     if supplier not in BARBOUR["TXT_DIRS"]:
@@ -147,9 +149,13 @@ def import_txt_for_supplier(supplier: str):
     for fname in files:
         fpath = os.path.join(txt_dir, fname)
         try:
+            print(f"\n=== 📄 正在处理文件: {fname} ===")
             info = parse_txt(fpath)
-            insert_offer(info, conn, missing)
-            print(f"✅ 导入成功: {fname}")
+            matched = insert_offer(info, conn, missing)
+            if matched:
+                print(f"✅ 导入成功: {fname}")
+            else:
+                print(f"❌ 导入失败: {fname}（未匹配 color_code）")
         except Exception as e:
             print(f"❌ 导入失败: {fname}，错误: {e}")
 
@@ -163,6 +169,8 @@ def import_txt_for_supplier(supplier: str):
             writer.writerows(missing)
 
         print(f"\n⚠️ 有 {len(missing)} 个产品未能匹配 color_code，已记录到: {output}")
+
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
