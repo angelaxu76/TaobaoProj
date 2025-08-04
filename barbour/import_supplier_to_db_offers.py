@@ -6,11 +6,14 @@ from datetime import datetime
 from pathlib import Path
 from config import BARBOUR
 
-# === 连接数据库 ===
+COMMON_WORDS = {
+    "bag", "jacket", "coat", "quilted", "top", "shirt",
+    "backpack", "vest", "tote", "crossbody", "holdall", "briefcase"
+}
+
 def get_connection():
     return psycopg2.connect(**BARBOUR["PGSQL_CONFIG"])
 
-# === 提取报价 TXT 内容 ===
 def parse_txt(filepath):
     with open(filepath, "r", encoding="utf-8") as f:
         lines = f.read().splitlines()
@@ -32,7 +35,7 @@ def parse_txt(filepath):
             info["url"] = line.split("Product URL:")[1].strip()
         elif line.startswith("Site Name:"):
             info["site"] = line.split("Site Name:")[1].strip()
-        elif "|" in line and line.strip()[0].upper() in ("SMLX"):
+        elif "|" in line and line.strip()[0].upper() in ("SMLX1234567890"):
             try:
                 size, price, stock, avail = [x.strip() for x in line.split("|")]
                 info["offers"].append({
@@ -45,35 +48,54 @@ def parse_txt(filepath):
                 continue
     return info
 
-# === 从 URL 提取 color_code（如 MWX0339NY91）===
-def extract_color_code_from_url(url: str) -> str:
-    if "-" in url:
-        last_part = url.split("/")[-1].split(".")[0]
-        parts = last_part.split("-")
-        return parts[-1].upper()
-    return "UNKNOWN"
+def extract_match_keywords(style_name: str):
+    return [w.lower() for w in style_name.split() if len(w) >= 3 and w.lower() not in COMMON_WORDS]
 
-# === 插入 offers，如果找不到产品则记录为缺失项 ===
+def find_color_code_by_keywords(conn, style_name: str, color: str):
+    keywords = extract_match_keywords(style_name)
+    if not keywords:
+        return None
+
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT color_code, match_keywords
+            FROM barbour_products
+            WHERE LOWER(color) = %s
+        """, (color.lower(),))
+        candidates = cur.fetchall()
+
+        best_match = None
+        best_score = 0
+
+        for color_code, match_kw in candidates:
+            if not match_kw:
+                continue
+            match_count = sum(1 for k in keywords if k in match_kw)
+            if match_count > best_score:
+                best_match = color_code
+                best_score = match_count
+
+        return best_match if best_score >= 2 else None
+
 def insert_offer(info, conn, missing_log: list):
     site = info["site"]
     offer_url = info["url"]
     style_name = info["style_name"]
     color = info["color"]
-    color_code = extract_color_code_from_url(offer_url)
+
+    color_code = find_color_code_by_keywords(conn, style_name, color)
+
+    if not color_code:
+        for offer in info["offers"]:
+            missing_log.append((
+                "NO_CODE", offer["size"], site, style_name, color, offer_url
+            ))
+        return
 
     for offer in info["offers"]:
         size = offer["size"]
 
         with conn.cursor() as cur:
-            cur.execute("""
-                SELECT 1 FROM barbour_products WHERE color_code = %s AND size = %s
-            """, (color_code, size))
-            exists = cur.fetchone()
-
-            if not exists:
-                missing_log.append((color_code, size, site, style_name, color, offer_url))
-                continue
-
             cur.execute("""
                 INSERT INTO offers (color_code, size, site_name, offer_url, price_gbp, stock_status, can_order, last_checked)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
@@ -95,7 +117,6 @@ def insert_offer(info, conn, missing_log: list):
 
     conn.commit()
 
-# === 主流程 ===
 def import_txt_for_supplier(supplier: str):
     if supplier not in BARBOUR["TXT_DIRS"]:
         print(f"❌ 未找到 supplier: {supplier}")
@@ -117,7 +138,6 @@ def import_txt_for_supplier(supplier: str):
 
     conn.close()
 
-    # 输出缺失产品到 CSV
     if missing:
         output = Path(f"missing_products_{supplier}.csv")
         with open(output, "w", encoding="utf-8", newline="") as f:
@@ -125,9 +145,8 @@ def import_txt_for_supplier(supplier: str):
             writer.writerow(["color_code", "size", "site", "style_name", "color", "offer_url"])
             writer.writerows(missing)
 
-        print(f"\n⚠️ 有 {len(missing)} 个产品缺失于 barbour_products，已保存: {output}")
+        print(f"\n⚠️ 有 {len(missing)} 个产品未能匹配 color_code，已记录到: {output}")
 
-# === 命令行入口 ===
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("用法: python import_barbour_offers.py [supplier]")

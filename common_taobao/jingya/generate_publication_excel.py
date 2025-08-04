@@ -32,6 +32,8 @@ from common_taobao.generate_taobao_title import generate_taobao_title
 MIN_SIZES = 4         # 最少尺码数量
 MIN_TOTAL_STOCK = 20  # 最少总库存
 
+
+
 def extract_field(name, content):
     pattern = re.compile(rf"{name}\s*[:：]\s*(.+)", re.IGNORECASE)
     match = pattern.search(content)
@@ -52,6 +54,11 @@ def generate_publication_excels(brand: str):
     brand = brand.lower()
     if brand not in BRAND_CONFIG:
         raise ValueError(f"❌ 不支持的品牌: {brand}")
+
+    if brand == "clarks_jingya":
+        MIN_TOTAL_STOCK = 11
+    elif brand == "camper":
+        MIN_TOTAL_STOCK = 20
 
     config = BRAND_CONFIG[brand]
     txt_folder = config["TXT_DIR"]
