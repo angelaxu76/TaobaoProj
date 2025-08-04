@@ -1,6 +1,6 @@
 -- ========== 删除旧表（注意顺序：先删依赖表） ==========
 DROP TABLE IF EXISTS offers;
-DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS barbour_products;
 
 -- ========== 表 1：产品表 products ==========
 CREATE TABLE barbour_products (

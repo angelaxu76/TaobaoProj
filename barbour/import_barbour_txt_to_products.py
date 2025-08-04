@@ -10,6 +10,7 @@ COMMON_WORDS = {
 }
 
 def extract_match_keywords(style_name: str):
+    cleaned = re.sub(r"[^\w\s]", "", style_name)  # 去掉®, ™, -, / 等
     words = [w.lower() for w in style_name.split() if len(w) >= 3]
     return [w for w in words if w not in COMMON_WORDS]
 
