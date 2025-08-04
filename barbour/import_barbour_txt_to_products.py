@@ -1,6 +1,7 @@
 from pathlib import Path
 import psycopg2
 import re
+import unicodedata
 from config import PGSQL_CONFIG  # ✅ 从 config 中读取连接配置
 
 # === 通用词过滤（不纳入关键词） ===
@@ -9,9 +10,19 @@ COMMON_WORDS = {
     "t-shirt", "pants", "trousers", "shorts", "parka"
 }
 
+def normalize_text(text: str) -> str:
+    # 将 Unicode 字符（如 ®、™）转换为 ASCII，丢弃无法转换的部分
+    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+
 def extract_match_keywords(style_name: str):
-    cleaned = re.sub(r"[^\w\s]", "", style_name)  # 去掉®, ™, -, / 等
-    words = [w.lower() for w in style_name.split() if len(w) >= 3]
+    # 1. Unicode 归一化，移除所有注册商标/奇怪字符
+    style_name = normalize_text(style_name)
+
+    # 2. 移除非字母数字字符（保留空格）
+    cleaned = re.sub(r"[^\w\s]", "", style_name)
+
+    # 3. 分词并过滤通用词
+    words = [w.lower() for w in cleaned.split() if len(w) >= 3]
     return [w for w in words if w not in COMMON_WORDS]
 
 def parse_txt_file(filepath: Path):

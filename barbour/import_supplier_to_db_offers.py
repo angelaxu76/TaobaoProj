@@ -1,15 +1,26 @@
 import os
 import sys
 import csv
+import re
+import unicodedata
 import psycopg2
 from datetime import datetime
 from pathlib import Path
 from config import BARBOUR
 
+# === 通用关键词排除 ===
 COMMON_WORDS = {
     "bag", "jacket", "coat", "quilted", "top", "shirt",
     "backpack", "vest", "tote", "crossbody", "holdall", "briefcase"
 }
+
+def normalize_text(text: str) -> str:
+    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+
+def extract_match_keywords(style_name: str):
+    style_name = normalize_text(style_name)
+    cleaned = re.sub(r"[^\w\s]", "", style_name)
+    return [w.lower() for w in cleaned.split() if len(w) >= 3 and w.lower() not in COMMON_WORDS]
 
 def get_connection():
     return psycopg2.connect(**BARBOUR["PGSQL_CONFIG"])
@@ -48,9 +59,6 @@ def parse_txt(filepath):
                 continue
     return info
 
-def extract_match_keywords(style_name: str):
-    return [w.lower() for w in style_name.split() if len(w) >= 3 and w.lower() not in COMMON_WORDS]
-
 def find_color_code_by_keywords(conn, style_name: str, color: str):
     keywords = extract_match_keywords(style_name)
     if not keywords:
@@ -58,7 +66,7 @@ def find_color_code_by_keywords(conn, style_name: str, color: str):
 
     with conn.cursor() as cur:
         cur.execute("""
-            SELECT color_code, match_keywords
+            SELECT color_code, style_name, match_keywords
             FROM barbour_products
             WHERE LOWER(color) = %s
         """, (color.lower(),))
@@ -67,15 +75,24 @@ def find_color_code_by_keywords(conn, style_name: str, color: str):
         best_match = None
         best_score = 0
 
-        for color_code, match_kw in candidates:
+        print(f"\n🔍 正在匹配 supplier 商品标题: \"{style_name}\"")
+
+        for color_code, candidate_title, match_kw in candidates:
             if not match_kw:
                 continue
             match_count = sum(1 for k in keywords if k in match_kw)
+            print(f"🔸 候选: {color_code} ({candidate_title}), 匹配关键词数: {match_count} / {len(keywords)}")
+
             if match_count > best_score:
                 best_match = color_code
                 best_score = match_count
 
-        return best_match if best_score >= 2 else None
+        if best_score >= 2:
+            print(f"✅ 匹配成功: {best_match}\n")
+            return best_match
+        else:
+            print("❌ 没有匹配达到阈值（≥2），返回 None\n")
+            return None
 
 def insert_offer(info, conn, missing_log: list):
     site = info["site"]
