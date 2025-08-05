@@ -3,7 +3,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import undetected_chromedriver as uc
 from config import BARBOUR
-from barbour.supplier.parse_offer_info import parse_offer_info
+from barbour.supplier.outdoorandcountry_parse_offer_info import parse_offer_info
 from barbour.write_offer_txt import write_offer_txt
 
 def accept_cookies(driver, timeout=8):

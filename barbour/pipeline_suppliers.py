@@ -4,10 +4,10 @@
 import subprocess
 from pathlib import Path
 from config import BARBOUR
-from barbour.supplier.get_outdoorandcountry_links import outdoorandcountry_fetch_and_save_links
+from barbour.supplier.outdoorandcountry_get_links import outdoorandcountry_fetch_and_save_links
 from barbour.supplier.outdoorcountry_fetch_info import fetch_outdoor_product_offers_concurrent
 from barbour.import_supplier_to_db_offers import import_txt_for_supplier
-from barbour.supplier.import_outdoor_txt_to_barbour_products import batch_import_outdoor_txt
+from barbour.supplier.outdoorandcountry_import_to_barbour_products import batch_import_outdoor_txt
 def run_step(desc, cmd):
     print(f"\n🟢 {desc}")
     result = subprocess.run(cmd, shell=True)
