@@ -1,9 +1,9 @@
 from pathlib import Path
-from color_utils import normalize_color
 import psycopg2
 import re
 import unicodedata
 from config import PGSQL_CONFIG  # ✅ 从 config 中读取连接配置
+from barbour.color_utils import normalize_color
 
 # === 通用词过滤（不纳入关键词） ===
 COMMON_WORDS = {
