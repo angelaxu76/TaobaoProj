@@ -7,6 +7,7 @@ import psycopg2
 from datetime import datetime
 from pathlib import Path
 from config import BARBOUR
+from barbour.keyword_mapping import KEYWORD_EQUIVALENTS
 
 # === 通用关键词排除 ===
 COMMON_WORDS = {
@@ -59,6 +60,13 @@ def parse_txt(filepath):
                 continue
     return info
 
+def is_keyword_equivalent(k1, k2):
+    for group in KEYWORD_EQUIVALENTS:
+        if k1 in group and k2 in group:
+            return True
+    return False
+
+
 def find_color_code_by_keywords(conn, style_name: str, color: str):
     keywords = extract_match_keywords(style_name)
     if not keywords:
@@ -81,7 +89,12 @@ def find_color_code_by_keywords(conn, style_name: str, color: str):
         for color_code, candidate_title, match_kw in candidates:
             if not match_kw:
                 continue
-            match_count = sum(1 for k in keywords if k in match_kw)
+            match_kw_tokens = match_kw.lower().split()
+            match_count = sum(
+                1 for k in keywords
+                if any(is_keyword_equivalent(k, mk) or k == mk for mk in match_kw_tokens)
+            )
+
             print(f"🔸 候选: {color_code} ({candidate_title}), 匹配关键词数: {match_count} / {len(keywords)}")
 
             if match_count > best_score:
