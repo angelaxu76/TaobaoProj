@@ -25,36 +25,36 @@ def extract_stock_info_dict(js_text: str) -> dict:
 import re
 import demjson3
 
+import re
+import demjson3
+
 def extract_color_code_from_datalayer(js_text: str) -> str:
     try:
-        # 匹配 products 数组（只提取产品部分）
         match = re.search(r'"products"\s*:\s*(\[[\s\S]*?\])', js_text)
         if not match:
             print("❌ 未找到 products 段")
             return "Unknown"
 
         products_str = match.group(1)
-
-        # 解析为 Python 对象
         products = demjson3.decode(products_str)
+
         if not products or not isinstance(products, list):
             print("❌ products 解码失败")
             return "Unknown"
 
-        first_sku = products[0].get("sku", "")
-        match = re.search(r"[A-Z]{2}\d{2}", first_sku)
-        if len(first_sku) > 2:
-            return first_sku[:-2]  # 去掉最后两位尺码
-        if match:
-            return first_sku
+        first_sku = products[0].get("sku", "").strip()
+
+        if len(first_sku) >= 11:
+            candidate = first_sku[:11]
+            if re.fullmatch(r"[A-Z]{3}\d{4}[A-Z]{2}\d{2}", candidate):
+                return candidate
+
+        print(f"⚠️ SKU 无法匹配 color_code 模式: {first_sku}")
+        return "Unknown"
 
     except Exception as e:
         print(f"❌ 解析 dataLayer 产品失败: {e}")
-
-    return "Unknown"
-
-
-
+        return "Unknown"
 
 def parse_offer_info(html: str, url: str, site_name="Outdoor and Country") -> dict:
     soup = BeautifulSoup(html, "html.parser")
