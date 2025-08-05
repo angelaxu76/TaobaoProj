@@ -18,10 +18,15 @@ def accept_cookies(driver, timeout=8):
     except:
         pass
 
+import re
+
+def sanitize_filename(name: str) -> str:
+    """将文件名中非法字符替换成下划线，确保不会创建子目录"""
+    return re.sub(r"[\\/:*?\"<>|'\s]+", "_", name.strip())
+
 def process_url(url, output_dir):
     options = uc.ChromeOptions()
     options.add_argument("--start-maximized")
-    # ❗️不要加 headless，会被 Cloudflare 拦截
     driver = uc.Chrome(options=options)
 
     try:
@@ -33,9 +38,12 @@ def process_url(url, output_dir):
 
         info = parse_offer_info(html, url)
         if info and info["Offers"]:
-            filename = f"{info['Product Name'].replace(' ', '_')}_{info['Product Color']}.txt"
+            # 清洗文件名
+            safe_name = sanitize_filename(info['Product Name'])
+            safe_color = sanitize_filename(info['Product Color'])
+            filename = f"{safe_name}_{safe_color}.txt"
             filepath = output_dir / filename
-            write_offer_txt(filepath, info)
+            write_offer_txt(info, filepath)
             print(f"✅ 写入: {filepath.name}")
         else:
             print(f"⚠️ 无库存信息，跳过: {url}")
@@ -43,6 +51,7 @@ def process_url(url, output_dir):
         print(f"❌ 处理失败: {url}\n    {e}")
     finally:
         driver.quit()
+
 
 def fetch_outdoor_product_offers_concurrent(max_workers=3):
     links_file = BARBOUR["LINKS_FILES"]["outdoorandcountry"]
