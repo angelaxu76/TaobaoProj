@@ -77,16 +77,21 @@ BARBOUR = {
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": BARBOUR_BASE / "publication" / "product_links.txt",
     "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    # === 新增 houseoffraser 配置 ===
     "LINKS_FILES": {
         "outdoorandcountry": BARBOUR_BASE / "publication" / "outdoorandcountry" / "product_links.txt",
         "countryattire": BARBOUR_BASE / "publication" / "countryattire" / "product_links.txt",
-        "nortonbarrie": BARBOUR_BASE / "publication" / "nortonbarrie" / "product_links.txt"
+        "nortonbarrie": BARBOUR_BASE / "publication" / "nortonbarrie" / "product_links.txt",
+        "houseoffraser": BARBOUR_BASE / "publication" / "houseoffraser" / "product_links.txt",  # ✅ 新增
     },
+
     "TXT_DIRS": {
-        "outdoorandcountry": BARBOUR_BASE/ "publication" / "outdoorandcountry" / "TXT",
-        "countryattire": BARBOUR_BASE/ "publication" / "outdoorandcountry" / "TXT",
-        "nortonbarrie": BARBOUR_BASE/ "publication" / "outdoorandcountry" / "TXT"
+        "outdoorandcountry": BARBOUR_BASE / "publication" / "outdoorandcountry" / "TXT",
+        "countryattire": BARBOUR_BASE / "publication" / "countryattire" / "TXT",  # 👈 之前写错了路径，修复！
+        "nortonbarrie": BARBOUR_BASE / "publication" / "nortonbarrie" / "TXT",  # 👈 同上
+        "houseoffraser": BARBOUR_BASE / "publication" / "houseoffraser" / "TXT",  # ✅ 新增
     },
+
     "FIELDS": {
         "product_code": "product_code",
         "url": "product_url",
