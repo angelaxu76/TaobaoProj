@@ -66,12 +66,12 @@ def find_color_code_by_keywords(conn, style_name: str, color: str):
 
     with conn.cursor() as cur:
         cur.execute("""
-            SELECT color_code, style_name, match_keywords
-            FROM barbour_products
-            WHERE LOWER(color) = %s
-        """, (color.lower(),))
-        candidates = cur.fetchall()
+                    SELECT color_code, style_name, match_keywords
+                    FROM barbour_products
+                    WHERE LOWER(color) LIKE '%%' || LOWER(%s) || '%%'
+                    """, (color.lower(),))
 
+        candidates = cur.fetchall()
         best_match = None
         best_score = 0
 
