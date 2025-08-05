@@ -32,7 +32,8 @@ def parse_product_page(html: str, url: str):
     price = price_tag.text.replace("\xa3", "").strip() if price_tag else "0.00"
 
     color_tag = soup.find("span", id="colourName")
-    color = color_tag.text.strip() if color_tag else "No Color"
+    raw_color = color_tag.text.strip() if color_tag else "No Color"
+    color = clean_color(raw_color)
 
     # 提取尺码列表
     offer_list = []
@@ -59,11 +60,16 @@ def parse_product_page(html: str, url: str):
 def clean_size(size: str) -> str:
     return size.split("(")[0].strip()
 
+def clean_color(color: str) -> str:
+    parts = color.strip().split()
+    filtered = [p for p in parts if not any(c.isdigit() for c in p)]
+    return " ".join(filtered) if filtered else color
+
 def safe_filename(name: str) -> str:
     return "".join(c for c in name if c.isalnum() or c in (" ", "-", "_")).rstrip()
 
 def write_txt(info: dict):
-    filename = safe_filename(info["Product Name"]) + ".txt"
+    filename = safe_filename(f"{info['Product Name']} {info['Product Color']}") + ".txt"
     path = TXT_DIR / filename
     with open(path, "w", encoding="utf-8") as f:
         f.write(f"Product Name: {info['Product Name']}\n")
@@ -83,7 +89,7 @@ def process_link(url):
         html = driver.page_source
         info = parse_product_page(html, url)
         write_txt(info)
-        print(f"✅ 已保存: {info['Product Name']}.txt")
+        print(f"✅ 已保存: {info['Product Name']} {info['Product Color']}.txt")
     except Exception as e:
         print(f"❌ 抓取失败: {url}\n{e}\n")
     finally:

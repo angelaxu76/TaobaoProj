@@ -7,11 +7,11 @@ def pipeline_houseoffraser():
 
     # 步骤 1：抓取商品链接
     print("\n🌐 步骤 1：抓取商品链接")
-    houseoffraser_get_links()
+    #houseoffraser_get_links()
 
     # 步骤 2：抓取商品详情并生成 TXT
     print("\n📦 步骤 2：抓取商品详情并生成 TXT")
-    fetch_all()
+    #fetch_all()
 
     # 步骤 3：将 TXT 数据导入 offers 表
     print("\n🗃️ 步骤 3：导入数据库 offers 表")

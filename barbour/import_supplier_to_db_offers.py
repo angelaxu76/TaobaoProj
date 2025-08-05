@@ -89,7 +89,7 @@ def find_color_code_by_keywords(conn, style_name: str, color: str):
         for color_code, candidate_title, match_kw in candidates:
             if not match_kw:
                 continue
-            match_kw_tokens = match_kw.lower().split()
+            match_kw_tokens = [w.lower() for w in match_kw] if isinstance(match_kw, list) else match_kw.lower().split()
             match_count = sum(
                 1 for k in keywords
                 if any(is_keyword_equivalent(k, mk) or k == mk for mk in match_kw_tokens)
