@@ -80,14 +80,14 @@ BARBOUR = {
     # === 新增 houseoffraser 配置 ===
     "LINKS_FILES": {
         "outdoorandcountry": BARBOUR_BASE / "publication" / "outdoorandcountry" / "product_links.txt",
-        "countryattire": BARBOUR_BASE / "publication" / "countryattire" / "product_links.txt",
+        "allweathers": BARBOUR_BASE / "publication" / "allweathers" / "product_links.txt",
         "nortonbarrie": BARBOUR_BASE / "publication" / "nortonbarrie" / "product_links.txt",
         "houseoffraser": BARBOUR_BASE / "publication" / "houseoffraser" / "product_links.txt",  # ✅ 新增
     },
 
     "TXT_DIRS": {
         "outdoorandcountry": BARBOUR_BASE / "publication" / "outdoorandcountry" / "TXT",
-        "countryattire": BARBOUR_BASE / "publication" / "countryattire" / "TXT",  # 👈 之前写错了路径，修复！
+        "allweathers": BARBOUR_BASE / "publication" / "allweathers" / "TXT",  # 👈 之前写错了路径，修复！
         "nortonbarrie": BARBOUR_BASE / "publication" / "nortonbarrie" / "TXT",  # 👈 同上
         "houseoffraser": BARBOUR_BASE / "publication" / "houseoffraser" / "TXT",  # ✅ 新增
     },
