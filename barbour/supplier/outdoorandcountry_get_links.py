@@ -19,7 +19,8 @@ from config import BARBOUR
 # ✅ 页面配置：上衣类（男 + 女）
 TARGET_URLS = [
     ("men", "https://www.outdoorandcountry.co.uk/shop-by-brand/barbour/barbour-menswear/all-barbour-mens-clothing-footwear.sub?s=i&pt=Coats+%26+Jackets%2cGilets+%26+Waistcoats%2cKnitwear"),
-    ("women", "https://www.outdoorandcountry.co.uk/shop-by-brand/barbour/barbour-womenswear/womens-barbour-clothing-footwear-accessories.sub?s=i&pt=Coats+%26+Jackets%2cGilets+%26+Waistcoats%2cKnitwear")
+    ("women", "https://www.outdoorandcountry.co.uk/shop-by-brand/barbour/barbour-womenswear/womens-barbour-clothing-footwear-accessories.sub?s=i&pt=Coats+%26+Jackets%2cGilets+%26+Waistcoats%2cKnitwear"),
+    ("international", "https://www.outdoorandcountry.co.uk/shop-by-brand/barbour-international/all-barbour-international.sub")
 ]
 
 BASE_DOMAIN = "https://www.outdoorandcountry.co.uk"
