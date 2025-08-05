@@ -38,8 +38,7 @@ def parse_txt_file(filepath: Path):
         elif line.startswith("Product Name:"):
             info["style_name"] = line.split(":", 1)[1].strip()
         elif line.startswith("Product Color:"):
-            raw_color = line.split(":", 1)[1].replace("-", "").strip()
-            info["color"] = normalize_color(raw_color)
+            info["color"] = line.split(":", 1)[1].replace("-", "").strip()
         elif line.startswith("Product Size:"):
             size_part = line.split(":", 1)[1]
             info["sizes"] = [s.split(":")[0].strip() for s in size_part.split(";") if s.strip()]
