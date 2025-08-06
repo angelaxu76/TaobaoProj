@@ -12,7 +12,7 @@ from pathlib import Path
 from datetime import datetime
 from selenium import webdriver
 from selenium_stealth import stealth
-from barbour.write_offer_txt import write_offer_txt
+from barbour.barbouir_write_offer_txt import write_supplier_offer_txt
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 全局路径
@@ -109,7 +109,7 @@ def fetch_one_product(url, idx, total):
         data = parse_detail_page(html, url)
         code = data["Product Color Code"]
         txt_path = TXT_DIR / f"{code}.txt"
-        write_offer_txt(data, txt_path)
+        write_supplier_offer_txt(data, txt_path)
         return (url, "✅ 成功")
     except Exception as e:
         return (url, f"❌ 失败: {e}")

@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import undetected_chromedriver as uc
 from config import BARBOUR
 from barbour.supplier.outdoorandcountry_parse_offer_info import parse_offer_info
-from barbour.write_offer_txt import write_offer_txt
+from barbour.barbouir_write_offer_txt import write_supplier_offer_txt
 
 def accept_cookies(driver, timeout=8):
     from selenium.webdriver.common.by import By
@@ -43,7 +43,7 @@ def process_url(url, output_dir):
             safe_color = sanitize_filename(info['Product Color'])
             filename = f"{safe_name}_{safe_color}.txt"
             filepath = output_dir / filename
-            write_offer_txt(info, filepath)
+            write_supplier_offer_txt(info, filepath)
             print(f"✅ 写入: {filepath.name}")
         else:
             print(f"⚠️ 无库存信息，跳过: {url}")

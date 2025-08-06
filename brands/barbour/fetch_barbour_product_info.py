@@ -5,7 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 from pathlib import Path
 from config import BARBOUR
-from common_taobao.txt_writer import format_txt
+from barbour.barbouir_write_offer_txt import write_barbour_product_txt
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
@@ -88,7 +88,7 @@ def fetch_and_write_txt():
             info = extract_product_info_from_html(resp.text, url)
 
             txt_path = Path(txt_output_dir) / f"{info['Product Code']}.txt"
-            format_txt(info, txt_path, brand="barbour")
+            write_barbour_product_txt(info, txt_path, brand="barbour")
             print(f"✅ [{idx}/{len(urls)}] 写入成功：{txt_path.name}")
         except Exception as e:
             print(f"❌ [{idx}/{len(urls)}] 失败：{url}，错误：{e}")
