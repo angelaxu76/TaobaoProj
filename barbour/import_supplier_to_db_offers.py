@@ -8,10 +8,11 @@ from datetime import datetime
 from pathlib import Path
 from config import BARBOUR
 from barbour.keyword_mapping import KEYWORD_EQUIVALENTS
+from common_taobao.size_utils import clean_size_for_barbour
 
 # === 通用关键词排除 ===
 COMMON_WORDS = {
-    "bag", "jacket", "coat", "quilted", "top", "shirt",
+    "bag", "jacket", "coat", "top", "shirt",
     "backpack", "vest", "tote", "crossbody", "holdall", "briefcase"
 }
 
@@ -33,6 +34,7 @@ def parse_txt(filepath):
     info = {
         "style_name": "",
         "color": "",
+        "color_code": "",  # ✅ 新增
         "url": "",
         "site": "",
         "offers": []
@@ -43,6 +45,8 @@ def parse_txt(filepath):
             info["style_name"] = line.split("Product Name:")[1].strip()
         elif line.startswith("Product Color:"):
             info["color"] = line.split("Product Color:")[1].strip()
+        elif line.startswith("Product Color Code:"):
+            info["color_code"] = line.split("Product Color Code:")[1].strip()
         elif line.startswith("Product URL:"):
             info["url"] = line.split("Product URL:")[1].strip()
         elif line.startswith("Site Name:"):
@@ -66,7 +70,6 @@ def is_keyword_equivalent(k1, k2):
             return True
     return False
 
-
 def find_color_code_by_keywords(conn, style_name: str, color: str):
     keywords = extract_match_keywords(style_name)
     if not keywords:
@@ -74,10 +77,10 @@ def find_color_code_by_keywords(conn, style_name: str, color: str):
 
     with conn.cursor() as cur:
         cur.execute("""
-                    SELECT color_code, style_name, match_keywords
-                    FROM barbour_products
-                    WHERE LOWER(color) LIKE '%%' || LOWER(%s) || '%%'
-                    """, (color.lower(),))
+            SELECT color_code, style_name, match_keywords
+            FROM barbour_products
+            WHERE LOWER(color) LIKE '%%' || LOWER(%s) || '%%'
+        """, (color.lower(),))
 
         candidates = cur.fetchall()
         best_match = None
@@ -89,6 +92,7 @@ def find_color_code_by_keywords(conn, style_name: str, color: str):
         for color_code, candidate_title, match_kw in candidates:
             if not match_kw:
                 continue
+
             match_kw_tokens = [w.lower() for w in match_kw] if isinstance(match_kw, list) else match_kw.lower().split()
             match_count = sum(
                 1 for k in keywords
@@ -101,11 +105,16 @@ def find_color_code_by_keywords(conn, style_name: str, color: str):
                 best_match = color_code
                 best_score = match_count
 
-        if best_score >= 2:
-            print(f"✅ 匹配成功: {best_match}\n")
+        # ✅ 动态判断是否匹配成功
+        required_min_score = 2
+        required_min_ratio = 0.33
+        actual_ratio = best_score / len(keywords) if keywords else 0
+
+        if best_score >= required_min_score or actual_ratio >= required_min_ratio:
+            print(f"✅ 匹配成功: {best_match}（匹配数: {best_score} / {len(keywords)}，比例: {actual_ratio:.0%}）\n")
             return best_match
         else:
-            print("❌ 没有匹配达到阈值（≥2），返回 None\n")
+            print(f"❌ 匹配失败：匹配数 {best_score} / {len(keywords)}，比例: {actual_ratio:.0%}，返回 None\n")
             return None
 
 def insert_offer(info, conn, missing_log: list):
@@ -114,17 +123,26 @@ def insert_offer(info, conn, missing_log: list):
     style_name = info["style_name"]
     color = info["color"]
 
-    color_code = find_color_code_by_keywords(conn, style_name, color)
+    # ✅ 优先使用 TXT 中的 color_code，否则自动匹配
+    if info.get("color_code"):
+        color_code = info["color_code"]
+        print(f"📦 已提供 color_code: {color_code}，跳过关键词匹配")
+    else:
+        color_code = find_color_code_by_keywords(conn, style_name, color)
 
     if not color_code:
         for offer in info["offers"]:
             missing_log.append((
                 "NO_CODE", offer["size"], site, style_name, color, offer_url
             ))
-        return False  # ❗添加这一行
+        return False
 
     for offer in info["offers"]:
-        size = offer["size"]
+        raw_size = offer["size"]
+        size = clean_size_for_barbour(raw_size)
+        if not size:
+            print(f"⚠️ 无法清洗尺码: {raw_size}，跳过")
+            continue
 
         with conn.cursor() as cur:
             cur.execute("""
@@ -147,7 +165,7 @@ def insert_offer(info, conn, missing_log: list):
             ))
 
     conn.commit()
-    return True  # ✅ 成功导入则返回 True
+    return True
 
 def import_txt_for_supplier(supplier: str):
     if supplier not in BARBOUR["TXT_DIRS"]:
@@ -160,7 +178,7 @@ def import_txt_for_supplier(supplier: str):
     missing = []
 
     for fpath in files:
-        fname = fpath.name  # ✅ 若你后续用到文件名
+        fname = fpath.name
         try:
             print(f"\n=== 📄 正在处理文件: {fname} ===")
             info = parse_txt(fpath)
@@ -182,8 +200,6 @@ def import_txt_for_supplier(supplier: str):
             writer.writerows(missing)
 
         print(f"\n⚠️ 有 {len(missing)} 个产品未能匹配 color_code，已记录到: {output}")
-
-
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
