@@ -3,7 +3,7 @@ from pathlib import Path
 
 def mark_offline_products_from_store_excels(config: dict):
     txt_dir: Path = config["TXT_DIR"]
-    output_dir: Path = config["STORE_DIR"]
+    output_dir: Path = config["OUTPUT_DIR"]
     offline_codes = set()
 
     # 遍历所有店铺目录

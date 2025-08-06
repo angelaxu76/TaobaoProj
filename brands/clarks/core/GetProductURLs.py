@@ -10,10 +10,12 @@ TARGET_LINK_CLASS = "gGNOkU"
 
 BASE_URL_TEMPLATES = {
     "women_shoes": "https://www.clarks.com/en-gb/womens/womens-shoes/w_shoes_uk-c?page={}",
+    "women_new": "https://www.clarks.com/en-gb/womens/womens-new-in-shoes/w_new_uk-c?page={}",
     "womens_sandals": "https://www.clarks.com/en-gb/womens/womens-sandals/w_sandals_uk-c?page={}",
     "womens_boots": "https://www.clarks.com/en-gb/womens-boots/w_boots_uk-c?page={}",
     "womens_originals": "https://www.clarks.com/en-gb/womens-originals/wo_allstyles_uk-c?page={}",
     "mens_shoes": "https://www.clarks.com/en-gb/mens/mens-shoes/m_shoes_uk-c?page={}",
+    "mens_new": "https://www.clarks.com/en-gb/mens/mens-new-in-shoes/m_new_uk-c?page={}",
     "mens_boots": "https://www.clarks.com/en-gb/mens-boots/m_boots_uk-c?page={}",
     "mens_originals": "https://www.clarks.com/en-gb/mens-originals/mo_allstyles_uk-c?page={}"
 }
