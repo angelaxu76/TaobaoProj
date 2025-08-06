@@ -83,6 +83,7 @@ BARBOUR = {
         "allweathers": BARBOUR_BASE / "publication" / "allweathers" / "product_links.txt",
         "barbour": BARBOUR_BASE / "publication" / "barbour" / "product_links.txt",
         "houseoffraser": BARBOUR_BASE / "publication" / "houseoffraser" / "product_links.txt",  # ✅ 新增
+        "philipmorris": BARBOUR_BASE / "publication" / "philipmorris" / "product_links.txt",  # ✅ 新增
     },
 
     "TXT_DIRS": {
@@ -90,6 +91,7 @@ BARBOUR = {
         "allweathers": BARBOUR_BASE / "publication" / "allweathers" / "TXT",  # 👈 之前写错了路径，修复！
         "barbour": BARBOUR_BASE / "publication" / "barbour" / "TXT",  # 👈 同上
         "houseoffraser": BARBOUR_BASE / "publication" / "houseoffraser" / "TXT",  # ✅ 新增
+        "philipmorris": BARBOUR_BASE / "publication" / "philipmorris" / "TXT",  # ✅ 新增
     },
 
     "FIELDS": {
