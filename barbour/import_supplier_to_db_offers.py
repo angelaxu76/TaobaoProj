@@ -27,6 +27,8 @@ def extract_match_keywords(style_name: str):
 def get_connection():
     return psycopg2.connect(**BARBOUR["PGSQL_CONFIG"])
 
+from common_taobao.size_utils import clean_size_for_barbour  # 确保已导入
+
 def parse_txt(filepath):
     with open(filepath, "r", encoding="utf-8") as f:
         lines = f.read().splitlines()
@@ -34,13 +36,14 @@ def parse_txt(filepath):
     info = {
         "style_name": "",
         "color": "",
-        "color_code": "",  # ✅ 新增
+        "color_code": "",
         "url": "",
         "site": "",
         "offers": []
     }
 
     for line in lines:
+        line = line.strip()
         if line.startswith("Product Name:"):
             info["style_name"] = line.split("Product Name:")[1].strip()
         elif line.startswith("Product Color:"):
@@ -51,18 +54,25 @@ def parse_txt(filepath):
             info["url"] = line.split("Product URL:")[1].strip()
         elif line.startswith("Site Name:"):
             info["site"] = line.split("Site Name:")[1].strip()
-        elif "|" in line and line.strip()[0].upper() in ("SMLX1234567890"):
+        elif "|" in line and line.count("|") == 3:
             try:
-                size, price, stock, avail = [x.strip() for x in line.split("|")]
+                raw_size, price, stock, avail = [x.strip() for x in line.split("|")]
+                std_size = clean_size_for_barbour(raw_size)
+                if std_size is None:
+                    print(f"⚠️ 忽略无法识别的尺码: {raw_size}")
+                    continue
                 info["offers"].append({
-                    "size": size,
+                    "size": std_size,  # ✅ 使用清洗后的 size
                     "price": float(price),
                     "stock": stock,
                     "can_order": avail.upper() == "TRUE"
                 })
-            except:
+            except Exception as e:
+                print(f"⚠️ Offer 行解析失败: {line} -> {e}")
                 continue
+
     return info
+
 
 def is_keyword_equivalent(k1, k2):
     for group in KEYWORD_EQUIVALENTS:
