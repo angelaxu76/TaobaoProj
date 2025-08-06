@@ -49,7 +49,7 @@ def get_all_links_for_category(base_url, max_pages=100):
     return all_links
 
 
-def main():
+def barbour_get_links():
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     all_links = []
     for name, url in CATEGORY_URLS.items():
@@ -67,4 +67,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    barbour_get_links()

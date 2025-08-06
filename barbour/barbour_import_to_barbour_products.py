@@ -2,7 +2,7 @@ from pathlib import Path
 import psycopg2
 import re
 import unicodedata
-from config import PGSQL_CONFIG  # ✅ 从 config 中读取连接配置
+from config import PGSQL_CONFIG,BARBOUR  # ✅ 从 config 中读取连接配置
 from barbour.color_utils import normalize_color
 
 # === 通用词过滤（不纳入关键词） ===
@@ -76,7 +76,8 @@ def insert_into_products(records: list, conn):
             ))
     conn.commit()
 
-def batch_import_txt(txt_dir: Path):
+def batch_import_txt_to_barbour_product():
+    txt_dir = Path(BARBOUR["TXT_DIR"])
     conn = psycopg2.connect(**PGSQL_CONFIG)
     files = list(txt_dir.glob("*.txt"))
     total = 0
@@ -92,5 +93,4 @@ def batch_import_txt(txt_dir: Path):
     print(f"\n🎉 导入完成，共导入 {total} 条记录")
 
 if __name__ == "__main__":
-    txt_dir = Path(r"D:\TB\Products\barbour\publication\TXT")
-    batch_import_txt(txt_dir)
+    batch_import_txt_to_barbour_product()

@@ -63,7 +63,7 @@ BARBOUR_BASE = BASE_DIR / "barbour"
 BARBOUR = {
     "BRAND": "barbour",
     "BASE": BARBOUR_BASE,
-    "TXT_DIR": BARBOUR_BASE / "publication" / "TXT",
+    "TXT_DIR": BARBOUR_BASE / "publication" / "barbour" /"TXT",
     "OUTPUT_DIR": BARBOUR_BASE / "repulibcation",
     "STORE_DIR": BARBOUR_BASE / "document" / "store",
     "IMAGE_DIR": BARBOUR_BASE / "document" / "images",
@@ -75,20 +75,20 @@ BARBOUR = {
     "HTML_DIR": BARBOUR_BASE / "document" / "html",
     "TABLE_NAME": "barbour_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
-    "LINKS_FILE": BARBOUR_BASE / "publication" / "product_links.txt",
+    "LINKS_FILE": BARBOUR_BASE / "publication" / "barbour" / "product_links.txt",
     "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
     # === 新增 houseoffraser 配置 ===
     "LINKS_FILES": {
         "outdoorandcountry": BARBOUR_BASE / "publication" / "outdoorandcountry" / "product_links.txt",
         "allweathers": BARBOUR_BASE / "publication" / "allweathers" / "product_links.txt",
-        "nortonbarrie": BARBOUR_BASE / "publication" / "nortonbarrie" / "product_links.txt",
+        "barbour": BARBOUR_BASE / "publication" / "barbour" / "product_links.txt",
         "houseoffraser": BARBOUR_BASE / "publication" / "houseoffraser" / "product_links.txt",  # ✅ 新增
     },
 
     "TXT_DIRS": {
         "outdoorandcountry": BARBOUR_BASE / "publication" / "outdoorandcountry" / "TXT",
         "allweathers": BARBOUR_BASE / "publication" / "allweathers" / "TXT",  # 👈 之前写错了路径，修复！
-        "nortonbarrie": BARBOUR_BASE / "publication" / "nortonbarrie" / "TXT",  # 👈 同上
+        "barbour": BARBOUR_BASE / "publication" / "barbour" / "TXT",  # 👈 同上
         "houseoffraser": BARBOUR_BASE / "publication" / "houseoffraser" / "TXT",  # ✅ 新增
     },
 

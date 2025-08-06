@@ -79,7 +79,7 @@ def insert_into_barbour_products(records: list, conn):
             ))
     conn.commit()
 
-def batch_import_txt_by_supplier(supplier: str):
+def batch_import_txt_to_barbour_product(supplier: str):
     if supplier not in BARBOUR["TXT_DIRS"]:
         print(f"❌ supplier 未配置: {supplier}")
         return
@@ -104,4 +104,4 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("用法: python import_txt_to_barbour_products.py [supplier]")
     else:
-        batch_import_txt_by_supplier(sys.argv[1])
+        batch_import_txt_to_barbour_product(sys.argv[1])
