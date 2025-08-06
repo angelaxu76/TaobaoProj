@@ -1,4 +1,3 @@
-
 import os
 import json
 import requests
@@ -10,6 +9,7 @@ from barbour.barbouir_write_offer_txt import write_barbour_product_txt
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
 }
+
 
 def extract_product_info_from_html(html: str, url: str):
     soup = BeautifulSoup(html, "html.parser")
@@ -67,9 +67,11 @@ def extract_product_info_from_html(html: str, url: str):
         "Product Material": "No Data",
         "Feature": features,
         "SizeMap": size_map,
-        "Source URL": url
+        "Source URL": url,
+        "Site Name": "Barbour"  # ✅ 新增这一行
     }
     return info
+
 
 def fetch_and_write_txt():
     links_file = BARBOUR["LINKS_FILE"]
@@ -92,6 +94,7 @@ def fetch_and_write_txt():
             print(f"✅ [{idx}/{len(urls)}] 写入成功：{txt_path.name}")
         except Exception as e:
             print(f"❌ [{idx}/{len(urls)}] 失败：{url}，错误：{e}")
+
 
 if __name__ == "__main__":
     fetch_and_write_txt()
