@@ -5,7 +5,7 @@ import pandas as pd
 from pathlib import Path
 from config import CAMPER, API_KEYS,SETTINGS
 from sqlalchemy import create_engine
-from common_taobao.core.price_utils import calculate_camper_untaxed_and_retail
+from common_taobao.core.price_utils import calculate_jingya_prices
 from common_taobao.core.translate import safe_translate
 
 # ==== 参数 ====
@@ -109,7 +109,7 @@ for idx, code in enumerate(product_codes, 1):
     discount = price_info.get("discount_price_gbp", 0) or 0
     base_price = min(original, discount) if original and discount else discount or original
     try:
-        _, rmb_price = calculate_camper_untaxed_and_retail(base_price, exchange_rate=SETTINGS["EXCHANGE_RATE"])
+        _, rmb_price = calculate_jingya_prices(base_price, exchange_rate=SETTINGS["EXCHANGE_RATE"])
     except:
         rmb_price = ""
 

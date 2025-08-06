@@ -52,35 +52,18 @@ def main():
     #run_script("clarks_jinya_fetch_product_info.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
-    import_txt_to_db_supplier("clarks_jingya")  # ✅ 新逻辑
+    #import_txt_to_db_supplier("clarks_jingya")  # ✅ 新逻辑
 
     print("\n🟡 Step: 5️⃣ 绑定渠道 SKU 信息（淘经销 Excel）将鲸芽那边的货品ID等输入到数据库")
-    insert_jingyaid_to_db("clarks_jingya")
+    #insert_jingyaid_to_db("clarks_jingya")
 
     print("\\n🟡 Step: 6️⃣生成发布产品的excel")
-    generate_publication_excels("clarks_jingya")
+    #generate_publication_excels("clarks_jingya")
 
     print("\\n🟡 Step: 6️⃣ 导出渠道价格 Excel（含零售价与商家编码），可以用于淘宝店铺去更新商品价格")
-    #export_channel_price_excel("clarks_jingya")  # 导出价格明细（已发布）
+    export_channel_price_excel("clarks_jingya")  # 导出价格明细（已发布）
 
-    print("\n🟡 Step: 5️⃣ 导出价格 Excel")
-    #for store in TAOBAO_STORES:
-     #export_discount_price_with_skuids("clarks",store)
 
-    print("\n🟡 Step: 6️⃣ 导出库存 Excel")
-    #export_skuid_stock_excel("clarks")
-
-    print("\n🟡 Step: 7️⃣ 为各店铺生成上架 Excel + 拷贝图片")
-    # 手动指定调试店铺
-
-    #for store in TAOBAO_STORES:
-    #  generate_product_excels(CLARKS_JINGYA, store)
-    #  codes = get_publishable_product_codes(CLARKS_JINGYA, store)
-    #   copy_images_for_store(CLARKS_JINGYA, store, codes)
-
-    # 导出需要下架的产品
-    #mark_offline_products_from_store_excels(BRAND_CONFIG["clarks"])
-    print("\n✅ Clarks pipeline 完成")
 
 if __name__ == "__main__":
     main()

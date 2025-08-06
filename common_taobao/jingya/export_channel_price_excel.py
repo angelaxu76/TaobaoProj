@@ -1,14 +1,40 @@
+import os
 import psycopg2
 import pandas as pd
-from config import CAMPER, CLARKS, ECCO, GEOX,BRAND_CONFIG
-from common_taobao.core.price_utils import calculate_camper_untaxed_and_retail  # ✅ 引入统一定价逻辑
+from config import BRAND_CONFIG
+from common_taobao.core.price_utils import calculate_jingya_prices  # ✅ 定价计算核心逻辑
 
+# ============ ✅ 品牌折扣配置 =============
+BRAND_DISCOUNT = {
+    "camper": 0.75,
+    "geox": 0.85,
+    "clarks_jingya": 1,
+    # "ecco": 0.90,
+    # 默认：1.0（无折扣）
+}
 
+def get_brand_discount_rate(brand: str) -> float:
+    return BRAND_DISCOUNT.get(brand.lower(), 1.0)
 
+def get_brand_base_price(row, brand: str) -> float:
+    """
+    根据品牌折扣配置计算实际采购价 base_price
+    """
+    original = row["original_price_gbp"] or 0
+    discount = row["discount_price_gbp"] or 0
+    base = min(original, discount) if original and discount else (discount or original)
+    return base * get_brand_discount_rate(brand)
+
+# ============ ✅ 函数 1：导出所有产品价格 =============
 def export_channel_price_excel(brand: str):
     config = BRAND_CONFIG[brand.lower()]
     pg_cfg = config["PGSQL_CONFIG"]
     table_name = config["TABLE_NAME"]
+
+    out_path = config["OUTPUT_DIR"] / f"{brand.lower()}_channel_prices.xlsx"
+
+    # 🔧 确保输出目录存在
+    out_path.parent.mkdir(parents=True, exist_ok=True)
 
     conn = psycopg2.connect(**pg_cfg)
     query = f"""
@@ -19,10 +45,7 @@ def export_channel_price_excel(brand: str):
     df = pd.read_sql_query(query, conn)
     conn.close()
 
-    # 🔽 ✅ 在这里加 debug
-    print(f"📊 原始记录总数（未分组）: {len(df)}")
-    print(f"📊 不重复的 channel_product_id 数量: {df['channel_product_id'].nunique()}")
-    print(f"📊 缺失价格字段数量: {(df['original_price_gbp'].isnull() | df['discount_price_gbp'].isnull()).sum()}")
+    print(f"📊 原始记录总数: {len(df)}")
 
     df_grouped = df.groupby("channel_product_id").agg({
         "original_price_gbp": "first",
@@ -30,52 +53,36 @@ def export_channel_price_excel(brand: str):
         "product_code": "first"
     }).reset_index()
 
-    print(df_grouped[["product_code", "original_price_gbp", "discount_price_gbp"]])
-    # ✅ 使用统一价格函数替代 calculate_prices
-    df_grouped[["未税价格", "零售价"]] = df_grouped.apply(
-        lambda row: pd.Series(
-            calculate_camper_untaxed_and_retail(
-                row["original_price_gbp"] if pd.notnull(row["original_price_gbp"]) else 0,
-                row["discount_price_gbp"] if pd.notnull(row["discount_price_gbp"]) else 0,
-                7,
-                9.7
-            )
-        ),
-        axis=1
+    # ✅ 计算 base_price 并新增一列
+    df_grouped["Base Price"] = df_grouped.apply(lambda row: get_brand_base_price(row, brand), axis=1)
+
+    # ✅ 计算定价
+    df_grouped[["未税价格", "零售价"]] = df_grouped["Base Price"].apply(
+        lambda price: pd.Series(calculate_jingya_prices(price, delivery_cost=7, exchange_rate=9.7))
     )
 
-    df_prices_full = df_grouped[["channel_product_id", "product_code", "未税价格", "零售价"]]
-    df_prices_full.columns = ["渠道产品ID", "商家编码", "未税价格", "零售价"]
+    # ✅ 导出字段包括 base price
+    df_prices_full = df_grouped[["channel_product_id", "product_code", "Base Price", "未税价格", "零售价"]]
+    df_prices_full.columns = ["渠道产品ID", "商家编码", "采购价（GBP）", "未税价格", "零售价"]
 
-    out_path = config["OUTPUT_DIR"] / f"{brand.lower()}_channel_prices.xlsx"
     df_prices_full.to_excel(out_path, index=False)
     print(f"✅ 导出价格明细: {out_path}")
 
 
-    # === 仅仅输出txt_path文件中包含 channel_product_id的列表
-import os
-import psycopg2
-import pandas as pd
-from config import BRAND_CONFIG
-from common_taobao.core.price_utils import calculate_camper_untaxed_and_retail
-
-
+# ============ ✅ 函数 2：导出指定 TXT 列表价格 =============
 def export_channel_price_excel_from_txt(brand: str, txt_path: str):
     config = BRAND_CONFIG[brand.lower()]
     pg_cfg = config["PGSQL_CONFIG"]
     table_name = config["TABLE_NAME"]
 
-    # === 读取 TXT 中的 channel_product_id 列表 ===
     if not os.path.exists(txt_path):
         raise FileNotFoundError(f"❌ 未找到 TXT 文件: {txt_path}")
 
     with open(txt_path, "r", encoding="utf-8") as f:
         selected_ids = set(line.strip() for line in f if line.strip())
-
     if not selected_ids:
         raise ValueError("❌ TXT 文件中没有有效的 channel_product_id")
 
-    # === 查询所有有效记录 ===
     conn = psycopg2.connect(**pg_cfg)
     query = f"""
         SELECT channel_product_id, original_price_gbp, discount_price_gbp, product_code
@@ -85,39 +92,25 @@ def export_channel_price_excel_from_txt(brand: str, txt_path: str):
     df = pd.read_sql_query(query, conn)
     conn.close()
 
-    # ✅ 强制转换为字符串以保证匹配成功
     df["channel_product_id"] = df["channel_product_id"].astype(str)
-
-    # ✅ 过滤出 TXT 中指定的 ID
     df = df[df["channel_product_id"].isin(selected_ids)]
 
     if df.empty:
-        print("⚠️ 没有匹配到任何 channel_product_id，对应的数据为空。")
+        print("⚠️ 没有匹配到任何 channel_product_id。")
         return
 
-    # === 分组取第一条记录
     df_grouped = df.groupby("channel_product_id").agg({
         "original_price_gbp": "first",
         "discount_price_gbp": "first",
         "product_code": "first"
     }).reset_index()
 
-    print(df_grouped[["product_code", "original_price_gbp", "discount_price_gbp"]])
+    def compute_price(row):
+        base_price = get_brand_base_price(row, brand)
+        return pd.Series(calculate_jingya_prices(base_price, 7, 9.7))
 
-    # === 使用统一定价逻辑
-    df_grouped[["未税价格", "零售价"]] = df_grouped.apply(
-        lambda row: pd.Series(
-            calculate_camper_untaxed_and_retail(
-                row["original_price_gbp"] if pd.notnull(row["original_price_gbp"]) else 0,
-                row["discount_price_gbp"] if pd.notnull(row["discount_price_gbp"]) else 0,
-                7,
-                9.7
-            )
-        ),
-        axis=1
-    )
+    df_grouped[["未税价格", "零售价"]] = df_grouped.apply(compute_price, axis=1)
 
-    # === 输出列
     df_prices = df_grouped[["channel_product_id", "product_code", "未税价格", "零售价"]]
     df_prices.columns = ["渠道产品ID", "商家编码", "未税价格", "零售价"]
 
@@ -126,7 +119,9 @@ def export_channel_price_excel_from_txt(brand: str, txt_path: str):
     print(f"✅ 导出价格明细（指定列表）: {out_path}")
 
 
+# ============ ✅ 函数 3：导出 SKU 对应的价格（用于淘宝发布） =============
 def export_all_sku_price_excel(brand: str):
+
     config = BRAND_CONFIG[brand.lower()]
     pg_cfg = config["PGSQL_CONFIG"]
     table_name = config["TABLE_NAME"]
@@ -152,21 +147,11 @@ def export_all_sku_price_excel(brand: str):
         "product_code": "first"
     }).reset_index()
 
+    def compute_price(row):
+        base_price = get_brand_base_price(row, brand)
+        return pd.Series(calculate_jingya_prices(base_price, 7, 9.7))
 
-
-    print(df_grouped[["product_code", "original_price_gbp", "discount_price_gbp"]])
-    # ✅ 使用统一价格函数
-    df_grouped[["未税价格", "零售价"]] = df_grouped.apply(
-        lambda row: pd.Series(
-            calculate_camper_untaxed_and_retail(
-                row["original_price_gbp"] if pd.notnull(row["original_price_gbp"]) else 0,
-                row["discount_price_gbp"] if pd.notnull(row["discount_price_gbp"]) else 0,
-                7,
-                9.7
-            )
-        ),
-        axis=1
-    )
+    df_grouped[["未税价格", "零售价"]] = df_grouped.apply(compute_price, axis=1)
 
     df_grouped["product_code"] = df_grouped["product_code"].astype(str).str.strip().str.upper()
     df_filtered = df_grouped[~df_grouped["product_code"].isin(excluded_names)]

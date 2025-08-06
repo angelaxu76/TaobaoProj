@@ -5,7 +5,7 @@ import pandas as pd
 from pathlib import Path
 from sqlalchemy import create_engine
 from config import BRAND_CONFIG, SETTINGS
-from common_taobao.core.price_utils import calculate_camper_untaxed_and_retail
+from common_taobao.core.price_utils import calculate_jingya_prices
 from common_taobao.core.translate import safe_translate
 from common_taobao.generate_taobao_title import generate_taobao_title
 
@@ -138,8 +138,8 @@ def generate_publication_excels(brand: str):
         discount = price_info.get("discount_price_gbp", 0) or 0
 
         try:
-            _, rmb_price = calculate_camper_untaxed_and_retail(original, discount,
-                                                               exchange_rate=SETTINGS["EXCHANGE_RATE"])
+            _, rmb_price = calculate_jingya_prices(original, discount,
+                                                   exchange_rate=SETTINGS["EXCHANGE_RATE"])
         except:
             rmb_price = ""
 
