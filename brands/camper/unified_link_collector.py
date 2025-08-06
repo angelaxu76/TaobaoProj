@@ -64,7 +64,7 @@ def get_links_from_page(url):
 
 
 # ========= 主程序 =========
-def main():
+def camper_get_links():
     all_links = set()
 
     for base_url in BASE_URLS:
@@ -93,4 +93,4 @@ def main():
     print(f"\n🎉 共抓取链接: {len(all_links)}，已保存到: {LINKS_FILE}")
 
 if __name__ == "__main__":
-    main()
+    camper_get_links()

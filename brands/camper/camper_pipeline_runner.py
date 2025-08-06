@@ -10,6 +10,8 @@ from common_taobao.jingya.export_gender_split_excel import export_gender_split_e
 from common_taobao.generate_discount_price_excel import export_store_discount_price
 from common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
 from common_taobao.jingya.generate_publication_excel import generate_publication_excels
+from brands.camper.fetch_product_info import camper_fetch_product_info
+from brands.camper.unified_link_collector import camper_get_links
 
 
 def run_script(filename: str):
@@ -19,19 +21,19 @@ def run_script(filename: str):
 
 def main():
     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    #backup_and_clear_brand_dirs(CAMPER)
+    backup_and_clear_brand_dirs(CAMPER)
 
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    #run_script("unified_link_collector.py")
+    camper_get_links()
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    #run_script("clarks_jinya_fetch_product_info.py")
+    camper_fetch_product_info()
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
-    #import_txt_to_db_supplier("camper")  # ✅ 新逻辑
+    import_txt_to_db_supplier("camper")  # ✅ 新逻辑
 
     print("\n🟡 Step: 5️⃣ 绑定渠道 SKU 信息（淘经销 Excel）将鲸芽那边的货品ID等输入到数据库")
-    #insert_jingyaid_to_db("camper")
+    insert_jingyaid_to_db("camper")
 
     print("\n🟡 Step: 5️⃣ 将最新TXT中没有的产品，说明刚商品已经下架，但鲸芽这边没办法删除，全部补库存为0")
     #insert_missing_products_with_zero_stock("camper")
