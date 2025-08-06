@@ -52,10 +52,10 @@ def main():
     #run_script("clarks_jinya_fetch_product_info.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
-    #import_txt_to_db_supplier("clarks_jingya")  # ✅ 新逻辑
+    import_txt_to_db_supplier("clarks_jingya")  # ✅ 新逻辑
 
     print("\n🟡 Step: 5️⃣ 绑定渠道 SKU 信息（淘经销 Excel）将鲸芽那边的货品ID等输入到数据库")
-    #insert_jingyaid_to_db("clarks_jingya")
+    insert_jingyaid_to_db("clarks_jingya")
 
     print("\\n🟡 Step: 6️⃣生成发布产品的excel")
     generate_publication_excels("clarks_jingya")
