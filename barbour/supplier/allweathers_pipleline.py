@@ -2,7 +2,7 @@ from barbour.supplier.allweathers_fetch_info import fetch_allweathers_products
 from barbour.supplier.allweathers_get_links import allweathers_get_links
 from barbour.import_supplier_to_db_offers import import_txt_for_supplier
 from barbour.import_supplier_to_db_offers import import_txt_for_supplier
-from barbour.supplier_import_to_barbour_product import batch_import_txt_by_supplier
+from barbour.supplier_import_to_barbour_products import batch_import_txt_by_supplier
 
 def pipeline_houseoffraser():
     print("\n🚀 启动 Barbour - House of Fraser 全流程抓取")

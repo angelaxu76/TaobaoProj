@@ -20,6 +20,7 @@ if not excel_files:
 excel_files.sort(reverse=True)
 input_excel_path = base_dir / excel_files[0]
 
+
 # === 修正后的：从数据库查找唯一的 EAN 条形码 ===
 def get_ean_by_code_and_size(product_code, size):
     try:
@@ -38,6 +39,7 @@ def get_ean_by_code_and_size(product_code, size):
         if 'conn' in locals():
             conn.close()
 
+
 # === 解析 TXT 文件内容 ===
 def parse_txt(file_path):
     info = {"Product Code": "", "Gender": "", "Product Description": ""}
@@ -51,6 +53,7 @@ def parse_txt(file_path):
                 info["Product Description"] = line.split(":", 1)[1].strip()
     return info
 
+
 # === 判断鞋款分类 ===
 def get_style(desc):
     desc = desc.lower()
@@ -60,6 +63,7 @@ def get_style(desc):
         return "凉鞋"
     else:
         return "休闲鞋"
+
 
 # === 标准字段定义 ===
 required_columns = [
@@ -78,6 +82,7 @@ fixed_values = {
 }
 
 # === 主处理逻辑 ===
+
 df = pd.read_excel(input_excel_path)
 output_rows = []
 
@@ -146,4 +151,3 @@ else:
         group_filename = base_dir / f"更新后的货品导入_第{group_index}组.xlsx"
         output_df.to_excel(group_filename, sheet_name="商品信息", index=False)
         print(f"✅ 已生成文件：{group_filename}")
-
