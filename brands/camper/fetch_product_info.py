@@ -156,7 +156,7 @@ def process_product_url(PRODUCT_URL):
     except Exception as e:
         print(f"❌ 错误: {PRODUCT_URL} - {e}")
 
-def main():
+def camper_fetch_product_info():
     with open(PRODUCT_URLS_FILE, "r", encoding="utf-8") as f:
         urls = [line.strip() for line in f if line.strip()]
 
@@ -166,4 +166,4 @@ def main():
             future.result()
 
 if __name__ == "__main__":
-    main()
+    camper_fetch_product_info()
