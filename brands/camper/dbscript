@@ -9,10 +9,15 @@ CREATE TABLE camper_inventory (
     size VARCHAR(10) NOT NULL,                        -- 尺码（EU，如 38、39）
     gender VARCHAR(10),                               -- 性别：男款、女款、童款
 
+    -- 商品补充字段
+    product_description TEXT,                         -- 商品描述（用于识别鞋款/生成名称等）
+    product_title TEXT,                               -- 商品标题（如英文名称）
+    style_category VARCHAR(20),                       -- 鞋款分类，如 boots、sandal、casual 等
+
     -- 淘宝&渠道绑定信息（用于淘经销对接）
     channel_product_id VARCHAR(50),                   -- 渠道产品 ID（整个商品）
     channel_item_id VARCHAR(50),                      -- 渠道货品 ID（SKU 对应）
-    item_id VARCHAR(50),							  -- 淘宝宝贝ID
+    item_id VARCHAR(50),                              -- 淘宝宝贝ID
     skuid VARCHAR(50),                                -- 淘宝 SKU ID
     sku_name VARCHAR(200),                            -- SKU 规格名，如 黑色42码
 
