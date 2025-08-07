@@ -17,3 +17,5 @@ def extract_product_info(txt_file) -> dict:
         return {}
 
     return info
+
+
