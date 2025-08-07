@@ -45,21 +45,21 @@ def run_script(filename: str):
 
 def main():
     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    backup_and_clear_brand_dirs(CLARKS)  # ✅ 使用共享方法
+    #backup_and_clear_brand_dirs(CLARKS)  # ✅ 使用共享方法
 
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    run_script("unified_link_collector.py")
+    #run_script("unified_link_collector.py")
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    run_script("fetch_product_info.py")
+    #run_script("fetch_product_info.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
     import_txt_to_db("clarks")
 
 
     print("\n🟡 Step: 5️⃣ 导出价格 Excel")
-    for store in TAOBAO_STORES:
-     export_discount_price_with_skuids("clarks",store)
+    #for store in TAOBAO_STORES:
+     #export_discount_price_with_skuids("clarks",store)
 
     print("\n🟡 Step: 6️⃣ 导出库存 Excel")
     export_skuid_stock_excel("clarks")
@@ -67,10 +67,10 @@ def main():
     print("\n🟡 Step: 7️⃣ 为各店铺生成上架 Excel + 拷贝图片")
     # 手动指定调试店铺
 
-    for store in TAOBAO_STORES:
-        generate_product_excels(CLARKS, store)
-        codes = get_publishable_product_codes(CLARKS, store)
-        copy_images_for_store(CLARKS, store, codes)
+    #for store in TAOBAO_STORES:
+    # generate_product_excels(CLARKS, store)
+    # codes = get_publishable_product_codes(CLARKS, store)
+    #  copy_images_for_store(CLARKS, store, codes)
 
     # 导出需要下架的产品
     mark_offline_products_from_store_excels(BRAND_CONFIG["clarks"])

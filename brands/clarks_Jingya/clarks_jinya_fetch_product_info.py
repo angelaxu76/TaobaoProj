@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 from config import SIZE_RANGE_CONFIG
+from common_taobao.core.category_utils import infer_style_category
 import re
 import json
 
@@ -41,20 +42,6 @@ def extract_material(soup):
         if "Upper Material" in key:
             return val
     return "No Data"
-
-def infer_style_category(desc: str) -> str:
-    desc = desc.lower()
-    if "boot" in desc:
-        return "boots"
-    elif "sandal" in desc:
-        return "sandal"
-    elif "loafer" in desc:
-        return "loafers"
-    elif "slip-on" in desc or "slip on" in desc:
-        return "slip-on"
-    else:
-        return "casual"
-
 
 def detect_gender(text):
     text = text.lower()
@@ -166,7 +153,7 @@ def process_product(url):
         return None
 
 
-def main():
+def clarks_fetch_info():
     with open(LINK_FILE, "r", encoding="utf-8") as f:
         urls = [line.strip() for line in f if line.strip()]
 
@@ -182,4 +169,4 @@ def main():
             print(f"✅ 写入: {filepath.name}")
 
 if __name__ == "__main__":
-    main()
+    clarks_fetch_info()

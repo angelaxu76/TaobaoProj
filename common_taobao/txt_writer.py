@@ -1,6 +1,12 @@
 from pathlib import Path
+from common_taobao.core.category_utils import infer_style_category  # ✅ 如果函数写在这里就引入
 
 def format_txt(info: dict, filepath: Path, brand: str = None):
+    # ✅ 兜底推断 Style Category
+    if not info.get("Style Category"):
+        desc = info.get("Product Description", "")
+        info["Style Category"] = infer_style_category(desc)
+
     lines = []
 
     def write_line(key, val):
@@ -18,9 +24,6 @@ def format_txt(info: dict, filepath: Path, brand: str = None):
     write_line("Style Category", info.get("Style Category"))
     write_line("Feature", info.get("Feature"))
 
-
-
-
     # ✅ 写入 Product Size：通用格式（Clarks, ECCO 等）
     if "SizeMap" in info:
         size_str = ";".join(f"{size}:{status}" for size, status in info["SizeMap"].items())
@@ -28,8 +31,8 @@ def format_txt(info: dict, filepath: Path, brand: str = None):
     elif "Product Size" in info:  # fallback
         lines.append(f"Product Size: {info['Product Size']}")
 
-    # ✅ Camper 专用格式（带库存数字和 EAN）
-    if  "SizeDetail" in info:
+    # ✅ 写入 Product Size Detail（带库存和 EAN）
+    if "SizeDetail" in info:
         detail_lines = []
         for size, detail in info["SizeDetail"].items():
             stock_count = detail.get("stock_count", 0)
@@ -39,7 +42,6 @@ def format_txt(info: dict, filepath: Path, brand: str = None):
 
     write_line("Source URL", info.get("Source URL"))
 
-    # 写入文件
     filepath.parent.mkdir(parents=True, exist_ok=True)
     with open(filepath, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))

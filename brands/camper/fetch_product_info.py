@@ -1,3 +1,8 @@
+import os
+import re
+import time
+import json
+import threading
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -5,14 +10,10 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
-import os
-import re
-import time
-import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import threading
 from config import CAMPER, SIZE_RANGE_CONFIG  # ✅ 引入标准尺码配置
 from common_taobao.txt_writer import format_txt
+from common_taobao.core.category_utils import infer_style_category
 
 CHROMEDRIVER_PATH = CAMPER["CHROMEDRIVER_PATH"]
 PRODUCT_URLS_FILE = CAMPER["LINKS_FILE"]
@@ -30,20 +31,6 @@ def infer_gender_from_url(url: str) -> str:
     elif "/kids/" in url or "/children/" in url:
         return "童款"
     return "未知"
-
-def infer_style_category(desc: str) -> str:
-    desc = desc.lower()
-    if "boot" in desc:
-        return "boots"
-    elif "sandal" in desc:
-        return "sandal"
-    elif "loafer" in desc:
-        return "loafers"
-    elif "slip-on" in desc or "slip on" in desc:
-        return "slip-on"
-    else:
-        return "casual"
-
 
 def create_driver():
     chrome_options = Options()
