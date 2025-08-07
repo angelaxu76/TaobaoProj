@@ -4,7 +4,7 @@ import subprocess
 from datetime import datetime
 from config import CLARKS_JINGYA,TAOBAO_STORES,BRAND_CONFIG
 from common_taobao.jingya.import_channel_info_from_excel import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
-from common_taobao.jingya.export_channel_price_excel import export_channel_price_excel,export_all_sku_price_excel
+from common_taobao.jingya.export_channel_price_excel import export_channel_price_excel,export_channel_price_excel_from_txt
 from common_taobao.backup_and_clear import backup_and_clear_brand_dirs
 from common_taobao.jingya.import_txt_to_db_supplier import import_txt_to_db_supplier
 from common_taobao.jingya.disable_low_stock_product import disable_low_stock_products
@@ -61,7 +61,8 @@ def main():
     #generate_publication_excels("clarks_jingya")
 
     print("\\n🟡 Step: 6️⃣ 导出渠道价格 Excel（含零售价与商家编码），可以用于淘宝店铺去更新商品价格")
-    export_channel_price_excel("clarks_jingya")  # 导出价格明细（已发布）
+    #export_channel_price_excel("clarks_jingya")  # 导出价格明细（已发布）
+    export_channel_price_excel_from_txt("clarks_jingya","D:/list.txt")
 
 
 
