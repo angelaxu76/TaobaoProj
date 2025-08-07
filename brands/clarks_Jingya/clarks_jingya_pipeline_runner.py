@@ -8,7 +8,7 @@ from common_taobao.jingya.export_channel_price_excel import export_channel_price
 from common_taobao.backup_and_clear import backup_and_clear_brand_dirs
 from brands.clarks_Jingya.unified_link_collector import generate_product_links
 from brands.clarks_Jingya.clarks_jinya_fetch_product_info import clarks_fetch_info
-from common_taobao.jingya.import_txt_to_db_supplier import import_txt_to_db_supplier
+from common_taobao.jingya.jingya_import_txt_to_db import import_txt_to_db_supplier
 from common_taobao.jingya.generate_publication_excel import generate_publication_excels
 
 from pathlib import Path
