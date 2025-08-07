@@ -65,6 +65,7 @@ def parse_generic_txt(filepath: Path) -> List[Tuple]:
     return records
 
 def parse_jingya_txt(filepath: Path) -> List[Tuple]:
+    style_category = ""
     records = []
     with open(filepath, "r", encoding="utf-8") as f:
         lines = f.readlines()
@@ -108,6 +109,8 @@ def parse_jingya_txt(filepath: Path) -> List[Tuple]:
             ean_line = line.split(":", 1)[1].strip()
         elif line.startswith("Source URL:"):
             url = line.split(":", 1)[1].strip()
+        elif line.startswith("Style Category:"):
+            style_category = line.split(":", 1)[1].strip()
 
     if not url:
         print(f"❌ 缺失 product_url，跳过编码: {product_code}")

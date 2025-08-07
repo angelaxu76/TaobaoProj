@@ -31,6 +31,20 @@ def infer_gender_from_url(url: str) -> str:
         return "童款"
     return "未知"
 
+def infer_style_category(desc: str) -> str:
+    desc = desc.lower()
+    if "boot" in desc:
+        return "boots"
+    elif "sandal" in desc:
+        return "sandal"
+    elif "loafer" in desc:
+        return "loafers"
+    elif "slip-on" in desc or "slip on" in desc:
+        return "slip-on"
+    else:
+        return "casual"
+
+
 def create_driver():
     chrome_options = Options()
     chrome_options.add_argument("--headless")
@@ -132,6 +146,7 @@ def process_product_url(PRODUCT_URL):
             if missing_sizes:
                 print(f"⚠️ {product_code} 补全尺码: {', '.join(missing_sizes)}")
 
+        style_category = infer_style_category(description)
         # === 整理 info 字典 ===
         info = {
             "Product Code": product_code,
@@ -142,6 +157,7 @@ def process_product_url(PRODUCT_URL):
             "Product Price": str(original_price),
             "Adjusted Price": str(discount_price),
             "Product Material": upper_material,
+            "Style Category": style_category,  # ✅ 新增字段
             "Feature": feature_str,
             "SizeMap": size_map,
             "SizeDetail": size_detail,

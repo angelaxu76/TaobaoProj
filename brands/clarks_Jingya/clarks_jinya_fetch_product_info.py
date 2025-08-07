@@ -42,6 +42,20 @@ def extract_material(soup):
             return val
     return "No Data"
 
+def infer_style_category(desc: str) -> str:
+    desc = desc.lower()
+    if "boot" in desc:
+        return "boots"
+    elif "sandal" in desc:
+        return "sandal"
+    elif "loafer" in desc:
+        return "loafers"
+    elif "slip-on" in desc or "slip on" in desc:
+        return "slip-on"
+    else:
+        return "casual"
+
+
 def detect_gender(text):
     text = text.lower()
     if "women" in text:
@@ -130,6 +144,7 @@ def process_product(url):
             size_map_str[eu] = "有货" if stock > 0 else "无货"
             size_detail_dict[eu] = {"stock_count": stock, "ean": "0000000000000"}
 
+        style_category = infer_style_category(desc)
         return {
             "Product Code": code,
             "Product Name": name,
@@ -139,6 +154,7 @@ def process_product(url):
             "Product Price": original_price,
             "Adjusted Price": discount_price,
             "Product Material": material,
+            "Style Category": style_category,  # ✅ 新增字段
             "Feature": feature_str,
             "SizeMap": size_map_str,
             "SizeDetail": size_detail_dict,

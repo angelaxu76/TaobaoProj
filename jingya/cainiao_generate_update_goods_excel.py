@@ -12,9 +12,8 @@ GROUP_SIZE = 500  # 👈 每个输出 Excel 的最大记录数
 # ===============================================================
 
 
-def export_goods_excel(brand: str, goods_dir: Path, group_size: int = 500):
+def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 500):
     config = BRAND_CONFIG[brand]
-    txt_dir = config["TXT_DIR"]
     table_name = config["TABLE_NAME"]
     pg_config = config["PGSQL_CONFIG"]
 
@@ -25,44 +24,34 @@ def export_goods_excel(brand: str, goods_dir: Path, group_size: int = 500):
     excel_files.sort(reverse=True)
     input_excel_path = goods_dir / excel_files[0]
 
-    # 查询唯一条形码
-    def get_ean(product_code, size):
+    # 查询数据库中基础信息（一次性查出，避免重复连接）
+    def fetch_product_info():
         try:
             conn = psycopg2.connect(**pg_config)
             cur = conn.cursor()
-            cur.execute(
-                f"SELECT ean FROM {table_name} WHERE product_code = %s AND size = %s AND ean IS NOT NULL",
-                (product_code, size)
-            )
-            result = cur.fetchone()
-            return result[0] if result else ""
+            cur.execute(f"""
+                SELECT product_code, size, gender, product_description, style_category, ean
+                FROM {table_name}
+            """)
+            result = cur.fetchall()
+            info_map = {}
+            for row in result:
+                code, size, gender, desc, style, ean = row
+                info_map[(code, size)] = {
+                    "gender": gender or "",
+                    "description": desc or "",
+                    "style": style or "",
+                    "ean": ean or ""
+                }
+            return info_map
         except Exception as e:
-            print(f"❌ 查询条形码失败: {e}")
-            return ""
+            print(f"❌ 数据库查询失败: {e}")
+            return {}
         finally:
             if 'conn' in locals():
                 conn.close()
 
-    def parse_txt(file_path):
-        info = {"Product Code": "", "Gender": "", "Product Description": ""}
-        with open(file_path, encoding="utf-8") as f:
-            for line in f:
-                if line.startswith("Product Code:"):
-                    info["Product Code"] = line.split(":", 1)[1].strip()
-                elif line.startswith("Gender:"):
-                    info["Gender"] = line.split(":", 1)[1].strip()
-                elif line.startswith("Product Description:"):
-                    info["Product Description"] = line.split(":", 1)[1].strip()
-        return info
-
-    def get_style(desc):
-        desc = desc.lower()
-        if "boot" in desc:
-            return "男靴" if "men" in desc else "女靴"
-        elif "sandal" in desc:
-            return "凉鞋"
-        else:
-            return "休闲鞋"
+    info_lookup = fetch_product_info()
 
     required_columns = [
         "货品编码", "货品名称", "货品名称（英文）", "条形码", "吊牌价", "零售价", "成本价", "易碎品", "危险品",
@@ -90,19 +79,30 @@ def export_goods_excel(brand: str, goods_dir: Path, group_size: int = 500):
             continue
         product_code, size = match.groups()
 
-        txt_path = txt_dir / f"{product_code}.txt"
-        if not txt_path.exists():
-            print(f"⚠️ 缺失 TXT 文件: {txt_path.name}")
+        key = (product_code, size)
+        if key not in info_lookup:
+            print(f"⚠️ 数据库缺少: {product_code}, 尺码 {size}")
             continue
 
-        info = parse_txt(txt_path)
-        gender = info.get("Gender", "")
-        desc = info.get("Product Description", "")
-        style = get_style(desc)
-        gender_label = "男鞋" if "男" in gender else "女鞋"
-        new_name = f"{brand}看步休闲{gender_label}{style}{product_code}尺码{size}"
+        info = info_lookup[key]
+        gender = info["gender"]
+        desc = info["description"]
+        style_en = info["style"]
+        ean = info["ean"]
 
-        ean = get_ean(product_code, size)
+        # 中文名称构建
+        gender_label = "男鞋" if "男" in gender else "女鞋"
+        style_zh = {
+            "boots": "靴",
+            "sandal": "凉鞋",
+            "loafers": "乐福鞋",
+            "slip-on": "便鞋",
+            "casual": "休闲鞋"
+        }.get(style_en.lower(), "休闲鞋")
+
+        new_name = f"{brand}看步休闲{gender_label}{style_zh}{product_code}尺码{size}"
+
+        # 条形码拼接
         final_barcode = f"{barcode}#{ean}" if ean and ean not in barcode else barcode
 
         row_data = {
@@ -136,4 +136,4 @@ def export_goods_excel(brand: str, goods_dir: Path, group_size: int = 500):
 
 # === ✅ 若作为脚本运行 ===
 if __name__ == "__main__":
-    export_goods_excel(BRAND, GOODS_DIR, GROUP_SIZE)
+    export_goods_excel_from_db(BRAND, GOODS_DIR, GROUP_SIZE)
