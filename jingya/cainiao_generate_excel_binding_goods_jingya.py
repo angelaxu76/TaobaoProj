@@ -1,13 +1,5 @@
-# common_taobao/bindings.py
+# jingya/cainiao_generate_excel_binding_goods_jingya.py
 # -*- coding: utf-8 -*-
-"""
-自包含：不再依赖《单个商品绑定上传模板.xlsx》，列顺序写死在 TEMPLATE_COLUMNS。
-从数据库优先获取信息：
-- 用 货品ID -> DB 查 channel_item_id；再用 channel_item_id 反查 product_code/size；
-- 生成 *外部渠道商品ID（编码+尺码，去除特殊字符）；
-- 生成 *商品名称（与 cainiao_generate_update_goods_excel 一致的规则）；
-- 只保留未绑定（对比《商货品关系导出.xlsx》）。
-"""
 import re
 import psycopg2
 import pandas as pd
@@ -15,14 +7,13 @@ from pathlib import Path
 from typing import Dict, Tuple, Optional
 from config import BRAND_CONFIG, PGSQL_CONFIG
 
-# ===== 固定列顺序（来自模板文件提取一次后写死） =====
+# 仅保留你模板的 6 列
 TEMPLATE_COLUMNS = [
-    "*菜鸟货品ID", "*销售渠道", "*渠道店铺ID", "*发货模式", "*外部渠道商品ID",
-    "*商品名称", "*商品ID", "*商家编码", "*销售属性", "*标准品牌ID", "*标准品牌名称",
-    "*类目ID", "*类目名称", "*属性信息"
+    "*销售渠道", "*渠道店铺ID",
+    "*发货模式", "*外部渠道商品ID", "*商品名称","*菜鸟货品ID",
 ]
 
-# ===== 名称构造（可替换为 common_taobao.name_utils.build_product_name） =====
+# —— 商品名生成（与 cainiao_generate_update_goods_excel 一致）——
 BRAND_MAP  = {
     "clarks_jingya": "clarks其乐",
     "camper": "camper看步",
@@ -42,16 +33,37 @@ def build_product_name(brand: str, gender: str, style_en: str, product_code: str
     brand_label = BRAND_MAP.get((brand or "").lower(), brand)
     gender_label = "男鞋" if "男" in (gender or "") else "女鞋"
     style_zh = STYLE_MAP.get((style_en or "").lower(), "休闲鞋")
-    return f"{brand_label}{gender_label}{style_zh}{product_code}尺码{size}"
+    # 一定把编码与尺码拼进去
+    return f"{brand_label}{gender_label}{style_zh}{product_code}尺码{size}".replace("None", "").replace("尺码", "尺码")
 
 def _clean_join(code: str, size: str) -> str:
     """编码+尺码，去掉非字母数字字符。"""
     return re.sub(r"[^A-Za-z0-9]", "", f"{str(code or '')}{str(size or '')}")
 
+def _parse_code_size_from_any(text: str) -> Tuple[str, str]:
+    """
+    从 channel_item_id 或字符串里兜底解析 (product_code, size)。
+    兼容如 K100300-00142 / 26178475-395 等写法。
+    """
+    s = str(text or "")
+    # 先尝试：编码(字母可选+5位以上数字+可选连接符+最多3位) + 可选尺码(2-3位)
+    m = re.search(r"([A-Za-z]*\d{5,}[-_\.]?\d{0,3})(\d{2,3})?$", s)
+    if m:
+        code = m.group(1) or ""
+        size = m.group(2) or ""
+        return code, size
+    # 再尝试常见 “编码-尺码” 或 “编码_尺码”
+    m2 = re.search(r"([A-Za-z]*\d{5,})[-_\.]?(\d{2,3})", s)
+    if m2:
+        return m2.group(1) or "", m2.group(2) or ""
+    return "", ""
+
 def _fetch_maps(table: str, pgcfg: Dict) -> Tuple[Dict[str, str], Dict[Tuple[str, str], Tuple[str, str]]]:
     """
     返回：
-      id_to_channel_item: 货品ID(channel_product_id) -> channel_item_id
+      id_to_channel_item:
+        - 货品ID(channel_product_id) -> channel_item_id
+        - 以及 channel_item_id -> channel_item_id（兼容“货品ID就是channel_item_id”的情况）
       code_size_to_gender_style: (product_code, size) -> (gender, style_category)
     """
     id_to_channel_item: Dict[str, str] = {}
@@ -64,8 +76,13 @@ def _fetch_maps(table: str, pgcfg: Dict) -> Tuple[Dict[str, str], Dict[Tuple[str
                 FROM {table}
             """)
             for channel_item_id, channel_product_id, product_code, size, gender, style in cur.fetchall():
-                if channel_product_id:
-                    id_to_channel_item[str(channel_product_id)] = str(channel_item_id or "")
+                ch_item = str(channel_item_id or "")
+                ch_prod = str(channel_product_id or "")
+                # 两条映射都建立，最大化命中率
+                if ch_prod:
+                    id_to_channel_item[ch_prod] = ch_item
+                if ch_item:
+                    id_to_channel_item[ch_item] = ch_item
                 key = (str(product_code or ""), str(size or ""))
                 if key not in code_size_to_gender_style:
                     code_size_to_gender_style[key] = (str(gender or ""), str(style or ""))
@@ -74,6 +91,8 @@ def _fetch_maps(table: str, pgcfg: Dict) -> Tuple[Dict[str, str], Dict[Tuple[str
     return id_to_channel_item, code_size_to_gender_style
 
 def _lookup_code_size_by_channel_item(table: str, pgcfg: Dict, channel_item_id: str) -> Optional[Tuple[str, str]]:
+    if not channel_item_id:
+        return None
     conn = psycopg2.connect(**pgcfg)
     try:
         with conn.cursor() as cur:
@@ -120,7 +139,7 @@ def generate_channel_binding_excel(brand: str, goods_dir: Path) -> Path:
     # 预取 DB 映射
     id_to_channel_item, code_size_to_gender_style = _fetch_maps(table_name, pgcfg)
 
-    # 固定字段
+    # 固定字段（这三项按你要求写死）
     unbound_df["*销售渠道"] = "淘分销"
     unbound_df["*渠道店铺ID"] = "2219163936872"
     unbound_df["*发货模式"] = "直发"
@@ -129,43 +148,63 @@ def generate_channel_binding_excel(brand: str, goods_dir: Path) -> Path:
     # *外部渠道商品ID
     def make_channel_item(row) -> str:
         prod_id = str(row.get("货品ID", "")).strip()
-        ch_item = id_to_channel_item.get(prod_id, "")
-        if not ch_item:
-            return ""
+        ch_item = id_to_channel_item.get(prod_id, prod_id)  # 兜底：直接用 货品ID
+        # 优先 DB 反查 code/size
         pair = _lookup_code_size_by_channel_item(table_name, pgcfg, ch_item)
         if pair:
             code, size = pair
         else:
-            # 兜底尝试从 channel_item_id 自身解析
-            m = re.search(r"([A-Za-z]*\d{5,}[-_\.]?\d{0,3})(\d{2,3})?$", ch_item)
-            if m:
-                code = m.group(1) or ""
-                size = m.group(2) or ""
-            else:
-                code, size = ch_item, ""
-        return _clean_join(code, size)
+            # 兜底从 ch_item 文本解析
+            code, size = _parse_code_size_from_any(ch_item)
+        return _clean_join(code, size) if (code or size) else _clean_join(ch_item, "")
 
     unbound_df["*外部渠道商品ID"] = unbound_df.apply(make_channel_item, axis=1)
 
     # *商品名称
     def make_item_name(row) -> str:
         prod_id = str(row.get("货品ID", "")).strip()
-        ch_item = id_to_channel_item.get(prod_id, "")
+        ch_item = id_to_channel_item.get(prod_id, prod_id)
+        # 先拿 code/size
         code, size = "", ""
-        pair = _lookup_code_size_by_channel_item(table_name, pgcfg, ch_item) if ch_item else None
+        pair = _lookup_code_size_by_channel_item(table_name, pgcfg, ch_item)
         if pair:
             code, size = pair
+        if not (code and size):
+            c2, s2 = _parse_code_size_from_any(ch_item)
+            code = code or c2
+            size = size or s2
+        # gender/style
         gender, style = code_size_to_gender_style.get((code, size), ("", ""))
-        return build_product_name(brand, gender, style, code, size)
+        return build_product_name(brand, gender, style, re.sub(r"[^A-Za-z0-9]", "", code), re.sub(r"[^A-Za-z0-9]", "", size))
 
     unbound_df["*商品名称"] = unbound_df.apply(make_item_name, axis=1)
 
-    # 按固定列顺序输出
+    # 按 6 列输出
     final_df = unbound_df.reindex(columns=TEMPLATE_COLUMNS)
 
+    # 在  final_df 生成后插入提示行
+    tip_row = {
+        "*销售渠道": "填写销售渠道名称，请参见下方'销售渠道参考'sheet表",
+        "*渠道店铺ID": "填写店铺ID，请参照以下地址https://g.cainiao.com/infra/tao-fuwu/information",
+        "*发货模式": "请选择直发或代发",
+        "*外部渠道商品ID": "",
+        "*商品名称": "",
+        "*菜鸟货品ID": ""
+    }
+
+    # 把提示行 DataFrame 拼到最前面
+    final_df_with_tip = pd.concat(
+        [pd.DataFrame([tip_row], columns=TEMPLATE_COLUMNS), final_df],
+        ignore_index=True
+    )
+
+    # 然后写 final_df_with_tip，而不是 final_df
     output_file = goods_dir / "未绑定商品绑定信息.xlsx"
     with pd.ExcelWriter(output_file, engine="openpyxl") as writer:
-        final_df.to_excel(writer, index=False, sheet_name="单个商品绑定")
+        final_df_with_tip.to_excel(writer, index=False, sheet_name="单个商品绑定")
 
     print(f"✅ 已生成严格对齐模板格式的文件：{output_file}")
     return output_file
+
+if __name__ == "__main__":
+    generate_channel_binding_excel("clarks_jingya", Path("D:/TB/taofenxiao/goods"))
