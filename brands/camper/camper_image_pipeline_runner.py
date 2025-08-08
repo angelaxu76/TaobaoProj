@@ -6,6 +6,7 @@ from common_taobao.tools.HTMLToPGNBatchMutipleThread import convert_html_to_imag
 from common_taobao.tools.cutterAllsiderSpace import trim_images_in_folder
 from common_taobao.generate_html import main as generate_html_main
 from common_taobao.check_missing_images import check_missing_images
+from common_taobao.generate_html_FristPage import generate_html_for_first_page
 from config import CAMPER
 from pathlib import Path
 
@@ -18,32 +19,35 @@ def main():
     # download_images_from_codes(r"D:\TB\Products\camper\repulibcation\missing_images.txt")
 
     print("下载product_link中包含商品编码URL的图片")
-    download_camper_images()
+    # download_camper_images()
 
     print("图抖动加上水平翻转")
     INPUT_DIR = Path(CAMPER["IMAGE_DOWNLOAD"])
     OUTPUT_DIR = Path(CAMPER["IMAGE_PROCESS"])
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    batch_process_images(INPUT_DIR,OUTPUT_DIR)
+    # batch_process_images(INPUT_DIR,OUTPUT_DIR)
 
 
     input_folder = CAMPER["IMAGE_PROCESS"]
     output_folder = CAMPER["IMAGE_CUTTER"]
     print("将图片变成正方形")
-    expand_images_in_folder(input_folder, output_folder)
+    # expand_images_in_folder(input_folder, output_folder)
 
     print("将图片merge到一张图片中")
-    batch_merge_images(CAMPER["IMAGE_CUTTER"],CAMPER["MERGED_DIR"], width=750)
+    # batch_merge_images(CAMPER["IMAGE_CUTTER"],CAMPER["MERGED_DIR"], width=750)
 
     print("生成产品详情卡HTML")
     # generate_html_main("camper")
+    # generate_html_for_first_page("camper")
 
-    print("生成产品详情卡图片")
     GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径
-    convert_html_to_images( CAMPER["HTML_DIR"], CAMPER["HTML_IMAGE"],GECKODRIVER_PATH, 10)
-
+    print("生成产品详情卡图片")
+    # convert_html_to_images( CAMPER["HTML_DIR"], CAMPER["HTML_IMAGE"],GECKODRIVER_PATH, 10)
     # trim_images_in_folder(CAMPER["HTML_IMAGE"],CAMPER["HTML_CUTTER"],file_pattern="*.png", tolerance=5)
 
+    print("生成产品首页图片")
+    convert_html_to_images( CAMPER["HTML_DIR_FIRST_PAGE"], CAMPER["HTML_IMAGE_FIRST_PAGE"],GECKODRIVER_PATH, "FristPage", 5)
+    # trim_images_in_folder(CAMPER["HTML_IMAGE_FIRST_PAGE"],CAMPER["HTML_CUTTER_FIRST_PAGE"],file_pattern="*.png", tolerance=5)
 
 if __name__ == "__main__":
     main()

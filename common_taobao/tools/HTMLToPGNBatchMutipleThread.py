@@ -41,15 +41,15 @@ def html_to_full_screenshot(html_path, output_image, geckodriver_path):
     trim_image(output_image)
 
 
-def process_html_file(file, html_folder, output_folder, geckodriver_path):
+def process_html_file(file, html_folder, output_folder, suffix,geckodriver_path):
     """处理单个 HTML 文件"""
     if file.endswith(".html"):
         html_path = os.path.join(html_folder, file)
-        output_image = os.path.join(output_folder, f"{os.path.splitext(file)[0].replace('_', '')}_Detail.png")
+        output_image = os.path.join(output_folder, f"{os.path.splitext(file)[0].replace('_', '')}_{suffix}.png")
         html_to_full_screenshot(html_path, output_image, geckodriver_path)
 
 
-def convert_html_to_images(input_dir, output_dir, geckodriver_path, max_workers=4):
+def convert_html_to_images(input_dir, output_dir, geckodriver_path,suffix, max_workers=4):
     """
     将 HTML 转换为图片（支持多线程）
 
@@ -66,6 +66,6 @@ def convert_html_to_images(input_dir, output_dir, geckodriver_path, max_workers=
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         for file in html_files:
-            executor.submit(process_html_file, file, input_dir, output_dir, geckodriver_path)
+            executor.submit(process_html_file, file, input_dir, output_dir,suffix, geckodriver_path)
 
     print(f"[Done] All screenshots saved to {output_dir}")

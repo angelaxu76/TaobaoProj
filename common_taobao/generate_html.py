@@ -272,7 +272,7 @@ def main(brand=None, max_workers=4):
     cfg = BRAND_CONFIG[brand]
     txt_dir = cfg["TXT_DIR"]
     image_dir = cfg["IMAGE_DIR"]
-    html_dir = cfg["HTML_DIR"]
+    html_dir = cfg["HTML_DIR_DES"]
     html_dir.mkdir(parents=True, exist_ok=True)
 
     files = list(txt_dir.glob("*.txt"))
