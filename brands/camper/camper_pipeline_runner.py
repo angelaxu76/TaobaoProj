@@ -36,7 +36,7 @@ def main():
     insert_jingyaid_to_db("camper")
 
     print("\n🟡 Step: 5️⃣ 将最新TXT中没有的产品，说明刚商品已经下架，但鲸芽这边没办法删除，全部补库存为0")
-    #insert_missing_products_with_zero_stock("camper")
+    insert_missing_products_with_zero_stock("camper")
 
     print("\n🟡 Step: 5️⃣ 找出尺码很少的商品ID，将它所有的尺码都设置成0，并将状态变成未发布，为下一步该库存做准备")
     #disable_low_stock_products("camper")
