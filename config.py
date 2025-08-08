@@ -76,7 +76,7 @@ BARBOUR = {
     "TABLE_NAME": "barbour_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": BARBOUR_BASE / "publication" / "barbour" / "product_links.txt",
-    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     # === 新增 houseoffraser 配置 ===
     "LINKS_FILES": {
         "outdoorandcountry": BARBOUR_BASE / "publication" / "outdoorandcountry" / "product_links.txt",
@@ -122,7 +122,7 @@ TERRACES = {
     "TABLE_NAME": "terraces_inventory",  # ✅ 数据库表名
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": TERRACES_BASE / "publication" / "product_links.txt",  # ✅ 商品链接文件
-    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",  # 商品编码
         "url": "product_url",
@@ -156,7 +156,7 @@ CAMPER = {
     "TABLE_NAME": "camper_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": CAMPER_BASE / "publication" / "product_links.txt",
-    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
         "url": "product_url",
@@ -184,7 +184,7 @@ CAMPER_GLOBAL = {
     "TABLE_NAME": "camper_inventory_global",
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": CAMPER_GLOBAL_BASE / "publication" / "product_links.txt",
-    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
         "url": "product_url",
@@ -215,7 +215,7 @@ CLARKS = {
     "TABLE_NAME": "clarks_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": CLARKS_BASE / "publication" / "product_links.txt",
-    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
         "url": "product_url",
@@ -250,7 +250,7 @@ CLARKS_JINGYA = {
     "TABLE_NAME": "clarks_jingya_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": CLARKS_JINGYA_BASE / "publication" / "product_links.txt",
-    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
         "url": "product_url",
@@ -278,7 +278,7 @@ BIRKENSTOCK = {
     "TABLE_NAME": "birkenstock_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": BIRKENSTOCK_BASE / "publication" / "product_links.txt",
-    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
         "url": "product_url",
@@ -303,7 +303,7 @@ GEOX = {
     "TABLE_NAME": "geox_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": GEOX_BASE / "publication" / "product_links.txt",
-    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
         "url": "product_url",

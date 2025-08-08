@@ -49,7 +49,7 @@ def main():
     # export_all_sku_price_excel("camper")  # 导出商家编码价格表（所有商品）
 
     print("\\n🟡 Step: 6️⃣生成发布产品的excel")
-    #generate_publication_excels("camper")
+    generate_publication_excels("camper")
 
     print("\n🟡 Step: 6️⃣ 导出库存 Excel")
     # export_skuid_stock_excel("camper")

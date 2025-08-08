@@ -11,11 +11,11 @@ from pathlib import Path
 
 def main():
     print("检查哪些图片缺少，TXT中编码但图片文件夹中没有图片")
-    check_missing_images("camper")
+    # check_missing_images("camper")
 
 
     print("下载指定商品编码的的图片")
-    download_images_from_codes(r"D:\TB\Products\camper\repulibcation\missing_images.txt")
+    # download_images_from_codes(r"D:\TB\Products\camper\repulibcation\missing_images.txt")
 
     print("下载product_link中包含商品编码URL的图片")
     download_camper_images()
@@ -33,13 +33,13 @@ def main():
     batch_merge_images(CAMPER["IMAGE_CUTTER"],CAMPER["MERGED_DIR"], width=750)
 
     print("生成产品详情卡HTML")
-    generate_html_main("camper")
+    # generate_html_main("camper")
 
     print("生成产品详情卡图片")
     GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径
     convert_html_to_images( CAMPER["HTML_DIR"], CAMPER["HTML_IMAGE"],GECKODRIVER_PATH, 10)
 
-    trim_images_in_folder(CAMPER["HTML_IMAGE"],CAMPER["HTML_CUTTER"],file_pattern="*.png", tolerance=5)
+    # trim_images_in_folder(CAMPER["HTML_IMAGE"],CAMPER["HTML_CUTTER"],file_pattern="*.png", tolerance=5)
 
 
 if __name__ == "__main__":
