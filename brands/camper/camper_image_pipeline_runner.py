@@ -42,12 +42,12 @@ def main():
 
     GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径
     print("生成产品详情卡图片")
-    # convert_html_to_images( CAMPER["HTML_DIR"], CAMPER["HTML_IMAGE"],GECKODRIVER_PATH, 10)
-    # trim_images_in_folder(CAMPER["HTML_IMAGE"],CAMPER["HTML_CUTTER"],file_pattern="*.png", tolerance=5)
+    # convert_html_to_images( CAMPER["HTML_DIR_DES"], CAMPER["HTML_IMAGE_DES"],GECKODRIVER_PATH, 10)
+    # trim_images_in_folder(CAMPER["HTML_IMAGE_DES"],CAMPER["HTML_CUTTER_FIRST_PAGE"],file_pattern="*.png", tolerance=5)
 
     print("生成产品首页图片")
     convert_html_to_images( CAMPER["HTML_DIR_FIRST_PAGE"], CAMPER["HTML_IMAGE_FIRST_PAGE"],GECKODRIVER_PATH, "FristPage", 5)
-    # trim_images_in_folder(CAMPER["HTML_IMAGE_FIRST_PAGE"],CAMPER["HTML_CUTTER_FIRST_PAGE"],file_pattern="*.png", tolerance=5)
+    trim_images_in_folder(CAMPER["HTML_IMAGE_FIRST_PAGE"],CAMPER["HTML_CUTTER_FIRST_PAGE"],file_pattern="*.png", tolerance=5)
 
 if __name__ == "__main__":
     main()

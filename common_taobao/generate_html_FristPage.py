@@ -124,7 +124,7 @@ def generate_html_for_first_page(brand: str, max_workers: int = 6):
     hero_dir: Path = cfg.get("HTML_DIR_FIRST_PAGE")
     hero_dir.mkdir(parents=True, exist_ok=True)
 
-    priority = cfg.get("IMAGE_PRIORITY", IMAGE_PRIORITY_DEFAULT)
+    priority = cfg.get("IMAGE_FIRST_PRIORITY", IMAGE_PRIORITY_DEFAULT)
 
     files = list(txt_dir.glob("*.txt"))
     if not files:

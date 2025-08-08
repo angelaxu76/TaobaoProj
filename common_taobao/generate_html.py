@@ -189,7 +189,7 @@ def find_image_path(code, image_dir, brand):
     PLACEHOLDER_IMG = "https://via.placeholder.com/500x500?text=No+Image"
 
     cfg = BRAND_CONFIG.get(brand.lower(), {})
-    priority = cfg.get("IMAGE_PRIORITY", ["F", "C", "1", "01"])
+    priority = cfg.get("IMAGE_DES_PRIORITY", ["F", "C", "1", "01"])
 
     if not image_dir.exists():
         return PLACEHOLDER_IMG
