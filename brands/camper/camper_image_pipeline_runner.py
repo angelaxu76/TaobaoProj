@@ -21,7 +21,10 @@ def main():
     download_camper_images()
 
     print("图抖动加上水平翻转")
-    batch_process_images()
+    INPUT_DIR = Path(CAMPER["IMAGE_DOWNLOAD"])
+    OUTPUT_DIR = Path(CAMPER["IMAGE_PROCESS"])
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    batch_process_images(INPUT_DIR,OUTPUT_DIR)
 
 
     input_folder = CAMPER["IMAGE_PROCESS"]
