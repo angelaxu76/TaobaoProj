@@ -11,6 +11,34 @@ GOODS_DIR = Path("D:/TB/taofenxiao/goods")  # 👈 Excel 文件所在目录（�
 GROUP_SIZE = 500  # 👈 每个输出 Excel 的最大记录数
 # ===============================================================
 
+BRAND_MAP  = {
+    "clarks_jingya": "clarks其乐",
+    "camper": "camper看步",
+    "clarks": "clarks其乐",
+    "ecco": "ecco爱步",
+    "geox": "geox健乐士",
+    "barbour": "barbour巴伯尔"
+}
+
+STYLE_MAP = {
+    "boots": "靴",
+    "sandal": "凉鞋",
+    "loafers": "乐福鞋",
+    "slip-on": "便鞋",
+    "casual": "休闲鞋"
+}
+
+def build_product_name(brand: str, gender: str, style_en: str, product_code: str, size: str) -> str:
+    """
+    根据品牌、性别、鞋款英文、商品编码、尺码 生成中文商品名称
+    """
+    brand_label = BRAND_MAP.get(brand.lower(), brand)
+    gender_label = "男鞋" if "男" in (gender or "") else "女鞋"
+    style_zh = STYLE_MAP.get((style_en or "").lower(), "休闲鞋")
+    return f"{brand_label}{gender_label}{style_zh}{product_code}尺码{size}"
+
+def is_all_zeros(s: str) -> bool:
+    return bool(s) and all(ch == "0" for ch in s.strip())
 
 def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 500):
     config = BRAND_CONFIG[brand]
@@ -100,10 +128,17 @@ def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 50
             "casual": "休闲鞋"
         }.get(style_en.lower(), "休闲鞋")
 
-        new_name = f"{brand}看步休闲{gender_label}{style_zh}{product_code}尺码{size}"
+        brand_label = BRAND_MAP.get(brand.lower(), brand)  # 找不到就用原值
+
+        new_name = f"{brand_label}{gender_label}{style_zh}{product_code}尺码{size}"
 
         # 条形码拼接
-        final_barcode = f"{barcode}#{ean}" if ean and ean not in barcode else barcode
+        if ean and not is_all_zeros(ean):
+            # EAN 有效且不在 barcode 中 → 追加
+            final_barcode = barcode if ean in barcode else f"{barcode}#{ean}"
+        else:
+            # EAN 无效（全是 0）→ 直接用 barcode
+            final_barcode = barcode
 
         row_data = {
             "货品编码": code,
