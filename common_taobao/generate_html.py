@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from common_taobao.core.translate import safe_translate
 from config import BRAND_CONFIG
 
+
 PLACEHOLDER_IMG = "https://via.placeholder.com/500x500?text=No+Image"
 AD_WORDS_FILE = Path(r"D:\TB\Products\config\ad_sensitive_words.txt")
 
@@ -120,7 +121,7 @@ HTML_TEMPLATE = """
     }}
     .info-box {{
         flex: 1;
-        font-size: 18px;
+        font-size: 22px;
         background: #f9f9f9;
         border-radius: 8px;
         padding: 12px 14px;
@@ -163,7 +164,7 @@ HTML_TEMPLATE = """
     <div class="info-section">
         <div class="info-box"><strong>颜色：</strong><span class="color-dot"></span>{color}</div>
         <div class="info-box"><strong>材质：</strong><span class="material-square"></span>{material}</div>
-        <div class="info-box"><strong>性别：</strong>{gender}</div>
+        <div class="info-box"><strong>编码：</strong>{code}</div>
     </div>
 </div>
 </body>
@@ -219,6 +220,7 @@ def generate_html(data, output_path, image_dir,brand):
     gender = data.get("Product Gender", "")
     color = data.get("Product Color", "")
     material = data.get("Product Material", "")
+    material = safe_translate(material, target_lang="ZH")
     code = data.get("Product Code", "")
     image_path = find_image_path(code, image_dir, brand)
 
@@ -237,6 +239,7 @@ def generate_html(data, output_path, image_dir,brand):
         color=color,
         gender=gender,
         material=material,
+        code=code,
         features=features_html
     )
 

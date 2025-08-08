@@ -37,17 +37,17 @@ def main():
     # batch_merge_images(CAMPER["IMAGE_CUTTER"],CAMPER["MERGED_DIR"], width=750)
 
     print("生成产品详情卡HTML")
-    # generate_html_main("camper")
+    #generate_html_main("camper")
     # generate_html_for_first_page("camper")
 
     GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径
     print("生成产品详情卡图片")
-    # convert_html_to_images( CAMPER["HTML_DIR_DES"], CAMPER["HTML_IMAGE_DES"],GECKODRIVER_PATH, 10)
-    # trim_images_in_folder(CAMPER["HTML_IMAGE_DES"],CAMPER["HTML_CUTTER_FIRST_PAGE"],file_pattern="*.png", tolerance=5)
+    #convert_html_to_images( CAMPER["HTML_DIR_DES"], CAMPER["HTML_IMAGE_DES"],GECKODRIVER_PATH,"Description",10)
+    trim_images_in_folder(CAMPER["HTML_IMAGE_DES"],CAMPER["HTML_CUTTER_DES"],file_pattern="*.png", tolerance=5)
 
     print("生成产品首页图片")
-    convert_html_to_images( CAMPER["HTML_DIR_FIRST_PAGE"], CAMPER["HTML_IMAGE_FIRST_PAGE"],GECKODRIVER_PATH, "FristPage", 5)
-    trim_images_in_folder(CAMPER["HTML_IMAGE_FIRST_PAGE"],CAMPER["HTML_CUTTER_FIRST_PAGE"],file_pattern="*.png", tolerance=5)
+    # convert_html_to_images( CAMPER["HTML_DIR_FIRST_PAGE"], CAMPER["HTML_IMAGE_FIRST_PAGE"],GECKODRIVER_PATH, "FristPage", 5)
+    # trim_images_in_folder(CAMPER["HTML_IMAGE_FIRST_PAGE"],CAMPER["HTML_CUTTER_FIRST_PAGE"],file_pattern="*.png", tolerance=5)
 
 if __name__ == "__main__":
     main()
