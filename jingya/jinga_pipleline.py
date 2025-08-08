@@ -1,5 +1,6 @@
 from pathlib import Path
 from jingya.cainiao_generate_excel_update_goods_excel import export_goods_excel_from_db
+from jingya.cainiao_generate_excel_binding_goods_jingya import generate_channel_binding_excel
 
 def pipeline_jingya():
     print("\n🚀 鲸芽和菜鸟整合流程")
@@ -9,9 +10,10 @@ def pipeline_jingya():
     BRAND = "clarks_jingya"  # 👈 品牌名（必须是 config.py 中 BRAND_CONFIG 的 key）
     GOODS_DIR = Path("D:/TB/taofenxiao/goods")  # 👈 Excel 文件所在目录（自动查找以“货品导出”开头的文件）
     GROUP_SIZE = 500  # 👈 每个输出 Excel 的最大记录数
-    export_goods_excel_from_db(BRAND, GOODS_DIR, GROUP_SIZE)
+    # export_goods_excel_from_db(BRAND, GOODS_DIR, GROUP_SIZE)
 
-
+    # 导出 货品绑定的excel
+    generate_channel_binding_excel("clarks_jingya", Path("D:/TB/taofenxiao/goods"))
 
 
 if __name__ == "__main__":
