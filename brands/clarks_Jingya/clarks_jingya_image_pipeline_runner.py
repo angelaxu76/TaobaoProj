@@ -4,8 +4,9 @@ from common_taobao.tools.crop_gray_to_square import run_crop_and_expand
 from common_taobao.tools.merge_product_images import batch_merge_images
 from common_taobao.tools.HTMLToPGNBatchMutipleThread import convert_html_to_images
 from common_taobao.tools.cutterAllsiderSpace import trim_images_in_folder
-from common_taobao.tools.copy_images import copy_images
 from common_taobao.generate_html import main as generate_html_main
+from common_taobao.check_missing_images import check_missing_images
+from common_taobao.generate_html_FristPage import generate_html_for_first_page
 from config import CLARKS_JINGYA
 from pathlib import Path
 
@@ -30,17 +31,18 @@ def main():
     #copy_images(CLARKS_JINGYA["IMAGE_CUTTER"],CLARKS_JINGYA["IMAGE_DIR"])
 
 
-    print("将图片merge到一张图片中")
-    #batch_merge_images(CLARKS_JINGYA["IMAGE_CUTTER"], CLARKS_JINGYA["MERGED_DIR"], width=750)
-
     print("生成产品详情卡HTML")
     #generate_html_main("clarks_jingya")
+    # generate_html_for_first_page("clarks_jingya")
 
-    print("生成产品详情卡图片")
     GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径
-    #convert_html_to_images( CLARKS_JINGYA["HTML_DIR"], CLARKS_JINGYA["HTML_IMAGE"],GECKODRIVER_PATH, 10)
+    print("生成产品详情卡图片")
+    #convert_html_to_images( CLARKS_JINGYA["HTML_DIR_DES"], CLARKS_JINGYA["HTML_IMAGE_DES"],GECKODRIVER_PATH,"Description",10)
+    trim_images_in_folder(CLARKS_JINGYA["HTML_IMAGE_DES"],CLARKS_JINGYA["HTML_CUTTER_DES"],file_pattern="*.png", tolerance=5)
 
-    trim_images_in_folder(CLARKS_JINGYA["HTML_IMAGE"],CLARKS_JINGYA["HTML_CUTTER"],file_pattern="*.png", tolerance=5)
+    print("生成产品首页图片")
+    # convert_html_to_images( CLARKS_JINGYA["HTML_DIR_FIRST_PAGE"], CLARKS_JINGYA["HTML_IMAGE_FIRST_PAGE"],GECKODRIVER_PATH, "FristPage", 5)
+    # trim_images_in_folder(CLARKS_JINGYA["HTML_IMAGE_FIRST_PAGE"],CLARKS_JINGYA["HTML_CUTTER_FIRST_PAGE"],file_pattern="*.png", tolerance=5)
 
 
 if __name__ == "__main__":
