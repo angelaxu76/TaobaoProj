@@ -1,32 +1,12 @@
 import sys
 import re
-import os
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from common_taobao.core.translate import safe_translate
+from common_taobao.core.ad_sanitizer import sanitize_text, sanitize_features
 from config import BRAND_CONFIG
 
-
 PLACEHOLDER_IMG = "https://via.placeholder.com/500x500?text=No+Image"
-AD_WORDS_FILE = Path(r"D:\TB\Products\config\ad_sensitive_words.txt")
-
-# === 加载敏感词 ===
-def load_sensitive_words():
-    if AD_WORDS_FILE.exists():
-        with open(AD_WORDS_FILE, "r", encoding="utf-8") as f:
-            return [line.strip() for line in f if line.strip()]
-    else:
-        print(f"⚠️ 未找到敏感词文件，使用默认列表")
-        return ["国家级", "世界级", "顶级", "最佳", "绝对", "唯一", "独家", "首个", "第一", "最先进", "最优", "最高级",
-                "极致", "至尊", "顶尖", "终极", "空前", "史上最", "无敌", "完美", "王牌", "冠军", "首选", "权威", "专家推荐",
-                "全球领先", "全国领先"]
-
-SENSITIVE_WORDS = load_sensitive_words()
-
-def clean_ad_sensitive(text: str) -> str:
-    for word in SENSITIVE_WORDS:
-        text = text.replace(word, "")
-    return text.strip()
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -171,8 +151,6 @@ HTML_TEMPLATE = """
 </html>
 """
 
-
-
 # === 工具函数 ===
 def parse_txt(txt_path):
     data = {}
@@ -184,26 +162,15 @@ def parse_txt(txt_path):
     return data
 
 def find_image_path(code, image_dir, brand):
-    from config import BRAND_CONFIG
-    from pathlib import Path
-
-    PLACEHOLDER_IMG = "https://via.placeholder.com/500x500?text=No+Image"
-
     cfg = BRAND_CONFIG.get(brand.lower(), {})
     priority = cfg.get("IMAGE_DES_PRIORITY", ["F", "C", "1", "01"])
-
     if not image_dir.exists():
         return PLACEHOLDER_IMG
-
     for suffix in priority:
         candidate = image_dir / f"{code}_{suffix}.jpg"
         if candidate.exists():
             return f"file:///{candidate.as_posix()}"
-
     return PLACEHOLDER_IMG
-
-
-
 
 def extract_features(description_en):
     if not description_en:
@@ -211,24 +178,45 @@ def extract_features(description_en):
     description_en = re.sub(r"<[^>]*>", "", description_en)
     first_sentence = description_en.split(".")[0]
     parts = re.split(r",| and ", first_sentence)
-    return [clean_ad_sensitive(safe_translate(p.strip())) for p in parts if p.strip()]
+    out = []
+    for p in parts:
+        p = p.strip()
+        if not p:
+            continue
+        clean_en = sanitize_text(p)
+        zh = safe_translate(clean_en)
+        zh_clean = sanitize_text(zh)
+        if zh_clean:
+            out.append(zh_clean)
+    return out
 
-def generate_html(data, output_path, image_dir,brand):
+def generate_html(data, output_path, image_dir, brand):
     product_name = data.get("Product Name", "")
-    description_en = data.get("Product Description", "")
-    description_zh = clean_ad_sensitive(safe_translate(description_en))
+
+    # 描述
+    raw_desc_en = data.get("Product Description", "")
+    clean_desc_en = sanitize_text(raw_desc_en)
+    description_zh = sanitize_text(safe_translate(clean_desc_en))
+
     gender = data.get("Product Gender", "")
     color = data.get("Product Color", "")
-    material = data.get("Product Material", "")
-    material = safe_translate(material, target_lang="ZH")
+
+    # 材质
+    raw_mat = data.get("Product Material", "")
+    clean_mat_en = sanitize_text(raw_mat)
+    material = sanitize_text(safe_translate(clean_mat_en, target_lang="ZH"))
+
     code = data.get("Product Code", "")
     image_path = find_image_path(code, image_dir, brand)
 
+    # 特性
     feature_field = data.get("Feature", "")
     if feature_field and feature_field.lower() != "no data":
-        feature_list = [clean_ad_sensitive(safe_translate(f.strip())) for f in feature_field.split("|") if f.strip()]
+        raw_features = [f.strip() for f in feature_field.split("|") if f.strip()]
+        zh_features = [safe_translate(sanitize_text(f)) for f in raw_features]
+        feature_list = sanitize_features(zh_features)
     else:
-        feature_list = extract_features(description_en)
+        feature_list = extract_features(clean_desc_en)
 
     features_html = "".join([f"<li>{f}</li>" for f in feature_list])
 
@@ -258,7 +246,6 @@ def process_file(txt_file, image_dir, html_dir, brand):
     except Exception as e:
         return f"❌ {txt_file.name}: {e}"
 
-
 def main(brand=None, max_workers=4):
     if brand is None:
         if len(sys.argv) < 2:
@@ -285,12 +272,10 @@ def main(brand=None, max_workers=4):
 
     print(f"开始处理 {len(files)} 个文件，使用 {max_workers} 个线程...")
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # ✅ 正确版本
         futures = {
             executor.submit(process_file, txt_file, image_dir, html_dir, brand): txt_file
             for txt_file in files
         }
-
         for future in as_completed(futures):
             print(future.result())
 
