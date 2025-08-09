@@ -153,7 +153,7 @@ def process_product(url, idx, total):
         if driver:
             driver.quit()
 
-def main():
+def ecco_fetch_info():
     if not PRODUCT_LINKS_FILE.exists():
         print(f"❌ 商品链接文件不存在: {PRODUCT_LINKS_FILE}")
         return
@@ -167,4 +167,4 @@ def main():
     print("\n✅ ECCO 商品信息与图片处理完毕！")
 
 if __name__ == "__main__":
-    main()
+    ecco_fetch_info()

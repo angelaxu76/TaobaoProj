@@ -30,7 +30,7 @@ def collect_links_from_page(driver):
             links.add(href)
     return links
 
-def main():
+def ecco_get_links():
     ensure_all_dirs(OUTPUT_FILE.parent)
 
     options = Options()
@@ -65,4 +65,4 @@ def main():
         driver.quit()
 
 if __name__ == "__main__":
-    main()
+    ecco_get_links()

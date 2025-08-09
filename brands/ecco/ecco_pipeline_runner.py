@@ -7,21 +7,19 @@ from common_taobao.export_skuid_stock import export_skuid_stock_excel
 from common_taobao.import_txt_to_db import import_txt_to_db
 from common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
 from common_taobao.backup_and_clear import backup_and_clear_brand_dirs  # ✅ 新增导入
+from brands.ecco.unified_link_collector import ecco_get_links
+from brands.ecco.fetch_product_info import ecco_fetch_info
 #
-def run_script(filename: str):
-    path = os.path.join(os.path.dirname(__file__), filename)
-    print(f"⚙️ 执行脚本: {filename}")
-    subprocess.run(["python", path], check=True)
 
 def main():
     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
     #backup_and_clear_brand_dirs(ECCO)  # ✅ 使用共享方法
 
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    #run_script("unified_link_collector.py")
+    ecco_get_links()
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    #run_script("clarks_jinya_fetch_product_info.py")
+    ecco_fetch_info()
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
     import_txt_to_db("ecco")
