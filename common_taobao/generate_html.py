@@ -161,16 +161,40 @@ def parse_txt(txt_path):
                 data[key.strip()] = val.strip()
     return data
 
-def find_image_path(code, image_dir, brand):
+def find_image_path(code, image_dir: Path, brand: str):
     cfg = BRAND_CONFIG.get(brand.lower(), {})
     priority = cfg.get("IMAGE_DES_PRIORITY", ["F", "C", "1", "01"])
+
     if not image_dir.exists():
         return PLACEHOLDER_IMG
+
+    # ==== Clarks-Jingya 特殊逻辑：取最大数字后缀的图片 ====
+    if brand.lower() == "clarks_jingya":
+        pattern = re.compile(rf"^{re.escape(code)}_(\d+)\.jpg$", re.IGNORECASE)
+        max_num = -1
+        best_file = None
+
+        for img_file in image_dir.glob(f"{code}_*.jpg"):
+            m = pattern.match(img_file.name)
+            if m:
+                num = int(m.group(1))
+                if num > max_num:
+                    max_num = num
+                    best_file = img_file
+
+        if best_file:
+            return best_file.resolve().as_uri()
+
+        return PLACEHOLDER_IMG
+
+    # ==== 其他品牌：原逻辑 ====
     for suffix in priority:
         candidate = image_dir / f"{code}_{suffix}.jpg"
         if candidate.exists():
             return f"file:///{candidate.as_posix()}"
+
     return PLACEHOLDER_IMG
+
 
 def extract_features(description_en):
     if not description_en:
