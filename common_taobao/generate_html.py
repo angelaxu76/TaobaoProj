@@ -213,10 +213,21 @@ def generate_html(data, output_path, image_dir, brand):
     feature_field = data.get("Feature", "")
     if feature_field and feature_field.lower() != "no data":
         raw_features = [f.strip() for f in feature_field.split("|") if f.strip()]
-        zh_features = [safe_translate(sanitize_text(f)) for f in raw_features]
+
+        # 先清英文敏感词 → 翻译 → 再清中文敏感词/正面化替换
+        zh_features = [
+            sanitize_text(  # 二次清理（中文阶段：可回收 → 环保材质等）
+                safe_translate(  # 翻译到中文
+                    sanitize_text(f)  # 一次清理（英文阶段：100% 等）
+                )
+            )
+            for f in raw_features
+        ]
+
+        # 统一再做一次清理+去重（保险起见）
         feature_list = sanitize_features(zh_features)
     else:
-        feature_list = extract_features(clean_desc_en)
+        feature_list = extract_features(clean_desc_en)  # 这里已在函数内做了前后清理
 
     features_html = "".join([f"<li>{f}</li>" for f in feature_list])
 

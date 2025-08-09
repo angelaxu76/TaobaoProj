@@ -19,6 +19,18 @@ FALLBACK_WORDS = [
 RE_100 = re.compile(r"\s*100%\s*", flags=re.IGNORECASE)
 RE_SPACES = re.compile(r"\s+")
 
+
+# common_taobao/core/ad_sanitizer.py
+
+POSITIVE_MAP = {
+    "可回收利用": "环保材质",
+    "可回收": "环保材质",
+    "回收": "再生环保材质"
+}
+
+
+
+
 @lru_cache(maxsize=1)
 def _load_words(words_path: Optional[str] = None) -> List[str]:
     """加载敏感词（带缓存）"""
@@ -34,15 +46,24 @@ def sanitize_text(
     words_path: Optional[str] = None,
     extra_words: Optional[Iterable[str]] = None
 ) -> str:
-    """去掉100% + 广告法敏感词 + 多余空格"""
+    """去掉100% + 广告法敏感词 + 多余空格 + 正面替换"""
     if not text:
         return ""
+    # 1) 去掉 100%
     text = RE_100.sub(" ", text)
+
+    # 2) 去掉敏感词
     words = set(_load_words(words_path))
     if extra_words:
         words.update(extra_words)
     for w in words:
         text = re.sub(re.escape(w), "", text, flags=re.IGNORECASE)
+
+    # 3) 正面化替换
+    for bad, good in POSITIVE_MAP.items():
+        text = text.replace(bad, good)
+
+    # 4) 压缩空格
     return RE_SPACES.sub(" ", text).strip()
 
 def sanitize_features(features: Iterable[str], **kwargs) -> List[str]:
@@ -54,3 +75,36 @@ def sanitize_features(features: Iterable[str], **kwargs) -> List[str]:
             seen.add(s)
             cleaned.append(s)
     return cleaned
+
+# common_taobao/core/ad_sanitizer.py
+
+POSITIVE_MAP = {
+    "可回收利用": "环保材质",
+    "可回收": "环保材质",
+    "回收": "再生环保材质"
+}
+
+def sanitize_text(
+    text: str,
+    words_path: Optional[str] = None,
+    extra_words: Optional[Iterable[str]] = None
+) -> str:
+    """去掉100% + 广告法敏感词 + 多余空格 + 正面替换"""
+    if not text:
+        return ""
+    # 1) 去掉 100%
+    text = RE_100.sub(" ", text)
+
+    # 2) 去掉敏感词
+    words = set(_load_words(words_path))
+    if extra_words:
+        words.update(extra_words)
+    for w in words:
+        text = re.sub(re.escape(w), "", text, flags=re.IGNORECASE)
+
+    # 3) 正面化替换
+    for bad, good in POSITIVE_MAP.items():
+        text = text.replace(bad, good)
+
+    # 4) 压缩空格
+    return RE_SPACES.sub(" ", text).strip()
