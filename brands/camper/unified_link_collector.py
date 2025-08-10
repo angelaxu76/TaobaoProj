@@ -21,6 +21,18 @@ BASE_URLS = [
     "https://www.camper.com/en_GB/kids/shoes?sort=default&page={}",
     "https://www.camper.com/en_GB/women/shoes/all_shoes_lab_women?filter.collection=allabw&sort=default&page={}",
     "https://www.camper.com/en_GB/men/shoes/all_shoes_lab_men?filter.collection=allabw&sort=default&page={}"
+    "https://www.camper.com/en_GB/men/shoes/new_collection?filter.collection=neco&sort=default&page={}",
+    "https://www.camper.com/en_GB/women/shoes/new_collection?filter.collection=neco&sort=default&page={}"
+	"https://www.camper.com/en_GB/women/shoes/ballerinas?filter.collection=allabw&sort=default&page={}",
+	"https://www.camper.com/en_GB/women/shoes/sneakers?filter.collection=allabw&sort=default&page={}",
+	"https://www.camper.com/en_GB/women/shoes/formal_shoes?filter.collection=allabw&sort=default&page={}",
+	"https://www.camper.com/en_GB/women/shoes/casual?filter.collection=allabw&sort=default&page={}",
+	"https://www.camper.com/en_GB/women/shoes/ankle_boots?filter.collection=allabw&sort=default&page={}",
+	"https://www.camper.com/en_GB/women/shoes/boots?filter.collection=allabw&sort=default&page={}",
+	"https://www.camper.com/en_GB/men/shoes/sneakers?filter.collection=allabw&sort=default&page={}",
+	"https://www.camper.com/en_GB/men/shoes/formal_shoes?filter.collection=allabw&sort=default&page={}",
+	"https://www.camper.com/en_GB/men/shoes/casual?filter.collection=allabw&sort=default&page={}",
+	"https://www.camper.com/en_GB/men/shoes/ankle_boots?filter.collection=allabw&sort=default&page={}",
 ]
 
 HEADERS = {
