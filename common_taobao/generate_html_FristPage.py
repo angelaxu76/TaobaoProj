@@ -6,7 +6,8 @@ from config import BRAND_CONFIG
 
 # ===== 可调参数 =====
 PLACEHOLDER_IMG = "https://via.placeholder.com/750x563?text=No+Image"  # 4:3
-IMAGE_PRIORITY_DEFAULT = ["F", "C", "1", "01"]  # 查找图片优先级：CODE_F.jpg → CODE_C.jpg → CODE_1.jpg → CODE_01.jpg → CODE.jpg → CODE.png
+IMAGE_PRIORITY_DEFAULT = ["F", "C", "1",
+                          "01"]  # 查找图片优先级：CODE_F.jpg → CODE_C.jpg → CODE_1.jpg → CODE_01.jpg → CODE.jpg → CODE.png
 
 # ===== 内置首屏 HTML 模板（来自你上传的首屏.html，未改动结构样式）=====
 HTML_TEMPLATE = """
@@ -61,33 +62,39 @@ HTML_TEMPLATE = """
     </div>
 
     <div class="body">
-      <ul class="list">
-        <li class="item">
-          <span class="ico">🌐</span>
-          <span class="txt">品牌官网直采 · 每单附电子小票 + 订单截图</span>
-        </li>
-        <li class="item">
-          <span class="ico">📏</span>
-          <span class="txt"><span class="accent">10,000+</span> 客户荐码 · 尺码不合可协商</span>
-        </li>
-        <li class="item">
-          <span class="ico">🚛</span>
-          <span class="txt">英国直邮 · <span class="accent">关税已含</span> · <span class="accent">清关0操作</span></span>
-        </li>
-        <li class="item">
-          <span class="ico">🏆</span>
-          <span class="txt">8年老店 · 0售假投诉 · 100% 正品可追溯</span>
-        </li>
-      </ul>
+        <ul class="list">
+          <li class="item">
+            <span class="ico">🌐</span>
+            <span class="txt">官网直采 · 凭证俱全</span>
+          </li>
+          <li class="item">
+            <span class="ico">📦</span>
+            <span class="txt">英国直邮 · 关税预付</span>
+          </li>
+          <li class="item">
+            <span class="ico">🚚</span>
+            <span class="txt">清关无忧 · 淘宝菜鸟平台代办</span>
+          </li>
+          <li class="item">
+            <span class="ico">🛡️</span>
+            <span class="txt">8年老店 · 正品保障 · 假一赔三</span>
+          </li>
+          <li class="item">
+            <span class="ico">📏</span>
+            <span class="txt"><span class="accent">10,000+</span> 客户荐码 · 尺码不合适可协商解决</span>
+          </li>
+        </ul>
     </div>
   </section>
 </body>
 </html>
 """
 
+
 def render_template(image_url: str) -> str:
     """把模板中的占位符 __IMAGE_URL__ 替换为真实图片路径"""
     return HTML_TEMPLATE.replace("__IMAGE_URL__", image_url, 1)
+
 
 def find_image_url(code: str, image_dir: Path, priority: list[str]) -> str:
     if not image_dir.exists():
@@ -104,12 +111,14 @@ def find_image_url(code: str, image_dir: Path, priority: list[str]) -> str:
             return f"file:///{c.as_posix()}"
     return PLACEHOLDER_IMG
 
+
 def process_one(code: str, image_dir: Path, out_dir: Path, priority: list[str]):
     img_url = find_image_url(code, image_dir, priority)
     html = render_template(img_url)
     out_path = out_dir / f"{code}.html"
     out_path.write_text(html, encoding="utf-8")
     return f"✅ {out_path.name}"
+
 
 def generate_html_for_first_page(brand: str, max_workers: int = 6):
     brand = brand.lower()
@@ -141,6 +150,7 @@ def generate_html_for_first_page(brand: str, max_workers: int = 6):
         for f in as_completed(futs):
             print(f.result())
     print("✅ 全部完成。")
+
 
 if __name__ == "__main__":
     """

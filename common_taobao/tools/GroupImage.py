@@ -3,10 +3,10 @@ import shutil
 from math import ceil
 
 # 原始图片目录
-source_dir = r"D:\first_page"
+source_dir = r"D:\TB\Products\clarks_jingya\document\html_cutter\description"
 
 # 目标根目录（可以修改为其他路径）
-target_root_dir = r"D:\first_page分组图片"
+target_root_dir = r"D:\TB\Products\clarks_jingya\document\html_cutter\description分组图片"
 
 # 每组的图片数量
 group_size = 300

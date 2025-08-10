@@ -33,7 +33,7 @@ def main():
 
     print("生成产品详情卡HTML")
     #generate_html_main("clarks_jingya")
-    # generate_html_for_first_page("clarks_jingya")
+    #generate_html_for_first_page("clarks_jingya")
 
     GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径
     print("生成产品详情卡图片")
@@ -41,8 +41,8 @@ def main():
     trim_images_in_folder(CLARKS_JINGYA["HTML_IMAGE_DES"],CLARKS_JINGYA["HTML_CUTTER_DES"],file_pattern="*.png", tolerance=5)
 
     print("生成产品首页图片")
-    # convert_html_to_images( CLARKS_JINGYA["HTML_DIR_FIRST_PAGE"], CLARKS_JINGYA["HTML_IMAGE_FIRST_PAGE"],GECKODRIVER_PATH, "FristPage", 5)
-    # trim_images_in_folder(CLARKS_JINGYA["HTML_IMAGE_FIRST_PAGE"],CLARKS_JINGYA["HTML_CUTTER_FIRST_PAGE"],file_pattern="*.png", tolerance=5)
+    #convert_html_to_images( CLARKS_JINGYA["HTML_DIR_FIRST_PAGE"], CLARKS_JINGYA["HTML_IMAGE_FIRST_PAGE"],GECKODRIVER_PATH, "FristPage", 5)
+    trim_images_in_folder(CLARKS_JINGYA["HTML_IMAGE_FIRST_PAGE"],CLARKS_JINGYA["HTML_CUTTER_FIRST_PAGE"],file_pattern="*.png", tolerance=5)
 
 
 if __name__ == "__main__":

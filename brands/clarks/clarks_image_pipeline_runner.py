@@ -23,7 +23,7 @@ def main():
     #run_crop_and_expand(CLARKS["IMAGE_PROCESS"], CLARKS["IMAGE_CUTTER"], bg_color, tolerance, quality)
 
     print("将图片merge到一张图片中")
-    batch_merge_images(CLARKS["IMAGE_CUTTER"], CLARKS["MERGED_DIR"], width=750)
+    #batch_merge_images(CLARKS["IMAGE_CUTTER"], CLARKS["MERGED_DIR"], width=750)
 
     print("生成产品详情卡HTML")
     generate_html_main("clarks")

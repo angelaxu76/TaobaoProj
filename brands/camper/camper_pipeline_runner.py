@@ -31,13 +31,13 @@ def main():
     #insert_jingyaid_to_db("camper")
 
     print("\n🟡 Step: 5️⃣ 将最新TXT中没有的产品，说明刚商品已经下架，但鲸芽这边没办法删除，全部补库存为0")
-    #insert_missing_products_with_zero_stock("camper")
+    insert_missing_products_with_zero_stock("camper")
 
     print("\n🟡 Step: 5️⃣ 找出尺码很少的商品ID，将它所有的尺码都设置成0，并将状态变成未发布，为下一步该库存做准备")
     #disable_low_stock_products("camper")
 
     print("\\n🟡 Step: 6️⃣ 导出男鞋商品列表，女鞋商品列表，用于更新尺码库存数据库版")
-    export_gender_split_excel("camper")
+    #export_gender_split_excel("camper")
 
     print("\\n🟡 Step: 6️⃣ 导出渠道价格 Excel（含零售价与商家编码），可以用于淘宝店铺去更新商品价格")
     # export_channel_price_excel("camper")  # 导出价格明细（已发布）
