@@ -1,14 +1,6 @@
-from brands.clarks_Jingya.download_images_only import  download_images_by_code_file,download_all_images_from_product_links
-from common_taobao.tools.image_defender_leftright import batch_process_images
-from common_taobao.tools.crop_gray_to_square import run_crop_and_expand
-from common_taobao.tools.merge_product_images import batch_merge_images
-from common_taobao.tools.HTMLToPGNBatchMutipleThread import convert_html_to_images
-from common_taobao.tools.cutterAllsiderSpace import trim_images_in_folder
-from common_taobao.generate_html import main as generate_html_main
-from common_taobao.check_missing_images import check_missing_images
-from common_taobao.generate_html_FristPage import generate_html_for_first_page
+from tools import trim_images_in_folder
 from config import CLARKS_JINGYA
-from pathlib import Path
+
 
 def main():
     print("下载指定商品编码的的图片")

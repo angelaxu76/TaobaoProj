@@ -2,18 +2,10 @@ import os
 import shutil
 import subprocess
 from datetime import datetime
-from config import CLARKS,TAOBAO_STORES,BRAND_CONFIG
-from common_taobao.generate_discount_price_excel import export_store_discount_price,export_discount_price_with_skuids
+from config import BRAND_CONFIG
 from common_taobao.export_skuid_stock import export_skuid_stock_excel
 from common_taobao.import_txt_to_db import import_txt_to_db
-from common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
-from common_taobao.mark_offline_products import mark_offline_products
 from common_taobao.mark_offline_products_from_store_excels import mark_offline_products_from_store_excels
-from common_taobao.backup_and_clear import backup_and_clear_brand_dirs
-from common_taobao.tools.merge_product_images import batch_merge_images
-from common_taobao.tools.HTMLToPGNBatchMutipleThread import convert_html_to_images
-from common_taobao.tools.cutterAllsiderSpace import trim_images_in_folder
-from common_taobao.generate_html import main as generate_html_main
 from config import CLARKS
 from pathlib import Path
 

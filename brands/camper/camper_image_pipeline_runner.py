@@ -1,12 +1,4 @@
-from brands.camper.download_images_only import download_images_from_codes,download_camper_images
-from brands.camper.image.image_defender_with_flip import batch_process_images
-from brands.camper_global.ResizeImage import expand_images_in_folder
-from common_taobao.tools.merge_product_images import batch_merge_images
-from common_taobao.tools.HTMLToPGNBatchMutipleThread import convert_html_to_images
-from common_taobao.tools.cutterAllsiderSpace import trim_images_in_folder
-from common_taobao.generate_html import main as generate_html_main
-from common_taobao.check_missing_images import check_missing_images
-from common_taobao.generate_html_FristPage import generate_html_for_first_page
+from tools import trim_images_in_folder
 from config import CAMPER
 from pathlib import Path
 

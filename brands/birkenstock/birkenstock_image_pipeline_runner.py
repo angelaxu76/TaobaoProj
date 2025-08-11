@@ -1,8 +1,7 @@
-from brands.clarks.download_images_only import  download_images_by_code_file
-from common_taobao.tools.image_defender_leftright import batch_process_images
-from common_taobao.tools.crop_gray_to_square import run_crop_and_expand
+from tools.image_defender_leftright import batch_process_images
+from tools import run_crop_and_expand
 from config import BIRKENSTOCK
-from pathlib import Path
+
 
 def main():
     print("下载指定商品编码的的图片")

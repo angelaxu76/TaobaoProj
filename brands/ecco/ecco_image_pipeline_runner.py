@@ -1,6 +1,4 @@
-from brands.ecco.download_images_only import  download_images_by_code_file
-from common_taobao.tools.image_defender_leftright import batch_process_images
-from common_taobao.tools.crop_gray_to_square import run_crop_and_expand
+from tools.image_defender_leftright import batch_process_images
 from brands.ecco.image.ImageMaxCutter import batch_convert_webp_to_jpg,process_images_in_folder
 
 from config import ECCO

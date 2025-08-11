@@ -1,8 +1,6 @@
 import os
 import subprocess
-from common_taobao.generate_html_noImage import main as generate_html_main  # ✅ 正确导入
-from common_taobao.tools.HTMLToPGNBatchMutipleThread import convert_html_to_images
-from common_taobao.tools.cutterAllsiderSpace import trim_images_in_folder
+from tools import trim_images_in_folder
 from config import BARBOUR
 
 # 你可能还导入了 BARBOUR，用于清空目录等操作

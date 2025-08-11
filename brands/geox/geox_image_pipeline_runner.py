@@ -1,7 +1,6 @@
 from config import GEOX
 from pathlib import Path
-from brands.geox.download_images_only import download_geox_images_by_code_file
-from common_taobao.tools.image_defender_leftright import batch_process_images
+from tools.image_defender_leftright import batch_process_images
 
 def main():
     #下载指定编码的图片
