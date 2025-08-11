@@ -1,23 +1,26 @@
 # -*- coding: utf-8 -*-
 """
-一键合成：透明PNG(PS抠好图) → 随机地毯/木地板背景 → 阴影 → 轻微扰动 → 批量JPG
-依赖：pip install pillow
+PS透明PNG → 主色识别(仅衣服像素) → 按颜色选背景 → 阴影 → 轻微扰动 → 批量JPG
+依赖：pip install pillow opencv-python numpy
 """
 
 import random
 from pathlib import Path
 from PIL import Image, ImageOps, ImageEnhance, ImageFilter
 import numpy as np
+import cv2
 
 # ============== 参数区（按需修改） ==============
-FG_DIR   = Path(r"D:/imgs/fg_png")        # 透明PNG输入目录（Photoshop抠好图）
-BG_DIR   = Path(r"D:/imgs/backgrounds")   # 背景目录（地毯/木地板，建议≥3000px）
+FG_DIR   = Path(r"D:/imgs/fg_png")        # 仅处理 .png（PS已抠好，含透明）
+BG_DIR   = Path(r"D:/imgs/backgrounds")   # 背景目录：四张命名背景即可
 OUT_DIR  = Path(r"D:/imgs/output")        # 输出目录
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 CANVAS_SIZE = (3000, 3000)   # 成品尺寸
 FIT_RATIO   = 0.88           # 前景占画布最长边比例
-BG_MODE = "crop"            # 等比放大背景再裁成正方形
+
+# 背景适配方式
+BG_MODE         = "crop"     # "crop" | "fit"
 
 # 投影（让衣服“贴地”更真实）
 SHADOW = dict(offset=(0, 35), blur=45, opacity=110)
@@ -30,7 +33,7 @@ RAND_BRIGHTNESS = (0.98, 1.02)
 RAND_CONTRAST   = (0.98, 1.02)
 ROTATE_RANGE    = (-2.0, 2.0)   # 最终成品整体轻微旋转（不翻转，避免logo反）
 NOISE_OPACITY   = 0.02          # 0~1，透明噪点强度
-BG_MODE         = "crop"        # "crop" | "fit" 背景适配填充方式
+
 SEED            = None          # 固定随机可设整数；None 表示每次都随机
 # ==============================================
 
@@ -84,7 +87,6 @@ def color_tone(img: Image.Image, factor=1.0):
         return img
     img = img.convert("RGB")
     r,g,b = img.split()
-    # 轻微增暖：红更亮、蓝更暗一点点
     r = r.point(lambda x: min(255, int(x*factor)))
     b = b.point(lambda x: max(0, int(x/factor)))
     return Image.merge("RGB", (r,g,b))
@@ -97,34 +99,95 @@ def add_noise(img: Image.Image, opacity=0.02):
     noise_img.putalpha(int(255*opacity))
     return Image.alpha_composite(img.convert("RGBA"), noise_img).convert("RGB")
 
-def compose_one(fg_path: Path, bg_paths, out_dir: Path):
-    # 读取抠好图（透明PNG）
+# ---------- 主色识别（忽略透明像素） ----------
+def dominant_rgb_from_rgba(pil_rgba: Image.Image, k=3):
+    arr = np.array(pil_rgba)
+    mask = arr[:, :, 3] > 10  # 仅非透明
+    pixels = arr[:, :, :3][mask]
+    if pixels.size == 0:
+        return (128,128,128)
+    if pixels.shape[0] > 200000:
+        idx = np.random.choice(pixels.shape[0], 200000, replace=False)
+        pixels = pixels[idx]
+    Z = np.float32(pixels)
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 1.0)
+    _, labels, centers = cv2.kmeans(Z, k, None, criteria, 3, cv2.KMEANS_PP_CENTERS)
+    dom = centers[np.bincount(labels.flatten()).argmax()].astype(np.uint8)
+    return tuple(int(x) for x in dom)
+
+def rgb_to_hsv_deg(rgb):
+    bgr = np.uint8([[list(rgb[::-1])]])
+    hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)[0,0]
+    H = float(hsv[0]) * 2.0
+    S = float(hsv[1]) / 255.0
+    V = float(hsv[2]) / 255.0
+    return H, S, V
+
+def classify_color(h_deg, s, v):
+    tone = "mid"
+    if v < 0.38: tone = "dark"
+    elif v > 0.72: tone = "light"
+    hue = "neutral"
+    if s >= 0.18:
+        if (0 <= h_deg <= 50) or (330 <= h_deg <= 360): hue = "warm"
+        elif 180 <= h_deg <= 260: hue = "cool"
+    return {"tone": tone, "hue": hue}
+
+# ---------- 背景映射 & 选择 ----------
+def build_bg_dict():
+    normal = lambda s: s.lower().replace(" ", "").replace("_", "")
+    targets = {
+        "herringboneoakwood": "HerringboneOakWood",
+        "naturaloakwood": "NaturalOakWood",
+        "neutralbeigewoolcarpet": "NeutralBeigeWoolCarpet",
+        "warmbeigewoolcarpet": "WarmBeigeWoolCarpet",
+    }
+    bg_files = {}
+    for p in BG_DIR.iterdir():
+        if not p.is_file() or p.suffix.lower() not in {".jpg",".jpeg",".png"}:
+            continue
+        key = normal(p.stem)
+        for k, std in targets.items():
+            if k in key:
+                bg_files[std] = p
+                break
+    return bg_files
+
+def choose_bg_by_color(bg_files: dict, h_deg, s, v):
+    fallback = [bg_files.get(k) for k in
+                ["NaturalOakWood","NeutralBeigeWoolCarpet","HerringboneOakWood","WarmBeigeWoolCarpet"]]
+    fallback = [p for p in fallback if p is not None]
+
+    tone_hue = classify_color(h_deg, s, v)
+    tone, hue = tone_hue["tone"], tone_hue["hue"]
+
+    if tone == "light":
+        return bg_files.get("HerringboneOakWood") or fallback[0]
+    if tone == "dark":
+        return bg_files.get("NaturalOakWood") or bg_files.get("NeutralBeigeWoolCarpet") or fallback[0]
+    if hue == "warm":
+        return bg_files.get("NeutralBeigeWoolCarpet") or bg_files.get("NaturalOakWood") or fallback[0]
+    if hue == "cool":
+        return bg_files.get("WarmBeigeWoolCarpet") or bg_files.get("NaturalOakWood") or fallback[0]
+    return fallback[0] if fallback else None
+
+# ---------- 合成 ----------
+def compose_one(fg_path: Path, bg_path: Path, out_dir: Path):
     fg = Image.open(fg_path).convert("RGBA")
     fg = trim_transparent(fg, pad=6)
 
-    # 1) 先缩放到画布并加阴影（保持透明背景）
     layer = fit_on_canvas(fg, CANVAS_SIZE, FIT_RATIO)
     layer = add_soft_shadow(layer, **SHADOW)
 
-    # 2) 只旋转“前景层”，用透明填充，避免黑边
     angle = random.uniform(*ROTATE_RANGE)
     if abs(angle) > 1e-3:
-        layer = layer.rotate(
-            angle,
-            expand=True,
-            resample=Image.BICUBIC,
-            fillcolor=(0, 0, 0, 0)   # 透明补边
-        )
-        # 旋转后再裁回目标画布并居中
+        layer = layer.rotate(angle, expand=True, resample=Image.BICUBIC, fillcolor=(0,0,0,0))
         layer = ImageOps.fit(layer, CANVAS_SIZE, method=Image.LANCZOS, centering=(0.5, 0.5))
 
-    # 3) 准备背景（不要旋转背景，避免纹理透视变形）
-    bg_path = random.choice(bg_paths)
     bg = load_bg(bg_path, CANVAS_SIZE).convert("RGB")
     if COLOR_TONE:
         bg = color_tone(bg, COLOR_TONE)
 
-    # 4) 合成 + 轻微亮度/对比度扰动 + 噪点
     comp = bg.convert("RGBA")
     comp.alpha_composite(layer, (0, 0))
     comp = comp.convert("RGB")
@@ -132,24 +195,34 @@ def compose_one(fg_path: Path, bg_paths, out_dir: Path):
     comp = ImageEnhance.Contrast(comp).enhance(random.uniform(*RAND_CONTRAST))
     comp = add_noise(comp, NOISE_OPACITY)
 
-    out_path = out_dir / (fg_path.stem + ".jpg")
+    out_path = out_dir / f"{fg_path.stem}_{bg_path.stem}.jpg"
     comp.save(out_path, quality=92, subsampling=2)
-    print(f"✔ {fg_path.name} -> {out_path.name}")
-
+    print(f"✔ {fg_path.name} + {bg_path.stem} -> {out_path.name}")
 
 def main():
     if SEED is not None:
         random.seed(SEED)
 
+    # 读背景并建立映射
+    bg_files = build_bg_dict()
+    all_bgs = list_images(BG_DIR)
+    if not all_bgs:
+        print("⚠️ 背景目录为空"); return
+
+    # 只处理 PNG（PS 抠好）
     fg_list = [p for p in list_images(FG_DIR) if p.suffix.lower()==".png"]
     if not fg_list:
         print("⚠️ 前景目录无透明PNG（请放入PS抠好的PNG）"); return
-    bg_list = list_images(BG_DIR)
-    if not bg_list:
-        print("⚠️ 背景目录为空"); return
 
     for p in fg_list:
-        compose_one(p, bg_list, OUT_DIR)
+        # 计算主色并选背景（若映射不全则回退随机）
+        dom_rgb = dominant_rgb_from_rgba(Image.open(p).convert("RGBA"), k=3)
+        h, s, v = rgb_to_hsv_deg(dom_rgb)
+        bg_path = choose_bg_by_color(bg_files, h, s, v) if bg_files else None
+        if bg_path is None:
+            bg_path = random.choice(all_bgs)
+
+        compose_one(p, bg_path, OUT_DIR)
 
 if __name__ == "__main__":
     main()
