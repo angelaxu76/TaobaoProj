@@ -4,8 +4,8 @@ from pathlib import Path
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 import numpy as np
 
-INPUT_DIR = Path(r"D:\TB\Products\ECCO\document\square_images_new")
-OUTPUT_DIR = Path(r"D:\TB\Products\ECCO\document\square_images_defence")
+INPUT_DIR = Path(r"D:\TB\Products\barbour\详情页设计\品牌文化")
+OUTPUT_DIR = Path(r"D:\TB\Products\barbour\详情页设计\品牌文化defence")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 ROTATE_RANGE = (-2, 2)  # 控制旋转角度小于 ±2°

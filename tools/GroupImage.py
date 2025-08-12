@@ -3,13 +3,13 @@ import shutil
 from math import ceil
 
 # 原始图片目录
-source_dir = r"D:\TB\Products\clarks_jingya\document\html_cutter\description"
+source_dir = r"D:\TEMP\images_jacket_flat"
 
 # 目标根目录（可以修改为其他路径）
-target_root_dir = r"D:\TB\Products\clarks_jingya\document\html_cutter\description分组图片"
+target_root_dir = r"D:\TEMP\images_jacket_flat分组图片"
 
 # 每组的图片数量
-group_size = 300
+group_size = 100
 
 # 支持的图片扩展名
 image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
