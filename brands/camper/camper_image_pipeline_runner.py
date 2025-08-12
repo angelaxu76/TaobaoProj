@@ -1,11 +1,11 @@
-from tools import trim_images_in_folder
+from tools.cutterAllsiderSpace import trim_sides_batch
 from config import CAMPER
 from pathlib import Path
+
 
 def main():
     print("检查哪些图片缺少，TXT中编码但图片文件夹中没有图片")
     # check_missing_images("camper")
-
 
     print("下载指定商品编码的的图片")
     # download_images_from_codes(r"D:\TB\Products\camper\repulibcation\missing_images.txt")
@@ -19,7 +19,6 @@ def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     # batch_process_images(INPUT_DIR,OUTPUT_DIR)
 
-
     input_folder = CAMPER["IMAGE_PROCESS"]
     output_folder = CAMPER["IMAGE_CUTTER"]
     print("将图片变成正方形")
@@ -29,17 +28,37 @@ def main():
     # batch_merge_images(CAMPER["IMAGE_CUTTER"],CAMPER["MERGED_DIR"], width=750)
 
     print("生成产品详情卡HTML")
-    #generate_html_main("camper")
-    #generate_html_for_first_page("camper")
+    # generate_html_main("camper")
+    # generate_html_for_first_page("camper")
 
     GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径
     print("生成产品详情卡图片")
-    #convert_html_to_images( CAMPER["HTML_DIR_DES"], CAMPER["HTML_IMAGE_DES"],GECKODRIVER_PATH,"Description",10)
-    trim_images_in_folder(CAMPER["HTML_IMAGE_DES"],CAMPER["HTML_CUTTER_DES"],file_pattern="*.png", tolerance=5)
+    # convert_html_to_images( CAMPER["HTML_DIR_DES"], CAMPER["HTML_IMAGE_DES"],GECKODRIVER_PATH,"Description",10)
 
-    print("生成产品首页图片")
-    #convert_html_to_images( CAMPER["HTML_DIR_FIRST_PAGE"], CAMPER["HTML_IMAGE_FIRST_PAGE"],GECKODRIVER_PATH, "FristPage", 10)
-    #trim_images_in_folder(CAMPER["HTML_IMAGE_FIRST_PAGE"],CAMPER["HTML_CUTTER_FIRST_PAGE"],file_pattern="*.png", tolerance=5)
+
+result = trim_sides_batch(
+    input_dir=CAMPER["HTML_IMAGE_DES"],
+    output_dir=CAMPER["HTML_CUTTER_DES"],
+    pattern="*.jpg;*.png",  # 可不传
+    tolerance=5,
+    recursive=False,
+    overwrite=True,
+    dry_run=False,
+    workers=0,  # 0=自动
+)
+
+print("生成产品首页图片")
+# convert_html_to_images( CAMPER["HTML_DIR_FIRST_PAGE"], CAMPER["HTML_IMAGE_FIRST_PAGE"],GECKODRIVER_PATH, "FristPage", 10)
+result = trim_sides_batch(
+    input_dir=CAMPER["HTML_IMAGE_FIRST_PAGE"],
+    output_dir=CAMPER["HTML_CUTTER_FIRST_PAGE"],
+    pattern="*.jpg;*.png",  # 可不传
+    tolerance=5,
+    recursive=False,
+    overwrite=True,
+    dry_run=False,
+    workers=0,  # 0=自动
+)
 
 if __name__ == "__main__":
     main()
