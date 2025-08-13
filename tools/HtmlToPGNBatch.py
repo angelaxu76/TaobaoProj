@@ -53,10 +53,10 @@ def process_html_folder(html_folder, output_folder, geckodriver_path):
     for file in os.listdir(html_folder):
         if file.endswith(".html"):
             html_path = os.path.join(html_folder, file)
-            output_image = os.path.join(output_folder, f"{os.path.splitext(file)[0].replace('_', '')}_Detail.png")
+            output_image = os.path.join(output_folder, f"{os.path.splitext(file)[0].replace('_', '')}.png")
             print(f'Processing {html_path}...')
             html_to_full_screenshot(html_path, output_image, geckodriver_path)
 
 
 # 执行批量转换
-process_html_folder(HTML_FOLDER, OUTPUT_FOLDER, GECKODRIVER_PATH)
+# process_html_folder(HTML_FOLDER, OUTPUT_FOLDER, GECKODRIVER_PATH)

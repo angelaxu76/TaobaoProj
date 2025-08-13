@@ -115,7 +115,7 @@ def find_image_url(code: str, image_dir: Path, priority: list[str]) -> str:
 def process_one(code: str, image_dir: Path, out_dir: Path, priority: list[str]):
     img_url = find_image_url(code, image_dir, priority)
     html = render_template(img_url)
-    out_path = out_dir / f"{code}.html"
+    out_path = out_dir / f"{code}_Hero.html"
     out_path.write_text(html, encoding="utf-8")
     return f"✅ {out_path.name}"
 
@@ -147,6 +147,97 @@ def generate_html_for_first_page(brand: str, max_workers: int = 6):
             ex.submit(process_one, code, image_dir, hero_dir, priority)
             for code in codes
         ]
+        for f in as_completed(futs):
+            print(f.result())
+    print("✅ 全部完成。")
+
+# === 新增：规范化 & 从文件名猜编码 ===
+def _norm_code(s: str) -> str:
+    return re.sub(r"[^A-Z0-9]+", "", (s or "").upper())
+
+def _guess_code_from_filename(name: str) -> str:
+    stem = Path(name).stem
+    # 去末尾 _数字（如 _1, _2）
+    stem = re.sub(r"_[0-9]+$", "", stem)
+
+    # Barbour: LWX0667SG91 / MWX2507BK71
+    m = re.search(r"[A-Z]{3}\d{4}[A-Z]{2}\d{2}", stem)
+    if m:
+        return m.group(0).upper()
+
+    # Camper: K100300-001 / K100300_001
+    m = re.search(r"[A-Z]\d{6}[-_]\d{3}", stem)
+    if m:
+        return m.group(0).replace("_", "-").upper()
+
+    # 回退：取第一个分隔段
+    token = re.split(r"[-_]", stem)[0]
+    return token.upper()
+
+def _collect_codes_from_images(image_dir: Path) -> list[str]:
+    if not image_dir or not image_dir.exists():
+        return []
+    exts = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+    codes = set()
+    for p in image_dir.iterdir():
+        if p.is_file() and p.suffix.lower() in exts:
+            code = _guess_code_from_filename(p.name)
+            if code:
+                codes.add(code)
+    return sorted(codes)
+
+def _get_image_dir(cfg: dict) -> Path:
+    # 优先使用 IMAGE_DIR（document/images），没有就退回 IMAGE_PROCESS
+    return cfg.get("IMAGE_DIR") or cfg.get("IMAGE_PROCESS") or Path.cwd()
+
+# === 修改：find_image_url 更鲁棒（加多后缀 & 最后兜底选任意匹配）===
+def find_image_url(code: str, image_dir: Path, priority: list[str]) -> str:
+    if not image_dir.exists():
+        return PLACEHOLDER_IMG
+
+    # 先按优先级尝试
+    exts = [".jpg", ".jpeg", ".png", ".webp"]
+    candidates = []
+    for suf in priority:
+        candidates += [image_dir / f"{code}_{suf}{e}" for e in exts]
+        candidates += [image_dir / f"{code}-{suf}{e}" for e in exts]
+        candidates += [image_dir / f"{code}{suf}{e}" for e in exts]
+    candidates += [image_dir / f"{code}{e}" for e in exts]
+
+    for c in candidates:
+        if c.exists():
+            return c.resolve().as_uri()
+
+    # 兜底：找任意以 code 开头的图片文件
+    for p in sorted(image_dir.glob(f"{code}*")):
+        if p.suffix.lower() in exts and p.is_file():
+            return p.resolve().as_uri()
+
+    return PLACEHOLDER_IMG
+
+# === 新增：从图片目录收集编码并生成首屏 HTML（不依赖 TXT） ===
+def generate_first_page_from_images(brand: str, max_workers: int = 6):
+    brand = brand.lower()
+    if brand not in BRAND_CONFIG:
+        print(f"❌ 未找到品牌配置：{brand}")
+        return
+
+    cfg = BRAND_CONFIG[brand]
+    image_dir: Path = _get_image_dir(cfg)
+    hero_dir: Path = cfg.get("HTML_DIR_FIRST_PAGE") or (Path.cwd() / "HTML_FIRST_PAGE")
+    hero_dir.mkdir(parents=True, exist_ok=True)
+    priority = cfg.get("IMAGE_FIRST_PRIORITY", IMAGE_PRIORITY_DEFAULT)
+
+    # 1) 从图片名提取编码
+    codes = _collect_codes_from_images(image_dir)
+    if not codes:
+        print(f"❌ {image_dir} 中未发现可解析的图片文件名")
+        return
+
+    print(f"▶ 生成首屏 HTML（按图片目录驱动）：brand={brand}，发现编码={len(codes)}，输出目录={hero_dir}")
+    # 2) 生成 HTML
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futs = [ex.submit(process_one, code, image_dir, hero_dir, priority) for code in codes]
         for f in as_completed(futs):
             print(f.result())
     print("✅ 全部完成。")

@@ -13,7 +13,8 @@ def main():
     OUTPUT_FOLDER = "D:/TB/HTMLToImage/output"  # 输出图片文件夹
     GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径
 
-    #process_html_folder(HTML_FOLDER, OUTPUT_FOLDER, GECKODRIVER_PATH)
+
+    process_html_folder(HTML_FOLDER, OUTPUT_FOLDER, GECKODRIVER_PATH)
 
     result = trim_sides_batch(
         input_dir=r"D:\TB\HTMLToImage\output",

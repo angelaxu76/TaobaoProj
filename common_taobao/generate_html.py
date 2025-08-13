@@ -275,13 +275,13 @@ def process_file(txt_file, image_dir, html_dir, brand):
     try:
         data = parse_txt(txt_file)
         code = data.get("Product Code", txt_file.stem)
-        output_file = html_dir / f"{code}.html"
+        output_file = html_dir / f"{code}_Details.html"
         generate_html(data, output_file, image_dir, brand)
         return f"✅ {output_file.name}"
     except Exception as e:
         return f"❌ {txt_file.name}: {e}"
 
-def main(brand=None, max_workers=4):
+def generate_html_main(brand=None, max_workers=4):
     if brand is None:
         if len(sys.argv) < 2:
             print("❌ 用法: python generate_html.py [brand]")
@@ -316,5 +316,105 @@ def main(brand=None, max_workers=4):
 
     print(f"✅ 所有 HTML 已生成到：{html_dir}")
 
+# === 辅助：规范化编码（便于匹配 TXT 与图片名） ===
+def _norm_code(s: str) -> str:
+    return re.sub(r"[^A-Z0-9]+", "", (s or "").upper())
+
+# === 从文件名里猜编码（适配 Barbour / Camper 常见命名）===
+def _guess_code_from_filename(name: str) -> str:
+    stem = Path(name).stem
+    # 去掉末尾的 _数字（如 _1, _2）
+    stem = re.sub(r"_[0-9]+$", "", stem)
+
+    # 优先匹配 Barbour：如 LWX0667SG91 / MWX2507BK71
+    m = re.search(r"[A-Z]{3}\d{4}[A-Z]{2}\d{2}", stem)
+    if m:
+        return m.group(0).upper()
+
+    # 兼容 Camper：如 K100300-001 / K100300_001
+    m = re.search(r"[A-Z]\d{6}[-_]\d{3}", stem)
+    if m:
+        return m.group(0).replace("_", "-").upper()
+
+    # 回退：取开头到第一个 '-' 或 '_' 之前的段
+    token = re.split(r"[-_]", stem)[0]
+    return token.upper()
+
+# === 扫描图片目录，收集去重后的编码集合 ===
+def _collect_codes_from_images(image_dir: Path) -> list[str]:
+    if not image_dir.exists():
+        return []
+    exts = (".jpg", ".jpeg", ".png", ".webp")
+    codes = set()
+    for p in image_dir.iterdir():
+        if p.is_file() and p.suffix.lower() in exts:
+            code = _guess_code_from_filename(p.name)
+            if code:
+                codes.add(code)
+    # 稍微排序：字母优先、再自然序
+    return sorted(codes, key=lambda x: (x[0], x))
+
+# === 只根据图片目录中的编码来生成 HTML ===
+def generate_html_from_images(brand: str, max_workers: int = 4):
+    brand = brand.lower()
+    if brand not in BRAND_CONFIG:
+        print(f"❌ 未找到品牌配置: {brand}")
+        return
+
+    cfg = BRAND_CONFIG[brand]
+    image_dir = cfg["IMAGE_DIR"]      # 读取图片目录
+    txt_dir   = cfg["TXT_DIR"]        # TXT 目录
+    html_dir  = cfg["HTML_DIR_DES"]   # 输出目录
+    html_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1) 从图片名解析编码并去重
+    codes = _collect_codes_from_images(image_dir)
+    if not codes:
+        print(f"❌ {image_dir} 中未发现可解析的图片文件名")
+        return
+    print(f"🔎 从图片目录收集到 {len(codes)} 个编码。示例：{codes[:5]}")
+
+    # 2) 建立 TXT 索引（按编码匹配）
+    txt_index = {}
+    for txt in txt_dir.glob("*.txt"):
+        try:
+            d = parse_txt(txt)
+            code_in_txt = d.get("Product Code", "") or txt.stem
+            txt_index[_norm_code(code_in_txt)] = txt
+        except Exception:
+            # 即使个别 TXT 解析失败也不要影响其它
+            continue
+
+    # 3) 用图片得到的编码去筛选 TXT 列表
+    selected_txts = []
+    missing_codes = []
+    for c in codes:
+        key = _norm_code(c)
+        if key in txt_index:
+            selected_txts.append(txt_index[key])
+        else:
+            missing_codes.append(c)
+
+    if not selected_txts:
+        print(f"❌ 根据图片解析的编码，在 {txt_dir} 未匹配到任何 TXT")
+        if missing_codes:
+            print("   （示例缺失编码）", missing_codes[:10])
+        return
+
+    if missing_codes:
+        print(f"⚠️ 有 {len(missing_codes)} 个编码在 TXT 目录中缺失，已跳过。示例：{missing_codes[:10]}")
+
+    # 4) 复用原有多线程处理逻辑，仅对筛中的 TXT 生成
+    print(f"开始处理 {len(selected_txts)} 个文件，使用 {max_workers} 个线程.")
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(process_file, txt_file, image_dir, html_dir, brand): txt_file
+            for txt_file in selected_txts
+        }
+        for future in as_completed(futures):
+            print(future.result())
+
+    print(f"✅ 所有 HTML 已生成到：{html_dir}")
+
 if __name__ == "__main__":
-    main()
+    generate_html_main()
