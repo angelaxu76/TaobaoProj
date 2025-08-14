@@ -80,7 +80,7 @@ BARBOUR = {
     "HTML_IMAGE_FIRST_PAGE": BARBOUR_BASE / "publication" / "html_image"/"first_page",
     "HTML_CUTTER_DES": BARBOUR_BASE / "document" / "html_cutter"/ "description",
     "HTML_CUTTER_FIRST_PAGE": BARBOUR_BASE / "document" / "html_cutter"/ "first_page",
-    "HTML_DEST": BARBOUR_BASE / "publication" / "dest",
+    "HTML_DEST": BARBOUR_BASE / "document" / "dest",
     "TABLE_NAME": "barbour_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": BARBOUR_BASE / "publication" / "barbour" / "product_links.txt",

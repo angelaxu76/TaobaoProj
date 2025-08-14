@@ -46,20 +46,44 @@ HTML_TEMPLATE = """
         gap: 24px;
         margin-bottom: 28px;
     }}
-    .product-img {{
-        flex: 1;
-        background: #fafafa;
-        border-radius: 10px;
-        border: 1px solid #e0e0e0;
-        padding: 12px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }}
-    .product-img img {{
-        max-width: 100%;
-        border-radius: 8px;
-    }}
+
+    /* 自适应图片：宽度100%，不裁图，容器可缩放 */
+/* 左右区域：不拉伸等高，图片列更宽 */
+.top-section{{
+    display:flex;
+    gap:24px;
+    margin-bottom:28px;
+    align-items:flex-start;  /* 关键：避免把左列拉到与右列等高 */
+}}
+
+/* 自适应图片：更大的左列 */
+.product-img{{
+    flex:2;                 /* 原来是 1，改成 3 → 左列更宽 */
+    min-width:0;
+    background:#fafafa;
+    border-radius:10px;
+    border:1px solid #e0e0e0;
+    padding:0;
+    overflow:hidden;
+    display:block;
+}}
+
+/* 右侧特性列相对变窄 */
+.features{{
+    flex:2;                 /* 原来是 1，改成 2 */
+}}
+
+/* 图片尽量大且不裁图 */
+.product-img img{{
+    display:block;
+    width:100%;
+    height:auto;            /* 等比缩放 */
+    max-height:90vh;        /* 原来 70vh → 90vh（需要更高可调大或去掉这一行） */
+    object-fit:contain;     /* 不裁图 */
+    border-radius:8px;
+}}
+
+
     .features {{
         flex: 1;
         background: #fff;
@@ -143,7 +167,7 @@ HTML_TEMPLATE = """
     <div class="description"><strong>商品描述：</strong><br>{description}</div>
     <div class="info-section">
         <div class="info-box"><strong>颜色：</strong><span class="color-dot"></span>{color}</div>
-        <div class="info-box"><strong>材质：</strong><span class="material-square"></span>{material}</div>
+       <!-- <div class="info-box"><strong>材质：</strong><span class="material-square"></span>{material}</div> -->
         <div class="info-box"><strong>编码：</strong>{code}</div>
     </div>
 </div>
@@ -255,20 +279,38 @@ def generate_html(data, output_path, image_dir, brand):
 
     features_html = "".join([f"<li>{f}</li>" for f in feature_list])
 
-    html = HTML_TEMPLATE.format(
-        product_name=product_name,
-        image_path=image_path,
-        description=description_zh,
-        color=color,
-        gender=gender,
-        material=material,
-        code=code,
-        features=features_html
-    )
+    # —— 生成 html 字符串前的健诊 ——
+    try:
+        html = HTML_TEMPLATE.format(
+            product_name=product_name,
+            image_path=image_path,
+            description=description_zh,
+            color=color,
+            gender=gender,
+            material=material,
+            code=code,
+            features=features_html
+        )
+    except Exception as fe:
+        raise RuntimeError(f"HTML_TEMPLATE.format 失败：{fe}")
 
+    # —— 确保目录存在（即使上层传错了）——
+    out_dir = Path(output_path).parent
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # —— 实际写文件 ——
     with open(output_path, "w", encoding="utf-8") as f:
-        f.write(html)
+        n = f.write(html)
+
+    # —— 写出后二次校验 ——
+    p = Path(output_path)
+    if not p.exists():
+        raise IOError(f"写出后文件不存在：{p}")
+    if n == 0 or p.stat().st_size == 0:
+        raise IOError(f"写出后文件为空：{p}")
+
     return output_path
+
 
 # === 多线程处理 ===
 def process_file(txt_file, image_dir, html_dir, brand):
@@ -416,5 +458,3 @@ def generate_html_from_images(brand: str, max_workers: int = 4):
 
     print(f"✅ 所有 HTML 已生成到：{html_dir}")
 
-if __name__ == "__main__":
-    generate_html_main()

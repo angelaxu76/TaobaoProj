@@ -30,4 +30,4 @@ def resize_images_to_width150(folder_path):
                 print(f"❌ Error processing {filename}: {e}")
 
 # 使用示例
-resize_images_to_width150(r"D:\Images")
+resize_images_to_width150(r"D:\TB\Products\barbour\document\images")

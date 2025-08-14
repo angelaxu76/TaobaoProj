@@ -1,62 +1,128 @@
 import os
+import sys
+import time
+from pathlib import Path
+from typing import Optional
+
 from selenium import webdriver
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.firefox.options import Options
 from PIL import Image
-import time
 
-# 设置参数
-HTML_FOLDER = "D:/TB/HTMLToImage/input"  # HTML 文件夹路径
-OUTPUT_FOLDER = "D:/TB/HTMLToImage/output"   # 输出图片文件夹
-GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径
+# ========== 可配置参数（默认值，可用命令行覆盖） ==========
+HTML_FOLDER = Path(r"D:/TB/HTMLToImage/input")
+OUTPUT_FOLDER = Path(r"D:/TB/HTMLToImage/output")
 
-
-def trim_image(image_path):
-    """去除图片左右空白区域"""
-    image = Image.open(image_path)
-    image = image.convert("RGB")
-    bbox = image.getbbox()  # 获取内容区域
-    cropped_image = image.crop(bbox)
-    cropped_image.save(image_path)
-    print(f'Trimmed image saved as {image_path}')
+# 从 config.py 读取 GeckoDriver 路径；如未配置则用常见默认
+try:
+    from config import SETTINGS  # 建议在 SETTINGS 里加 key: "GECKODRIVER_PATH"
+    GECKODRIVER_PATH = SETTINGS.get("GECKODRIVER_PATH", r"D:/Software/geckodriver.exe")
+except Exception:
+    GECKODRIVER_PATH = r"D:/Software/geckodriver.exe"
 
 
-def html_to_full_screenshot(html_path, output_image, geckodriver_path):
-    # 配置 Firefox WebDriver
-    firefox_options = Options()
-    firefox_options.add_argument('--headless')  # 运行无头模式
+def trim_white_margins_lr(image_path: Path) -> None:
+    """
+    仅移除图片左右两侧的纯白整列边距（#FFFFFF），避免误剪白底内容。
+    """
+    img = Image.open(image_path).convert("RGB")
+    w, h = img.size
+    pixels = img.load()
 
-    # 启动 Firefox WebDriver
-    service = Service(geckodriver_path)
-    driver = webdriver.Firefox(service=service, options=firefox_options)
+    def is_white_col(x: int) -> bool:
+        for y in range(h):
+            if pixels[x, y] != (255, 255, 255):
+                return False
+        return True
 
-    # 打开 HTML 文件
-    driver.get(f'file://{html_path}')
+    left = 0
+    while left < w and is_white_col(left):
+        left += 1
 
-    # 等待页面加载完成
-    time.sleep(2)
+    right = w - 1
+    while right >= 0 and is_white_col(right):
+        right -= 1
 
-    # 获取完整页面截图
-    driver.get_full_page_screenshot_as_file(output_image)
+    # 若整张都是白的，直接保存原图
+    if left >= right:
+        img.save(image_path)
+        print(f"[trim] all-white image or no content, kept: {image_path}")
+        return
 
-    # 关闭 WebDriver
-    driver.quit()
-
-    # 裁剪图片
-    trim_image(output_image)
-
-
-def process_html_folder(html_folder, output_folder, geckodriver_path):
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
-
-    for file in os.listdir(html_folder):
-        if file.endswith(".html"):
-            html_path = os.path.join(html_folder, file)
-            output_image = os.path.join(output_folder, f"{os.path.splitext(file)[0].replace('_', '')}.png")
-            print(f'Processing {html_path}...')
-            html_to_full_screenshot(html_path, output_image, geckodriver_path)
+    cropped = img.crop((left, 0, right + 1, h))
+    cropped.save(image_path)
+    print(f"[trim] saved: {image_path}  (crop L:{left} R:{w-1-right})")
 
 
-# 执行批量转换
-# process_html_folder(HTML_FOLDER, OUTPUT_FOLDER, GECKODRIVER_PATH)
+def html_to_full_screenshot(html_path: Path, output_image: Path, geckodriver_path: Optional[str] = None) -> None:
+    """
+    打开本地 HTML 并截取整页长图到 output_image；随后裁去左右纯白边。
+    """
+    gecko = geckodriver_path or GECKODRIVER_PATH
+
+    options = Options()
+    options.add_argument("--headless")
+    service = Service(gecko)
+
+    driver = None
+    try:
+        driver = webdriver.Firefox(service=service, options=options)
+
+        # 用 file:// 协议打开本地 HTML
+        driver.get(f"file:///{html_path.as_posix()}")
+
+        # 简单等待渲染（如有异步内容，可改成 WebDriverWait + 条件）
+        time.sleep(2)
+
+        # 截取整页
+        output_image.parent.mkdir(parents=True, exist_ok=True)
+        driver.get_full_page_screenshot_as_file(str(output_image))
+        print(f"[shot] saved: {output_image}")
+
+    finally:
+        if driver is not None:
+            driver.quit()
+
+    # 剪掉左右纯白边
+    trim_white_margins_lr(output_image)
+
+
+def process_html_folder(html_folder: Path, output_folder: Path, geckodriver_path: Optional[str] = None) -> None:
+    output_folder.mkdir(parents=True, exist_ok=True)
+
+    for name in os.listdir(html_folder):
+        if not name.lower().endswith(".html"):
+            continue
+        html_path = html_folder / name
+        # 维持你的命名规则：去掉下划线
+        out_name = f"{html_path.stem.replace('_', '')}.png"
+        output_image = output_folder / out_name
+
+        print(f"[proc] {html_path}")
+        html_to_full_screenshot(html_path, output_image, geckodriver_path)
+
+
+def main():
+    """
+    直接运行：
+      python html2img_firefox.py
+    或覆盖输入输出目录：
+      python html2img_firefox.py D:/TB/HTMLToImage/input D:/TB/HTMLToImage/output
+    """
+    html_dir = HTML_FOLDER
+    out_dir = OUTPUT_FOLDER
+
+    if len(sys.argv) >= 2:
+        html_dir = Path(sys.argv[1])
+    if len(sys.argv) >= 3:
+        out_dir = Path(sys.argv[2])
+
+    print(f"[conf] HTML_FOLDER={html_dir}")
+    print(f"[conf] OUTPUT_FOLDER={out_dir}")
+    print(f"[conf] GECKODRIVER_PATH={GECKODRIVER_PATH}")
+
+    process_html_folder(html_dir, out_dir, GECKODRIVER_PATH)
+
+
+if __name__ == "__main__":
+    main()

@@ -12,8 +12,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from PIL import Image, ImageOps
 
 # ========== 在这里配置 ==========
-INPUT_DIR  = r"C:\Users\martin\Downloads"   # 输入目录（含 .webp）
-OUTPUT_DIR = r"D:\TB\Products\barbour\document\images"    # 输出目录（生成 .jpg）
+INPUT_DIR  = r"D:\TEMP1\image"   # 输入目录（含 .webp）
+OUTPUT_DIR = r"D:\TEMP1\image"    # 输出目录（生成 .jpg）
 RECURSIVE  = True                        # 递归子目录
 OVERWRITE  = True                        # 已存在时是否覆盖
 WORKERS    = 0                           # 并发线程数；0=自动

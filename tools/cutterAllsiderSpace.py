@@ -106,49 +106,71 @@ def _process_one(src: Path, dst_dir: Path, tolerance: int, overwrite: bool, dry_
     except Exception as e:
         return False, f"处理失败：{src}，原因：{e}"
 
+from pathlib import Path
+from typing import Optional, List
+
+from pathlib import Path
+from typing import Optional, Dict, Any, List
+import os
+
+
 def trim_sides_batch(
-    input_dir: str,
-    output_dir: str,
-    pattern: str | None = None,     # 例："*.jpg;*.png"
-    tolerance: int = 5,
-    recursive: bool = False,
-    overwrite: bool = False,
-    dry_run: bool = False,
-    workers: int = 0,
+        input_path: Path,
+        output_path: Path,
+        options: Optional[Dict[str, Any]] = None
 ) -> dict:
     """
-    供 pipeline 直接调用的入口。
-    返回统计结果字典：{"total":N, "ok":A, "fail_or_skip":B, "messages":[...]}
+    供 pipeline 调用的批量裁剪入口（Path 版本，参数精简）。
+
+    必需参数：
+        input_path  - 输入目录（Path）
+        output_path - 输出目录（Path）
+    可选参数放在 options 里：
+        pattern     - 文件匹配模式（默认 *.jpg;*.png）
+        tolerance   - 容差，默认 5
+        recursive   - 是否递归子目录，默认 False
+        overwrite   - 是否覆盖已有文件，默认 False
+        dry_run     - 是否仅测试不写入，默认 False
+        workers     - 并行线程数，默认 CPU核数-1
     """
-    in_dir = Path(input_dir)
-    out_dir = Path(output_dir)
-    if not in_dir.exists() or not in_dir.is_dir():
-        return {"total": 0, "ok": 0, "fail_or_skip": 0, "messages": [f"[错误] 输入目录无效：{in_dir}"]}
+    # 默认参数
+    opts = {
+        "pattern": "*.jpg;*.png",
+        "tolerance": 5,
+        "recursive": False,
+        "overwrite": False,
+        "dry_run": False,
+        "workers": max(1, (os.cpu_count() or 4) - 1)
+    }
+    if options:
+        opts.update(options)
 
-    patterns = [p.strip() for p in pattern.split(";")] if pattern else []
-    files = list(_iter_files(in_dir, patterns, recursive))
+    if not input_path.exists() or not input_path.is_dir():
+        return {"total": 0, "ok": 0, "fail_or_skip": 0,
+                "messages": [f"[错误] 输入目录无效：{input_path}"]}
+
+    patterns = [p.strip() for p in opts["pattern"].split(";")] if opts["pattern"] else []
+    files = list(_iter_files(input_path, patterns, opts["recursive"]))
     if not files:
-        return {"total": 0, "ok": 0, "fail_or_skip": 0, "messages": ["[提示] 未找到匹配文件。"]}
-
-    if workers and workers > 0:
-        max_workers = workers
-    else:
-        max_workers = max(1, (os.cpu_count() or 4) - 1)
+        return {"total": 0, "ok": 0, "fail_or_skip": 0,
+                "messages": ["[提示] 未找到匹配文件。"]}
 
     ok = 0
     fail_or_skip = 0
     messages: List[str] = []
 
-    if max_workers <= 1:
+    # 单线程 or 多线程
+    if opts["workers"] <= 1:
         for f in files:
-            success, msg = _process_one(f, out_dir, tolerance, overwrite, dry_run)
+            success, msg = _process_one(f, output_path, opts["tolerance"], opts["overwrite"], opts["dry_run"])
             messages.append(msg)
             ok += int(success)
             fail_or_skip += int(not success)
     else:
         from concurrent.futures import ThreadPoolExecutor, as_completed
-        with ThreadPoolExecutor(max_workers=max_workers) as ex:
-            futs = [ex.submit(_process_one, f, out_dir, tolerance, overwrite, dry_run) for f in files]
+        with ThreadPoolExecutor(max_workers=opts["workers"]) as ex:
+            futs = [ex.submit(_process_one, f, output_path, opts["tolerance"], opts["overwrite"], opts["dry_run"]) for f
+                    in files]
             for fut in as_completed(futs):
                 success, msg = fut.result()
                 messages.append(msg)
@@ -156,6 +178,7 @@ def trim_sides_batch(
                 fail_or_skip += int(not success)
 
     return {"total": len(files), "ok": ok, "fail_or_skip": fail_or_skip, "messages": messages}
+
 
 # -------------- 可选：命令行入口（保留兼容） --------------
 def _parse_args():

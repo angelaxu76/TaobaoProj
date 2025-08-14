@@ -37,8 +37,14 @@ HTML_TEMPLATE = """
     border:1px solid #F1F2F4;
   }
   /* 主图 */
-  .media{ background:#fff; }
-  .media img{ display:block; width:100%; height:auto; aspect-ratio:4/3; object-fit:contain; }
+    .media{ background:#fff; }
+    .media img{
+      display:block;
+      width:100%;
+      height:auto;            /* 让图片按原比例自适应高度 */
+      /* 删除 aspect-ratio 与 object-fit */
+    }
+
 
   /* 文案区 */
   .body{ padding:18px var(--pad) 24px; }
