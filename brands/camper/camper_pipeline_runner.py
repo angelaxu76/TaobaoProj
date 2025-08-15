@@ -16,22 +16,22 @@ from brands.camper.unified_link_collector import camper_get_links
 
 def main():
     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    #backup_and_clear_brand_dirs(CAMPER)
+    backup_and_clear_brand_dirs(CAMPER)
 
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    #camper_get_links()
+    camper_get_links()
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    #camper_fetch_product_info()
+    camper_fetch_product_info()
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
-    #import_txt_to_db_supplier("camper")  # ✅ 新逻辑
+    import_txt_to_db_supplier("camper")  # ✅ 新逻辑
 
     print("\n🟡 Step: 5️⃣ 绑定渠道 SKU 信息（淘经销 Excel）将鲸芽那边的货品ID等输入到数据库")
-    #insert_jingyaid_to_db("camper")
+    insert_jingyaid_to_db("camper")
 
     print("\n🟡 Step: 5️⃣ 将最新TXT中没有的产品，说明刚商品已经下架，但鲸芽这边没办法删除，全部补库存为0")
-    insert_missing_products_with_zero_stock("camper")
+    #insert_missing_products_with_zero_stock("camper")
 
     print("\n🟡 Step: 5️⃣ 找出尺码很少的商品ID，将它所有的尺码都设置成0，并将状态变成未发布，为下一步该库存做准备")
     #disable_low_stock_products("camper")
