@@ -2,8 +2,8 @@ from pathlib import Path
 from PIL import Image
 import pillow_avif  # 启用 AVIF 支持
 
-input_dir = Path(r"D:/images/avif")   # AVIF 文件目录
-output_dir = Path(r"D:/images/jpg")   # 输出 JPG 目录
+input_dir = Path(r"D:\TEMP1\image")   # AVIF 文件目录
+output_dir = Path(r"D:\TEMP1\image")   # 输出 JPG 目录
 output_dir.mkdir(parents=True, exist_ok=True)
 
 for avif_file in input_dir.glob("*.avif"):
