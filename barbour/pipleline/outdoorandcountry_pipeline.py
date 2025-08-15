@@ -20,7 +20,7 @@ def main():
     # outdoorandcountry_fetch_and_save_links()
 
     # Step 2: TODO 后续可集成 fetch_product_info.py（解析库存、价格）
-    fetch_outdoor_product_offers_concurrent(max_workers=1)
+    fetch_outdoor_product_offers_concurrent(max_workers=15)
 
 
     # Step 3: TODO 将txt中数据导入barbour product中
