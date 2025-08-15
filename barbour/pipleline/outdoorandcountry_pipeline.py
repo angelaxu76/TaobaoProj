@@ -23,7 +23,7 @@ def main():
     #fetch_outdoor_product_offers_concurrent(max_workers=7)
 
     # Step 3: TODO 将txt中数据导入barbour product中
-    #batch_import_txt_by_supplier("outdoorandcountry")
+    #batch_import_txt_to_barbour_product("outdoorandcountry")
 
     # Step 4: TODO 将txt中数据导入数据库offers
     import_txt_for_supplier("outdoorandcountry")

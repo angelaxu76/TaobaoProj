@@ -1,4 +1,5 @@
 import time
+import json
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import undetected_chromedriver as uc
@@ -24,9 +25,72 @@ def sanitize_filename(name: str) -> str:
     """将文件名中非法字符替换成下划线，确保不会创建子目录"""
     return re.sub(r"[\\/:*?\"<>|'\s]+", "_", name.strip())
 
+import re
+from bs4 import BeautifulSoup
+
+def _extract_description(html: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    tag = soup.find("meta", attrs={"property": "og:description"})
+    if tag and tag.get("content"):
+        # 去掉 <br> 的实体
+        desc = tag["content"].replace("<br>", "").replace("<br/>", "").replace("<br />", "")
+        return desc.strip()
+    # 兜底：有些页签里也有 Description 文本
+    tab = soup.select_one(".product_tabs .tab_content[data-id='0'] div")
+    return tab.get_text(" ", strip=True) if tab else "No Data"
+
+def _extract_features(html: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    h3 = soup.find("h3", attrs={"title": "Features"})
+    if h3:
+        ul = h3.find_next("ul")
+        if ul:
+            items = [li.get_text(" ", strip=True) for li in ul.find_all("li")]
+            if items:
+                return " | ".join(items)
+    return "No Data"
+
+def _infer_gender_from_name(name: str) -> str:
+    n = (name or "").lower()
+    if any(x in n for x in ["men", "men's", "mens"]):
+        return "男款"
+    if any(x in n for x in ["women", "women's", "womens", "ladies", "lady"]):
+        return "女款"
+    if any(x in n for x in ["kid", "kids", "child", "children", "boys", "girls", "boy's", "girl's"]):
+        return "童款"
+    return "未知"
+
+def _extract_color_code_from_jsonld(html: str) -> str:
+    """
+    期望 mpn 形如: MWX0017OL9934
+                         ^^^^ 为颜色码，末尾两位为尺码
+    正则: 捕获最后 4 位字母数字块 ([A-Z]{2}\d{2}), 且其后紧跟 2 位尺码数字。
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    for script in soup.find_all("script", type="application/ld+json"):
+        try:
+            data = script.string and script.string.strip()
+            if not data:
+                continue
+            j = json.loads(data)
+            if isinstance(j, dict) and j.get("@type") == "Product" and isinstance(j.get("offers"), list):
+                for off in j["offers"]:
+                    mpn = (off or {}).get("mpn")
+                    if isinstance(mpn, str):
+                        m = re.search(r'([A-Z]{2}\d{2})(\d{2})$', mpn)
+                        if m:
+                            return m.group(1)  # e.g. OL99
+        except Exception:
+            continue
+    return ""
+
 def process_url(url, output_dir):
+    import json
+    import undetected_chromedriver as uc
+
     options = uc.ChromeOptions()
     options.add_argument("--start-maximized")
+    # 如需无头：options.add_argument("--headless=new")
     driver = uc.Chrome(options=options)
 
     try:
@@ -36,21 +100,40 @@ def process_url(url, output_dir):
         time.sleep(3)
         html = driver.page_source
 
+        # 先跑你现有的解析（包含 Offers、Product Name、Color 等）
         info = parse_offer_info(html, url)
-        if info and info["Offers"]:
-            # 清洗文件名
-            safe_name = sanitize_filename(info['Product Name'])
-            safe_color = sanitize_filename(info['Product Color'])
-            filename = f"{safe_name}_{safe_color}.txt"
-            filepath = output_dir / filename
-            write_supplier_offer_txt(info, filepath)
-            print(f"✅ 写入: {filepath.name}")
+
+        # --- 新增补全字段 ---
+        # 描述
+        info["Product Description"] = _extract_description(html)
+        # Feature
+        info["Feature"] = _extract_features(html)
+        # 性别
+        info["Product Gender"] = _infer_gender_from_name(info.get("Product Name", ""))
+
+        # 颜色编码（用于文件名 & 写入文本：Product Color Code）
+        # --- 新增/确保拿到颜色编码 ---
+        color_code = info.get("Product Color Code") or _extract_color_code_from_jsonld(html)
+        if color_code:
+            info["Product Color Code"] = color_code  # 确保写入到TXT里
+
+        # --- 用 Product Color Code 命名文件；没有再回退到 名称_颜色 ---
+        if color_code:
+            filename = f"{sanitize_filename(color_code)}.txt"
         else:
-            print(f"⚠️ 无库存信息，跳过: {url}")
+            safe_name = sanitize_filename(info.get('Product Name', 'NoName'))
+            safe_color = sanitize_filename(info.get('Product Color', 'NoColor'))
+            filename = f"{safe_name}_{safe_color}.txt"
+
+        filepath = output_dir / filename
+        write_supplier_offer_txt(info, filepath)
+        print(f"✅ 写入: {filepath.name}")
+
     except Exception as e:
         print(f"❌ 处理失败: {url}\n    {e}")
     finally:
         driver.quit()
+
 
 
 def fetch_outdoor_product_offers_concurrent(max_workers=3):

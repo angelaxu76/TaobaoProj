@@ -12,7 +12,7 @@ def pipeline_houseoffraser():
 
     # 步骤 2：抓取商品详情并生成 TXT
     print("\n📦 步骤 2：抓取商品详情并生成 TXT")
-    #fetch_allweathers_products(6)
+    fetch_allweathers_products(1)
 
     # Step 3: TODO 将txt中数据导入barbour product中
     #batch_import_txt_by_supplier("allweathers")
