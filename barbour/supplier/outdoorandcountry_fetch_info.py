@@ -21,6 +21,32 @@ def accept_cookies(driver, timeout=8):
 
 import re
 
+
+from urllib.parse import urlparse, parse_qs, unquote
+
+def _normalize_color_from_url(url: str) -> str:
+    """
+    解析 ?c= 颜色参数，并规范化：
+    - URL 解码（%2F -> /, %20 -> 空格）
+    - 压缩多余空白
+    - 把斜杠两侧加空格，统一为 ' / '
+    - 首字母大写每个词，便于匹配站点显示颜色
+    """
+    try:
+        qs = parse_qs(urlparse(url).query)
+        c = qs.get("c", [None])[0]
+        if not c:
+            return ""
+        c = unquote(c)              # %2F -> /
+        c = c.replace("\\", "/")
+        c = re.sub(r"\s*/\s*", " / ", c)   # 两侧留空格
+        c = re.sub(r"\s+", " ", c).strip()
+        c = " ".join(w.capitalize() for w in c.split(" "))
+        return c
+    except Exception:
+        return ""
+
+
 def sanitize_filename(name: str) -> str:
     """将文件名中非法字符替换成下划线，确保不会创建子目录"""
     return re.sub(r"[\\/:*?\"<>|'\s]+", "_", name.strip())
@@ -100,9 +126,20 @@ def process_url(url, output_dir):
         time.sleep(3)
         html = driver.page_source
 
+
+        url_color = _normalize_color_from_url(url)
+
         # 先跑你现有的解析（包含 Offers、Product Name、Color 等）
         info = parse_offer_info(html, url)
 
+        if not isinstance(info, dict):
+            info = {}
+
+        info.setdefault("Product Name", "No Data")
+        info.setdefault("Product Color", url_color or "No Data")
+        info.setdefault("Site Name", "Outdoor and Country")
+        info.setdefault("Product URL", url)
+        info.setdefault("Offers", [])
         # --- 新增补全字段 ---
         # 描述
         info["Product Description"] = _extract_description(html)
