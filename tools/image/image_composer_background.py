@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Barbour 透明抠图一键合成：
+Barbour 透明抠图一键合成 (多线程版本)：
 1) 根据服装主色亮度自动挑选背景
 2) 合成自然投影
 3) “防扫描”扰动（旋转/亮度对比度抖动/轻噪点/安全裁边）
@@ -9,6 +9,7 @@ Barbour 透明抠图一键合成：
 import random
 from pathlib import Path
 from typing import List, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import numpy as np
 from PIL import Image, ImageOps, ImageFilter, ImageEnhance
@@ -163,7 +164,8 @@ def process_one(fg_path: Path, bg_candidates: List[Path], out_dir: Path):
 def image_composer(
     fg_dir: Path = Path(r"D:\TB\Products\barbour\images\透明图"),
     bg_dir: Path = Path(r"D:\TB\Products\barbour\images\backgrounds"),
-    out_dir: Path = Path(r"D:\TB\Products\barbour\images\output")
+    out_dir: Path = Path(r"D:\TB\Products\barbour\images\output"),
+    max_workers: int = 6
 ):
     fg_list = [p for p in list_images(fg_dir) if p.suffix.lower() == ".png"]
     if not fg_list:
@@ -174,12 +176,16 @@ def image_composer(
         print("⚠️ 未找到任何背景图。")
         return
 
-    print(f"🔎 前景 {len(fg_list)} 张，背景 {len(bg_list)} 张，开始合成…")
-    for fg in fg_list:
-        try:
-            process_one(fg, bg_list, out_dir)
-        except Exception as e:
-            print(f"❌ 处理失败：{fg.name} -> {e}")
+    print(f"🔎 前景 {len(fg_list)} 张，背景 {len(bg_list)} 张，开始合成 (并发 {max_workers})…")
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(process_one, fg, bg_list, out_dir): fg for fg in fg_list}
+        for fut in as_completed(futures):
+            fg = futures[fut]
+            try:
+                fut.result()
+            except Exception as e:
+                print(f"❌ 处理失败：{fg.name} -> {e}")
 
 if __name__ == "__main__":
     image_composer()
