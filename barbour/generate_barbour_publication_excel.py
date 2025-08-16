@@ -6,6 +6,7 @@
 import sys
 from pathlib import Path
 import re
+import unicodedata
 import openpyxl
 from sqlalchemy import create_engine, text
 
@@ -16,7 +17,7 @@ from common_taobao.core.price_utils import calculate_jingya_prices
 # ========== 路径 ==========
 TXT_DIR = BARBOUR["TXT_DIR_ALL"]
 CODES_FILE = BARBOUR["OUTPUT_DIR"] / "codes.txt"
-OUTPUT_FILE = BARBOUR["OUTPUT_DIR"]  / "barbour_publication.xlsx"
+OUTPUT_FILE = BARBOUR["OUTPUT_DIR"] / "barbour_publication.xlsx"
 
 # ========== 正则规则 ==========
 FIT_PAT = {
@@ -33,6 +34,55 @@ LEN_TXT = [
     ("长款", re.compile(r"\blong(er)? length|longline\b", re.I)),
 ]
 LEN_NUM = re.compile(r"(Back length|Sample length)[:：]?\s*([0-9]+(?:\.[0-9]+)?)\s*cm", re.I)
+
+
+def _nfkc(s: str) -> str:
+    return unicodedata.normalize("NFKC", (s or "")).strip()
+
+
+def map_color(color_en: str) -> str:
+    """
+    - 去掉开头的 “- ” 等符号
+    - 只取 “/” 前第一种颜色
+    - 先精确映射；精确失败后，去掉 classic/washed/dark/light/burnt 前缀再映射
+    - 再不命中，做一些包含词兜底
+    """
+    c = _nfkc(color_en)
+    c = re.sub(r"^[\-\:\|•\.\s]+", "", c)
+    c = c.split("/")[0].strip()
+    cl = c.lower()
+    COLOR_MAP = BARBOUR["BARBOUR_COLOR_MAP"]
+    # 1) 精确匹配
+    if cl in COLOR_MAP:
+        return COLOR_MAP[cl]
+
+    # 2) 去前缀再匹配
+    cl2 = re.sub(r"^(classic|washed|burnt|dark|light)\s+", "", cl).strip()
+    if cl2 in COLOR_MAP:
+        return COLOR_MAP[cl2]
+
+    # 3) 包含词兜底（可按需扩充）
+    fallback = [
+        ("sage", "鼠尾草绿"),
+        ("olive", "橄榄绿"),
+        ("navy", "海军蓝"),
+        ("moss", "苔绿"),
+        ("khaki", "卡其"),
+        ("stone", "石色"),
+        ("sand", "沙色"),
+        ("beige", "米色"),
+        ("burgundy", "酒红"),
+        ("cobalt", "钴蓝"),
+        ("denim", "丹宁蓝"),
+        ("grey", "灰色"),
+        ("gray", "灰色"),
+    ]
+    for key, zh in fallback:
+        if key in cl:
+            return zh
+
+    # 4) 兜底：返回原英文
+    return c
 
 
 def infer_fit_neck_length(name: str, desc: str = "", feature: str = ""):
@@ -77,26 +127,26 @@ def infer_fit_neck_length(name: str, desc: str = "", feature: str = ""):
 
 # ========== SQL ==========
 SQL_PRODUCT = text("""
-    SELECT DISTINCT style_name, color
-    FROM barbour_products
-    WHERE color_code = :code
-    ORDER BY style_name
-    LIMIT 1
-""")
+                   SELECT DISTINCT style_name, color
+                   FROM barbour_products
+                   WHERE color_code = :code
+                   ORDER BY style_name
+                   LIMIT 1
+                   """)
 
 SQL_OFFERS_ORDERABLE = text("""
-    SELECT site_name, offer_url, price_gbp, stock_status, can_order, last_checked, size
-    FROM offers
-    WHERE color_code = :code
-      AND can_order = TRUE
-      AND (
-            stock_status IS NULL
-         OR stock_status ILIKE 'in stock'
-         OR stock_status = '有货'
-      )
-      AND price_gbp IS NOT NULL
-    ORDER BY price_gbp ASC
-""")
+                            SELECT site_name, offer_url, price_gbp, stock_status, can_order, last_checked, size
+                            FROM offers
+                            WHERE color_code = :code
+                              AND can_order = TRUE
+                              AND (
+                                stock_status IS NULL
+                                    OR stock_status ILIKE 'in stock'
+                                    OR stock_status = '有货'
+                                )
+                              AND price_gbp IS NOT NULL
+                            ORDER BY price_gbp ASC
+                            """)
 
 
 def compute_rmb_price(min_gbp: float, exchange_rate: float) -> str:
@@ -107,12 +157,13 @@ def compute_rmb_price(min_gbp: float, exchange_rate: float) -> str:
         base_price = max(orig, disc)
         untaxed, retail = calculate_jingya_prices(
             base_price=base_price,
-            delivery_cost=7,   # 固定运费
+            delivery_cost=7,  # 固定运费
             exchange_rate=exchange_rate
         )
         return untaxed, retail
     except Exception:
         return ""
+
 
 def main():
     cfg = BRAND_CONFIG["barbour"]
@@ -135,7 +186,7 @@ def main():
     header = [
         "商品编码", "Product Name EN", "颜色",
         "商品名称",
-        "Min Price (GBP)", "鲸芽价格","淘宝价格",
+        "Min Price (GBP)", "鲸芽价格", "淘宝价格",
         "版型", "领口设计", "衣长",
         "Sizes (In Stock)",  # ← 新增
         "Site", "Offer URL", "Stock Status", "Last Checked"
@@ -150,7 +201,8 @@ def main():
                 continue
 
             style_name = product["style_name"]
-            color = product["color"]
+            color_en = product["color"]
+            color_cn = map_color(color_en)  # ← 新增
 
             # 用 mappings() 获取 dict 列表
             offers_rows = list(conn.execute(SQL_OFFERS_ORDERABLE, {"code": code}).mappings())
@@ -179,7 +231,7 @@ def main():
             last_checked = best["last_checked"]
 
             # 生成中文标题
-            title_info  = generate_barbour_taobao_title(code, style_name, color)
+            title_info = generate_barbour_taobao_title(code, style_name, color_en)
             title_cn = title_info["Title"]
 
             # 售价计算
@@ -190,10 +242,10 @@ def main():
             fit, neckline, coat_len = infer_fit_neck_length(style_name)
 
             row = [
-                code, style_name, color,
+                code, style_name, color_cn,
                 title_cn,
                 float(price_gbp) if price_gbp is not None else "",
-               untaxed,retail,
+                untaxed, retail,
                 fit, neckline, coat_len,
                 sizes_str,  # ← 这列放这里
                 site_name, offer_url, stock_status, last_checked

@@ -150,6 +150,8 @@ BARBOUR = {
         "black": "黑色",
         "olive": "橄榄绿",
         "sage": "鼠尾草绿",
+        "Military Brown": "军棕色",
+        "Vintage Teal": "复古水鸭蓝",
         "sandstone": "砂岩色",
         "bark": "树皮棕",
         "rustic": "乡村棕",
