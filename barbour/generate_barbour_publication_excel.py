@@ -181,7 +181,7 @@ def generate_publication_excel():
 
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Barbour Publication"
+    ws.title = "Sheet1"
 
     header = [
         "商品编码", "Product Name EN", "颜色",
