@@ -91,3 +91,53 @@ ORDER BY site_count DESC, q.color_code;    -- ← 用上面的别名排序
 SELECT DISTINCT color
 FROM barbour_products
 WHERE lower(color) LIKE '%empire%';
+
+
+
+
+WITH sku_sizes AS (
+  SELECT color_code, COUNT(*) AS total_sizes
+  FROM barbour_products
+  GROUP BY color_code
+),
+site_coverage AS (
+  SELECT
+    o.color_code,
+    o.site_name,
+    COUNT(DISTINCT o.size) AS available_sizes
+  FROM offers o
+  JOIN barbour_products p
+    ON p.color_code = o.color_code AND p.size = o.size
+  WHERE
+    o.can_order = TRUE
+    AND (
+      o.stock_status IS NULL
+      OR o.stock_status ILIKE 'in stock'
+      OR o.stock_status = '有货'
+    )
+  GROUP BY o.color_code, o.site_name
+),
+full_sites AS (
+  SELECT sc.color_code, sc.site_name
+  FROM site_coverage sc
+  JOIN sku_sizes s USING (color_code)
+  WHERE sc.available_sizes = s.total_sizes
+),
+qualified AS (
+  SELECT color_code, COUNT(DISTINCT site_name) AS site_count
+  FROM full_sites
+  GROUP BY color_code
+  HAVING COUNT(DISTINCT site_name) >= 2
+)
+SELECT
+  q.color_code,
+  MIN(p.style_name) AS style_name,
+  ARRAY_AGG(DISTINCT p.size ORDER BY p.size) AS all_sizes,
+  ARRAY_AGG(DISTINCT f.site_name ORDER BY f.site_name) AS full_sites,
+  MAX(q.site_count) AS site_count
+FROM qualified q
+JOIN barbour_products p USING (color_code)
+JOIN full_sites f USING (color_code)
+WHERE q.color_code LIKE 'MCA%'    -- ✅ 只要 MCA 开头的 color_code
+GROUP BY q.color_code
+ORDER BY site_count DESC, q.color_code;

@@ -111,7 +111,41 @@ BARBOUR = {
         "size": "size",
         "stock": "stock_status",
         "gender": "gender"
+    },
+    "CODE_PREFIX_RULES":{
+        # Wax Jackets
+        "MWX": ("男款", "蜡棉夹克"),
+        "LWX": ("女款", "蜡棉夹克"),
+
+        # Quilted Jackets
+        "MQU": ("男款", "绗缝夹克"),
+        "LQU": ("女款", "绗缝夹克"),
+
+        # Casual Jackets
+        "MCA": ("男款", "休闲夹克"),
+        "LCA": ("女款", "休闲夹克"),
+
+        # Liners
+        "MLI": ("男款", "内胆"),
+        "LLI": ("女款", "内胆"),
+
+        # Gilets
+        "MGL": ("男款", "马甲"),
+        "LGL": ("女款", "马甲"),
+
+        # Knitwear
+        "MKN": ("男款", "针织"),
+        "LKN": ("女款", "针织"),
+
+        # Shirts
+        "MSH": ("男款", "衬衫"),
+        "LSH": ("女款", "衬衫"),
+
+        # T-Shirts
+        "MTS": ("男款", "T恤"),
+        "LTS": ("女款", "T恤"),
     }
+
 }
 
 

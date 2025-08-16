@@ -10,7 +10,7 @@ import openpyxl
 from sqlalchemy import create_engine, text
 
 from config import BRAND_CONFIG, BARBOUR, SETTINGS
-from barbour.generate_barbour_taobao_title import generate_taobao_title
+from barbour.generate_barbour_taobao_title import generate_barbour_taobao_title
 from common_taobao.core.price_utils import calculate_jingya_prices
 
 # ========== 路径 ==========
@@ -179,7 +179,8 @@ def main():
             last_checked = best["last_checked"]
 
             # 生成中文标题
-            title_cn = generate_taobao_title(style_name, color)
+            title_info  = generate_barbour_taobao_title(code, style_name, color)
+            title_cn = title_info["Title"]
 
             # 售价计算
             rate = SETTINGS.get("EXCHANGE_RATE", 9.7)
