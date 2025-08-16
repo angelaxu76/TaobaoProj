@@ -165,7 +165,7 @@ def compute_rmb_price(min_gbp: float, exchange_rate: float) -> str:
         return ""
 
 
-def main():
+def generate_publication_excel():
     cfg = BRAND_CONFIG["barbour"]
     PGSQL = cfg["PGSQL_CONFIG"]
 
@@ -260,4 +260,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    generate_publication_excel()
