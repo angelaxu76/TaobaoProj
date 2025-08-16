@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import re, random, unicodedata
 from typing import Tuple
-from config import BRAND_CONFIG, BRAND_NAME_MAP
+from config import BRAND_CONFIG, BRAND_NAME_MAP, BARBOUR
 
 # ==== 读取前缀规则（性别+类型） ====
 _cfg = BRAND_CONFIG.get("barbour") or BRAND_CONFIG.get("Barbour") or {}
@@ -15,62 +15,7 @@ def nfkc(s: str) -> str:
     return unicodedata.normalize("NFKC", (s or "")).strip()
 
 # ==== 颜色映射（可扩充）====
-COLOR_MAP = {
-    "classic navy": "海军蓝",
-    "black": "黑色",
-    "olive": "橄榄绿",
-    "sage": "鼠尾草绿",
-    "sandstone": "砂岩色",
-    "bark": "树皮棕",
-    "rustic": "乡村棕",
-    "stone": "石色",
-    "charcoal": "炭灰",
-    "navy": "深蓝",
-    "blue": "蓝色",
-    "light moss": "浅苔绿",
-    "brown": "棕色",
-    "dark brown": "深棕",
-    "rust": "铁锈红",
-    "red": "红色",
-    "burgundy": "酒红",
-    "yellow": "黄色",
-    "mustard": "芥末黄",
-    "khaki": "卡其色",
-    "forest": "森林绿",
-    "dusky green": "暗绿色",
-    "uniform green": "军绿色",
-    "emerald": "祖母绿",
-    "antique pine": "古松木色",
-    "pale pink": "浅粉",
-    "pink": "粉色",
-    "rose": "玫瑰粉",
-    "cream": "奶油色",
-    "off white": "米白",
-    "white": "白色",
-    "grey": "灰色",
-    "mineral grey": "矿物灰",
-    "washed cobalt": "钴蓝色",
-    "timberwolf": "灰棕色",
-    "burnt heather": "焦石楠色",
-    "mist": "雾灰色",
-    "concrete": "混凝土灰",
-    "dark denim": "深牛仔蓝",
-    "empire green": "帝国绿",
-    "royal blue": "宝蓝",
-    "classic tartan": "经典格纹",
-    "tartan": "格纹",
-    "beige": "米色",
-    "tan": "茶色",
-    "walnut": "胡桃棕",
-    "plum": "李子紫",
-    "orange": "橙色",
-    "bronze": "青铜色",
-    "silver": "银色",
-    "pewter": "锡灰",
-    "cola": "可乐棕",
-    "taupe": "灰褐色",
-}
-
+COLOR_MAP = BARBOUR["BARBOUR_COLOR_MAP"]
 
 def map_color(color_en: str) -> str:
     c = nfkc(color_en)
