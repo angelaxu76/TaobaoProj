@@ -3,10 +3,10 @@
 
 select * from barbour_products where style_name ILIKE '%beadnell%' and color ILIKE '%sage%'
 
-select distinct color_code,style_name,color from barbour_products where style_name ILIKE '%beaufort%' and color_code ILIKE '%LQU0471%'
+select distinct color_code,style_name,color from barbour_products where style_name ILIKE '%beadnell%' and color_code ILIKE '%LQU0471%'
 
 
-select distinct color_code,style_name,color from barbour_products where color_code ILIKE '%MWX0700%'
+select distinct color_code,style_name,color from barbour_products where color_code ILIKE '%LWX0667NY91%'
 
 select * from ecco_inventory where product_code ='13090301007' and stock_name = '五小剑'
 
@@ -25,3 +25,69 @@ SELECT COUNT(*) AS record_count
 FROM ecco_inventory
 WHERE stock_name = '五小剑'
   AND skuid IS NOT NULL;
+
+select COUNT(*) from offers where site_name = 'Barbour'
+
+select COUNT(*) from barbour_products
+
+select * from offers where site_name = 'Barbour'
+
+select * from barbour_products where color_code ILIKE '%LQU1776%'
+
+
+select * from barbour_products;
+
+select * from offers;
+
+
+WITH sku_sizes AS (
+  SELECT color_code, COUNT(*) AS total_sizes
+  FROM barbour_products
+  GROUP BY color_code
+),
+site_coverage AS (
+  SELECT
+    o.color_code,
+    o.site_name,
+    COUNT(DISTINCT o.size) AS available_sizes
+  FROM offers o
+  JOIN barbour_products p
+    ON p.color_code = o.color_code AND p.size = o.size
+  WHERE
+    o.can_order = TRUE
+    AND (
+      o.stock_status IS NULL
+      OR o.stock_status ILIKE 'in stock'
+      OR o.stock_status = '有货'
+    )
+  GROUP BY o.color_code, o.site_name
+),
+full_sites AS (
+  SELECT sc.color_code, sc.site_name
+  FROM site_coverage sc
+  JOIN sku_sizes s USING (color_code)
+  WHERE sc.available_sizes = s.total_sizes
+),
+qualified AS (
+  SELECT color_code, COUNT(DISTINCT site_name) AS site_count
+  FROM full_sites
+  GROUP BY color_code
+  HAVING COUNT(DISTINCT site_name) >= 2
+)
+SELECT
+  q.color_code,
+  MIN(p.style_name) AS style_name,
+  ARRAY_AGG(DISTINCT p.size ORDER BY p.size) AS all_sizes,
+  ARRAY_AGG(DISTINCT f.site_name ORDER BY f.site_name) AS full_sites,
+  MAX(q.site_count) AS site_count         -- ← 加出来
+FROM qualified q
+JOIN barbour_products p USING (color_code)
+JOIN full_sites f USING (color_code)
+GROUP BY q.color_code
+ORDER BY site_count DESC, q.color_code;    -- ← 用上面的别名排序
+
+
+
+SELECT DISTINCT color
+FROM barbour_products
+WHERE lower(color) LIKE '%empire%';
