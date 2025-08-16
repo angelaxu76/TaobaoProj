@@ -66,6 +66,7 @@ BARBOUR = {
 	"IMAGE_FIRST_PRIORITY": ["1", "2", "3", "4"],
     "IMAGE_DES_PRIORITY": ["2", "1", "3", "4"],
     "TXT_DIR": BARBOUR_BASE / "publication" /"barbour" /"TXT",
+    "TXT_DIR_ALL": BARBOUR_BASE / "publication" /"TXT",
     "OUTPUT_DIR": BARBOUR_BASE / "repulibcation",
     "STORE_DIR": BARBOUR_BASE / "document" / "store",
     "IMAGE_DIR": BARBOUR_BASE / "document" / "images",
