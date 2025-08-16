@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass
 from typing import List, Tuple, Optional, Callable
 
-# 尝试使用 rapidfuzz；若不可用则回退到简单比对
+# ======== rapidfuzz（可选） ========
 try:
     from rapidfuzz import fuzz
     _HAS_RAPIDFUZZ = True
@@ -30,14 +30,16 @@ except Exception:
 
 COMMON = {
     "barbour","wax","waxed","quilted","shirt","top","tshirt",
-    "mens","men","women","womens","ladies","boys","girls","kids","childrens","unisex","size"
+    "mens","men","women","womens","ladies","boys","girls","kids","childrens","unisex","size",
+    "international",  # ← 新增：避免“Barbour International”影响打分
 }
-TYPE_TOKENS = {"jacket","gilet","vest","coat","parka"}
+TYPE_TOKENS = {"jacket","gilet","vest","coat","parka","puffer"}  # ← 新增 puffer
 COLOR_STOP = {
     "classic","dark","light","true","deep","bright","rich","vintage","muted","modern","antique",
     "original","pure","royal","new","old","heritage"
 }
 COLOR_FAMILY_KEYS = ["black","navy","olive","bark","brown","green","stone","tan","blue","grey","gray"]
+
 
 # ======== 数据结构 ========
 
@@ -199,10 +201,14 @@ def resolve_color_code(
     if not candidates:
         return MatchResult(status="unmatched", candidates=[])
 
-    # 自适应阈值：关键词少（≤2）时适当放宽
+    # 自适应阈值（名称 token 少时放宽；未装 rapidfuzz 时更宽）
     token_cnt = len(_build_tokens(product_name))
-    threshold = base_threshold if token_cnt >= 3 else max(0.45, base_threshold - 0.05)
-    lead_delta = base_lead if token_cnt >= 3 else max(0.05, base_lead - 0.05)
+    if _HAS_RAPIDFUZZ:
+        threshold = base_threshold if token_cnt >= 3 else max(0.45, base_threshold - 0.05)
+        lead_delta = base_lead  if token_cnt >= 3 else max(0.05, base_lead - 0.05)
+    else:
+        threshold = 0.48 if token_cnt >= 3 else 0.45
+        lead_delta = 0.07
 
     scored = []
     for c in candidates:
@@ -215,11 +221,23 @@ def resolve_color_code(
     scored.sort(key=lambda x: x[6], reverse=True)
     best = scored[0]
 
+    # 高分时放宽唯一性要求（避免“第二名很高”卡住）
+    if best[6] >= 0.92:
+        lead_delta = min(lead_delta, 0.05)
+
     # 唯一性判定
     if best[6] >= threshold and (len(scored) == 1 or best[6] - scored[1][6] >= lead_delta):
         return MatchResult(status="matched", color_code=best[0], style_name=best[1], score=best[6])
 
-    # 仍打平 → 若类型和名称几乎完全一致，直接选
+    # === 强规则兜底：query token 被候选覆盖 + 颜色相容 + 类型一致 → 直接通过 ===
+    qtok = set(_build_tokens(product_name))
+    if qtok:
+        for cc, st, dbcol, nsc, csc, tsc, total in scored[:3]:
+            stok = set(_build_tokens(st))
+            if qtok.issubset(stok) and _color_score(product_color, dbcol) >= 0.6 and _type_score(product_name, st) >= 0.99:
+                return MatchResult(status="matched", color_code=cc, style_name=st, score=total)
+
+    # 仍打平 → 若类型和名称几乎完全一致，直接选（保留原逻辑）
     if len(scored) >= 2:
         bt = _type_tokens(product_name)
         for cand in scored[:2]:
