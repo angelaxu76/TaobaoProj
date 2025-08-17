@@ -12,7 +12,7 @@ def pipeline_barbour():
     # 步骤 1：将产品的编码放到D:\TB\Products\barbour\repulibcation\codes.txt
     # 步骤 2：生成发布产品的excel
     print("\n🌐 步骤 1：抓取商品链接")
-    #generate_publication_excel()
+    generate_publication_excel()
 
     print("\n步骤 2：生成透明图+背景图")
     fg_dir=Path(r"D:\TB\Products\barbour\images\透明图")
@@ -25,7 +25,7 @@ def pipeline_barbour():
     out_dir_src  = Path(r"D:\TB\Products\barbour\images\output")
     dest_img_dir = BARBOUR["OUTPUT_DIR"] / "images"
     missing_file = BARBOUR["OUTPUT_DIR"] / "missing_image.txt"
-    move_image_for_publication(codes_file, out_dir_src, dest_img_dir, missing_file)
+    #move_image_for_publication(codes_file, out_dir_src, dest_img_dir, missing_file)
 
 
 if __name__ == "__main__":
