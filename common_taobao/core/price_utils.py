@@ -78,7 +78,7 @@ def calculate_jingya_prices(base_price: float, delivery_cost=7, exchange_rate=9.
         return 0, 0
 
     if base_price < 30:
-        base_price = base_price + 10
+        base_price = base_price + 5
     elif 30 < base_price < 40:
         base_price = base_price+5
 
@@ -86,7 +86,7 @@ def calculate_jingya_prices(base_price: float, delivery_cost=7, exchange_rate=9.
         untaxed = (base_price + delivery_cost) * 1.13 * exchange_rate
         untaxed = floor(untaxed / 10) * 10
 
-        retail = untaxed * 1.32
+        retail = untaxed * 1.36
         retail = floor(retail / 10) * 10
 
         return untaxed, retail

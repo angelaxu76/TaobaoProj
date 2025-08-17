@@ -13,6 +13,20 @@ BRAND_DISCOUNT = {
     # 默认：1.0（无折扣）
 }
 
+# ===== 新增：工具函数 =====
+from typing import Optional, Set
+
+def _load_excluded_codes(exclude_txt: Optional[Path]) -> Set[str]:
+    excluded = set()
+    if exclude_txt and exclude_txt.exists():
+        with open(exclude_txt, "r", encoding="utf-8") as f:
+            for line in f:
+                code = line.strip()
+                if code:
+                    excluded.add(code.upper())
+    return excluded
+
+
 def get_brand_discount_rate(brand: str) -> float:
     return BRAND_DISCOUNT.get(brand.lower(), 1.0)
 
@@ -23,31 +37,54 @@ def get_brand_base_price(row, brand: str) -> float:
     return base * get_brand_discount_rate(brand)
 
 # ============ ✅ 公共导出函数 =============
-def generate_channel_price_excel(df: pd.DataFrame, brand: str, out_path: Path):
+# ============ ✅ 公共导出函数（更新） =============
+def generate_channel_price_excel(
+    df: pd.DataFrame,
+    brand: str,
+    out_path: Path,
+    exclude_txt: Optional[Path] = None  # 👈 新增参数：排除的商品编码 TXT
+):
+    # 读取排除清单
+    excluded_codes = _load_excluded_codes(exclude_txt)
+
+    # 先做分组
     df_grouped = df.groupby("channel_product_id").agg({
         "original_price_gbp": "first",
         "discount_price_gbp": "first",
         "product_code": "first"
     }).reset_index()
 
+    # 标准化商品编码后按排除表过滤
+    df_grouped["product_code"] = df_grouped["product_code"].astype(str).str.strip().str.upper()
+    if excluded_codes:
+        df_grouped = df_grouped[~df_grouped["product_code"].isin(excluded_codes)]
+
+    # 价格计算
     df_grouped["Base Price"] = df_grouped.apply(lambda row: get_brand_base_price(row, brand), axis=1)
     df_grouped[["未税价格", "零售价"]] = df_grouped["Base Price"].apply(
         lambda price: pd.Series(calculate_jingya_prices(price, delivery_cost=7, exchange_rate=9.7))
     )
 
+    # 导出
     df_prices = df_grouped[["channel_product_id", "product_code", "Base Price", "未税价格", "零售价"]]
     df_prices.columns = ["渠道产品ID", "商家编码", "采购价（GBP）", "未税价格", "零售价"]
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     df_prices.to_excel(out_path, index=False)
-    print(f"✅ 导出价格明细: {out_path}")
+    print(f"✅ 导出价格明细: {out_path}（已排除 {len(excluded_codes)} 个编码）")
+
 
 # ============ ✅ 函数 1：导出所有产品价格 =============
-def export_channel_price_excel(brand: str):
+# ============ ✅ 函数 1：导出所有产品价格（更新默认排除路径） =============
+def export_channel_price_excel(brand: str, exclude_txt: Optional[str] = None):
     config = BRAND_CONFIG[brand.lower()]
     pg_cfg = config["PGSQL_CONFIG"]
     table_name = config["TABLE_NAME"]
     out_path = config["OUTPUT_DIR"] / f"{brand.lower()}_channel_prices.xlsx"
+
+    # 默认从 OUTPUT_DIR/repulibcation/exclude_codes.txt 读取排除清单
+    default_exclude = (config["OUTPUT_DIR"] / "repulibcation" / "exclude_codes.txt")
+    exclude_path = Path(exclude_txt) if exclude_txt else default_exclude
 
     conn = psycopg2.connect(**pg_cfg)
     query = f"""
@@ -59,7 +96,9 @@ def export_channel_price_excel(brand: str):
     conn.close()
 
     print(f"📊 原始记录总数: {len(df)}")
-    generate_channel_price_excel(df, brand, out_path)
+    print(f"🗂️ 使用排除清单: {exclude_path if exclude_path.exists() else '（未找到，跳过）'}")
+    generate_channel_price_excel(df, brand, out_path, exclude_txt=exclude_path)
+
 
 # ============ ✅ 函数 2：导出指定 TXT 列表价格 =============
 def export_channel_price_excel_from_txt(brand: str, txt_path: str):

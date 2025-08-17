@@ -16,19 +16,19 @@ from brands.camper.unified_link_collector import camper_get_links
 
 def main():
     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    backup_and_clear_brand_dirs(CAMPER)
+    # backup_and_clear_brand_dirs(CAMPER)
 
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    camper_get_links()
+    #camper_get_links()
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    camper_fetch_product_info()
+    #camper_fetch_product_info()
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
-    import_txt_to_db_supplier("camper")  # ✅ 新逻辑
+    #import_txt_to_db_supplier("camper")  # ✅ 新逻辑
 
     print("\n🟡 Step: 5️⃣ 绑定渠道 SKU 信息（淘经销 Excel）将鲸芽那边的货品ID等输入到数据库")
-    insert_jingyaid_to_db("camper")
+    #insert_jingyaid_to_db("camper")
 
     print("\n🟡 Step: 5️⃣ 将最新TXT中没有的产品，说明刚商品已经下架，但鲸芽这边没办法删除，全部补库存为0")
     #insert_missing_products_with_zero_stock("camper")
@@ -40,7 +40,7 @@ def main():
     #export_gender_split_excel("camper")
 
     print("\\n🟡 Step: 6️⃣ 导出渠道价格 Excel（含零售价与商家编码），可以用于淘宝店铺去更新商品价格")
-    # export_channel_price_excel("camper")  # 导出价格明细（已发布）
+    export_channel_price_excel("camper", r"D:\TB\Products\camper\repulibcation\exclude_codes.txt") # 导出价格明细（已发布）
     # export_all_sku_price_excel("camper")  # 导出商家编码价格表（所有商品）
 
     print("\\n🟡 Step: 6️⃣生成发布产品的excel")
