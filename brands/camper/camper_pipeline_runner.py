@@ -19,10 +19,10 @@ def main():
     #backup_and_clear_brand_dirs(CAMPER)
 
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    #camper_get_links()
+    camper_get_links()
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    #camper_fetch_product_info()
+    camper_fetch_product_info()
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
     #import_txt_to_db_supplier("camper")  # ✅ 新逻辑
