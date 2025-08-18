@@ -16,7 +16,7 @@ from brands.camper.unified_link_collector import camper_get_links
 
 def main():
     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    # backup_and_clear_brand_dirs(CAMPER)
+    #backup_and_clear_brand_dirs(CAMPER)
 
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
     #camper_get_links()
@@ -40,11 +40,11 @@ def main():
     #export_gender_split_excel("camper")
 
     print("\\n🟡 Step: 6️⃣ 导出渠道价格 Excel（含零售价与商家编码），可以用于淘宝店铺去更新商品价格")
-    export_channel_price_excel("camper", r"D:\TB\Products\camper\repulibcation\exclude_codes.txt") # 导出价格明细（已发布）
+    #export_channel_price_excel("camper", r"D:\TB\Products\camper\repulibcation\exclude_codes.txt") # 导出价格明细（已发布）
     # export_all_sku_price_excel("camper")  # 导出商家编码价格表（所有商品）
 
     print("\\n🟡 Step: 6️⃣生成发布产品的excel")
-    #generate_publication_excels("camper")
+    generate_publication_excels("camper")
 
     print("\n🟡 Step: 6️⃣ 导出库存 Excel")
     # export_skuid_stock_excel("camper")
