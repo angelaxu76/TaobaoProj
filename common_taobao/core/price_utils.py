@@ -78,7 +78,7 @@ def calculate_jingya_prices(base_price: float, delivery_cost=7, exchange_rate=9.
         return 0, 0
 
     if base_price < 30:
-        base_price = base_price + 5
+        base_price = base_price + 7
     elif 30 < base_price < 40:
         base_price = base_price+5
 
