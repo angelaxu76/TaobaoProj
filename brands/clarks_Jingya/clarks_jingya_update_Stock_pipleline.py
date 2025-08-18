@@ -21,53 +21,69 @@ PUBLICATION_DIR = BASE_DIR / "publication"
 REPUB_DIR = BASE_DIR / "repulibcation"
 BACKUP_DIR = BASE_DIR / "backup"
 
-
-
+def _safe_decode(b: bytes) -> str:
+    # 先试 UTF-8，再退到系统本地编码，再到 cp936，最后忽略非法字节
+    for enc in ("utf-8", "mbcs", "cp936"):
+        try:
+            return b.decode(enc)
+        except Exception:
+            pass
+    return b.decode("utf-8", errors="ignore")
 
 def find_uirobot() -> str:
-    """
-    在常见安装目录中查找 UiRobot.exe（Assistant/Studio）。
-    找到即返回完整路径，找不到抛异常。
-    """
     home = Path.home().name
-    candidates = []
-    # Studio 安装路径（你当前能跑的就是这个路径）
-    candidates += [rf"C:\Users\{home}\AppData\Local\Programs\UiPath\Studio\UiRobot.exe"]
-    # Assistant 多版本目录
-    candidates += glob.glob(rf"C:\Users\{home}\AppData\Local\UiPath\app-*\UiRobot.exe")
+    candidates = [
+        rf"C:\Users\{home}\AppData\Local\Programs\UiPath\Studio\UiRobot.exe",
+        *glob.glob(rf"C:\Users\{home}\AppData\Local\UiPath\app-*\UiRobot.exe"),
+    ]
     for c in candidates:
         p = Path(c)
         if p.exists():
             return str(p)
     raise FileNotFoundError("未找到 UiRobot.exe，请确认已安装 UiPath Assistant/Studio。")
 
-def run_uipath_process(process_name: str, input_args: dict | None = None, timeout_s: int = 3600):
+def run_uipath_process(process_name: str,
+                       input_args: dict | None = None,
+                       timeout_s: int = 3600) -> str:
     """
-    按流程名调用 Assistant 中的流程。
-    - 不传 input_args 时，沿用 Assistant 里保存的参数（推荐做法）
-    - 需要临时覆盖参数时，传入 dict，会自动序列化为 JSON
-
-    失败会抛异常；成功返回 stdout 文本。
+    通过流程名调用 Assistant 流程。
+    - 不传 input_args：沿用 Assistant 中保存的参数
+    - 返回：解码后的 STDOUT 字符串；失败则抛异常并输出可读日志
     """
     uirobot = find_uirobot()
     cmd = [uirobot, "execute", "--process-name", process_name]
-
     if input_args:
         cmd += ["--input", json.dumps(input_args, ensure_ascii=False)]
 
-    # capture_output=True 以便拿到日志；encoding='utf-8' 保证中文正常
+    # 用 bytes 捕获，避免编码问题；不设 text/encoding
     completed = subprocess.run(
         cmd,
         capture_output=True,
-        text=True,
-        encoding="utf-8",
         timeout=timeout_s
     )
-    print("📤 UiPath STDOUT:\n", completed.stdout)
-    print("📥 UiPath STDERR:\n", completed.stderr)
+
+    stdout_txt = _safe_decode(completed.stdout or b"")
+    stderr_txt = _safe_decode(completed.stderr or b"")
+
+    print("📤 UiPath STDOUT:\n", stdout_txt)
+    print("📥 UiPath STDERR:\n", stderr_txt)
+
     if completed.returncode != 0:
-        raise RuntimeError(f"UiPath 流程执行失败，exit code={completed.returncode}")
-    return completed.stdout
+        # 给出常见排查点
+        hints = [
+            "① 确认 Assistant 登录了当前 Windows 用户，并能看到该流程；",
+            "② 流程名需与 Assistant 完全一致（中英文和空格都要一致）；",
+            "③ 如果是首次在本机运行，可先安装：UiRobot.exe installprocess --process-name \"流程名\"；",
+            "④ 如果 Python 以管理员运行，而 Assistant 以普通用户运行，两个用户的流程列表不一致（建议同一用户）；",
+            "⑤ 在命令行里手动跑同样命令看是否 0 退出码；",
+        ]
+        raise RuntimeError(
+            f"UiPath 流程执行失败，exit code={completed.returncode}\n"
+            f"STDOUT:\n{stdout_txt}\nSTDERR:\n{stderr_txt}\n\n"
+            + "📌 排查建议：\n- " + "\n- ".join(hints)
+        )
+    return stdout_txt
+
 
 def backup_and_clear_dir(dir_path: Path, name: str):
     if not dir_path.exists():
