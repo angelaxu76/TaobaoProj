@@ -25,7 +25,7 @@ def pipeline_barbour():
     out_dir_src  = Path(r"D:\TB\Products\barbour\images\output")
     dest_img_dir = BARBOUR["OUTPUT_DIR"] / "images"
     missing_file = BARBOUR["OUTPUT_DIR"] / "missing_image.txt"
-    #move_image_for_publication(codes_file, out_dir_src, dest_img_dir, missing_file)
+    move_image_for_publication(codes_file, out_dir_src, dest_img_dir, missing_file)
 
 
 if __name__ == "__main__":

@@ -7,3 +7,6 @@ select DISTINCT product_code from camper_inventory where channel_item_id IS NOT 
 
 
 select DISTINCT product_code from camper_inventory where channel_item_id IS NOT null and gender = '女款'
+
+
+select * from camper

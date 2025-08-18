@@ -138,6 +138,8 @@ SELECT
 FROM qualified q
 JOIN barbour_products p USING (color_code)
 JOIN full_sites f USING (color_code)
-WHERE q.color_code LIKE 'MSP%'    -- ✅ 只要 MCA 开头的 color_code
+WHERE q.color_code LIKE 'MQU%'    -- ✅ 只要 MCA 开头的 color_code
 GROUP BY q.color_code
 ORDER BY site_count DESC, q.color_code;
+
+
