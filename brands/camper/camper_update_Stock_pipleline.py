@@ -27,12 +27,12 @@ GENDER_RUNS = [
     {
         "gender": "男款",
         "success_file": Path(r"D:\camper_men_success.txt"),
-        "uipath_process": "鲸芽更新camper男鞋库存20250808V1",
+        "uipath_process": "鲸芽更新camper男鞋库存202508V107",
     },
     {
         "gender": "女款",
         "success_file": Path(r"D:\camper_women_success.txt"),
-        "uipath_process": "鲸芽更新camper女鞋库存20250812V6",
+        "uipath_process": "鲸芽更新camper女鞋库存202508V1011",
     },
 ]
 
@@ -42,7 +42,7 @@ TABLE_NAME = CAMPER["TABLE_NAME"]
 PENDING_THRESHOLD = 5        # 容忍未更新上限
 MAX_RERUNS = 5               # 最多额外循环次数
 RERUN_WAIT_SECONDS = 30      # 每次循环之间等待秒数
-
+UIPATH_TIMEOUT = 14400
 # ================== 工具函数 ==================
 def _safe_decode(b: bytes) -> str:
     for enc in ("utf-8", "mbcs", "cp936"):
@@ -68,7 +68,7 @@ def find_uirobot() -> str:
 
 def run_uipath_process(process_name: str,
                        input_args: dict | None = None,
-                       timeout_s: int = 3600) -> str:
+                       timeout_s: int = UIPATH_TIMEOUT) -> str:
     uirobot = find_uirobot()
     cmd = [uirobot, "execute", "--process-name", process_name]
     if input_args:
