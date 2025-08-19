@@ -8,7 +8,7 @@ def pipeline_houseoffraser():
 
     # 步骤 1：抓取商品链接
     print("\n🌐 步骤 1：抓取商品链接")
-    #allweathers_get_links()
+    allweathers_get_links()
 
     # 步骤 2：抓取商品详情并生成 TXT
     print("\n📦 步骤 2：抓取商品详情并生成 TXT")

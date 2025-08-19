@@ -348,11 +348,87 @@ def _discover_txt_paths() -> List[Path]:
             paths = sorted(p.glob("*.txt"))
     return paths
 
-def batch_import_txt_to_barbour_product():
-    files = _discover_txt_paths()
+# —— 新增/替换：按 supplier 发现 TXT 文件 ——
+from pathlib import Path
+from typing import List, Dict
+import sys
+
+_ALIAS = {
+    "oac": "outdoorandcountry",
+    "outdoor": "outdoorandcountry",
+    "allweather": "allweathers",
+    "hof": "houseoffraser",
+    "pm": "philipmorris",
+}
+
+def _discover_txt_paths_by_supplier(supplier: str) -> List[Path]:
+    """
+    根据 config.BARBOUR["TXT_DIRS"] 按供应商返回 *.txt 列表。
+    supplier:
+      - "all"（默认）：遍历所有已配置目录
+      - 具体名称：outdoorandcountry / allweathers / barbour / houseoffraser / philipmorris
+      - 支持常见别名：oac/outdoor, allweather, hof, pm
+    """
+    supplier = (supplier or "all").strip().lower()
+    supplier = _ALIAS.get(supplier, supplier)
+
+    txt_dirs: Dict[str, Path] = BARBOUR.get("TXT_DIRS", {}) or {}
+    paths: List[Path] = []
+
+    if supplier == "all":
+        # 遍历所有目录（跳过不存在的）
+        for key, dirpath in txt_dirs.items():
+            p = Path(dirpath)
+            if p.exists():
+                paths.extend(sorted(p.glob("*.txt")))
+        # 若没配 TXT_DIRS，则退回单目录
+        if not paths and BARBOUR.get("TXT_DIR"):
+            p = Path(BARBOUR["TXT_DIR"])
+            if p.exists():
+                paths = sorted(p.glob("*.txt"))
+        return paths
+
+    # 指定某一供应商
+    if supplier not in txt_dirs:
+        # 兜底：如果传的是 "barbour官网" 这类中文，可做一次简单映射
+        zh_map = {
+            "官网": "barbour",
+            "barbour官网": "barbour",
+            "户外": "outdoorandcountry",
+            "奥特莱斯": "outdoorandcountry",
+        }
+        supplier = zh_map.get(supplier, supplier)
+
+    dirpath = txt_dirs.get(supplier)
+    if not dirpath:
+        # 再尝试 "all" 目录
+        dirpath = txt_dirs.get("all")
+
+    p = Path(dirpath) if dirpath else None
+    if p and p.exists():
+        return sorted(p.glob("*.txt"))
+
+    # 全部失败：空列表
+    return []
+
+
+# —— 替换：批处理入口，增加 supplier 形参 ——
+def batch_import_txt_to_barbour_product(supplier: str = "all"):
+    """
+    导入指定供应商（或全部）的 TXT 到 barbour_products。
+    supplier:
+      - "all"：导入所有 BARBOUR["TXT_DIRS"] 目录
+      - 具体：outdoorandcountry / allweathers / barbour / houseoffraser / philipmorris（大小写不敏感）
+      - 也支持别名：oac/outdoor, allweather, hof, pm
+    """
+    files = _discover_txt_paths_by_supplier(supplier)
     if not files:
-        print("⚠️ 未找到任何 TXT 文件。请检查 BARBOUR['TXT_DIR'] 或 BARBOUR['TXT_DIRS'] 配置。")
+        print(f"⚠️ 未找到任何 TXT 文件（supplier='{supplier}'）。请检查 BARBOUR['TXT_DIRS'] 配置或目录是否存在。")
         return
+
+    # 复用你已有的 DB 连接和入库函数
+    import psycopg2
+    from config import PGSQL_CONFIG
 
     conn = psycopg2.connect(**PGSQL_CONFIG)
 
@@ -360,16 +436,22 @@ def batch_import_txt_to_barbour_product():
     parsed_files = 0
 
     for file in files:
-        records = parse_txt_file(file)
+        records = parse_txt_file(file)  # ← 你现有的解析函数
         if not records:
             continue
-        insert_into_products(records, conn)
+        insert_into_products(records, conn)  # ← 你现有的入库函数
         print(f"✅ 导入 {file.name} — {len(records)} 条")
         total_rows += len(records)
         parsed_files += 1
 
     conn.close()
-    print(f"\n🎉 导入完成：{parsed_files} 个文件，共 {total_rows} 条记录")
+    print(f"\n🎉 导入完成（supplier='{supplier}'）：{parsed_files} 个文件，共 {total_rows} 条记录")
 
+
+# —— 可选：命令行调用（不破坏原用法） ——
 if __name__ == "__main__":
-    batch_import_txt_to_barbour_product()
+    # 支持：python barbour_import_to_barbour_products.py
+    #      python barbour_import_to_barbour_products.py outdoorandcountry
+    #      python barbour_import_to_barbour_products.py hof
+    arg = sys.argv[1] if len(sys.argv) > 1 else "all"
+    batch_import_txt_to_barbour_product(arg)

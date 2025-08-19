@@ -239,7 +239,7 @@ def process_link(url):
         driver.quit()
 
 
-def fetch_all():
+def houseoffraser_fetch_all():
     links = [u.strip() for u in LINKS_FILE.read_text(encoding="utf-8").splitlines() if u.strip()]
     print(f"🚀 共需抓取 {len(links)} 个商品链接\n")
 
@@ -250,4 +250,4 @@ def fetch_all():
 
 
 if __name__ == "__main__":
-    fetch_all()
+    houseoffraser_fetch_all()
