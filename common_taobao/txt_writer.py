@@ -1,8 +1,28 @@
 from pathlib import Path
 from common_taobao.core.category_utils import infer_style_category  # ✅ 如果函数写在这里就引入
+from common_taobao.core.size_normalizer import infer_gender_for_barbour
+
 
 def format_txt(info: dict, filepath: Path, brand: str = None):
     # ✅ 兜底推断 Style Category
+
+    if (brand or info.get("Brand")) == "Barbour":
+        info["Product Gender"] = infer_gender_for_barbour(
+            product_code=info.get("Product Code"),
+            title=info.get("Product Name"),
+            description=info.get("Product Description"),
+            given_gender=info.get("Product Gender"),
+        ) or info.get("Product Gender") or "男款"
+
+    # 类目智能化（你上一条已加好）
+    if not info.get("Style Category"):
+        info["Style Category"] = infer_style_category(
+            desc=info.get("Product Description", ""),
+            product_name=info.get("Product Name", ""),
+            product_code=info.get("Product Code", ""),
+            brand=(brand or info.get("Brand") or "")
+        )
+
     if not info.get("Style Category"):
         desc  = info.get("Product Description", "")
         name  = info.get("Product Name", "")
