@@ -1,260 +1,331 @@
+# barbour_import_to_barbour_products.py
 # -*- coding: utf-8 -*-
+"""
+将 Barbour 各站点 TXT 导入 barbour_products：
+- 必填：color_code, style_name, color, size, match_keywords
+- 可选：title, product_description, gender, category
+TXT 支持两种来源：
+1) 统一格式（推荐，与官网一致）+ Offer List: size|price|stock|can_order
+2) 老格式的 Sizes: ... 行
+"""
+
+from __future__ import annotations
 from pathlib import Path
+from typing import List, Dict, Tuple
 import psycopg2
 import re
 import unicodedata
-from typing import List, Dict, Optional
 
-from config import PGSQL_CONFIG, BARBOUR  # ✅ 从 config 中读取连接配置
-from barbour.color_utils import normalize_color
+# 你的项目配置
+from config import PGSQL_CONFIG, BARBOUR
 
-# === 通用词过滤（不纳入关键词） ===
+# 可选：发布标题生成（与发品保持一致）
+try:
+    from generate_barbour_taobao_title import generate_barbour_taobao_title
+except Exception:
+    generate_barbour_taobao_title = None  # 没有也不影响主流程
+
+
+# -------------------- 基础工具 --------------------
 COMMON_WORDS = {
-    "jacket", "coat", "gilet", "vest", "shirt", "top", "tshirt", "t-shirt",
-    "pants", "trousers", "shorts", "parka", "barbour", "mens", "women", "womens",
-    "international", "bintl", "b.intl", "quilted", "puffer", "waterproof"
+    "jacket", "coat", "gilet", "vest", "shirt", "top",
+    "t-shirt", "pants", "trousers", "shorts", "parka",
+    "barbour", "mens", "women", "ladies", "kids"
 }
 
-# === 基本正则 ===
-RE_KV = lambda k: re.compile(rf"^{re.escape(k)}\s*:\s*(.+)$", re.I)
-RE_OFFER_LINE = re.compile(r"^\s*([^\|]+)\|([\d\.]+)\|(.+?)\|(True|False)\s*$", re.I)
+ONE_SIZE_PREFIXES = ("LHA","MHA","LLI","MLI","MWB","LWB","UBA","LWO","MWO")
+RE_CODE = re.compile(r'[A-Z]{3}\d{3,4}[A-Z]{2,3}\d{2,3}')  # 例：LWX0339NY92 / LBA0400BK111
 
 def normalize_text(text: str) -> str:
-    """将 Unicode 字符（如 ®、™）转换为 ASCII，丢弃无法转换的部分"""
     return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
 
 def extract_match_keywords(style_name: str) -> List[str]:
-    # 1) Unicode 归一化
-    style_name = normalize_text(style_name)
-    # 2) 去符号，仅保留字母数字与空格
-    cleaned = re.sub(r"[^\w\s]", " ", style_name)
-    # 3) 分词、去短词、去通用词、去重
+    style_name = normalize_text(style_name or "")
+    cleaned = re.sub(r"[^\w\s]", "", style_name)
     words = [w.lower() for w in cleaned.split() if len(w) >= 3]
-    seen = set()
-    out = []
-    for w in words:
-        if w in COMMON_WORDS:
-            continue
-        if w not in seen:
-            seen.add(w)
-            out.append(w)
-    return out
+    return [w for w in words if w not in COMMON_WORDS]
 
-def pick_first_color(c: str) -> str:
-    """对 'Birch/Gardenia' 只保留第一个；去掉前缀 '-'；清理空白；做颜色标准化。"""
-    if not c:
-        return c
-    # 移除前导 '-' 和多余空白
-    c = c.strip()
-    if c.startswith("-"):
-        c = c[1:].strip()
-    # 仅保留第一个斜杠之前
-    c = c.split("/", 1)[0].strip()
-    # 删除可能的多余连接号空格
-    c = c.replace(" - ", " ").replace("-", " ").strip()
-    # 颜色标准化（你项目中的词典）
-    return normalize_color(c)
+def guess_color_code_from_filename(fp: Path) -> str | None:
+    m = RE_CODE.search(fp.stem.upper())
+    return m.group(0) if m else None
 
-def infer_category(style_name: str) -> Optional[str]:
-    """根据款名粗略推断分类（可替换为你现成的 category_utils）。"""
-    s = style_name.lower()
-    # 更具体的在前
-    if "puffer" in s:
-        return "Puffer Jacket"
-    if "quil(t)" in s or "liddesdale" in s:
-        return "Quilted Jacket"
-    if "waterproof" in s or "wax" in s or "jacket" in s:
-        return "Jacket"
-    if "parka" in s:
-        return "Parka"
-    if "gilet" in s or "vest" in s:
-        return "Gilet"
-    if "shirt" in s:
-        return "Shirt"
-    if "tee" in s or "t-shirt" in s or "tshirt" in s:
-        return "T-Shirt"
-    return None
+def validate_minimal_fields(rec: Dict) -> Tuple[bool, List[str]]:
+    """只校验原始 5 字段。"""
+    required = ["color_code", "style_name", "color", "size", "match_keywords"]
+    missing = [k for k in required if not rec.get(k)]
+    return (len(missing) == 0, missing)
 
-def infer_gender(gender_line: Optional[str], style_name: str) -> Optional[str]:
-    """优先取 TXT 的 Product Gender；否则从款名猜测。"""
-    if gender_line:
-        g = gender_line.strip()
-        if g in ("男款", "女款", "童款"):
-            return {"男款": "Men", "女款": "Women", "童款": "Kids"}[g]
-        # 其它情况直接回写原值（保险）
-        return g
-    s = style_name.lower()
-    if any(k in s for k in ["women", "womens", "ladies", "l\/s women"]):
-        return "Women"
-    if any(k in s for k in ["men", "mens"]):
-        return "Men"
-    return None
 
-def build_title(style_name: str, color_std: str) -> str:
-    """生成完整标题：Barbour {style_name} – {color}"""
-    # 统一破折号
-    return f"Barbour {style_name} – {color_std}".strip()
-
-def parse_sizes(lines: List[str]) -> List[str]:
-    """优先解析 Offer List 下的尺码；若没有，则回退 Product Size 行。"""
+# -------------------- Offer / 尺码解析 --------------------
+def _extract_sizes_from_offer_list(text: str) -> list[str]:
+    """
+    统一格式：从 'Offer List:' 区块解析尺码（第一列为尺码）
+    行形如：S|299.00|有货|True
+    """
     sizes = []
-
-    # 优先：Offer List
-    offer_idx = None
-    for i, line in enumerate(lines):
-        if line.strip().lower().startswith("offer list"):
-            offer_idx = i
+    in_block = False
+    for line in text.splitlines():
+        if not in_block:
+            if re.search(r'^\s*Offer\s+List\s*:\s*$', line, flags=re.I):
+                in_block = True
+            continue
+        # 空行或下一个字段标题即结束
+        if not line.strip() or re.match(r'^\s*[A-Z][A-Za-z ]+:\s*', line):
             break
-    if offer_idx is not None:
-        i = offer_idx + 1
-        while i < len(lines) and lines[i].strip():
-            m = RE_OFFER_LINE.match(lines[i])
-            if m:
-                size = m.group(1).strip()
+        m = re.match(r'^\s*([^|]+)\|', line)
+        if m:
+            size = m.group(1).strip()
+            size = size.split(":")[0].strip()  # 兼容 "EU 40: In Stock"
+            if size and size not in sizes:
                 sizes.append(size)
-            i += 1
+    return sizes
 
-    # 回退：Product Size
-    if not sizes:
-        for line in lines:
-            m = RE_KV("Product Size")(line)
-            if m:
-                size_part = m.group(1)
-                for s in size_part.split(";"):
-                    s = s.strip()
-                    if not s:
-                        continue
-                    # 支持 "M:有货" 或 "M" 两种
-                    sizes.append(s.split(":")[0].strip())
-                break
 
-    # 去重、保序
-    seen = set()
-    ordered = []
-    for s in sizes:
-        if s not in seen:
-            seen.add(s)
-            ordered.append(s)
-    return ordered
+# -------------------- 字段增强（可选补全） --------------------
+_GENDER_PAT = [
+    (r'\b(women|ladies|woman)\b', '女款'),
+    (r'\b(men|mens|man)\b',       '男款'),
+    (r'\b(girl|boy|kid|kids)\b',  '童款'),
+]
+_CATEGORY_PAT = [
+    (r'quilt',             'quilted jacket'),
+    (r'\bwax',             'waxed jacket'),
+    (r'\bgilet\b|vest',    'gilet'),
+    (r'\bparka\b',         'parka'),
+    (r'\bliner\b',         'liner'),
+    (r'\bfleece\b',        'fleece'),
+    (r'\bshirt\b',         'shirt'),
+    (r'knit|sweater',      'knitwear'),
+]
 
+def infer_gender(text: str) -> str | None:
+    t = (text or "").lower()
+    for pat, val in _GENDER_PAT:
+        if re.search(pat, t):
+            return val
+    return None
+
+def infer_category(text: str) -> str | None:
+    t = (text or "").lower()
+    for pat, val in _CATEGORY_PAT:
+        if re.search(pat, t):
+            return val
+    return None
+
+def enrich_record_optional(rec: Dict) -> Dict:
+    """
+    轻量补全：title/gender/category
+    - 不覆盖已有值（仅在缺失时补）
+    - title 使用 generate_barbour_taobao_title（若可用）
+    """
+    code  = rec.get("color_code") or ""
+    name  = rec.get("style_name") or ""
+    color = rec.get("color") or ""
+    base_text = " ".join([name, rec.get("product_description") or ""])
+
+    # title
+    if not rec.get("title") and generate_barbour_taobao_title:
+        try:
+            info = generate_barbour_taobao_title(code, name, color) or {}
+            title_cn = info.get("Title")
+            if title_cn:
+                rec["title"] = title_cn
+        except Exception:
+            pass
+
+    # gender
+    if not rec.get("gender"):
+        g = infer_gender(base_text)
+        if g:
+            rec["gender"] = g
+
+    # category
+    if not rec.get("category"):
+        c = infer_category(base_text)
+        if c:
+            rec["category"] = c
+
+    return rec
+
+
+# -------------------- TXT 解析（统一 + 兼容） --------------------
 def parse_txt_file(filepath: Path) -> List[Dict]:
-    with open(filepath, "r", encoding="utf-8") as f:
-        lines = f.read().splitlines()
+    """
+    支持两类格式：
+    1) 统一格式（推荐，字段与官网一致）+ Offer List
+    2) 老格式（有 Sizes: 行）
+    """
+    text = filepath.read_text(encoding="utf-8", errors="ignore")
+    info: Dict = {"sizes": []}
 
-    info: Dict[str, Optional[str]] = {
-        "color_code": None,
-        "style_name": None,
-        "color": None,
-        "gender_line": None,
-        "product_description": None,
-    }
+    # ---- 基础字段 ----
+    # Product Code / Product Color Code（都支持）
+    m = re.search(r'(?i)Product\s+(?:Color\s+)?Code:\s*([A-Z0-9]+)', text)
+    info["color_code"] = (m.group(1).strip() if m else None) or guess_color_code_from_filename(filepath)
 
-    for line in lines:
-        m = RE_KV("Product Code")(line)
-        if m:
-            info["color_code"] = m.group(1).strip()
-            continue
-        m = RE_KV("Product Name")(line)
-        if m:
-            info["style_name"] = m.group(1).strip()
-            continue
-        m = RE_KV("Product Color")(line)
-        if m:
-            info["color"] = m.group(1).strip()
-            continue
-        m = RE_KV("Product Gender")(line)
-        if m:
-            info["gender_line"] = m.group(1).strip()
-            continue
-        m = RE_KV("Product Description")(line)
-        if m:
-            info["product_description"] = m.group(1).strip()
-            continue
+    # Product Name
+    m = re.search(r'(?i)Product\s+Name:\s*([^\n\r]+)', text)
+    if m:
+        info["style_name"] = m.group(1).strip()
 
-    sizes = parse_sizes(lines)
+    # Product Colour / Color
+    m = re.search(r'(?i)Product\s+Colou?r:\s*([^\n\r]+)', text)
+    if m:
+        val = m.group(1).strip()
+        val = re.sub(r'^\-+\s*', '', val)  # 去掉形如 "- Navy-Classic" 的前导 "-"
+        info["color"] = val
 
-    if not (info["color_code"] and info["style_name"] and info["color"] and sizes):
-        print(f"⚠️ 信息不完整，跳过文件: {filepath.name}")
+    # Product Description（可选）
+    m = re.search(r'(?i)Product\s+Description:\s*(.+)', text, flags=re.S)
+    if m:
+        desc = m.group(1).strip()
+        # 只取到下一个字段标题前
+        desc = re.split(r'\n\s*[A-Z][A-Za-z ]+:\s*', desc, maxsplit=1)[0].strip()
+        if desc:
+            info["product_description"] = desc
+
+    # Product Gender（可选）
+    m = re.search(r'(?i)Product\s+Gender:\s*([^\n\r]+)', text)
+    explicit_gender = m.group(1).strip() if m else None
+    if explicit_gender:
+        g = explicit_gender.lower()
+        if any(k in g for k in ["女", "women", "ladies", "woman"]):
+            info["gender"] = "女款"
+        elif any(k in g for k in ["男", "men", "mens", "man"]):
+            info["gender"] = "男款"
+        elif any(k in g for k in ["童", "kid", "kids", "boy", "girl"]):
+            info["gender"] = "童款"
+
+    # Category / Title（可选）
+    m = re.search(r'(?i)Category:\s*([^\n\r]+)', text)
+    if m:
+        info["category"] = m.group(1).strip()
+    m = re.search(r'(?i)Title:\s*([^\n\r]+)', text)
+    if m:
+        info["title"] = m.group(1).strip()
+
+    # ---- 尺码 ----
+    sizes = _extract_sizes_from_offer_list(text)
+    if not sizes:
+        # 兼容老格式 (Product )?Sizes?:
+        m = re.search(r'(?i)(?:Product\s+)?Sizes?\s*:\s*(.+)', text)
+        if m:
+            raw = m.group(1)
+            parts = re.split(r'[;,/|]', raw)
+            sizes = []
+            for p in parts:
+                p = p.strip()
+                if not p:
+                    continue
+                sizes.append(p.split(":")[0].strip())
+    info["sizes"] = sizes
+
+    # 均码兜底
+    if not info["sizes"]:
+        code_stub = (info.get("color_code") or filepath.stem).upper()
+        if code_stub.startswith(ONE_SIZE_PREFIXES):
+            info["sizes"] = ["One Size"]
+
+    # ---- 入库前校验（仅 5 必填）----
+    if not info.get("color_code") or not info.get("style_name") or not info.get("color") or not info["sizes"]:
+        miss = [k for k in ("color_code", "style_name", "color", "sizes")
+                if not info.get(k) or (k == "sizes" and not info["sizes"])]
+        print(f"⚠️ 信息不完整: {filepath.name} | 缺失: {','.join(miss)}")
         return []
 
-    # 颜色标准化（含去 '-' 与斜杠后截断）
-    color_std = pick_first_color(info["color"] or "")
-    # 性别推断
-    gender_norm = infer_gender(info.get("gender_line"), info["style_name"])
-    # 类目推断
-    category = infer_category(info["style_name"] or "")
-    # 标题
-    title = build_title(info["style_name"], color_std)
-    # 匹配关键词
-    keywords = extract_match_keywords(info["style_name"] or "")
+    keywords = extract_match_keywords(info["style_name"])
 
-    records = []
-    for size in sizes:
-        records.append({
+    # ---- 生成 records（每尺码一条）----
+    records: List[Dict] = []
+    for size in info["sizes"]:
+        r = {
             "color_code": info["color_code"],
             "style_name": info["style_name"],
-            "color": color_std,
-            "size": size.strip(),
-            "gender": gender_norm,
-            "category": category,
-            "title": title,
-            "product_description": info.get("product_description"),
+            "color": info["color"],
+            "size": size,
             "match_keywords": keywords,
-        })
+        }
+        # 可选字段（解析到了就带上）
+        if info.get("product_description"):
+            r["product_description"] = info["product_description"]
+        if info.get("gender"):
+            r["gender"] = info["gender"]
+        if info.get("category"):
+            r["category"] = info["category"]
+        if info.get("title"):
+            r["title"] = info["title"]
+
+        # 轻量 enrich（缺的再补；不会覆盖已有值）
+        r = enrich_record_optional(r)
+
+        ok, missing = validate_minimal_fields(r)
+        if not ok:
+            print(f"⚠️ 信息不完整(行): {filepath.name} {size} | 缺失: {','.join(missing)}")
+            continue
+        records.append(r)
+
     return records
 
-def upsert_into_products(records: List[Dict], conn):
+
+# -------------------- DB 入库（只填空位） --------------------
+def insert_into_products(records: List[Dict], conn):
     """
-    INSERT ... ON CONFLICT (color_code, size) DO UPDATE
-    - 冲突时更新：style_name, color, gender, category, title, product_description, match_keywords
-    - 利用表上的 updated_at 触发器自动更新时间戳
+    只填空位策略：
+    - title：只在现有为空时写入
+    - product_description：新值优先（EXCLUDED 优先），否则保留旧值
+    - gender/category：同上
     """
     sql = """
     INSERT INTO barbour_products
-        (color_code, style_name, color, size, gender, category, title, product_description, match_keywords)
+      (color_code, style_name, color, size, match_keywords,
+       title, product_description, gender, category)
     VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
     ON CONFLICT (color_code, size) DO UPDATE SET
-        style_name = EXCLUDED.style_name,
-        color = EXCLUDED.color,
-        gender = COALESCE(EXCLUDED.gender, barbour_products.gender),
-        category = COALESCE(EXCLUDED.category, barbour_products.category),
-        title = EXCLUDED.title,
-        product_description = COALESCE(EXCLUDED.product_description, barbour_products.product_description),
-        match_keywords = EXCLUDED.match_keywords
+       title               = COALESCE(barbour_products.title,               EXCLUDED.title),
+       product_description = COALESCE(EXCLUDED.product_description,         barbour_products.product_description),
+       gender              = COALESCE(EXCLUDED.gender,                      barbour_products.gender),
+       category            = COALESCE(EXCLUDED.category,                    barbour_products.category);
     """
     with conn.cursor() as cur:
         for r in records:
             cur.execute(sql, (
-                r["color_code"], r["style_name"], r["color"], r["size"],
-                r["gender"], r["category"], r["title"], r["product_description"],
-                r["match_keywords"]
+                r.get("color_code"),
+                r.get("style_name"),
+                r.get("color"),
+                r.get("size"),
+                r.get("match_keywords"),
+                r.get("title"),
+                r.get("product_description"),
+                r.get("gender"),
+                r.get("category"),
             ))
     conn.commit()
 
-def batch_import_txt_to_barbour_product(txt_root: Optional[Path] = None):
-    # 兼容你项目里多目录配置；若未提供，优先 TXT_DIR，再退回 TXT_DIRS/TXT_DIR_ALL
-    if txt_root is None:
-        txt_root = Path(BARBOUR.get("TXT_DIR") or BARBOUR.get("TXT_DIR_ALL") or BARBOUR["TXT_DIRS"][0])
 
-    # 支持递归读取
-    files = list(txt_root.rglob("*.txt")) if txt_root.is_dir() else [txt_root]
+# -------------------- 批处理入口 --------------------
+def batch_import_txt_to_barbour_product():
+    txt_dir = Path(BARBOUR["TXT_DIR"])
+    files = sorted(txt_dir.glob("*.txt"))
     if not files:
-        print(f"⚠️ 未找到 TXT 文件：{txt_root}")
+        print(f"⚠️ 目录无 TXT：{txt_dir}")
         return
 
     conn = psycopg2.connect(**PGSQL_CONFIG)
-    total = 0
+
+    total_rows = 0
+    parsed_files = 0
+
     for file in files:
-        recs = parse_txt_file(file)
-        if recs:
-            upsert_into_products(recs, conn)
-            print(f"✅ 导入 {file.name}：{len(recs)} 条")
-            total += len(recs)
+        records = parse_txt_file(file)
+        if not records:
+            continue
+        insert_into_products(records, conn)
+        print(f"✅ 导入 {file.name} — {len(records)} 条")
+        total_rows += len(records)
+        parsed_files += 1
+
     conn.close()
-    print(f"\n🎉 导入完成，共导入/更新 {total} 条记录")
+    print(f"\n🎉 导入完成：{parsed_files} 个文件，共 {total_rows} 条记录")
 
 if __name__ == "__main__":
-    # 若你要直接导入刚上传的示例，可传入文件路径：
-    # batch_import_txt_to_barbour_product(Path(r"/mnt/data/MWB1132NY71.txt"))
-    # 否则默认用 config 中的 TXT 目录
     batch_import_txt_to_barbour_product()

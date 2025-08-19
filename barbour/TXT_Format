@@ -1,0 +1,17 @@
+Product Name: {product_name}
+Product Code: {color_code}
+Product Colour: {color}
+Product Description: {product_description}
+Product Gender: {gender}
+Product Material: {material}              # 可多材质用“; ”拼
+Feature: {feature}                        # 卖点/要点（多项同样用“; ”）
+Category: {category}                      # 新增：方便你下游用
+Title: {title}                            # 新增：与发布用标题一致
+
+Source URL: {source_url}
+Site Name: {site_name}
+
+Offer List:
+{size}|{price_gbp}|{stock_text}|{can_order}
+{size}|{price_gbp}|{stock_text}|{can_order}
+...

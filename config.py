@@ -96,6 +96,7 @@ BARBOUR = {
     },
 
     "TXT_DIRS": {
+        "all": BARBOUR_BASE / "publication" / "TXT",  # ✅ 新增
         "outdoorandcountry": BARBOUR_BASE / "publication" / "outdoorandcountry" / "TXT",
         "allweathers": BARBOUR_BASE / "publication" / "allweathers" / "TXT",  # 👈 之前写错了路径，修复！
         "barbour": BARBOUR_BASE / "publication" / "barbour" / "TXT",  # 👈 同上

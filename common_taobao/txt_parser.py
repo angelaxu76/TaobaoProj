@@ -5,7 +5,7 @@ from pathlib import Path
 MIN_STOCK_THRESHOLD = 1  # 小于该值的库存将置为0
 
 def parse_txt_to_record(filepath: Path, brand: str) -> List[Tuple]:
-    if brand in ["camper", "clarks_jingya"]:  # 🟢 支持鲸芽统一格式
+    if brand in ["camper", "clarks_jingya", "barbour"]:  # 🟢 支持鲸芽统一格式
         return jingya_parse_txt_file(filepath)
     else:
         return parse_generic_txt(filepath)
