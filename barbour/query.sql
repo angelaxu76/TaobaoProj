@@ -143,3 +143,9 @@ GROUP BY q.color_code
 ORDER BY site_count DESC, q.color_code;
 
 
+
+select * from barbour_inventory
+
+select * from camper_inventory
+
+select * from barbour_products

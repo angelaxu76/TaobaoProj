@@ -4,6 +4,7 @@ from tools.image.image_composer_background import image_composer
 from config import BARBOUR
 from barbour.image_move_for_publication_folder import move_image_for_publication
 from barbour.generate_barbour_prices_from_avg import generate_price_for_jingya_publication
+from barbour.insert_jingyaid_to_db_barbour import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
 
 
 def pipeline_barbour():
@@ -29,9 +30,14 @@ def pipeline_barbour():
     #move_image_for_publication(codes_file, out_dir_src, dest_img_dir, missing_file)
 
     print("\n步骤 4：生成价格表")
-    DEFAULT_INFILE = BARBOUR["OUTPUT_DIR"] / "price_mapping.xlsx"
+    DEFAULT_INFILE = BARBOUR["OUTPUT_DIR"] / "channel_products.xlsx"
     DEFAULT_OUTFILE = BARBOUR["OUTPUT_DIR"] / "barbour_price_quote.xlsx"
-    generate_price_for_jingya_publication(DEFAULT_INFILE,DEFAULT_OUTFILE)
+    #generate_price_for_jingya_publication(DEFAULT_INFILE,DEFAULT_OUTFILE)
+
+    print("\n步骤 5：将鲸芽商品编码和尺码和相关ID插入数据库占位,库存初始化为0")
+    insert_missing_products_with_zero_stock("barbour")
+    insert_jingyaid_to_db("barbour")
+
 
 
 if __name__ == "__main__":
