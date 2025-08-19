@@ -45,6 +45,7 @@ TABLE_NAME = CLARKS_JINGYA["TABLE_NAME"]
 PENDING_THRESHOLD = 5        # 容忍未更新上限
 MAX_RERUNS = 5               # 最多额外循环次数
 RERUN_WAIT_SECONDS = 30      # 每次循环之间等待秒数
+UIPATH_TIMEOUT = 10800
 
 # ================== 工具函数 ==================
 def _safe_decode(b: bytes) -> str:
@@ -71,7 +72,7 @@ def find_uirobot() -> str:
 
 def run_uipath_process(process_name: str,
                        input_args: dict | None = None,
-                       timeout_s: int = 3600) -> str:
+                       timeout_s: int = UIPATH_TIMEOUT) -> str:
     uirobot = find_uirobot()
     cmd = [uirobot, "execute", "--process-name", process_name]
     if input_args:
