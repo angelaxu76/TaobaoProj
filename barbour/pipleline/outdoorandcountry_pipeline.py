@@ -8,6 +8,7 @@ from barbour.supplier.outdoorandcountry_get_links import outdoorandcountry_fetch
 from barbour.supplier.outdoorandcountry_fetch_info import fetch_outdoor_product_offers_concurrent
 from barbour.import_supplier_to_db_offers import import_txt_for_supplier
 from barbour.supplier_import_to_barbour_products import batch_import_txt_to_barbour_product
+
 def run_step(desc, cmd):
     print(f"\n🟢 {desc}")
     result = subprocess.run(cmd, shell=True)
@@ -20,7 +21,7 @@ def main():
     # outdoorandcountry_fetch_and_save_links()
 
     # Step 2: TODO 后续可集成 fetch_product_info.py（解析库存、价格）
-    fetch_outdoor_product_offers_concurrent(max_workers=15)
+    fetch_outdoor_product_offers_concurrent(max_workers=2)
 
 
     # Step 3: TODO 将txt中数据导入barbour product中

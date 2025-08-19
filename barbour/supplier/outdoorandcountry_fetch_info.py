@@ -1,381 +1,306 @@
 # -*- coding: utf-8 -*-
 """
-Outdoor & Country | Barbour 商品抓取（统一写入 TXT：方案A）
-依赖：
-  pip install undetected-chromedriver bs4 lxml
-项目依赖：
-  from config import BARBOUR
-  from txt_writer import format_txt
-  from common_taobao.core.size_normalizer import build_size_fields_from_offers, infer_gender_for_barbour
-  from common_taobao.core.category_utils import infer_style_category
+Outdoor & Country | Barbour 商品抓取（统一 TXT 模板版）
+保持对外接口 & pipeline 兼容：
+- process_url(url, output_dir)
+- fetch_outdoor_product_offers_concurrent(max_workers=3)
+
+改动要点：
+1) 复用你已有的 parse_offer_info(html, url) 解析站点
+2) 落盘统一走 txt_writer.format_txt（与其它站点一致）
+3) 写入前统一字段：
+   - Product Code = Product Color Code（你当前的组合码策略）
+   - Site Name = "Outdoor and Country"
+   - 不写 SizeMap
+   - 过滤 52 及更大的男装数字尺码
+4) 类目兜底：遇到 wax + jacket 或 code 前缀 MWX/LWX 时，强制 "waxed jacket"
 """
 
+import time
 import json
 import re
-import time
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import urlparse, parse_qs, unquote
 
 import undetected_chromedriver as uc
 from bs4 import BeautifulSoup
 
 from config import BARBOUR
+from barbour.supplier.outdoorandcountry_parse_offer_info import parse_offer_info
+
+# ✅ 统一 TXT 写入（与其它站点一致）
 from common_taobao.txt_writer import format_txt
-from common_taobao.core.size_normalizer import (
-    build_size_fields_from_offers,
-    infer_gender_for_barbour,
-)
-from common_taobao.core.category_utils import infer_style_category
 
-# ========== 路径 ==========
-BASE_DIR: Path = BARBOUR["BASE"]
-PUBLICATION_DIR: Path = BASE_DIR / "publication"
-LINK_FILE: Path = PUBLICATION_DIR / "product_links.txt"
-TXT_DIR: Path = BARBOUR.get("TXT_DIR", BASE_DIR / "TXT")  # 兼容兜底
-
-HEADERS = {"User-Agent": "Mozilla/5.0"}
-
-# ========== Selenium 基础 ==========
-def make_driver(headless: bool = True):
-    opts = uc.ChromeOptions()
-    if headless:
-        opts.add_argument("--headless=new")
-    opts.add_argument("--disable-gpu")
-    opts.add_argument("--no-sandbox")
-    opts.add_argument("--disable-dev-shm-usage")
-    opts.add_argument("--window-size=1400,1000")
-    return uc.Chrome(options=opts)
-
-
-def accept_cookies(driver, timeout: int = 8):
+# ========== 浏览器与 Cookie ==========
+def accept_cookies(driver, timeout=8):
     from selenium.webdriver.common.by import By
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
-
     try:
-        # Outdoor & Country 常见 cookie banner 按钮
-        btns = WebDriverWait(driver, timeout).until(
-            EC.presence_of_all_elements_located((By.XPATH, "//button|//a"))
-        )
-        for b in btns:
-            txt = (b.text or "").strip().lower()
-            if any(k in txt for k in ["accept", "agree", "got it", "allow", "i understand"]):
-                try:
-                    b.click()
-                    time.sleep(0.3)
-                    break
-                except Exception:
-                    pass
+        WebDriverWait(driver, timeout).until(
+            EC.element_to_be_clickable((By.ID, "onetrust-accept-btn-handler"))
+        ).click()
+        time.sleep(1)
     except Exception:
         pass
 
-
-# ========== 解析工具 ==========
-def _load_soup(driver) -> BeautifulSoup:
-    html = driver.page_source
-    return BeautifulSoup(html, "lxml")
-
-
-def _extract_text(soup: BeautifulSoup, selector: str) -> str:
-    el = soup.select_one(selector)
-    if not el:
+# ========== 工具 ==========
+def _normalize_color_from_url(url: str) -> str:
+    try:
+        qs = parse_qs(urlparse(url).query)
+        c = qs.get("c", [None])[0]
+        if not c:
+            return ""
+        c = unquote(c)  # %2F -> /
+        c = c.replace("\\", "/")
+        c = re.sub(r"\s*/\s*", " / ", c)
+        c = re.sub(r"\s+", " ", c).strip()
+        c = " ".join(w.capitalize() for w in c.split(" "))
+        return c
+    except Exception:
         return ""
-    return " ".join(el.get_text(" ", strip=True).split())
 
+def sanitize_filename(name: str) -> str:
+    return re.sub(r"[\\/:*?\"<>|'\s]+", "_", (name or "").strip())
 
-def _extract_product_code_from_title_or_meta(soup: BeautifulSoup) -> Optional[str]:
+def _extract_description(html: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    tag = soup.find("meta", attrs={"property": "og:description"})
+    if tag and tag.get("content"):
+        desc = tag["content"].replace("<br>", "").replace("<br/>", "").replace("<br />", "")
+        return desc.strip()
+    tab = soup.select_one(".product_tabs .tab_content[data-id='0'] div")
+    return tab.get_text(" ", strip=True) if tab else "No Data"
+
+def _extract_features(html: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    h3 = soup.find("h3", attrs={"title": "Features"})
+    if h3:
+        ul = h3.find_next("ul")
+        if ul:
+            items = [li.get_text(" ", strip=True) for li in ul.find_all("li")]
+            if items:
+                return " | ".join(items)
+    return "No Data"
+
+def _extract_color_code_from_jsonld(html: str) -> str:
     """
-    Outdoor & Country 通常不用官方 color_code，但标题中常出现款式名，商品 code 需从页面数据结构获取。
-    若 JS 中未含 code，这里兜底：找类似 "Barbour Beaufort Jacket" + 颜色，无法则返回 None。
+    从 JSON-LD 的 offers[].mpn 提取颜色编码（或组合码）。例如：
+    mpn: MWX0017NY9140 -> 颜色位 NY91（你当前逻辑把 MWX0017NY91 当 product code 使用也可以）
+    这里按你现有正则，提取 NY99/NY91 这类；如果站点给的是完整 MWX0017NY91 也会传递回去。
     """
-    title = _extract_text(soup, "h1") or _extract_text(soup, "title")
-    # 常规：Barbour 会在图像URL或脚本块带 code；若拿不到，这里只返回 None，后续不强依赖。
-    # 你也可以按你的规则通过 URL 参数或图片名来回推（此处不冒进）。
-    m = re.search(r"\b([A-Z]{3}\d{4}[A-Z]{2}\d{2})\b", soup.text)  # 例如 MWX0340NY91
-    if m:
-        return m.group(1)
-    return None
+    soup = BeautifulSoup(html, "html.parser")
+    for script in soup.find_all("script", type="application/ld+json"):
+        try:
+            data = script.string and script.string.strip()
+            if not data:
+                continue
+            j = json.loads(data)
+            if isinstance(j, dict) and j.get("@type") == "Product" and isinstance(j.get("offers"), list):
+                for off in j["offers"]:
+                    mpn = (off or {}).get("mpn")
+                    if isinstance(mpn, str):
+                        # 先尝试取 MWX0017NY91 这种完整组合码（截掉最后2位尺码）
+                        if len(mpn) >= 11:
+                            maybe_code = mpn[:-2]
+                            # 简单校验：前三位字母 + 数字 + 两位字母两位数字
+                            if re.match(r"^[A-Z]{3}\d{4}[A-Z]{2}\d{2}$", maybe_code):
+                                return maybe_code
+                        # 其次回退到末尾颜色块（OL99/NY91）
+                        m = re.search(r'([A-Z]{2}\d{2})(\d{2})$', mpn)
+                        if m:
+                            return m.group(1)
+        except Exception:
+            continue
+    return ""
 
+def _infer_gender_from_name(name: str) -> str:
+    n = (name or "").lower()
+    if any(x in n for x in ["women", "women's", "womens", "ladies", "lady"]):
+        return "女款"
+    if any(x in n for x in ["men", "men's", "mens"]):
+        return "男款"
+    if any(x in n for x in ["kid", "kids", "child", "children", "boys", "girls", "boy's", "girl's", "junior", "youth"]):
+        return "童款"
+    return "男款"  # 兜底按男款
 
-def _json_fixups(raw: str) -> str:
+def _fallback_style_category(name: str, desc: str, product_code: str) -> str:
     """
-    修复 Outdoor & Country 页里 JS 变量中常见的 JSON 问题：
-    - HTML 片段里的引号、换行
-    - 单引号包裹的键值
-    - 末尾多逗号
-    尽量“最小化修复”，避免误伤。
+    本地兜底：即使你的 category_utils 还是鞋类版，也不会把外套误判。
     """
-    s = raw.strip()
+    text = f"{name} {desc}".lower()
+    if ("wax" in text and "jacket" in text) or (product_code[:3] in {"MWX", "LWX"}):
+        return "waxed jacket"
+    if "quilt" in text and "jacket" in text or (product_code[:3] in {"MQU", "LQU"}):
+        return "quilted jacket"
+    return "casual wear"
 
-    # 常见 HTML 实体
-    s = s.replace("&quot;", '"').replace("&#34;", '"').replace("&amp;", "&")
-
-    # 去掉可能的行尾逗号
-    s = re.sub(r",\s*([\]}])", r"\1", s)
-
-    # 将类似 key:'value' 修为 "key":"value"
-    def _quote_keys_vals(match):
-        key = match.group(1)
-        val = match.group(2)
-        return f'"{key}":"{val}"'
-
-    s = re.sub(r"([A-Za-z0-9_]+)\s*:\s*'([^']*)'", _quote_keys_vals, s)
-
-    # 将单引号包裹的字符串替换为双引号（不影响已在引号内的 JSON）
-    # 注意：这里很容易过度修复，所以尽量在可控边界内做
-    # 若仍失败，后续还有 try/except 容错
-    return s
-
-
-def _extract_js_var_block(soup: BeautifulSoup, var_name: str) -> Optional[str]:
+def _build_sizes_from_offers(offers, gender: str):
     """
-    在所有 <script> 中查找包含 var_name 的文本块，返回疑似 JSON 片段字符串
-    例如：var stockInfo = {...}; 或 window.stockInfo = {...};
+    不依赖公共 size_normalizer，按你的新规则生成两行：
+    - Product Size（不含 52，也不含 >50 的数字尺码）
+    - Product Size Detail（同上）
+    说明：你明确不要 SizeMap，就不返回它。
     """
-    scripts = soup.find_all("script")
-    pat = re.compile(rf"{var_name}\s*=\s*(\{{.*?\}}|\[.*?\])\s*[,;]", re.S)
-    for sc in scripts:
-        text = sc.string or sc.get_text() or ""
-        m = pat.search(text)
+    # 归一 + 过滤
+    def norm(raw):
+        s = (raw or "").strip().upper().replace("UK ", "")
+        s = re.sub(r"\s*\(.*?\)\s*", "", s)
+        # 数字抽取优先
+        m = re.findall(r"\d{2,3}", s)
         if m:
-            return m.group(1)
-    return None
+            n = int(m[0])
+            # 女：4..20（偶数）
+            if 4 <= n <= 20 and n % 2 == 0 and gender == "女款":
+                return str(n)
+            # 男数字：30..50（偶数），且你要求不要 52
+            if 30 <= n <= 50 and n % 2 == 0 and gender == "男款":
+                return str(n)
+            # 其它情况：尝试靠近就近偶数
+            if gender == "男款" and 28 <= n <= 54:
+                candidate = n if n % 2 == 0 else n-1
+                candidate = max(30, min(50, candidate))
+                return str(candidate)
+        # 字母尺码
+        map_alpha = {
+            "XXXS":"2XS","2XS":"2XS","XXS":"XS","XS":"XS",
+            "S":"S","SMALL":"S","M":"M","MEDIUM":"M","L":"L","LARGE":"L",
+            "XL":"XL","X-LARGE":"XL","XXL":"2XL","2XL":"2XL","XXXL":"3XL","3XL":"3XL"
+        }
+        key = s.replace("-", "").replace(" ", "")
+        return map_alpha.get(key)
 
+    bucket = {}
+    for size, price, stock_text, can_order in offers or []:
+        ns = norm(size)
+        if not ns:
+            continue
+        # 有货优先覆盖
+        curr = "有货" if bool(can_order) else "无货"
+        prev = bucket.get(ns)
+        if prev is None or (prev == "无货" and curr == "有货"):
+            bucket[ns] = curr
 
-def _safe_json_loads(raw: str) -> Optional[dict]:
-    if not raw:
-        return None
-    try:
-        return json.loads(raw)
-    except Exception:
-        pass
-    try:
-        return json.loads(_json_fixups(raw))
-    except Exception:
-        return None
+    # 排序：女 4..20；男 字母→数字（30..50）；不输出 52
+    WOMEN = ["4","6","8","10","12","14","16","18","20"]
+    MEN_ALPHA = ["2XS","XS","S","M","L","XL","2XL","3XL"]
+    MEN_NUM = [str(n) for n in range(30, 52, 2)]  # 30..50
 
-
-def _parse_colour_size_stock(soup: BeautifulSoup):
-    """
-    Outdoor & Country 的三大核心：
-      - Colours: 颜色列表/ID映射
-      - Sizes:   尺码列表/ID映射
-      - stockInfo: { "<sizeId>-<colourId>": {...} }
-    返回：(colours_dict, sizes_dict, stock_dict)
-    """
-    colours_raw = _extract_js_var_block(soup, "Colours")
-    sizes_raw = _extract_js_var_block(soup, "Sizes")
-    stock_raw = _extract_js_var_block(soup, "stockInfo")
-
-    colours = _safe_json_loads(colours_raw) or {}
-    sizes = _safe_json_loads(sizes_raw) or {}
-    stock = _safe_json_loads(stock_raw) or {}
-
-    return colours, sizes, stock
-
-
-def _choose_active_colour_from_url(url: str, colours: dict) -> Optional[str]:
-    """
-    从 URL 的 ?c=xxx 或 path 中推断当前颜色文字/ID。
-    找不到则返回 None（上层可默认取列表第一个）。
-    """
-    m = re.search(r"[?&]c=([^&]+)", url, re.I)
-    if not m:
-        return None
-    c_param = m.group(1).lower()
-    # 在 colours 结构里尝试匹配（结构多样，尽量宽松）
-    # 允许直接比对 name 或 slug
-    for cid, cinfo in (colours.items() if isinstance(colours, dict) else []):
-        name = (cinfo.get("name") or "").lower()
-        slug = (cinfo.get("url") or cinfo.get("slug") or "").lower()
-        if c_param in {name, slug} or c_param in name or c_param in slug:
-            return str(cid)
-    return None
-
-
-def _build_offer_list(colours: dict, sizes: dict, stock: dict, active_colour_id: Optional[str]) -> Tuple[str, List[Tuple[str, float, str, bool]]]:
-    """
-    组装 Offer 列表（(size_label, price, stock_text, can_order)）
-    尽量选择 URL 指定的颜色；若无则选第一个颜色。
-    返回：(color_name, offer_list)
-    """
-    if not isinstance(colours, dict) or not isinstance(sizes, dict) or not isinstance(stock, dict):
-        return "", []
-
-    # 选用颜色
-    color_id = active_colour_id
-    if not color_id:
-        # 取第一个颜色 id
-        if colours:
-            color_id = str(next(iter(colours.keys())))
-    color_name = ""
-    if color_id and color_id in colours:
-        color_name = colours[color_id].get("name") or colours[color_id].get("label") or ""
-
-    # 组装每个尺码的库存
-    offers: List[Tuple[str, float, str, bool]] = []
-    for sid, sinfo in sizes.items():
-        size_label = sinfo.get("name") or sinfo.get("label") or str(sid)
-        key = f"{sid}-{color_id}"
-        sitem = stock.get(key) or {}
-        # 价格字段有时在 HTML/JS 的其他块里，这里尽量读取，没有就置 0
-        price = 0.0
-        for k in ("price", "salePrice", "sale", "now", "currentPrice"):
-            v = sitem.get(k)
-            try:
-                if v is not None:
-                    price = float(v)
-                    break
-            except Exception:
-                pass
-
-        # 库存判断：若有明确 availability 字段；否则看 stockLevelMessage / inStock 等
-        stock_text = (sitem.get("stockLevelMessage") or sitem.get("availability") or "").strip()
-        in_stock_flags = [
-            sitem.get("inStock"),
-            sitem.get("isInStock"),
-            sitem.get("canOrder"),
-            sitem.get("available"),
-        ]
-        can_order = any(bool(x) for x in in_stock_flags)
-
-        # 如果没有显式布尔，但有文案，做一次粗判
-        if not any(in_stock_flags) and stock_text:
-            low = stock_text.lower()
-            can_order = any(k in low for k in ["in stock", "available", "dispatch", "pre-order"])
-
-        offers.append((size_label, price, stock_text, bool(can_order)))
-
-    return color_name, offers
-
-
-# ========== 页面解析主函数 ==========
-def parse_outdoor_and_country(driver, url: str) -> Optional[Dict]:
-    driver.get(url)
-    time.sleep(1.6)
-    accept_cookies(driver, timeout=8)
-    time.sleep(0.5)
-
-    soup = _load_soup(driver)
-
-    title = _extract_text(soup, "h1") or _extract_text(soup, "title")
-    description = _extract_text(soup, ".productView-description") or _extract_text(soup, '[data-tab-content="description"]')
-    # Features（要点列表）
-    features_block = soup.select(".productView-info .productView-info-name, .productView-info .productView-info-value")
-    features = []
-    if features_block:
-        features_text = " ".join(x.get_text(" ", strip=True) for x in features_block)
-        features.append(features_text)
-
-    product_code = _extract_product_code_from_title_or_meta(soup)  # 可能抓不到，不强制
-    colours, sizes, stock = _parse_colour_size_stock(soup)
-    active_colour_id = _choose_active_colour_from_url(url, colours)
-    color_name, offer_list = _build_offer_list(colours, sizes, stock, active_colour_id)
-
-    # 站点名
-    site_name = "Outdoor and Country"
-
-    # 组装基础信息
-    info: Dict = {
-        "Product Name": title,
-        "Product Description": description,
-        "Product Gender": "",        # 稍后用共享模块修正
-        "Product Color": color_name or "",
-        "Style Category": "",        # 稍后判定
-        "Feature": " | ".join(features) if features else "",
-        "Source URL": url,
-        "Site Name": site_name,
-        "Offers": offer_list,        # 暂存，写入前转三字段
-    }
-    if product_code:
-        info["Product Code"] = product_code
-    info["Brand"] = "Barbour"
-
-    # ====== 性别判定（优先 Code → 标题/描述 → 兜底）======
-    gender = infer_gender_for_barbour(
-        product_code=product_code,
-        title=title,
-        description=description,
-        given_gender=info.get("Product Gender"),
-    ) or "男款"
-    info["Product Gender"] = gender
-
-    # ====== 尺码三字段 ======
-    size_map, size_detail, product_size = build_size_fields_from_offers(offer_list, gender)
-    info["SizeMap"] = size_map
-    info["SizeDetail"] = size_detail
-    info["Product Size"] = product_size
-
-    # ====== 风格类目 ======
-    info["Style Category"] = infer_style_category(
-        desc=description,
-        product_name=title,
-        product_code=product_code or "",
-        brand="Barbour",
-    )
-
-    return info
-
-
-# ========== 写入 & 批量 ==========
-def write_one_product(info: Dict, code_hint: Optional[str] = None):
-    """
-    code_hint：当页面无法提取到 Product Code 时，用于写文件名的兜底。
-    """
-    code = info.get("Product Code") or code_hint
-    if not code:
-        # 没有 code 就用标题降级成安全文件名
-        safe = re.sub(r"[^\w\-]+", "_", (info.get("Product Name") or "barbour_item"))
-        code = safe[:50]
-
-    TXT_DIR.mkdir(parents=True, exist_ok=True)
-    txt_path = TXT_DIR / f"{code}.txt"
-    format_txt(info, txt_path, brand="Barbour")
-    print(f"✅ 写入: {txt_path}")
-
-
-def fetch_one(url: str, driver=None):
-    own_driver = False
-    if driver is None:
-        driver = make_driver(headless=True)
-        own_driver = True
-    try:
-        info = parse_outdoor_and_country(driver, url)
-        if info:
-            # 尝试从 URL 猜测 code（可选）
-            code_hint = None
-            m = re.search(r"/([A-Za-z0-9]{3}\d{4}[A-Za-z]{2}\d{2})", url)
-            if m:
-                code_hint = m.group(1)
-            write_one_product(info, code_hint=code_hint)
-        else:
-            print(f"⚠️ 解析失败: {url}")
-    finally:
-        if own_driver:
-            driver.quit()
-
-
-def main():
-    import sys
-    urls: List[str] = []
-    if len(sys.argv) > 1:
-        urls = sys.argv[1:]
+    ordered = []
+    if gender == "女款":
+        ordered = [k for k in WOMEN if k in bucket]
     else:
-        if LINK_FILE.exists():
-            urls = [u.strip() for u in LINK_FILE.read_text(encoding="utf-8").splitlines() if u.strip()]
+        ordered = [k for k in MEN_ALPHA if k in bucket] + [k for k in MEN_NUM if k in bucket]
 
-    if not urls:
-        print("⚠️ 未发现待抓取链接。可在命令行传入 URL，或在 publication/product_links.txt 填入链接。")
-        return
+    product_size = ";".join(f"{k}:{bucket[k]}" for k in ordered)
+    product_size_detail = ";".join(f"{k}:{1 if bucket[k]=='有货' else 0}:0000000000000" for k in ordered)
+    return product_size, product_size_detail
 
-    driver = make_driver(headless=True)
+# ========== 主流程 ==========
+def process_url(url, output_dir):
+    options = uc.ChromeOptions()
+    options.add_argument("--start-maximized")
+    # 如需无头：options.add_argument("--headless=new")
+    driver = uc.Chrome(options=options)
+
     try:
-        for i, url in enumerate(urls, 1):
-            print(f"🌐 [{i}/{len(urls)}] 抓取: {url}")
-            fetch_one(url, driver=driver)
+        print(f"\n🌐 正在抓取: {url}")
+        driver.get(url)
+        accept_cookies(driver)
+        time.sleep(3)
+        html = driver.page_source
+
+        # 1) 解析（复用你已有的站点解析）
+        info = parse_offer_info(html, url) or {}
+        url_color = _normalize_color_from_url(url)
+
+        # 2) 基础字段补齐（统一）
+        info.setdefault("Brand", "Barbour")
+        info.setdefault("Product Name", "No Data")
+        info.setdefault("Product Color", url_color or "No Data")
+        info.setdefault("Product Description", _extract_description(html))
+        info.setdefault("Feature", _extract_features(html))
+        info.setdefault("Site Name", "Outdoor and Country")
+        info["Source URL"] = url  # 与其他站点保持一致的字段名
+
+        # ✅ 兜底生成 Product Size Detail（若还没生成）
+        if info.get("Product Size") and not info.get("Product Size Detail"):
+            # 把 34:有货;36:无货… 转为 34:1:000...;36:0:000...
+            kv = [t.strip() for t in info["Product Size"].split(";") if t.strip()]
+            detail = []
+            for token in kv:
+                try:
+                    size, status = token.split(":")
+                    detail.append(f"{size}:{1 if status == '有货' else 0}:0000000000000")
+                except ValueError:
+                    continue
+            info["Product Size Detail"] = ";".join(detail)
+
+
+
+        # 3) Product Code / Product Color Code（你的策略：组合码即可）
+        color_code = info.get("Product Color Code") or _extract_color_code_from_jsonld(html)
+        if color_code:
+            info["Product Color Code"] = color_code
+            info["Product Code"] = color_code  # ✅ 你要求：直接把组合码当 Product Code
+
+        # 4) 性别（优先标题/名称关键词，兜底男款）
+        if not info.get("Product Gender"):
+            info["Product Gender"] = _infer_gender_from_name(info.get("Product Name", ""))
+
+        # 5) Offers → 两行尺码（不写 SizeMap，且过滤 52）
+        offers = info.get("Offers") or []
+        ps, psd = _build_sizes_from_offers(offers, info["Product Gender"])
+        info["Product Size"] = ps
+        info["Product Size Detail"] = psd
+        # 不写 SizeMap：按你的要求，直接略过
+
+        # 6) 类目（本地兜底，防止 category_utils 旧版误判）
+        if not info.get("Style Category"):
+            info["Style Category"] = _fallback_style_category(
+                info.get("Product Name",""),
+                info.get("Product Description",""),
+                info.get("Product Code","") or ""
+            )
+
+        # 7) 文件名策略
+        if color_code:
+            filename = f"{sanitize_filename(color_code)}.txt"
+        else:
+            safe_name = sanitize_filename(info.get('Product Name', 'NoName'))
+            safe_color = sanitize_filename(info.get('Product Color', 'NoColor'))
+            filename = f"{safe_name}_{safe_color}.txt"
+
+        # 8) ✅ 统一用 txt_writer.format_txt 写出（与其它站点完全一致）
+        output_dir.mkdir(parents=True, exist_ok=True)
+        txt_path = output_dir / filename
+        format_txt(info, txt_path, brand="Barbour")
+        print(f"✅ 写入: {txt_path.name}")
+
+    except Exception as e:
+        print(f"❌ 处理失败: {url}\n    {e}")
     finally:
         driver.quit()
 
+def fetch_outdoor_product_offers_concurrent(max_workers=3):
+    links_file = BARBOUR["LINKS_FILES"]["outdoorandcountry"]
+    output_dir = BARBOUR["TXT_DIRS"]["outdoorandcountry"]
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    urls = []
+    with open(links_file, "r", encoding="utf-8") as f:
+        for line in f:
+            url = line.strip()
+            if url:
+                urls.append(url)
+
+    print(f"🔄 启动多线程抓取，总链接数: {len(urls)}，并发线程数: {max_workers}")
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(process_url, url, output_dir) for url in urls]
+        for _ in as_completed(futures):
+            pass
 
 if __name__ == "__main__":
-    main()
+    fetch_outdoor_product_offers_concurrent(max_workers=3)
