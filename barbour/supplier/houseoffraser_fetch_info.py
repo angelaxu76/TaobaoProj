@@ -1,25 +1,28 @@
 # barbour/supplier/houseoffraser_fetch_info.py
 # -*- coding: utf-8 -*-
 """
-抓取 House of Fraser 的 Barbour 商品，解析名称/颜色/尺码库存，
-并调用通用匹配器 barbour.match_resolver 解析唯一 color_code。
-成功则用 color_code 命名 TXT 文件；否则打印候选日志并回退。
+House of Fraser | Barbour
+- 抓取逻辑保持不变（parse_product_page → Offer List）
+- pipeline 方法名保持不变：process_link(url), fetch_all()
+- 统一用 txt_writer.format_txt 写出“同一模板”的 TXT
+- 本站无商品编码 => Product Code 固定写 "No Data"
+- 尺码：由 Offer List 生成 Product Size / Product Size Detail（不写 SizeMap）
+- 女：4–20（偶数）；男：30–50（偶数）；不写 52
 """
 
 import time
 from pathlib import Path
 import re
-import psycopg2
-import undetected_chromedriver as uc
-from bs4 import BeautifulSoup
 from datetime import datetime
-from config import BARBOUR
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# ★ 新增：引入通用匹配器
-from barbour.match_resolver import resolve_color_code, debug_log
+import undetected_chromedriver as uc
+from bs4 import BeautifulSoup
 
-# ---------------- 基本配置 ----------------
+from config import BARBOUR
+
+# ✅ 统一写入：使用项目里的 txt_writer（与其它站点同模板）
+from common_taobao.txt_writer import format_txt
 
 LINKS_FILE = BARBOUR["LINKS_FILES"]["houseoffraser"]
 TXT_DIR = BARBOUR["TXT_DIRS"]["houseoffraser"]
@@ -31,7 +34,8 @@ SITE_NAME = "House of Fraser"
 
 def get_driver():
     options = uc.ChromeOptions()
-    # options.add_argument("--headless=new")  # 如需静默运行取消注释
+    # 如需静默运行可打开：
+    # options.add_argument("--headless=new")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--no-sandbox")
@@ -39,9 +43,13 @@ def get_driver():
     return uc.Chrome(options=options, use_subprocess=True)
 
 
-# ---------------- 页面解析 ----------------
+# ---------------- 页面解析（保持你现有逻辑） ----------------
 
 def parse_product_page(html: str, url: str):
+    """
+    原有解析：返回 {Product Name, Product Color, Site Name, Product URL, Offer List, Updated At}
+    Offer List 元素形如: "size|price|stock_status|True"
+    """
     soup = BeautifulSoup(html, "html.parser")
 
     # 标题：一般是 "House of Fraser | <Product Name> | ..."
@@ -68,7 +76,7 @@ def parse_product_page(html: str, url: str):
             stock_qty = option.get("data-stock-qty", "0")
             stock_status = "有货" if stock_qty and stock_qty != "0" else "无货"
             cleaned_size = clean_size(size)
-            # 你原有格式：size|price|stock_status|True
+            # 仍保持你原来的 Offer List 字符串格式
             offer_list.append(f"{cleaned_size}|{price}|{stock_status}|True")
 
     return {
@@ -87,7 +95,6 @@ def clean_size(size: str) -> str:
     return size.split("(")[0].strip()
 
 def clean_color(color: str) -> str:
-    """去掉括号/数字等噪音，做基本清洗"""
     txt = (color or "").strip()
     txt = re.sub(r"\([^)]*\)", "", txt)          # 去括号注释
     txt = re.sub(r"[^\w\s/+-]", " ", txt)        # 去奇怪符号
@@ -100,70 +107,137 @@ def clean_color(color: str) -> str:
 def safe_filename(name: str) -> str:
     return "".join(c for c in name if c.isalnum() or c in (" ", "-", "_")).rstrip()
 
+# ------- 尺码标准化（与其它站点同规则；不写 52） -------
 
-# ---------------- 写入 TXT ----------------
+WOMEN_ORDER = ["4","6","8","10","12","14","16","18","20"]
+MEN_ALPHA_ORDER = ["2XS","XS","S","M","L","XL","2XL","3XL"]
+MEN_NUM_ORDER = [str(n) for n in range(30, 52, 2)]  # 30..50（不含 52）
 
-def write_txt(info: dict):
+ALPHA_MAP = {
+    "XXXS": "2XS", "2XS": "2XS",
+    "XXS": "XS", "XS": "XS",
+    "S": "S", "SMALL": "S",
+    "M": "M", "MEDIUM": "M",
+    "L": "L", "LARGE": "L",
+    "XL": "XL", "X-LARGE": "XL",
+    "XXL": "2XL", "2XL": "2XL",
+    "XXXL": "3XL", "3XL": "3XL",
+}
+
+def _infer_gender_from_name(name: str) -> str:
+    n = (name or "").lower()
+    if any(k in n for k in ["women", "women's", "womens", "ladies", "lady"]):
+        return "女款"
+    if any(k in n for k in ["men", "men's", "mens"]):
+        return "男款"
+    return "男款"  # 兜底
+
+def _normalize_size(token: str, gender: str) -> str | None:
+    s = (token or "").strip().upper()
+    s = s.replace("UK ", "").replace("EU ", "").replace("US ", "")
+    s = re.sub(r"\s*\(.*?\)\s*", "", s)
+    s = re.sub(r"\s+", " ", s)
+    # 先数字
+    m = re.findall(r"\d{1,3}", s)
+    if m:
+        n = int(m[0])
+        if gender == "女款" and n in {4,6,8,10,12,14,16,18,20}:
+            return str(n)
+        if gender == "男款":
+            if 30 <= n <= 50 and n % 2 == 0:
+                return str(n)
+            if 28 <= n <= 54:  # 就近容错到 30..50 偶数
+                cand = n if n % 2 == 0 else n-1
+                cand = max(30, min(50, cand))
+                return str(cand)
+        return None
+    # 再字母
+    key = s.replace("-", "").replace(" ", "")
+    return ALPHA_MAP.get(key)
+
+def _sort_sizes(keys: list[str], gender: str) -> list[str]:
+    if gender == "女款":
+        return [k for k in WOMEN_ORDER if k in keys]
+    return [k for k in MEN_ALPHA_ORDER if k in keys] + [k for k in MEN_NUM_ORDER if k in keys]
+
+def offers_to_size_lines(offer_list: list[str], gender: str) -> tuple[str, str]:
     """
-    若 info 含 Product Color Code，则用其命名文件；否则退回到 名称+颜色。
-    文件内容包含 Product Color Code 行，便于后续导入 offers。
+    Offer List（'size|price|stock|bool'）→
+      Product Size: "6:有货;8:有货;..."
+      Product Size Detail: "6:1:0000000000000;8:1:0000000000000;..."
+    同尺码出现多次时“有货”优先；不输出 SizeMap。
     """
-    code = info.get("Product Color Code")
-    if code:
-        filename = f"{code}.txt"
-    else:
-        filename = safe_filename(f"{info['Product Name']} {info['Product Color']}") + ".txt"
+    status = {}
+    count = {}
+    for row in offer_list or []:
+        parts = [p.strip() for p in row.split("|")]
+        if len(parts) < 3:
+            continue
+        raw_size, _price, stock_status = parts[0], parts[1], parts[2]
+        norm = _normalize_size(raw_size, gender)
+        if not norm:
+            continue
+        curr = "有货" if stock_status == "有货" else "无货"
+        prev = status.get(norm)
+        if prev is None or (prev == "无货" and curr == "有货"):
+            status[norm] = curr
+            count[norm] = 1 if curr == "有货" else 0
 
-    path = TXT_DIR / filename
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(f"Product Name: {info['Product Name']}\n")
-        f.write(f"Product Color: {info['Product Color']}\n")
-        f.write(f"Product Color Code: {code if code else 'No Data'}\n")
-        f.write(f"Site Name: {info['Site Name']}\n")
-        f.write(f"Product URL: {info['Product URL']}\n")
-        f.write("Offer List:\n")
-        for offer in info["Offer List"]:
-            f.write(f"  {offer}\n")
-        f.write(f"Updated At: {info['Updated At']}\n")
+    ordered = _sort_sizes(list(status.keys()), gender)
+    ps  = ";".join(f"{k}:{status[k]}" for k in ordered)
+    psd = ";".join(f"{k}:{count[k]}:0000000000000" for k in ordered)
+    return ps, psd
 
 
-# ---------------- 抓取流程 ----------------
+# ---------------- 写入 TXT（统一模板） ----------------
 
 def process_link(url):
     driver = get_driver()
-    conn = None
     try:
         driver.get(url)
         time.sleep(6)
         html = driver.page_source
-        info = parse_product_page(html, url)
 
-        # 连接数据库并调用通用匹配器解析 color_code
-        try:
-            conn = psycopg2.connect(**BARBOUR["PGSQL_CONFIG"])
-            res = resolve_color_code(conn, info["Product Name"], info["Product Color"])
-            # 打印 Top-K 候选或成功信息
-            debug_log(info["Product Name"], info["Product Color"], res)
+        # 保持原有解析逻辑
+        parsed = parse_product_page(html, url)
 
-            if res.status == "matched":
-                info["Product Color Code"] = res.color_code
-        except Exception as db_e:
-            print(f"❌ 数据库匹配错误：{db_e}")
+        # —— 构造统一 info（不依赖商品编码；Product Code 固定 No Data）——
+        gender = _infer_gender_from_name(parsed.get("Product Name", ""))
+        ps, psd = offers_to_size_lines(parsed.get("Offer List", []), gender)
 
-        write_txt(info)
-        if info.get("Product Color Code"):
-            print(f"✅ 已保存: {info['Product Color Code']}.txt")
-        else:
-            print(f"📝 已保存(无编码): {info['Product Name']} {info['Product Color']}.txt")
+        info = {
+            "Product Code": "No Data",                # 本站无编码 → 固定 No Data
+            "Product Name": parsed.get("Product Name", "No Data"),
+            "Product Description": "No Data",
+            "Product Gender": gender,
+            "Product Color": parsed.get("Product Color", "No Data"),
+            "Product Price": None,
+            "Adjusted Price": None,
+            "Product Material": "No Data",
+            "Style Category": "",                     # 交给 txt_writer 推断
+            "Feature": "No Data",
+            "Product Size": ps,                       # 两行尺码（不写 SizeMap）
+            "Product Size Detail": psd,
+            "Site Name": SITE_NAME,
+            "Source URL": parsed.get("Product URL", url),
+            "Brand": "Barbour",
+        }
+
+        # 文件名：本站无编码 → 用 名称_颜色
+        safe_name  = safe_filename(info["Product Name"])
+        safe_color = safe_filename(info["Product Color"])
+        filename = f"{safe_name}_{safe_color}.txt"
+        txt_path = TXT_DIR / filename
+
+        # ✅ 统一模板写入
+        format_txt(info, txt_path, brand="Barbour")
+        print(f"✅ 已写入: {txt_path.name}")
+
     except Exception as e:
         print(f"❌ 抓取失败: {url}\n{e}\n")
     finally:
-        try:
-            if conn:
-                conn.close()
-        except:
-            pass
         driver.quit()
+
 
 def fetch_all():
     links = [u.strip() for u in LINKS_FILE.read_text(encoding="utf-8").splitlines() if u.strip()]
@@ -173,6 +247,7 @@ def fetch_all():
         futures = [executor.submit(process_link, url) for url in links]
         for future in as_completed(futures):
             _ = future.result()
+
 
 if __name__ == "__main__":
     fetch_all()

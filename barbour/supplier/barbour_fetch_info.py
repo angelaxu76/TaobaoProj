@@ -1,7 +1,6 @@
 # barbour_fetch_info.py
 # -*- coding: utf-8 -*-
 
-import os
 import re
 import json
 import requests
@@ -9,9 +8,13 @@ from bs4 import BeautifulSoup
 from pathlib import Path
 
 from config import BARBOUR
-from common_taobao.txt_writer import format_txt              # ✅ 复用你已有的鲸芽写入器
-# 如果你的 txt_writer 在 common_taobao 目录：
-# from common_taobao.txt_writer import format_txt
+from common_taobao.txt_writer import format_txt              # ✅ 统一写入模板
+
+# 可选：更稳的 Barbour 性别兜底（M*/L* 前缀）
+try:
+    from common_taobao.core.size_normalizer import infer_gender_for_barbour
+except Exception:
+    infer_gender_for_barbour = None
 
 HEADERS = {
     "User-Agent": (
@@ -21,7 +24,21 @@ HEADERS = {
     )
 }
 
-# -------- 工具函数 --------
+# ---------- 尺码标准化（与其它站点一致） ----------
+WOMEN_ORDER = ["4","6","8","10","12","14","16","18","20"]
+MEN_ALPHA_ORDER = ["2XS","XS","S","M","L","XL","2XL","3XL"]
+MEN_NUM_ORDER = [str(n) for n in range(30, 52, 2)]  # 30..50（按你的要求：不含 52）
+
+ALPHA_MAP = {
+    "XXXS": "2XS", "2XS": "2XS",
+    "XXS": "XS",  "XS":  "XS",
+    "S": "S", "SMALL": "S",
+    "M": "M", "MEDIUM": "M",
+    "L": "L", "LARGE": "L",
+    "XL": "XL", "X-LARGE": "XL",
+    "XXL": "2XL", "2XL": "2XL",
+    "XXXL": "3XL", "3XL": "3XL",
+}
 
 def _safe_json_loads(text: str):
     try:
@@ -31,34 +48,88 @@ def _safe_json_loads(text: str):
 
 def _extract_gender_from_html(html: str) -> str:
     """
-    从页面里的 gtmAnalytics（或类似数据层）提取性别关键词，落到：男款/女款/童款/未知
+    从页面的数据层里读出性别标签，落到：男款/女款/童款/未知
     """
     m = re.search(r'"item_category"\s*:\s*"([^"]+)"', html, re.IGNORECASE)
     gender_raw = m.group(1).strip().lower() if m else ""
-
     mapping = {
         "womens": "女款", "women": "女款", "ladies": "女款",
-        "mens": "男款", "men": "男款",
+        "mens": "男款",   "men": "男款",
         "kids": "童款", "children": "童款", "child": "童款",
-        "unisex": "通用",
+        "unisex": "中性",
     }
     return mapping.get(gender_raw, "未知")
 
 def _extract_material_from_features(features_text: str) -> str:
-    """
-    从 features 文本中尽量抽取主体材质（xx% xxx），没有就返回 No Data。
-    """
     if not features_text:
         return "No Data"
     text = features_text.replace("\n", " ").replace("\r", " ")
-    # 常见的 “65% Polyester 35% Cotton” / “100% Cotton”
     mats = re.findall(r"\b\d{1,3}%\s+[A-Za-z][A-Za-z \-]*", text)
     if mats:
         return " / ".join(mats[:2])
     return "No Data"
 
-# -------- 解析核心 --------
+def _normalize_size_token(token: str, gender: str) -> str | None:
+    s = (token or "").strip().upper()
+    s = s.replace("UK ", "").replace("EU ", "").replace("US ", "")
+    s = re.sub(r"\s*\(.*?\)\s*", "", s)
+    s = re.sub(r"\s+", " ", s)
 
+    # 先数字
+    nums = re.findall(r"\d{1,3}", s)
+    if nums:
+        n = int(nums[0])
+        if gender == "女款" and n in {4,6,8,10,12,14,16,18,20}:
+            return str(n)
+        if gender == "男款":
+            # 男数字 30..50（偶数），明确排除 52
+            if 30 <= n <= 50 and n % 2 == 0:
+                return str(n)
+            # 就近容错：28..54 → 贴近偶数并裁剪到 30..50
+            if 28 <= n <= 54:
+                cand = n if n % 2 == 0 else n - 1
+                cand = max(30, min(50, cand))
+                return str(cand)
+        return None
+
+    # 再字母
+    key = s.replace("-", "").replace(" ", "")
+    return ALPHA_MAP.get(key)
+
+def _sort_sizes(keys: list[str], gender: str) -> list[str]:
+    if gender == "女款":
+        return [k for k in WOMEN_ORDER if k in keys]
+    return [k for k in MEN_ALPHA_ORDER if k in keys] + [k for k in MEN_NUM_ORDER if k in keys]
+
+def _build_size_lines_from_buttons(size_buttons_map: dict[str, str], gender: str) -> tuple[str, str]:
+    """
+    用按钮文本和可用性，生成：
+      - Product Size: "34:有货;36:无货;..."
+      - Product Size Detail: "34:1:0000000000000;36:0:0000000000000;..."
+    规则：
+      - 同尺码重复出现时，“有货”优先
+      - 男款数字尺码过滤 52
+    """
+    status_bucket: dict[str, str] = {}
+    stock_bucket: dict[str, int] = {}
+
+    for raw, status in (size_buttons_map or {}).items():
+        norm = _normalize_size_token(raw, gender or "男款")
+        if not norm:
+            continue
+        # “有货”优先覆盖
+        curr = "有货" if status == "有货" else "无货"
+        prev = status_bucket.get(norm)
+        if prev is None or (prev == "无货" and curr == "有货"):
+            status_bucket[norm] = curr
+            stock_bucket[norm] = 1 if curr == "有货" else 0
+
+    ordered = _sort_sizes(list(status_bucket.keys()), gender or "男款")
+    ps  = ";".join(f"{k}:{status_bucket[k]}" for k in ordered)
+    psd = ";".join(f"{k}:{stock_bucket[k]}:0000000000000" for k in ordered)
+    return ps, psd
+
+# ---------- 解析核心：保持你当前的结构 ----------
 def extract_product_info_from_html(html: str, url: str) -> dict:
     soup = BeautifulSoup(html, "html.parser")
 
@@ -78,29 +149,29 @@ def extract_product_info_from_html(html: str, url: str) -> dict:
     desc_tag = soup.find("div", {"id": "collapsible-description-1"})
     description = desc_tag.get_text(separator=" ", strip=True) if desc_tag else "No Data"
     if sku and sku != "No Data":
-        # 有些页面会把 “SKU: XXX” 混在描述里，清一下
         description = description.replace(f"SKU: {sku}", "").strip() or "No Data"
 
     # Features（含保养/材质等）
     features_tag = soup.find("div", class_="care-information")
     features = features_tag.get_text(separator=" | ", strip=True) if features_tag else "No Data"
 
-    # 价格（页面通常有 meta content 或可见价格）
+    # 价格
+    price = "0"
     price_tag = soup.select_one("span.sales span.value")
-    price = price_tag["content"] if price_tag and price_tag.has_attr("content") else "0"
+    if price_tag and price_tag.has_attr("content"):
+        price = price_tag["content"]
 
     # 颜色
     color_tag = soup.select_one("span.selected-color")
     color = color_tag.get_text(strip=True).replace("(", "").replace(")", "") if color_tag else "No Data"
 
-    # 尺码（按钮文案）
+    # 尺码按钮（有无货）
     size_buttons = soup.select("div.size-wrapper button.size-button")
     size_map = {}
     for btn in size_buttons or []:
         size_text = btn.get_text(strip=True)
         if not size_text:
             continue
-        # 简化：能点即认为“有货”（如果要更严谨，可检查 disabled/class）
         disabled = ("disabled" in (btn.get("class") or [])) or btn.has_attr("disabled")
         size_map[size_text] = "无货" if disabled else "有货"
 
@@ -108,26 +179,38 @@ def extract_product_info_from_html(html: str, url: str) -> dict:
     product_gender = _extract_gender_from_html(html)
     product_material = _extract_material_from_features(features)
 
+    # —— 从按钮直接构建两行（不写 SizeMap；并过滤 52）——
+    ps, psd = _build_size_lines_from_buttons(size_map, product_gender)
+
+    # 如可用，用 Barbour 前缀再次兜底性别
+    if infer_gender_for_barbour:
+        product_gender = infer_gender_for_barbour(
+            product_code=sku,
+            title=name,
+            description=description,
+            given_gender=product_gender,
+        ) or product_gender or "男款"
+
     info = {
-        # ✅ 统一成“鲸芽模板”键名
-        "Product Code": sku,
+        "Product Code": sku,                 # ✅ 官网 SKU
         "Product Name": name,
         "Product Description": description,
         "Product Gender": product_gender,
         "Product Color": color,
         "Product Price": price,
-        "Adjusted Price": price,          # 官网价=折后价（若后续抓到促销，再填不同）
+        "Adjusted Price": price,             # 促销价与售价暂同
         "Product Material": product_material,
         "Feature": features,
-        "SizeMap": size_map,              # 简单供货；如你将来抓到 EAN/库存，可改写 SizeDetail
+        "Product Size": ps,                  # ✅ 直接两行
+        "Product Size Detail": psd,
+        # 不写 SizeMap（按你的统一规范）
         "Source URL": url,
-        "Site Name": "Barbour"            # 可选
-        # 不传 Style Category → 由 txt_writer 内部 infer_style_category(desc) 自动兜底
+        "Site Name": "Barbour",
+        # 不传 Style Category → 交给 txt_writer 做统一推断
     }
     return info
 
-# -------- 主流程 --------
-
+# ---------- 主流程（保持函数名） ----------
 def fetch_and_write_txt():
     links_file = BARBOUR["LINKS_FILE"]
     txt_output_dir = Path(BARBOUR["TXT_DIR"])
@@ -144,12 +227,12 @@ def fetch_and_write_txt():
             resp.raise_for_status()
             info = extract_product_info_from_html(resp.text, url)
 
-            # 文件名优先用 SKU；没有就用安全化的标题兜底
+            # 文件名：用 SKU（无则用安全化标题）
             code_for_file = info.get("Product Code") or re.sub(r"[^A-Za-z0-9\-]+", "_", info.get("Product Name", "NoCode"))
             txt_path = txt_output_dir / f"{code_for_file}.txt"
 
-            # ✅ 统一写入：走 camper/clarks_jingya 同一写入器
-            format_txt(info, txt_path, brand="barbour")
+            # ✅ 统一写出（和其它站点完全一致）
+            format_txt(info, txt_path, brand="Barbour")
             print(f"✅ [{idx}/{len(urls)}] 写入成功：{txt_path.name}")
 
         except Exception as e:

@@ -14,16 +14,21 @@ from selenium import webdriver
 
 from config import BARBOUR
 
-# 统一写入：复用你现有的鲸芽写入器（和 camper / clarks_jingya 完全一致）
-# 如果你的写入器在项目根目录：from txt_writer import format_txt
-from common_taobao.txt_writer import format_txt
+# ✅ 统一写入：使用你的 txt_writer，保证与其它站点同模板
+from common_taobao.txt_writer import format_txt  # 与项目当前用法保持一致
 
-# 让 selenium-stealth 可选（没装也能跑）
+# 可选的 selenium_stealth（无则跳过）
 try:
     from selenium_stealth import stealth
 except ImportError:
     def stealth(*args, **kwargs):
         return
+
+# —— 新增：性别修正（Barbour 编码前缀优先）——
+try:
+    from common_taobao.core.size_normalizer import infer_gender_for_barbour
+except Exception:
+    infer_gender_for_barbour = None  # 若未提供共享模块，下面会用本地兜底
 
 # -------- 全局配置 --------
 LINK_FILE = BARBOUR["LINKS_FILES"]["allweathers"]
@@ -198,7 +203,7 @@ def _extract_header_price(soup: BeautifulSoup) -> float | None:
     return None
 
 
-# ============ 解析详情页为统一 info ============
+# ============ 解析详情页为统一 info（爬取逻辑保持不变） ============
 
 def parse_detail_page(html: str, url: str) -> dict:
     soup = BeautifulSoup(html, "html.parser")
@@ -236,8 +241,7 @@ def parse_detail_page(html: str, url: str) -> dict:
         size = f"UK {re.sub(r'\\s+', ' ', size_tail)}"
         size_detail[size] = {
             "stock_count": 3 if can_order else 0,  # 统一上架量策略
-            "ean": "0000000000000",                # 没有就用占位，方便下游解析
-            # 也可加 per-size 价：但鲸牙模板按商品层面价写入即可
+            "ean": "0000000000000",                # 占位 EAN
         }
 
     gender = _infer_gender_from_title(name)
@@ -247,25 +251,106 @@ def parse_detail_page(html: str, url: str) -> dict:
     price_header = _extract_header_price(soup)
 
     info = {
-        # —— 统一“鲸芽”模板键名 ——
-        "Product Code": base_sku,                 # 作为文件名与唯一标识
+        "Product Code": base_sku,
         "Product Name": name,
         "Product Description": description,
         "Product Gender": gender,
         "Product Color": color,
-        "Product Price": price_header,            # 原价
-        "Adjusted Price": price_header,           # 没有促销时与原价一致；有促销再替换
-        "Product Material": material_outer,       # Outer
-        # "Style Category": 留空让 txt_writer 自动 infer
+        "Product Price": price_header,
+        "Adjusted Price": price_header,
+        "Product Material": material_outer,
+        # "Style Category": 留空让写入器自动 infer（如你已升级分类器）
         "Feature": features,
-        "SizeDetail": size_detail,                # 每码库存/占位 EAN
+        "SizeDetail": size_detail,       # 每码库存/占位 EAN（写入前再转两行）
         "Source URL": url,
         "Site Name": "Allweathers",
     }
     return info
 
 
-# ============ 抓取并写入 TXT ============
+# ============ 后处理（不改爬取，只整理写入字段） ============
+
+WOMEN_ORDER = ["4","6","8","10","12","14","16","18","20"]
+MEN_ALPHA_ORDER = ["2XS","XS","S","M","L","XL","2XL","3XL"]
+MEN_NUM_ORDER = [str(n) for n in range(30, 52, 2)]  # 30..50（按你要求：不包含 52）
+
+ALPHA_MAP = {
+    "XXXS": "2XS", "2XS": "2XS",
+    "XXS": "XS", "XS": "XS",
+    "S": "S", "SMALL": "S",
+    "M": "M", "MEDIUM": "M",
+    "L": "L", "LARGE": "L",
+    "XL": "XL", "X-LARGE": "XL",
+    "XXL": "2XL", "2XL": "2XL",
+    "XXXL": "3XL", "3XL": "3XL",
+}
+
+def _normalize_size(token: str, gender: str) -> str | None:
+    """将 'UK 36' / '36' / 'XL' 归一到你的标准，并过滤男款 52。"""
+    s = (token or "").strip().upper()
+    s = s.replace("UK ", "").replace("EU ", "").replace("US ", "")
+    s = re.sub(r"\s*\(.*?\)\s*", "", s)
+    s = re.sub(r"\s+", " ", s)
+
+    # 先数字
+    m = re.findall(r"\d{1,3}", s)
+    if m:
+        n = int(m[0])
+        if gender == "女款" and n in {4,6,8,10,12,14,16,18,20}:
+            return str(n)
+        if gender == "男款":
+            # 男数字：30..50（偶数），且显式排除 52
+            if 30 <= n <= 50 and n % 2 == 0:
+                return str(n)
+            # 容错贴近：对 28..54 取就近偶数并裁剪到 30..50
+            if 28 <= n <= 54:
+                cand = n if n % 2 == 0 else n-1
+                cand = max(30, min(50, cand))
+                return str(cand)
+        # 其它场景：不返回
+        return None
+
+    # 再字母
+    key = s.replace("-", "").replace(" ", "")
+    return ALPHA_MAP.get(key)
+
+def _sort_sizes(keys: list[str], gender: str) -> list[str]:
+    if gender == "女款":
+        return [k for k in WOMEN_ORDER if k in keys]
+    # 男款：字母优先，再数字
+    ordered = [k for k in MEN_ALPHA_ORDER if k in keys] + [k for k in MEN_NUM_ORDER if k in keys]
+    return ordered
+
+def _build_size_lines_from_sizedetail(size_detail: dict, gender: str) -> tuple[str, str]:
+    """
+    输入 SizeDetail(dict) → 输出：
+      Product Size（形如 34:有货;...）
+      Product Size Detail（形如 34:1:000...;...）
+    不写 SizeMap；同时过滤男款 52。
+    """
+    bucket_status: dict[str, str] = {}
+    bucket_stock: dict[str, int] = {}
+
+    for raw_size, meta in (size_detail or {}).items():
+        norm = _normalize_size(raw_size, gender)
+        if not norm:
+            continue
+        stock = int(meta.get("stock_count", 0) or 0)
+        status = "有货" if stock > 0 else "无货"
+        # 同尺码多次出现：有货优先
+        prev = bucket_status.get(norm)
+        if prev is None or (prev == "无货" and status == "有货"):
+            bucket_status[norm] = status
+            bucket_stock[norm] = 1 if stock > 0 else 0
+
+    ordered = _sort_sizes(list(bucket_status.keys()), gender)
+
+    ps = ";".join(f"{k}:{bucket_status[k]}" for k in ordered)
+    psd = ";".join(f"{k}:{bucket_stock[k]}:0000000000000" for k in ordered)
+    return ps, psd
+
+
+# ============ 抓取并写入 TXT（pipeline 签名保持不变） ============
 
 def fetch_one_product(url: str, idx: int, total: int):
     print(f"[{idx}/{total}] 抓取: {url}")
@@ -276,12 +361,37 @@ def fetch_one_product(url: str, idx: int, total: int):
         html = driver.page_source
         driver.quit()
 
+        # —— 不改爬取逻辑：保留你原有的解析 ——
         info = parse_detail_page(html, url)
 
+        # —— 写入前的规范化：只做字段清洗，不触碰抓取流程 ——
+        # 品牌与站点信息
+        info.setdefault("Brand", "Barbour")
+        info.setdefault("Site Name", "Allweathers")
+        info.setdefault("Source URL", url)
+
+        # 性别修正（优先 Barbour 编码前缀；再看标题/描述；否则用原值）
+        if infer_gender_for_barbour:
+            info["Product Gender"] = infer_gender_for_barbour(
+                product_code=info.get("Product Code"),
+                title=info.get("Product Name"),
+                description=info.get("Product Description"),
+                given_gender=info.get("Product Gender"),
+            ) or info.get("Product Gender") or "男款"
+
+        # 由 SizeDetail 生成两行（不输出 SizeMap；并过滤男款 52）
+        if info.get("SizeDetail") and (not info.get("Product Size") or not info.get("Product Size Detail")):
+            ps, psd = _build_size_lines_from_sizedetail(info["SizeDetail"], info.get("Product Gender", "男款"))
+            info["Product Size"] = info.get("Product Size") or ps
+            info["Product Size Detail"] = info.get("Product Size Detail") or psd
+
+        # 文件名：用 Product Code
         code = info.get("Product Code") or "Unknown"
-        txt_path = TXT_DIR / f"{re.sub(r'[^A-Za-z0-9_-]+', '_', code)}.txt"
-        # ✅ 统一写入（与 camper / clarks_jingya 完全一致）
-        format_txt(info, txt_path, brand="barbour")
+        safe_code = re.sub(r"[^A-Za-z0-9_-]+", "_", code)
+        txt_path = TXT_DIR / f"{safe_code}.txt"
+
+        # ✅ 统一写入（同其它站点）
+        format_txt(info, txt_path, brand="Barbour")
         return (url, "✅ 成功")
     except Exception as e:
         return (url, f"❌ 失败: {e}")
