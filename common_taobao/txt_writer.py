@@ -4,8 +4,15 @@ from common_taobao.core.category_utils import infer_style_category  # ✅ 如果
 def format_txt(info: dict, filepath: Path, brand: str = None):
     # ✅ 兜底推断 Style Category
     if not info.get("Style Category"):
-        desc = info.get("Product Description", "")
-        info["Style Category"] = infer_style_category(desc)
+        desc  = info.get("Product Description", "")
+        name  = info.get("Product Name", "")
+        code  = info.get("Product Code", "")
+        info["Style Category"] = infer_style_category(
+            desc=desc,
+            product_name=name,
+            product_code=code,
+            brand=(brand or info.get("Brand") or "")
+        )
 
     lines = []
 
