@@ -30,12 +30,12 @@ GENDER_RUNS = [
     {
         "gender": "男款",
         "success_file": Path(r"D:\clarks_men_success.txt"),
-        "uipath_process": "鲸芽更新clarks男鞋库存版本20250808V2",
+        "uipath_process": "鲸芽更新clarks男鞋库存202508V109",
     },
     {
         "gender": "女款",
         "success_file": Path(r"D:\clarks_women_success.txt"),
-        "uipath_process": "鲸芽更新clarks女鞋库存20250808V1",
+        "uipath_process": "鲸芽更新clarks女鞋库存202508V108",
     },
 ]
 
