@@ -13,7 +13,7 @@ def pipeline_barbour():
 
     # 步骤 2：抓取商品详情并生成 TXT
     print("\n📦 步骤 2：抓取商品详情并生成 TXT")
-    #fetch_and_write_txt()
+    fetch_and_write_txt()
 
     # Step 3: TODO 将txt中数据导入barbour product中
     #batch_import_txt_to_barbour_product("barbour")
