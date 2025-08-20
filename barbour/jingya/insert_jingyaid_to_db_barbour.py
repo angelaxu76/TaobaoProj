@@ -184,23 +184,32 @@ def insert_jingyaid_to_db(brand: str):
                 code, size = parsed
 
                 # 动态拼接 SET 子句（支持 Excel 有/无 渠道列）
-                set_clauses = ["item_id=%s", "skuid=%s", "sku_name=%s", "is_published=TRUE", "last_checked=CURRENT_TIMESTAMP"]
+                # 动态拼接 SET 子句（支持 Excel 有/无 渠道列）
+                set_clauses = ["item_id=%s", "skuid=%s", "sku_name=%s", "is_published=TRUE",
+                               "last_checked=CURRENT_TIMESTAMP"]
                 params = [item_id_val, skuid_val, sku_name_val]
 
-                if key_ch_prod:
-                    chp = str(row.get(key_ch_prod, "")).strip()
-                    set_clauses.insert(0, "channel_product_id=%s")
-                    params.insert(0, chp)
-                if key_ch_item:
-                    chi = str(row.get(key_ch_item, "")).strip()
-                    set_clauses.insert(1 if key_ch_prod else 0, "channel_item_id=%s")
-                    params.insert(1 if key_ch_prod else 0, chi)
+                # 读取渠道两列（如有）
+                chp = str(row.get(key_ch_prod, "")).strip() if key_ch_prod else ""
+                chi_excel = str(row.get(key_ch_item, "")).strip() if key_ch_item else ""
+
+                # ✅ 关键：优先用 Excel 的 channel_item_id；否则回退到 “货品id”
+                chi_final = chi_excel or item_id_val
+
+                # 只有有值才更新，避免把已有值覆写成空串
+                if chp:
+                    set_clauses.append("channel_product_id=%s")
+                    params.append(chp)
+                if chi_final:
+                    set_clauses.append("channel_item_id=%s")
+                    params.append(chi_final)
 
                 set_sql = ", ".join(set_clauses)
                 sql = f"UPDATE {table} SET {set_sql} WHERE product_code=%s AND size=%s"
                 params.extend([code, size])
 
                 cur.execute(sql, params)
+
                 if cur.rowcount:
                     updated += 1
                 else:
