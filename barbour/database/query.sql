@@ -144,10 +144,22 @@ ORDER BY site_count DESC, q.color_code;
 
 
 
-select * from barbour_inventory
+select distinct product_code from barbour_inventory
 
 select count(*) from offers
 
 select * from camper_inventory
 
 select count(*) from barbour_products
+
+select * from barbour_inventory where product_code = 'MCA1051NY71'
+
+select * from barbour_products where color_code = 'MCA1051NY71'
+
+select * from offers where color_code = 'MCA1051NY71'
+
+
+SELECT site_name, size, stock_status, can_order
+FROM offers
+WHERE color_code = 'MCA1051NY71'
+ORDER BY site_name, size;

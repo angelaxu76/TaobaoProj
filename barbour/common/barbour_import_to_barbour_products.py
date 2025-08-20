@@ -316,18 +316,25 @@ def insert_into_products(records: List[Dict], conn):
     """
     with conn.cursor() as cur:
         for r in records:
-            cur.execute(sql, (
-                r.get("color_code"),
-                r.get("style_name"),
-                r.get("color"),
-                r.get("size"),
-                r.get("match_keywords"),
-                r.get("title"),
-                r.get("product_description"),
-                r.get("gender"),
-                r.get("category"),
-            ))
+            try:
+                cur.execute(sql, (
+                    r.get("color_code"),
+                    r.get("style_name"),
+                    r.get("color"),
+                    r.get("size"),
+                    r.get("match_keywords"),
+                    r.get("title"),
+                    r.get("product_description"),
+                    r.get("gender"),
+                    r.get("category"),
+                ))
+            except Exception as e:
+                # 单条失败：打印出 code/size，便于定位；跳过此条，继续下一条
+                print(f"❌ 入库失败（记录级）: code={r.get('color_code')} size={r.get('size')} | 错误: {e}")
+                conn.rollback()  # 回滚当前失败语句
+                continue
     conn.commit()
+
 
 # -------------------- 目录发现 & 批处理入口 --------------------
 def _discover_txt_paths() -> List[Path]:
@@ -436,13 +443,23 @@ def batch_import_txt_to_barbour_product(supplier: str = "all"):
     parsed_files = 0
 
     for file in files:
-        records = parse_txt_file(file)  # ← 你现有的解析函数
-        if not records:
+        try:
+            records = parse_txt_file(file)
+            if not records:
+                print(f"ⓘ 跳过（无记录）: {file.name}")
+                continue
+
+            insert_into_products(records, conn)  # ⬅️ 里面会再做逐行保护
+            print(f"✅ 导入 {file.name} — {len(records)} 条")
+            total_rows += len(records)
+            parsed_files += 1
+
+        except Exception as e:
+            # 关键：单文件失败不阻断后续；回滚再继续下一个
+            conn.rollback()
+            print(f"❌ 导入失败（文件级）: {file.name} | 错误: {e}")
             continue
-        insert_into_products(records, conn)  # ← 你现有的入库函数
-        print(f"✅ 导入 {file.name} — {len(records)} 条")
-        total_rows += len(records)
-        parsed_files += 1
+
 
     conn.close()
     print(f"\n🎉 导入完成（supplier='{supplier}'）：{parsed_files} 个文件，共 {total_rows} 条记录")
