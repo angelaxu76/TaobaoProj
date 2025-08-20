@@ -4,11 +4,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7ad83b3f-8c84-4560-8d4c-2361cece7f17" name="更改" comment="clarks全部工作正常">
+    <list default="true" id="7ad83b3f-8c84-4560-8d4c-2361cece7f17" name="更改" comment="增加第三方barbour爬取">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/barbour/pipleline/allweathers_pipleline.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/pipleline/allweathers_pipleline.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/pipleline/barbour_official_pipleline.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/pipleline/barbour_official_pipleline.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/pipleline/outdoorandcountry_pipeline.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/pipleline/outdoorandcountry_pipeline.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/barbour/pipleline/philipmorrisdirect_pipleline.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/pipleline/philipmorrisdirect_pipleline.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/barbour/supplier/allweathers_fetch_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/supplier/allweathers_fetch_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/query.sql" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/query.sql" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -18,6 +20,7 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
+        <option value="Python Stub" />
         <option value="SQL File" />
         <option value="Python Script" />
       </list>
@@ -40,7 +43,7 @@
 }</component>
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/angelaxu76/pythonProject1.git&quot;,
+    &quot;url&quot;: &quot;https://github.com/angelaxu76/TaobaoProj.git&quot;,
     &quot;accountId&quot;: &quot;9f7c89e5-c989-4c40-bd82-77408125929f&quot;
   }
 }</component>
@@ -52,123 +55,182 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Python.CamperFilterGoodsExport.executor": "Run",
-    "Python.ECCOImageRename.executor": "Run",
-    "Python.FetchEccoDetailAndImage.executor": "Run",
-    "Python.FetchEccoDetailAndImage_fixed.executor": "Run",
-    "Python.FetchImangeAndInfo.executor": "Run",
-    "Python.Find_unbound_unregistered_products.executor": "Run",
-    "Python.GetAllLink.executor": "Run",
-    "Python.GetEccoProductLinks.executor": "Run",
-    "Python.GetOutletProductURL.executor": "Run",
-    "Python.GetProductURLs.executor": "Run",
-    "Python.GroupImage.executor": "Run",
-    "Python.HtmlToPGNBatch.executor": "Run",
-    "Python.ImageMaxCutter.executor": "Run",
-    "Python.MaxCutter.executor": "Run",
-    "Python.MergeImages.executor": "Run",
-    "Python.TestClarks.executor": "Run",
-    "Python.allweathers_get_links.executor": "Run",
-    "Python.allweathers_pipleline.executor": "Run",
-    "Python.barbour_get_links.executor": "Run",
-    "Python.barbour_pipleline.executor": "Run",
-    "Python.birkenstock_gender_updater.executor": "Run",
-    "Python.birkenstock_image_pipeline_runner.executor": "Run",
-    "Python.birkenstock_link_collector.executor": "Run",
-    "Python.birkenstock_pipeline_runner.executor": "Run",
-    "Python.camper_pipeline_runner.executor": "Run",
-    "Python.camper_pipeline_updateStock.executor": "Run",
-    "Python.changeImageSize.executor": "Run",
-    "Python.clarks_jingya_image_pipeline_runner.executor": "Run",
-    "Python.clarks_jingya_pipeline_runner.executor": "Run",
-    "Python.clarks_jinya_fetch_product_info.executor": "Debug",
-    "Python.clarks_pipeline_runner.executor": "Run",
-    "Python.clarks_pipepline_size_newproduct.executor": "Run",
-    "Python.config.executor": "Run",
-    "Python.convert_xls_to_xlsx.executor": "Run",
-    "Python.cutterAllsiderSpace.executor": "Run",
-    "Python.download_images_only.executor": "Run",
-    "Python.download_product_images.executor": "Run",
-    "Python.ecco_image_pipeline_runner.executor": "Run",
-    "Python.ecco_pipeline_runner.executor": "Run",
-    "Python.export_skuid_stock.executor": "Run",
-    "Python.export_store_discount_price.executor": "Run",
-    "Python.export_store_skuid_stock.executor": "Run",
-    "Python.extract_product_codes_and_unappointProd_from_excel.executor": "Run",
-    "Python.fetch_missing_images.executor": "Run",
-    "Python.fetch_product_info.executor": "Run",
-    "Python.find_duplicate_codes_in_store.executor": "Run",
-    "Python.flip_images_horizontal.executor": "Run",
-    "Python.generate_discount_price_excel.executor": "Run",
-    "Python.generate_product_excels.executor": "Run",
-    "Python.generate_store_reports.executor": "Run",
-    "Python.geox_DetailAndImages.executor": "Run",
-    "Python.geox_detailAndImage_MutipleThread.executor": "Run",
-    "Python.geox_getTxt_image_mutipleThread.executor": "Run",
-    "Python.geox_pipeline_runner.executor": "Run",
-    "Python.get_ecco_links.executor": "Run",
-    "Python.get_geox_links.executor": "Run",
-    "Python.get_publishable_product_codes.executor": "Run",
-    "Python.imageNameFormat.executor": "Run",
-    "Python.image_defender.executor": "Run",
-    "Python.import_clarks_txt_to_db.executor": "Run",
-    "Python.import_geox_txt_to_db.executor": "Run",
-    "Python.import_txt_to_db.executor": "Run",
-    "Python.import_txt_to_db_supplier.executor": "Run",
-    "Python.outdoorandcountry_pipeline.executor": "Run",
-    "Python.philipmorrisdirect_pipleline.executor": "Run",
-    "Python.prepare_products_for_publication.executor": "Run",
-    "Python.prepare_products_for_publication_updated.executor": "Run",
-    "Python.prepare_utils_extended.executor": "Run",
-    "Python.run_camper_pipeline.executor": "Run",
-    "Python.testStore.executor": "Run",
-    "Python.test_publishable_codes.executor": "Run",
-    "Python.test_unpublished_valid_stock.executor": "Run",
-    "Python.unified_link_collector.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "git-widget-placeholder": "main",
-    "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "D:/Projects/TaobaoProj/brands/camper_global",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "run.code.analysis.last.selected.profile": "aDefault",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Database Script.db_create_sql.sql.executor&quot;: &quot;Run&quot;,
+    &quot;Database Script.query.sql.executor&quot;: &quot;Run&quot;,
+    &quot;Python.CamperFilterGoodsExport.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ECCOImageRename.executor&quot;: &quot;Run&quot;,
+    &quot;Python.FetchEccoDetailAndImage.executor&quot;: &quot;Run&quot;,
+    &quot;Python.FetchEccoDetailAndImage_fixed.executor&quot;: &quot;Run&quot;,
+    &quot;Python.FetchImangeAndInfo.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Find_unbound_unregistered_products.executor&quot;: &quot;Run&quot;,
+    &quot;Python.GetAllLink.executor&quot;: &quot;Run&quot;,
+    &quot;Python.GetEccoProductLinks.executor&quot;: &quot;Run&quot;,
+    &quot;Python.GetOutletProductURL.executor&quot;: &quot;Run&quot;,
+    &quot;Python.GetProductLink.executor&quot;: &quot;Run&quot;,
+    &quot;Python.GetProductURLs.executor&quot;: &quot;Run&quot;,
+    &quot;Python.GroupImage.executor&quot;: &quot;Run&quot;,
+    &quot;Python.HTMLToPGNBatchMutipleThread.executor&quot;: &quot;Run&quot;,
+    &quot;Python.HtmlToPGNBatch.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ImageMaxCutter.executor&quot;: &quot;Run&quot;,
+    &quot;Python.MaxCutter.executor&quot;: &quot;Run&quot;,
+    &quot;Python.MergeImages.executor&quot;: &quot;Run&quot;,
+    &quot;Python.TestClarks.executor&quot;: &quot;Run&quot;,
+    &quot;Python.allweathers_fetch_info.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.allweathers_get_links.executor&quot;: &quot;Run&quot;,
+    &quot;Python.allweathers_pipleline.executor&quot;: &quot;Run&quot;,
+    &quot;Python.barbour_database_import_pipleline.executor&quot;: &quot;Run&quot;,
+    &quot;Python.barbour_download_images_only.executor&quot;: &quot;Run&quot;,
+    &quot;Python.barbour_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.barbour_pipleline.executor&quot;: &quot;Run&quot;,
+    &quot;Python.barbour_publication_pipleline.executor&quot;: &quot;Run&quot;,
+    &quot;Python.barbour_unified_link_collector.executor&quot;: &quot;Run&quot;,
+    &quot;Python.birkenstock_gender_updater.executor&quot;: &quot;Run&quot;,
+    &quot;Python.birkenstock_image_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.birkenstock_link_collector.executor&quot;: &quot;Run&quot;,
+    &quot;Python.birkenstock_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.brand_data_aggregator.executor&quot;: &quot;Run&quot;,
+    &quot;Python.cainiao_generate_excel_binding_goods_jingya.executor&quot;: &quot;Run&quot;,
+    &quot;Python.cainiao_generate_update_goods_excel.executor&quot;: &quot;Run&quot;,
+    &quot;Python.camperChannelId.executor&quot;: &quot;Run&quot;,
+    &quot;Python.camperGlobal_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.camper_image_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.camper_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.camper_pipeline_updateStock.executor&quot;: &quot;Run&quot;,
+    &quot;Python.camper_tool_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.changeImageSize.executor&quot;: &quot;Run&quot;,
+    &quot;Python.clarks_image_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.clarks_jingya_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.clarks_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.clarks_pipepline_size_newproduct.executor&quot;: &quot;Run&quot;,
+    &quot;Python.clean_brands.executor&quot;: &quot;Run&quot;,
+    &quot;Python.compose_with_background.executor&quot;: &quot;Run&quot;,
+    &quot;Python.compose_with_background_batch.executor&quot;: &quot;Run&quot;,
+    &quot;Python.config.executor&quot;: &quot;Run&quot;,
+    &quot;Python.convert_xls_to_xlsx.executor&quot;: &quot;Run&quot;,
+    &quot;Python.crop_gray_to_square.executor&quot;: &quot;Run&quot;,
+    &quot;Python.cutterAllsiderSpace.executor&quot;: &quot;Run&quot;,
+    &quot;Python.download_images_only.executor&quot;: &quot;Run&quot;,
+    &quot;Python.download_product_images.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ecco_image_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ecco_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.excel_splitor.executor&quot;: &quot;Run&quot;,
+    &quot;Python.expand_to_square.executor&quot;: &quot;Run&quot;,
+    &quot;Python.export_excel_from_jingya_copy.executor&quot;: &quot;Run&quot;,
+    &quot;Python.export_gender_split_excel.executor&quot;: &quot;Run&quot;,
+    &quot;Python.export_skuid_stock.executor&quot;: &quot;Run&quot;,
+    &quot;Python.export_store_discount_price.executor&quot;: &quot;Run&quot;,
+    &quot;Python.export_store_skuid_stock.executor&quot;: &quot;Run&quot;,
+    &quot;Python.extract_product_codes_and_unappointProd_from_excel.executor&quot;: &quot;Run&quot;,
+    &quot;Python.fetch_barbour_product_info.executor&quot;: &quot;Run&quot;,
+    &quot;Python.fetch_missing_images.executor&quot;: &quot;Run&quot;,
+    &quot;Python.fetch_product_info.executor&quot;: &quot;Run&quot;,
+    &quot;Python.find_duplicate_codes_in_store.executor&quot;: &quot;Run&quot;,
+    &quot;Python.find_taobaoID_from_url.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.flip_images_horizontal.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_Exce_For_Goods_Update.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_barbour_prices_from_avg.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_barbour_publication_excel.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_barbour_taobao_title.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_discount_price_excel.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_html.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_html_noImage.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_product_excels.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_publication_excel.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_store_reports.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_unbound_goods_excel.executor&quot;: &quot;Run&quot;,
+    &quot;Python.geox_DetailAndImages.executor&quot;: &quot;Run&quot;,
+    &quot;Python.geox_detailAndImage_MutipleThread.executor&quot;: &quot;Run&quot;,
+    &quot;Python.geox_getTxt_image_mutipleThread.executor&quot;: &quot;Run&quot;,
+    &quot;Python.geox_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.get_ecco_links.executor&quot;: &quot;Run&quot;,
+    &quot;Python.get_geox_links.executor&quot;: &quot;Run&quot;,
+    &quot;Python.get_outdoorandcountry_links.executor&quot;: &quot;Run&quot;,
+    &quot;Python.get_publishable_product_codes.executor&quot;: &quot;Run&quot;,
+    &quot;Python.houseoffraser_fetch_info.executor&quot;: &quot;Run&quot;,
+    &quot;Python.houseoffraser_get_links.executor&quot;: &quot;Run&quot;,
+    &quot;Python.houseoffraser_pipleline.executor&quot;: &quot;Run&quot;,
+    &quot;Python.imageNameFormat.executor&quot;: &quot;Run&quot;,
+    &quot;Python.image_defender.executor&quot;: &quot;Run&quot;,
+    &quot;Python.image_reduce_size.executor&quot;: &quot;Run&quot;,
+    &quot;Python.import_barbour_txt_to_products.executor&quot;: &quot;Run&quot;,
+    &quot;Python.import_channel_info_from_excel.executor&quot;: &quot;Run&quot;,
+    &quot;Python.import_clarks_txt_to_db.executor&quot;: &quot;Run&quot;,
+    &quot;Python.import_geox_txt_to_db.executor&quot;: &quot;Run&quot;,
+    &quot;Python.import_outdoor_txt_to_barbour_products.executor&quot;: &quot;Run&quot;,
+    &quot;Python.import_supplier_to_db_offers.executor&quot;: &quot;Run&quot;,
+    &quot;Python.import_txt_to_db.executor&quot;: &quot;Run&quot;,
+    &quot;Python.jinga_pipleline.executor&quot;: &quot;Run&quot;,
+    &quot;Python.jingya_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.move_image_model_flat.executor&quot;: &quot;Run&quot;,
+    &quot;Python.move_jacket_image.executor&quot;: &quot;Run&quot;,
+    &quot;Python.outdoorandcountry_pipeline.executor&quot;: &quot;Run&quot;,
+    &quot;Python.parse_offer_info.executor&quot;: &quot;Run&quot;,
+    &quot;Python.philipmorrisdirect_fetch_info.executor&quot;: &quot;Run&quot;,
+    &quot;Python.philipmorrisdirect_get_links.executor&quot;: &quot;Run&quot;,
+    &quot;Python.pipeline_suppliers.executor&quot;: &quot;Run&quot;,
+    &quot;Python.prepare_products_for_publication.executor&quot;: &quot;Run&quot;,
+    &quot;Python.prepare_products_for_publication_updated.executor&quot;: &quot;Run&quot;,
+    &quot;Python.prepare_utils_extended.executor&quot;: &quot;Run&quot;,
+    &quot;Python.price_utils.executor&quot;: &quot;Run&quot;,
+    &quot;Python.query_stock_by_productcode.executor&quot;: &quot;Run&quot;,
+    &quot;Python.resize_images.executor&quot;: &quot;Run&quot;,
+    &quot;Python.run_camper_pipeline.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.testPrice.executor&quot;: &quot;Run&quot;,
+    &quot;Python.testStore.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test_publishable_codes.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test_unpublished_valid_stock.executor&quot;: &quot;Run&quot;,
+    &quot;Python.unified_link_collector.executor&quot;: &quot;Run&quot;,
+    &quot;Python.检查GEI重复值.executor&quot;: &quot;Run&quot;,
+    &quot;Python.生意参谋商品分析.executor&quot;: &quot;Run&quot;,
+    &quot;Python.细节裁剪.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/Projects/TaobaoProj/brands/clarks_Jingya&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;run.code.analysis.last.selected.profile&quot;: &quot;aDefault&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
-  "keyToStringList": {
-    "DatabaseDriversLRU": [
-      "postgresql"
+  &quot;keyToStringList&quot;: {
+    &quot;DatabaseDriversLRU&quot;: [
+      &quot;postgresql&quot;
+    ],
+    &quot;RunConfigurationTargetLRU&quot;: [
+      &quot;dd567798-8b43-4191-a9b6-87a0bdcbf664&quot;,
+      &quot;443808b4-81d2-4728-a5bd-d3088bb1da27/database/\&quot;taobao_inventory_db\&quot;/schema/\&quot;public\&quot;&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\Projects\TaobaoProj\brands\clarks_Jingya" />
+      <recent name="D:\Projects\TaobaoProj\brands\clarks" />
+      <recent name="D:\Projects\TaobaoProj\common_taobao\tools" />
+      <recent name="D:\Projects\TaobaoProj\brands\camper" />
       <recent name="D:\Projects\TaobaoProj\brands\camper_global" />
-      <recent name="D:\Projects\TaobaoProj\brands\birkenstock" />
-      <recent name="D:\Projects\jingya\common_taobao" />
-      <recent name="D:\Projects\jingya" />
-      <recent name="D:\Projects\jingya\brand" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
-      <recent name="D:\Projects\TaobaoProj\brands\birkenstock" />
-      <recent name="D:\Projects\TaobaoProj\brands\ecco" />
-      <recent name="D:\Projects\TaobaoProj\brands\clarks\test" />
-      <recent name="D:\Projects\TaobaoProj\brands\geox" />
-      <recent name="D:\Projects\TaobaoProj\brands\camper" />
+      <recent name="D:\Projects\TaobaoProj\barbour" />
+      <recent name="D:\Projects\TaobaoProj\brands\barbour\image" />
+      <recent name="D:\Projects\TaobaoProj\barbour\supplier" />
+      <recent name="D:\Projects\TaobaoProj\common_taobao\jingya" />
+      <recent name="D:\Projects\TaobaoProj\brands\camper_global" />
     </key>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-f27c65a3e318-JavaScript-PY-251.23774.444" />
-        <option value="bundled-python-sdk-890ed5b35930-d9c5bdb153f4-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.23774.444" />
+        <option value="bundled-python-sdk-9f8e2b94138c-36ea0e71a18c-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.26094.141" />
       </set>
     </attachedChunks>
   </component>
@@ -214,267 +276,446 @@
       <workItem from="1752261274835" duration="15818000" />
       <workItem from="1752308916452" duration="5422000" />
       <workItem from="1752363387494" duration="15981000" />
-      <workItem from="1752447681053" duration="2940000" />
-      <workItem from="1754146268865" duration="10754000" />
-      <workItem from="1755167647046" duration="17697000" />
+      <workItem from="1752447681053" duration="4726000" />
+      <workItem from="1752475451003" duration="423000" />
+      <workItem from="1752486207745" duration="3424000" />
+      <workItem from="1752599481418" duration="13226000" />
+      <workItem from="1752832536888" duration="3319000" />
+      <workItem from="1752867418964" duration="25743000" />
+      <workItem from="1753024588943" duration="3166000" />
+      <workItem from="1753051093715" duration="1057000" />
+      <workItem from="1753125759926" duration="23260000" />
+      <workItem from="1753289895749" duration="3217000" />
+      <workItem from="1753433807725" duration="9210000" />
+      <workItem from="1753474711380" duration="4181000" />
+      <workItem from="1753513663209" duration="3726000" />
+      <workItem from="1753603848819" duration="32682000" />
+      <workItem from="1753783964780" duration="10781000" />
+      <workItem from="1753863619395" duration="20540000" />
+      <workItem from="1753911143600" duration="990000" />
+      <workItem from="1753943145371" duration="20638000" />
+      <workItem from="1754004244697" duration="6444000" />
+      <workItem from="1754041909145" duration="1612000" />
+      <workItem from="1754120866525" duration="6283000" />
+      <workItem from="1754328233599" duration="9442000" />
+      <workItem from="1754374306525" duration="13507000" />
+      <workItem from="1754410236518" duration="10169000" />
+      <workItem from="1754426471122" duration="1759000" />
+      <workItem from="1754462287928" duration="33703000" />
+      <workItem from="1754549820792" duration="9692000" />
+      <workItem from="1754591985442" duration="6862000" />
+      <workItem from="1754631321578" duration="6982000" />
+      <workItem from="1754638972297" duration="1658000" />
+      <workItem from="1754640704809" duration="21243000" />
+      <workItem from="1754737643906" duration="4316000" />
+      <workItem from="1754746061778" duration="14640000" />
+      <workItem from="1754830922694" duration="12233000" />
+      <workItem from="1754894035415" duration="3062000" />
+      <workItem from="1755320968090" duration="22457000" />
+      <workItem from="1755421186911" duration="4704000" />
+      <workItem from="1755427526239" duration="10039000" />
+      <workItem from="1755521928312" duration="3334000" />
+      <workItem from="1755542469679" duration="2651000" />
+      <workItem from="1755545596972" duration="7476000" />
+      <workItem from="1755594230919" duration="100000" />
+      <workItem from="1755594359155" duration="879000" />
+      <workItem from="1755595274306" duration="4339000" />
+      <workItem from="1755607838509" duration="20235000" />
+      <workItem from="1755684451376" duration="3919000" />
     </task>
-    <task id="LOCAL-00001" summary="Merge remote-tracking branch 'origin/master'">
+    <task id="LOCAL-00095" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1749666174749</created>
-      <option name="number" value="00001" />
-      <option name="presentableId" value="LOCAL-00001" />
+      <created>1754557545376</created>
+      <option name="number" value="00095" />
+      <option name="presentableId" value="LOCAL-00095" />
       <option name="project" value="LOCAL" />
-      <updated>1749666174750</updated>
+      <updated>1754557545376</updated>
     </task>
-    <task id="LOCAL-00002" summary="Merge remote-tracking branch 'origin/master'">
+    <task id="LOCAL-00096" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1749667853808</created>
-      <option name="number" value="00002" />
-      <option name="presentableId" value="LOCAL-00002" />
+      <created>1754557599128</created>
+      <option name="number" value="00096" />
+      <option name="presentableId" value="LOCAL-00096" />
       <option name="project" value="LOCAL" />
-      <updated>1749667853808</updated>
+      <updated>1754557599128</updated>
     </task>
-    <task id="LOCAL-00003" summary="Merge remote-tracking branch 'origin/master'">
+    <task id="LOCAL-00097" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1749668739103</created>
-      <option name="number" value="00003" />
-      <option name="presentableId" value="LOCAL-00003" />
+      <created>1754558197356</created>
+      <option name="number" value="00097" />
+      <option name="presentableId" value="LOCAL-00097" />
       <option name="project" value="LOCAL" />
-      <updated>1749668739103</updated>
+      <updated>1754558197356</updated>
     </task>
-    <task id="LOCAL-00004" summary="Merge remote-tracking branch 'origin/master'">
+    <task id="LOCAL-00098" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1749763929424</created>
-      <option name="number" value="00004" />
-      <option name="presentableId" value="LOCAL-00004" />
+      <created>1754592121961</created>
+      <option name="number" value="00098" />
+      <option name="presentableId" value="LOCAL-00098" />
       <option name="project" value="LOCAL" />
-      <updated>1749763929424</updated>
+      <updated>1754592121961</updated>
     </task>
-    <task id="LOCAL-00005" summary="Merge remote-tracking branch 'origin/master'">
+    <task id="LOCAL-00099" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1749971480168</created>
-      <option name="number" value="00005" />
-      <option name="presentableId" value="LOCAL-00005" />
+      <created>1754598488836</created>
+      <option name="number" value="00099" />
+      <option name="presentableId" value="LOCAL-00099" />
       <option name="project" value="LOCAL" />
-      <updated>1749971480168</updated>
+      <updated>1754598488836</updated>
     </task>
-    <task id="LOCAL-00006" summary="Merge remote-tracking branch 'origin/master'">
+    <task id="LOCAL-00100" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1749979038166</created>
-      <option name="number" value="00006" />
-      <option name="presentableId" value="LOCAL-00006" />
+      <created>1754601916342</created>
+      <option name="number" value="00100" />
+      <option name="presentableId" value="LOCAL-00100" />
       <option name="project" value="LOCAL" />
-      <updated>1749979038166</updated>
+      <updated>1754601916342</updated>
     </task>
-    <task id="LOCAL-00007" summary="Merge remote-tracking branch 'origin/master'">
+    <task id="LOCAL-00101" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1750019641981</created>
-      <option name="number" value="00007" />
-      <option name="presentableId" value="LOCAL-00007" />
+      <created>1754637291849</created>
+      <option name="number" value="00101" />
+      <option name="presentableId" value="LOCAL-00101" />
       <option name="project" value="LOCAL" />
-      <updated>1750019641981</updated>
+      <updated>1754637291849</updated>
     </task>
-    <task id="LOCAL-00008" summary="Merge remote-tracking branch 'origin/master'">
+    <task id="LOCAL-00102" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1750174617135</created>
-      <option name="number" value="00008" />
-      <option name="presentableId" value="LOCAL-00008" />
+      <created>1754638837876</created>
+      <option name="number" value="00102" />
+      <option name="presentableId" value="LOCAL-00102" />
       <option name="project" value="LOCAL" />
-      <updated>1750174617136</updated>
+      <updated>1754638837876</updated>
     </task>
-    <task id="LOCAL-00009" summary="Merge remote-tracking branch 'origin/master'">
+    <task id="LOCAL-00103" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1750192589952</created>
-      <option name="number" value="00009" />
-      <option name="presentableId" value="LOCAL-00009" />
+      <created>1754642804236</created>
+      <option name="number" value="00103" />
+      <option name="presentableId" value="LOCAL-00103" />
       <option name="project" value="LOCAL" />
-      <updated>1750192589952</updated>
+      <updated>1754642804237</updated>
     </task>
-    <task id="LOCAL-00010" summary="Merge remote-tracking branch 'origin/master'">
+    <task id="LOCAL-00104" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1750297489823</created>
-      <option name="number" value="00010" />
-      <option name="presentableId" value="LOCAL-00010" />
+      <created>1754646030840</created>
+      <option name="number" value="00104" />
+      <option name="presentableId" value="LOCAL-00104" />
       <option name="project" value="LOCAL" />
-      <updated>1750297489823</updated>
+      <updated>1754646030840</updated>
     </task>
-    <task id="LOCAL-00011" summary="Merge remote-tracking branch 'origin/master'">
+    <task id="LOCAL-00105" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1750350621354</created>
-      <option name="number" value="00011" />
-      <option name="presentableId" value="LOCAL-00011" />
+      <created>1754680570365</created>
+      <option name="number" value="00105" />
+      <option name="presentableId" value="LOCAL-00105" />
       <option name="project" value="LOCAL" />
-      <updated>1750350621354</updated>
+      <updated>1754680570365</updated>
     </task>
-    <task id="LOCAL-00012" summary="Merge remote-tracking branch 'origin/master'">
+    <task id="LOCAL-00106" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1750353770137</created>
-      <option name="number" value="00012" />
-      <option name="presentableId" value="LOCAL-00012" />
+      <created>1754689940015</created>
+      <option name="number" value="00106" />
+      <option name="presentableId" value="LOCAL-00106" />
       <option name="project" value="LOCAL" />
-      <updated>1750353770137</updated>
+      <updated>1754689940015</updated>
     </task>
-    <task id="LOCAL-00013" summary="Merge remote-tracking branch 'origin/master'">
+    <task id="LOCAL-00107" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1750356759272</created>
-      <option name="number" value="00013" />
-      <option name="presentableId" value="LOCAL-00013" />
+      <created>1754721110996</created>
+      <option name="number" value="00107" />
+      <option name="presentableId" value="LOCAL-00107" />
       <option name="project" value="LOCAL" />
-      <updated>1750356759272</updated>
+      <updated>1754721110996</updated>
     </task>
-    <task id="LOCAL-00014" summary="Merge remote-tracking branch 'origin/master'">
+    <task id="LOCAL-00108" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1750357492346</created>
-      <option name="number" value="00014" />
-      <option name="presentableId" value="LOCAL-00014" />
+      <created>1754725937736</created>
+      <option name="number" value="00108" />
+      <option name="presentableId" value="LOCAL-00108" />
       <option name="project" value="LOCAL" />
-      <updated>1750357492346</updated>
+      <updated>1754725937736</updated>
     </task>
-    <task id="LOCAL-00015" summary="Merge remote-tracking branch 'origin/master'">
+    <task id="LOCAL-00109" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1750360936058</created>
-      <option name="number" value="00015" />
-      <option name="presentableId" value="LOCAL-00015" />
+      <created>1754726746306</created>
+      <option name="number" value="00109" />
+      <option name="presentableId" value="LOCAL-00109" />
       <option name="project" value="LOCAL" />
-      <updated>1750360936058</updated>
+      <updated>1754726746306</updated>
     </task>
-    <task id="LOCAL-00016" summary="Merge remote-tracking branch 'origin/master'">
+    <task id="LOCAL-00110" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1750417169435</created>
-      <option name="number" value="00016" />
-      <option name="presentableId" value="LOCAL-00016" />
+      <created>1754742725242</created>
+      <option name="number" value="00110" />
+      <option name="presentableId" value="LOCAL-00110" />
       <option name="project" value="LOCAL" />
-      <updated>1750417169435</updated>
+      <updated>1754742725243</updated>
     </task>
-    <task id="LOCAL-00017" summary="Merge remote-tracking branch 'origin/master'">
+    <task id="LOCAL-00111" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1750422085131</created>
-      <option name="number" value="00017" />
-      <option name="presentableId" value="LOCAL-00017" />
+      <created>1754748569428</created>
+      <option name="number" value="00111" />
+      <option name="presentableId" value="LOCAL-00111" />
       <option name="project" value="LOCAL" />
-      <updated>1750422085131</updated>
+      <updated>1754748569429</updated>
     </task>
-    <task id="LOCAL-00018" summary="clarks全部工作正常">
+    <task id="LOCAL-00112" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1750422421923</created>
-      <option name="number" value="00018" />
-      <option name="presentableId" value="LOCAL-00018" />
+      <created>1754749899370</created>
+      <option name="number" value="00112" />
+      <option name="presentableId" value="LOCAL-00112" />
       <option name="project" value="LOCAL" />
-      <updated>1750422421923</updated>
+      <updated>1754749899370</updated>
     </task>
-    <task id="LOCAL-00019" summary="clarks全部工作正常">
+    <task id="LOCAL-00113" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1750447845963</created>
-      <option name="number" value="00019" />
-      <option name="presentableId" value="LOCAL-00019" />
+      <created>1754816168316</created>
+      <option name="number" value="00113" />
+      <option name="presentableId" value="LOCAL-00113" />
       <option name="project" value="LOCAL" />
-      <updated>1750447845963</updated>
+      <updated>1754816168316</updated>
     </task>
-    <task id="LOCAL-00020" summary="clarks全部工作正常">
+    <task id="LOCAL-00114" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1750450294716</created>
-      <option name="number" value="00020" />
-      <option name="presentableId" value="LOCAL-00020" />
+      <created>1754817225409</created>
+      <option name="number" value="00114" />
+      <option name="presentableId" value="LOCAL-00114" />
       <option name="project" value="LOCAL" />
-      <updated>1750450294716</updated>
+      <updated>1754817225409</updated>
     </task>
-    <task id="LOCAL-00021" summary="clarks全部工作正常">
+    <task id="LOCAL-00115" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1750450690107</created>
-      <option name="number" value="00021" />
-      <option name="presentableId" value="LOCAL-00021" />
+      <created>1754856765209</created>
+      <option name="number" value="00115" />
+      <option name="presentableId" value="LOCAL-00115" />
       <option name="project" value="LOCAL" />
-      <updated>1750450690107</updated>
+      <updated>1754856765210</updated>
     </task>
-    <task id="LOCAL-00022" summary="clarks全部工作正常">
+    <task id="LOCAL-00116" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1750451920345</created>
-      <option name="number" value="00022" />
-      <option name="presentableId" value="LOCAL-00022" />
+      <created>1754869372331</created>
+      <option name="number" value="00116" />
+      <option name="presentableId" value="LOCAL-00116" />
       <option name="project" value="LOCAL" />
-      <updated>1750451920345</updated>
+      <updated>1754869372331</updated>
     </task>
-    <task id="LOCAL-00023" summary="clarks全部工作正常">
+    <task id="LOCAL-00117" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1750459789612</created>
-      <option name="number" value="00023" />
-      <option name="presentableId" value="LOCAL-00023" />
+      <created>1754894048006</created>
+      <option name="number" value="00117" />
+      <option name="presentableId" value="LOCAL-00117" />
       <option name="project" value="LOCAL" />
-      <updated>1750459789612</updated>
+      <updated>1754894048007</updated>
     </task>
-    <task id="LOCAL-00024" summary="clarks全部工作正常">
+    <task id="LOCAL-00118" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1750531111145</created>
-      <option name="number" value="00024" />
-      <option name="presentableId" value="LOCAL-00024" />
+      <created>1754896973685</created>
+      <option name="number" value="00118" />
+      <option name="presentableId" value="LOCAL-00118" />
       <option name="project" value="LOCAL" />
-      <updated>1750531111145</updated>
+      <updated>1754896973685</updated>
     </task>
-    <task id="LOCAL-00025" summary="clarks全部工作正常">
+    <task id="LOCAL-00119" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1752107493941</created>
-      <option name="number" value="00025" />
-      <option name="presentableId" value="LOCAL-00025" />
+      <created>1755357910600</created>
+      <option name="number" value="00119" />
+      <option name="presentableId" value="LOCAL-00119" />
       <option name="project" value="LOCAL" />
-      <updated>1752107493941</updated>
+      <updated>1755357910600</updated>
     </task>
-    <task id="LOCAL-00026" summary="增加birkenstock">
+    <task id="LOCAL-00120" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1752334790794</created>
-      <option name="number" value="00026" />
-      <option name="presentableId" value="LOCAL-00026" />
+      <created>1755370293376</created>
+      <option name="number" value="00120" />
+      <option name="presentableId" value="LOCAL-00120" />
       <option name="project" value="LOCAL" />
-      <updated>1752334790795</updated>
+      <updated>1755370293376</updated>
     </task>
-    <task id="LOCAL-00027" summary="增加birkenstock">
+    <task id="LOCAL-00121" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1752440467499</created>
-      <option name="number" value="00027" />
-      <option name="presentableId" value="LOCAL-00027" />
+      <created>1755373165212</created>
+      <option name="number" value="00121" />
+      <option name="presentableId" value="LOCAL-00121" />
       <option name="project" value="LOCAL" />
-      <updated>1752440467499</updated>
+      <updated>1755373165212</updated>
     </task>
-    <task id="LOCAL-00028" summary="clarks全部工作正常">
+    <task id="LOCAL-00122" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1754143131803</created>
-      <option name="number" value="00028" />
-      <option name="presentableId" value="LOCAL-00028" />
+      <created>1755373505417</created>
+      <option name="number" value="00122" />
+      <option name="presentableId" value="LOCAL-00122" />
       <option name="project" value="LOCAL" />
-      <updated>1754143131803</updated>
+      <updated>1755373505417</updated>
     </task>
-    <task id="LOCAL-00029" summary="clarks全部工作正常">
+    <task id="LOCAL-00123" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1754143572644</created>
-      <option name="number" value="00029" />
-      <option name="presentableId" value="LOCAL-00029" />
+      <created>1755374052256</created>
+      <option name="number" value="00123" />
+      <option name="presentableId" value="LOCAL-00123" />
       <option name="project" value="LOCAL" />
-      <updated>1754143572644</updated>
+      <updated>1755374052256</updated>
     </task>
-    <task id="LOCAL-00030" summary="clarks全部工作正常">
+    <task id="LOCAL-00124" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1755251860823</created>
-      <option name="number" value="00030" />
-      <option name="presentableId" value="LOCAL-00030" />
+      <created>1755376297104</created>
+      <option name="number" value="00124" />
+      <option name="presentableId" value="LOCAL-00124" />
       <option name="project" value="LOCAL" />
-      <updated>1755251860823</updated>
+      <updated>1755376297104</updated>
     </task>
-    <task id="LOCAL-00031" summary="clarks全部工作正常">
+    <task id="LOCAL-00125" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1755255687276</created>
-      <option name="number" value="00031" />
-      <option name="presentableId" value="LOCAL-00031" />
+      <created>1755378826825</created>
+      <option name="number" value="00125" />
+      <option name="presentableId" value="LOCAL-00125" />
       <option name="project" value="LOCAL" />
-      <updated>1755255687276</updated>
+      <updated>1755378826825</updated>
     </task>
-    <task id="LOCAL-00032" summary="clarks全部工作正常">
+    <task id="LOCAL-00126" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
-      <created>1755263972057</created>
-      <option name="number" value="00032" />
-      <option name="presentableId" value="LOCAL-00032" />
+      <created>1755381534649</created>
+      <option name="number" value="00126" />
+      <option name="presentableId" value="LOCAL-00126" />
       <option name="project" value="LOCAL" />
-      <updated>1755263972057</updated>
+      <updated>1755381534649</updated>
     </task>
-    <option name="localTasksCounter" value="33" />
+    <task id="LOCAL-00127" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755381576306</created>
+      <option name="number" value="00127" />
+      <option name="presentableId" value="LOCAL-00127" />
+      <option name="project" value="LOCAL" />
+      <updated>1755381576307</updated>
+    </task>
+    <task id="LOCAL-00128" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755425560632</created>
+      <option name="number" value="00128" />
+      <option name="presentableId" value="LOCAL-00128" />
+      <option name="project" value="LOCAL" />
+      <updated>1755425560633</updated>
+    </task>
+    <task id="LOCAL-00129" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755430152722</created>
+      <option name="number" value="00129" />
+      <option name="presentableId" value="LOCAL-00129" />
+      <option name="project" value="LOCAL" />
+      <updated>1755430152723</updated>
+    </task>
+    <task id="LOCAL-00130" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755436481955</created>
+      <option name="number" value="00130" />
+      <option name="presentableId" value="LOCAL-00130" />
+      <option name="project" value="LOCAL" />
+      <updated>1755436481955</updated>
+    </task>
+    <task id="LOCAL-00131" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755543368363</created>
+      <option name="number" value="00131" />
+      <option name="presentableId" value="LOCAL-00131" />
+      <option name="project" value="LOCAL" />
+      <updated>1755543368363</updated>
+    </task>
+    <task id="LOCAL-00132" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755545855216</created>
+      <option name="number" value="00132" />
+      <option name="presentableId" value="LOCAL-00132" />
+      <option name="project" value="LOCAL" />
+      <updated>1755545855216</updated>
+    </task>
+    <task id="LOCAL-00133" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755581939102</created>
+      <option name="number" value="00133" />
+      <option name="presentableId" value="LOCAL-00133" />
+      <option name="project" value="LOCAL" />
+      <updated>1755581939102</updated>
+    </task>
+    <task id="LOCAL-00134" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755582241480</created>
+      <option name="number" value="00134" />
+      <option name="presentableId" value="LOCAL-00134" />
+      <option name="project" value="LOCAL" />
+      <updated>1755582241480</updated>
+    </task>
+    <task id="LOCAL-00135" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755585092416</created>
+      <option name="number" value="00135" />
+      <option name="presentableId" value="LOCAL-00135" />
+      <option name="project" value="LOCAL" />
+      <updated>1755585092416</updated>
+    </task>
+    <task id="LOCAL-00136" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755596468448</created>
+      <option name="number" value="00136" />
+      <option name="presentableId" value="LOCAL-00136" />
+      <option name="project" value="LOCAL" />
+      <updated>1755596468448</updated>
+    </task>
+    <task id="LOCAL-00137" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755597146098</created>
+      <option name="number" value="00137" />
+      <option name="presentableId" value="LOCAL-00137" />
+      <option name="project" value="LOCAL" />
+      <updated>1755597146098</updated>
+    </task>
+    <task id="LOCAL-00138" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755616849662</created>
+      <option name="number" value="00138" />
+      <option name="presentableId" value="LOCAL-00138" />
+      <option name="project" value="LOCAL" />
+      <updated>1755616849662</updated>
+    </task>
+    <task id="LOCAL-00139" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755617286073</created>
+      <option name="number" value="00139" />
+      <option name="presentableId" value="LOCAL-00139" />
+      <option name="project" value="LOCAL" />
+      <updated>1755617286073</updated>
+    </task>
+    <task id="LOCAL-00140" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755628345093</created>
+      <option name="number" value="00140" />
+      <option name="presentableId" value="LOCAL-00140" />
+      <option name="project" value="LOCAL" />
+      <updated>1755628345093</updated>
+    </task>
+    <task id="LOCAL-00141" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755629539880</created>
+      <option name="number" value="00141" />
+      <option name="presentableId" value="LOCAL-00141" />
+      <option name="project" value="LOCAL" />
+      <updated>1755629539880</updated>
+    </task>
+    <task id="LOCAL-00142" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755631346199</created>
+      <option name="number" value="00142" />
+      <option name="presentableId" value="LOCAL-00142" />
+      <option name="project" value="LOCAL" />
+      <updated>1755631346199</updated>
+    </task>
+    <task id="LOCAL-00143" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755636221385</created>
+      <option name="number" value="00143" />
+      <option name="presentableId" value="LOCAL-00143" />
+      <option name="project" value="LOCAL" />
+      <updated>1755636221385</updated>
+    </task>
+    <option name="localTasksCounter" value="144" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -482,9 +723,14 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Merge remote-tracking branch 'origin/master'" />
-    <MESSAGE value="增加birkenstock" />
     <MESSAGE value="clarks全部工作正常" />
-    <option name="LAST_COMMIT_MESSAGE" value="clarks全部工作正常" />
+    <MESSAGE value="增加birkenstock" />
+    <MESSAGE value="增加camper global" />
+    <MESSAGE value="增加barbour，clarks补全尺码" />
+    <MESSAGE value="自动生成标题" />
+    <MESSAGE value="clarks jingya" />
+    <MESSAGE value="增加第三方barbour爬取" />
+    <option name="LAST_COMMIT_MESSAGE" value="增加第三方barbour爬取" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -495,109 +741,189 @@
           <option name="timeStamp" value="1" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/common_taobao/jingya/import_txt_to_db_supplier.py</url>
-          <line>70</line>
-          <option name="timeStamp" value="2" />
+          <url>file://$PROJECT_DIR$/common_taobao/jingya/generate_publication_excel.py</url>
+          <line>140</line>
+          <option name="timeStamp" value="5" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/common_taobao/jingya/import_txt_to_db_supplier.py</url>
-          <line>10</line>
-          <option name="timeStamp" value="3" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/common_taobao/generate_taobao_title.py</url>
-          <line>118</line>
+          <url>file://$PROJECT_DIR$/common_taobao/jingya/export_gender_split_excel.py</url>
+          <line>66</line>
           <option name="timeStamp" value="6" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/brands/camper/fetch_product_info.py</url>
+          <line>55</line>
+          <option name="timeStamp" value="7" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/barbour/supplier/houseoffraser_get_links.py</url>
+          <line>41</line>
+          <option name="timeStamp" value="30" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/barbour/import_supplier_to_db_offers.py</url>
+          <line>142</line>
+          <option name="timeStamp" value="35" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/barbour/import_supplier_to_db_offers.py</url>
+          <line>44</line>
+          <option name="timeStamp" value="38" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/common_taobao/core/price_utils.py</url>
+          <line>74</line>
+          <option name="timeStamp" value="41" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
+    <watches-manager>
+      <configuration name="PythonConfigurationType">
+        <watch expression="js_text" />
+      </configuration>
+    </watches-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/TaobaoProj$clarks_pipeline_runner.coverage" NAME="clarks_pipeline_runner 覆盖结果" MODIFIED="1755167768210" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$GetProductLink.coverage" NAME="GetProductLink Coverage Results" MODIFIED="1750691456520" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/camper/camper/core" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$import_txt_to_db_supplier.coverage" NAME="import_txt_to_db_supplier 覆盖结果" MODIFIED="1754155567933" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/jingya" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$GetDetailsAndEANFromURL.coverage" NAME="GetDetailsAndEANFromURL Coverage Results" MODIFIED="1750703987245" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/camper/camper/core" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$birkenstock_link_collector.coverage" NAME="birkenstock_link_collector Coverage Results" MODIFIED="1752271021928" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/birkenstock" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$export_store_skuid_stock.coverage" NAME="export_store_skuid_stock Coverage Results" MODIFIED="1749977009381" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/stocksize" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$ecco_image_pipeline_runner.coverage" NAME="ecco_image_pipeline_runner Coverage Results" MODIFIED="1752263499838" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/ecco" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$prepare_utils_extended.coverage" NAME="prepare_utils_extended Coverage Results" MODIFIED="1750507314658" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$prepare_products_for_publication.coverage" NAME="prepare_products_for_publication Coverage Results" MODIFIED="1750331393259" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/pulication" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$generate_product_excels.coverage" NAME="generate_product_excels Coverage Results" MODIFIED="1750347480087" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$export_store_discount_price.coverage" NAME="export_store_discount_price Coverage Results" MODIFIED="1749983888302" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/stocksize" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$convert_xls_to_xlsx.coverage" NAME="convert_xls_to_xlsx 覆盖结果" MODIFIED="1749796606809" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$fetch_missing_images.coverage" NAME="fetch_missing_images Coverage Results" MODIFIED="1750181202307" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/core" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$GetEccoProductLinks.coverage" NAME="GetEccoProductLinks Coverage Results" MODIFIED="1750026448691" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/ecco/core" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$camper_image_pipeline_runner.coverage" NAME="camper_image_pipeline_runner 覆盖结果" MODIFIED="1753910227751" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper" />
     <SUITE FILE_PATH="coverage/TaobaoProj$import_txt_to_db.coverage" NAME="import_txt_to_db Coverage Results" MODIFIED="1750415218153" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$config.coverage" NAME="config Coverage Results" MODIFIED="1750025590546" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$pipeline_suppliers.coverage" NAME="pipeline_suppliers Coverage Results" MODIFIED="1754341779113" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour" />
     <SUITE FILE_PATH="coverage/TaobaoProj$ImageMaxCutter.coverage" NAME="ImageMaxCutter Coverage Results" MODIFIED="1750521423351" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/ecco/image" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$philipmorrisdirect_pipleline.coverage" NAME="philipmorrisdirect_pipleline 覆盖结果" MODIFIED="1755265551173" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/pipleline" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$geox_DetailAndImages.coverage" NAME="geox_DetailAndImages Coverage Results" MODIFIED="1750533137030" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/geox" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$imageNameFormat.coverage" NAME="imageNameFormat Coverage Results" MODIFIED="1750521469119" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/ecco/image" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$import_geox_txt_to_db.coverage" NAME="import_geox_txt_to_db 覆盖结果" MODIFIED="1749771879223" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$Find_unbound_unregistered_products.coverage" NAME="Find_unbound_unregistered_products 覆盖结果" MODIFIED="1749674829821" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/jingya" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$GetAllLink.coverage" NAME="GetAllLink Coverage Results" MODIFIED="1749965446207" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarksoutlet" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$extract_product_codes_and_unappointProd_from_excel.coverage" NAME="extract_product_codes_and_unappointProd_from_excel 覆盖结果" MODIFIED="1749763938677" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/jingya" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$ECCOImageRename.coverage" NAME="ECCOImageRename Coverage Results" MODIFIED="1750516133623" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/tools" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$export_channel_price_excel.coverage" NAME="export_channel_price_excel Coverage Results" MODIFIED="1750768475251" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/jingya" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$generate_html.coverage" NAME="generate_html 覆盖结果" MODIFIED="1754135205758" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$generate_store_reports.coverage" NAME="generate_store_reports Coverage Results" MODIFIED="1749970243599" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/stocksize" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$generate_discount_price_excel.coverage" NAME="generate_discount_price_excel Coverage Results" MODIFIED="1750415560165" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$allweathers_get_links.coverage" NAME="allweathers_get_links Coverage Results" MODIFIED="1754411428848" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$barbour_pipeline_runner.coverage" NAME="barbour_pipeline_runner Coverage Results" MODIFIED="1753815628024" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/barbour" />
     <SUITE FILE_PATH="coverage/TaobaoProj$image_defender_with_flip.coverage" NAME="image_defender_with_flip Coverage Results" MODIFIED="1750811451516" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper/image" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$allweathers_pipleline.coverage" NAME="allweathers_pipleline 覆盖结果" MODIFIED="1755265192189" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/pipleline" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$test_publishable_codes.coverage" NAME="test_publishable_codes Coverage Results" MODIFIED="1750345040520" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks/test" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$generate_publish_excels_from_db.coverage" NAME="generate_publish_excels_from_db Coverage Results" MODIFIED="1750813378401" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$ecco_pipeline_runner.coverage" NAME="ecco_pipeline_runner 覆盖结果" MODIFIED="1755209019025" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/ecco" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$FetchEccoDetailAndImage.coverage" NAME="FetchEccoDetailAndImage Coverage Results" MODIFIED="1750423766215" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/ecco/core" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$allweathers_get_links.coverage" NAME="allweathers_get_links 覆盖结果" MODIFIED="1755263395259" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$geox_detailAndImage_MutipleThread.coverage" NAME="geox_detailAndImage_MutipleThread 覆盖结果" MODIFIED="1749764665735" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$ResizeImage.coverage" NAME="ResizeImage Coverage Results" MODIFIED="1750812406993" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper/image" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$camper_pipeline_runner.coverage" NAME="camper_pipeline_runner 覆盖结果" MODIFIED="1753957006018" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$clarks_jingya_image_pipeline_runner.coverage" NAME="clarks_jingya_image_pipeline_runner 覆盖结果" MODIFIED="1754150992646" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks_Jingya" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$TestClarks.coverage" NAME="TestClarks Coverage Results" MODIFIED="1750289549457" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$outdoorandcountry_pipeline.coverage" NAME="outdoorandcountry_pipeline 覆盖结果" MODIFIED="1755262438639" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/pipleline" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$GroupImage.coverage" NAME="GroupImage Coverage Results" MODIFIED="1750891866373" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/tools" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$changeImageSize.coverage" NAME="changeImageSize Coverage Results" MODIFIED="1750191654102" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/image" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$run_camper_pipeline.coverage" NAME="run_camper_pipeline 覆盖结果" MODIFIED="1749664700554" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/camper" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$clarks_jingya_pipeline_runner.coverage" NAME="clarks_jingya_pipeline_runner 覆盖结果" MODIFIED="1754161315073" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks_Jingya" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$flip_images_horizontal.coverage" NAME="flip_images_horizontal Coverage Results" MODIFIED="1750183067140" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/image" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$MaxCutter.coverage" NAME="MaxCutter Coverage Results" MODIFIED="1750568443137" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/geox/image" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$find_duplicate_codes_in_store.coverage" NAME="find_duplicate_codes_in_store Coverage Results" MODIFIED="1750608512524" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/tools" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$birkenstock_gender_updater.coverage" NAME="birkenstock_gender_updater Coverage Results" MODIFIED="1752397581073" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/birkenstock" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$unified_link_collector.coverage" NAME="unified_link_collector Coverage Results" MODIFIED="1750692319042" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$testStore.coverage" NAME="testStore Coverage Results" MODIFIED="1750419219964" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks/test" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$FetchEccoDetailAndImage_fixed.coverage" NAME="FetchEccoDetailAndImage_fixed Coverage Results" MODIFIED="1750425180846" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/ecco" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$geox_getTxt_image_mutipleThread.coverage" NAME="geox_getTxt_image_mutipleThread 覆盖结果" MODIFIED="1749765294793" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$GetProductURLs.coverage" NAME="GetProductURLs Coverage Results" MODIFIED="1749975468995" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/core" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$camper_pipeline_updateStock.coverage" NAME="camper_pipeline_updateStock 覆盖结果" MODIFIED="1749666079299" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/pipeline" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$fetch_product_info.coverage" NAME="fetch_product_info Coverage Results" MODIFIED="1750708815202" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$prepare_products_for_publication_updated.coverage" NAME="prepare_products_for_publication_updated Coverage Results" MODIFIED="1750325996949" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$clarks_pipepline_size_newproduct.coverage" NAME="clarks_pipepline_size_newproduct Coverage Results" MODIFIED="1750023298383" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/pipeline" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$get_geox_links.coverage" NAME="get_geox_links 覆盖结果" MODIFIED="1749763137976" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$get_publishable_product_codes.coverage" NAME="get_publishable_product_codes Coverage Results" MODIFIED="1750420515977" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks/test" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$import_clarks_txt_to_db.coverage" NAME="import_clarks_txt_to_db Coverage Results" MODIFIED="1750406569497" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$mark_offline_products_from_store_excels.coverage" NAME="mark_offline_products_from_store_excels 覆盖结果" MODIFIED="1753886371986" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$HtmlToPGNBatch.coverage" NAME="HtmlToPGNBatch Coverage Results" MODIFIED="1750781878184" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/commontool" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$export_skuid_stock.coverage" NAME="export_skuid_stock Coverage Results" MODIFIED="1750298612190" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$barbour_get_links.coverage" NAME="barbour_get_links 覆盖结果" MODIFIED="1755253710148" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$get_ecco_links.coverage" NAME="get_ecco_links Coverage Results" MODIFIED="1750028017689" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/ecco" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$FetchImangeAndInfo.coverage" NAME="FetchImangeAndInfo Coverage Results" MODIFIED="1749975536678" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/core" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$download_images_only.coverage" NAME="download_images_only Coverage Results" MODIFIED="1750810850137" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$download_product_images.coverage" NAME="download_product_images Coverage Results" MODIFIED="1750293139416" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$image_defender.coverage" NAME="image_defender Coverage Results" MODIFIED="1750523059490" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/tools" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$camperGB_image_pipeline_runner.coverage" NAME="camperGB_image_pipeline_runner 覆盖结果" MODIFIED="1752880226431" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper_global" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$GroupImage.coverage" NAME="GroupImage Coverage Results" MODIFIED="1754920596573" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$geox_pipeline_runner.coverage" NAME="geox_pipeline_runner Coverage Results" MODIFIED="1750610214102" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/geox" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$camperGlobal_pipeline_runner.coverage" NAME="camperGlobal_pipeline_runner Coverage Results" MODIFIED="1752699837578" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper_global" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$parse_offer_info.coverage" NAME="parse_offer_info Coverage Results" MODIFIED="1754330430992" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$barbour_unified_link_collector.coverage" NAME="barbour_unified_link_collector Coverage Results" MODIFIED="1753805304758" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/barbour" />
     <SUITE FILE_PATH="coverage/TaobaoProj$birkenstock_pipeline_runner.coverage" NAME="birkenstock_pipeline_runner Coverage Results" MODIFIED="1752397601158" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/birkenstock" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$geox_pipeline_runner.coverage" NAME="geox_pipeline_runner 覆盖结果" MODIFIED="1753870811958" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/geox" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$CamperFilterGoodsExport.coverage" NAME="CamperFilterGoodsExport 覆盖结果" MODIFIED="1749779681734" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/taojingxiao/taojingxiao/core" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$cutterAllsiderSpace.coverage" NAME="cutterAllsiderSpace Coverage Results" MODIFIED="1750781898672" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/commontool" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$generate_publication_excel.coverage" NAME="generate_publication_excel Coverage Results" MODIFIED="1752926232529" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/jingya" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$ecco_image_pipeline_runner.coverage" NAME="ecco_image_pipeline_runner Coverage Results" MODIFIED="1752263499838" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/ecco" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$generate_product_excels.coverage" NAME="generate_product_excels Coverage Results" MODIFIED="1750347480087" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$clarks_pipeline_runner.coverage" NAME="clarks_pipeline_runner Coverage Results" MODIFIED="1755596887005" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$export_channel_price_excel.coverage" NAME="export_channel_price_excel Coverage Results" MODIFIED="1750768475251" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/jingya" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$image_reduce_size.coverage" NAME="image_reduce_size Coverage Results" MODIFIED="1753206850379" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$extract_product_codes_and_unappointProd_from_excel.coverage" NAME="extract_product_codes_and_unappointProd_from_excel 覆盖结果" MODIFIED="1749763938677" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/jingya" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$HtmlToPGNBatch.coverage" NAME="HtmlToPGNBatch Coverage Results" MODIFIED="1755067584274" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/commontool" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$export_gender_split_excel.coverage" NAME="export_gender_split_excel Coverage Results" MODIFIED="1753214225506" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/jingya" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$barbour_database_import_pipleline.coverage" NAME="barbour_database_import_pipleline Coverage Results" MODIFIED="1755623077952" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/pipleline" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$cainiao_generate_update_goods_excel.coverage" NAME="cainiao_generate_update_goods_excel Coverage Results" MODIFIED="1754633145887" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/jingya" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$jingya_pipeline_runner.coverage" NAME="jingya_pipeline_runner Coverage Results" MODIFIED="1753514863758" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/jingya" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$splite_image_by_size.coverage" NAME="splite_image_by_size Coverage Results" MODIFIED="1755017813499" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$testPrice.coverage" NAME="testPrice Coverage Results" MODIFIED="1755455912231" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$generate_html_noImage.coverage" NAME="generate_html_noImage Coverage Results" MODIFIED="1753812486220" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$resize_images.coverage" NAME="resize_images Coverage Results" MODIFIED="1755109567698" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$houseoffraser_pipleline.coverage" NAME="houseoffraser_pipleline Coverage Results" MODIFIED="1754427832266" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$get_geox_links.coverage" NAME="get_geox_links 覆盖结果" MODIFIED="1749763137976" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
     <SUITE FILE_PATH="coverage/TaobaoProj$MergeImages.coverage" NAME="MergeImages 覆盖结果" MODIFIED="1749668713061" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/image" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$channel_product_pipeline.coverage" NAME="channel_product_pipeline Coverage Results" MODIFIED="1750800277737" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$test_unpublished_valid_stock.coverage" NAME="test_unpublished_valid_stock Coverage Results" MODIFIED="1750421194405" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks/test" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$clarks_jinya_fetch_product_info.coverage" NAME="clarks_jinya_fetch_product_info 覆盖结果" MODIFIED="1754154959179" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks_Jingya" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$birkenstock_link_collector.coverage" NAME="birkenstock_link_collector Coverage Results" MODIFIED="1752271021928" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/birkenstock" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$download_product_images.coverage" NAME="download_product_images Coverage Results" MODIFIED="1750293139416" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$compose_with_background.coverage" NAME="compose_with_background Coverage Results" MODIFIED="1754861166273" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/barbour" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$brand_data_aggregator.coverage" NAME="brand_data_aggregator Coverage Results" MODIFIED="1752832823645" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/research" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$export_skuid_stock.coverage" NAME="export_skuid_stock Coverage Results" MODIFIED="1750298612190" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$philipmorrisdirect_get_links.coverage" NAME="philipmorrisdirect_get_links Coverage Results" MODIFIED="1754518723128" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$jinga_pipleline.coverage" NAME="jinga_pipleline Coverage Results" MODIFIED="1755613573267" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/jingya" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$FetchImangeAndInfo.coverage" NAME="FetchImangeAndInfo Coverage Results" MODIFIED="1749975536678" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/core" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$get_ecco_links.coverage" NAME="get_ecco_links Coverage Results" MODIFIED="1750028017689" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/ecco" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$allweathers_fetch_info.coverage" NAME="allweathers_fetch_info Coverage Results" MODIFIED="1754468079351" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$barbour_pipleline.coverage" NAME="barbour_pipleline Coverage Results" MODIFIED="1754514700465" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$image_defender.coverage" NAME="image_defender Coverage Results" MODIFIED="1754935465221" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$test.coverage" NAME="test Coverage Results" MODIFIED="1754325889241" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$resize_images_to_1500.coverage" NAME="resize_images_to_1500 Coverage Results" MODIFIED="1755109724920" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$camper_pipeline_runner.coverage" NAME="camper_pipeline_runner Coverage Results" MODIFIED="1755428501838" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$camperChannelId.coverage" NAME="camperChannelId Coverage Results" MODIFIED="1753219403263" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$import_outdoor_txt_to_barbour_products.coverage" NAME="import_outdoor_txt_to_barbour_products Coverage Results" MODIFIED="1754384439120" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$export_store_discount_price.coverage" NAME="export_store_discount_price Coverage Results" MODIFIED="1749983888302" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/stocksize" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$cainiao_generate_excel_binding_goods_jingya.coverage" NAME="cainiao_generate_excel_binding_goods_jingya Coverage Results" MODIFIED="1754645934723" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/jingya" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$generate_barbour_publication_excel.coverage" NAME="generate_barbour_publication_excel Coverage Results" MODIFIED="1755374108833" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$generate_publish_excels_from_db.coverage" NAME="generate_publish_excels_from_db Coverage Results" MODIFIED="1750813378401" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$GetProductURLs.coverage" NAME="GetProductURLs Coverage Results" MODIFIED="1749975468995" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/core" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$compose_with_background_batch.coverage" NAME="compose_with_background_batch Coverage Results" MODIFIED="1754863085673" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/barbour" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$export_store_skuid_stock.coverage" NAME="export_store_skuid_stock Coverage Results" MODIFIED="1749977009381" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/stocksize" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$find_duplicate_codes_in_store.coverage" NAME="find_duplicate_codes_in_store Coverage Results" MODIFIED="1752687017554" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$clean_brands.coverage" NAME="clean_brands Coverage Results" MODIFIED="1752614470589" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/research" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$prepare_utils_extended.coverage" NAME="prepare_utils_extended Coverage Results" MODIFIED="1750507314658" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$generate_discount_price_excel.coverage" NAME="generate_discount_price_excel Coverage Results" MODIFIED="1750415560165" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao" />
     <SUITE FILE_PATH="coverage/TaobaoProj$GetOutletProductURL.coverage" NAME="GetOutletProductURL Coverage Results" MODIFIED="1749966813323" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/core" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$birkenstock_gender_updater.coverage" NAME="birkenstock_gender_updater Coverage Results" MODIFIED="1752397581073" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/birkenstock" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$clarks_jingya_pipeline_runner.coverage" NAME="clarks_jingya_pipeline_runner Coverage Results" MODIFIED="1754770591008" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks_Jingya" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$avif_to_jpg.coverage" NAME="avif_to_jpg Coverage Results" MODIFIED="1755246522533" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$GetEccoProductLinks.coverage" NAME="GetEccoProductLinks Coverage Results" MODIFIED="1750026448691" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/ecco/core" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$GetProductLink.coverage" NAME="GetProductLink Coverage Results" MODIFIED="1753433870587" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/tb_barbour" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$HTMLToPGNBatchMutipleThread.coverage" NAME="HTMLToPGNBatchMutipleThread Coverage Results" MODIFIED="1754745966038" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$FetchEccoDetailAndImage.coverage" NAME="FetchEccoDetailAndImage Coverage Results" MODIFIED="1750423766215" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/ecco/core" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$barbour_download_images_only.coverage" NAME="barbour_download_images_only Coverage Results" MODIFIED="1754857218110" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/barbour" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$import_supplier_to_db_offers.coverage" NAME="import_supplier_to_db_offers Coverage Results" MODIFIED="1754427529510" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$ECCOImageRename.coverage" NAME="ECCOImageRename Coverage Results" MODIFIED="1752263900847" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$outdoorandcountry_pipeline.coverage" NAME="outdoorandcountry_pipeline Coverage Results" MODIFIED="1754427540645" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$channel_product_pipeline.coverage" NAME="channel_product_pipeline Coverage Results" MODIFIED="1750800277737" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$imageNameFormat.coverage" NAME="imageNameFormat Coverage Results" MODIFIED="1750521469119" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/ecco/image" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$crop_gray_to_square.coverage" NAME="crop_gray_to_square Coverage Results" MODIFIED="1753444417769" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$import_geox_txt_to_db.coverage" NAME="import_geox_txt_to_db 覆盖结果" MODIFIED="1749771879223" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$test_publishable_codes.coverage" NAME="test_publishable_codes Coverage Results" MODIFIED="1750345040520" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks/test" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$price_utils.coverage" NAME="price_utils Coverage Results" MODIFIED="1755424338874" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/core" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$generate_Exce_For_Goods_Update.coverage" NAME="generate_Exce_For_Goods_Update Coverage Results" MODIFIED="1754501198416" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/jingya" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$generate_barbour_taobao_title.coverage" NAME="generate_barbour_taobao_title Coverage Results" MODIFIED="1755373150634" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$allweathers_pipleline.coverage" NAME="allweathers_pipleline Coverage Results" MODIFIED="1754469106242" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$.coverage" NAME="细节裁剪 Coverage Results" MODIFIED="1754837816854" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/barbour" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$changeImageSize.coverage" NAME="changeImageSize Coverage Results" MODIFIED="1750191654102" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/image" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$import_channel_info_from_excel.coverage" NAME="import_channel_info_from_excel Coverage Results" MODIFIED="1753179718901" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/jingya" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$GetDetailsAndEANFromURL.coverage" NAME="GetDetailsAndEANFromURL Coverage Results" MODIFIED="1750703987245" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/camper/camper/core" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$expand_to_square.coverage" NAME="expand_to_square Coverage Results" MODIFIED="1755441233853" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$export_excel_from_jingya_copy.coverage" NAME="export_excel_from_jingya_copy Coverage Results" MODIFIED="1755597054348" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$miage_cutter_11_34.coverage" NAME="miage_cutter_11_34 Coverage Results" MODIFIED="1755174062022" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$text_watermark.coverage" NAME="text_watermark Coverage Results" MODIFIED="1755173947094" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$geox_getTxt_image_mutipleThread.coverage" NAME="geox_getTxt_image_mutipleThread 覆盖结果" MODIFIED="1749765294793" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$prepare_products_for_publication.coverage" NAME="prepare_products_for_publication Coverage Results" MODIFIED="1750331393259" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/pulication" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$webp_to_jpg.coverage" NAME="webp_to_jpg Coverage Results" MODIFIED="1755248050752" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$TestClarks.coverage" NAME="TestClarks Coverage Results" MODIFIED="1750289549457" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$houseoffraser_get_links.coverage" NAME="houseoffraser_get_links Coverage Results" MODIFIED="1754388888269" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$clarks_image_pipeline_runner.coverage" NAME="clarks_image_pipeline_runner Coverage Results" MODIFIED="1753476071090" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$geox_detailAndImage_MutipleThread.coverage" NAME="geox_detailAndImage_MutipleThread 覆盖结果" MODIFIED="1749764665735" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$image_tool_pipleline.coverage" NAME="image_tool_pipleline Coverage Results" MODIFIED="1755240687241" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/pipleline" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$query_stock_by_productcode.coverage" NAME="query_stock_by_productcode Coverage Results" MODIFIED="1753878141979" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$prepare_products_for_publication_updated.coverage" NAME="prepare_products_for_publication_updated Coverage Results" MODIFIED="1750325996949" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$GetAllLink.coverage" NAME="GetAllLink Coverage Results" MODIFIED="1749965446207" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarksoutlet" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$CamperFilterGoodsExport.coverage" NAME="CamperFilterGoodsExport 覆盖结果" MODIFIED="1749779681734" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/taojingxiao/taojingxiao/core" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$get_publishable_product_codes.coverage" NAME="get_publishable_product_codes Coverage Results" MODIFIED="1750420515977" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks/test" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$move_jacket_image.coverage" NAME="move_jacket_image Coverage Results" MODIFIED="1754870294414" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/barbour/image" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$run_camper_pipeline.coverage" NAME="run_camper_pipeline 覆盖结果" MODIFIED="1749664700554" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/camper" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$move_image_model_flat.coverage" NAME="move_image_model_flat Coverage Results" MODIFIED="1754870476764" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/barbour/image" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$generate_store_reports.coverage" NAME="generate_store_reports Coverage Results" MODIFIED="1749970243599" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/stocksize" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$convert_xls_to_xlsx.coverage" NAME="convert_xls_to_xlsx 覆盖结果" MODIFIED="1749796606809" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$main_first_image_pipleline.coverage" NAME="main_first_image_pipleline Coverage Results" MODIFIED="1755247491610" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/pipleline" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$excel_splitor.coverage" NAME="excel_splitor Coverage Results" MODIFIED="1754776559069" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$image_html_jpg_pipleline.coverage" NAME="image_html_jpg_pipleline Coverage Results" MODIFIED="1755006262758" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$generate_html.coverage" NAME="generate_html Coverage Results" MODIFIED="1755113936121" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$ecco_pipeline_runner.coverage" NAME="ecco_pipeline_runner Coverage Results" MODIFIED="1753441372283" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/ecco" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$find_taobaoID_from_url.coverage" NAME="find_taobaoID_from_url Coverage Results" MODIFIED="1754032736019" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$philipmorrisdirect_fetch_info.coverage" NAME="philipmorrisdirect_fetch_info Coverage Results" MODIFIED="1754523427406" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$barbour_publication_pipleline.coverage" NAME="barbour_publication_pipleline Coverage Results" MODIFIED="1755614918797" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/pipleline" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$camper_image_pipeline_runner.coverage" NAME="camper_image_pipeline_runner Coverage Results" MODIFIED="1753899162492" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$GEI.coverage" NAME="检查GEI重复值 Coverage Results" MODIFIED="1754488745226" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$fetch_product_info.coverage" NAME="fetch_product_info Coverage Results" MODIFIED="1753645560263" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$houseoffraser_fetch_info.coverage" NAME="houseoffraser_fetch_info Coverage Results" MODIFIED="1754389774774" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$cutterAllsiderSpace.coverage" NAME="cutterAllsiderSpace Coverage Results" MODIFIED="1755006247188" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$MaxCutter.coverage" NAME="MaxCutter Coverage Results" MODIFIED="1750568443137" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/geox/image" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$FetchEccoDetailAndImage_fixed.coverage" NAME="FetchEccoDetailAndImage_fixed Coverage Results" MODIFIED="1750425180846" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/ecco" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$unified_link_collector.coverage" NAME="unified_link_collector Coverage Results" MODIFIED="1753051672542" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/terraces" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$test_unpublished_valid_stock.coverage" NAME="test_unpublished_valid_stock Coverage Results" MODIFIED="1750421194405" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks/test" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$fetch_barbour_product_info.coverage" NAME="fetch_barbour_product_info Coverage Results" MODIFIED="1753809458308" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/barbour" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$generate_barbour_prices_from_avg.coverage" NAME="generate_barbour_prices_from_avg Coverage Results" MODIFIED="1755599132606" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$clarks_pipepline_size_newproduct.coverage" NAME="clarks_pipepline_size_newproduct Coverage Results" MODIFIED="1750023298383" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/pipeline" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$geox_DetailAndImages.coverage" NAME="geox_DetailAndImages Coverage Results" MODIFIED="1750533137030" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/geox" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$flip_images_horizontal.coverage" NAME="flip_images_horizontal Coverage Results" MODIFIED="1750183067140" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/image" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$ResizeImage.coverage" NAME="ResizeImage Coverage Results" MODIFIED="1750812406993" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper/image" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$testStore.coverage" NAME="testStore Coverage Results" MODIFIED="1750419219964" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks/test" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$get_outdoorandcountry_links.coverage" NAME="get_outdoorandcountry_links Coverage Results" MODIFIED="1754305813913" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$generate_unbound_goods_excel.coverage" NAME="generate_unbound_goods_excel Coverage Results" MODIFIED="1754501232409" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/jingya" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$download_images_only.coverage" NAME="download_images_only Coverage Results" MODIFIED="1752372463303" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/birkenstock" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$import_barbour_txt_to_products.coverage" NAME="import_barbour_txt_to_products Coverage Results" MODIFIED="1754424208445" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$config.coverage" NAME="config Coverage Results" MODIFIED="1755374061026" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$camper_pipeline_updateStock.coverage" NAME="camper_pipeline_updateStock 覆盖结果" MODIFIED="1749666079299" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/pipeline" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$fetch_missing_images.coverage" NAME="fetch_missing_images Coverage Results" MODIFIED="1750181202307" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/core" />
     <SUITE FILE_PATH="coverage/TaobaoProj$birkenstock_image_pipeline_runner.coverage" NAME="birkenstock_image_pipeline_runner Coverage Results" MODIFIED="1752280054426" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/birkenstock" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$barbour_pipleline.coverage" NAME="barbour_pipleline 覆盖结果" MODIFIED="1755255210127" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/pipleline" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$HTMLToPGNBatchMutipleThread.coverage" NAME="HTMLToPGNBatchMutipleThread Coverage Results" MODIFIED="1750614193132" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/commontool" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$resize_images_to_1500.coverage" NAME="resize_images_to_1500 覆盖结果" MODIFIED="1754132594345" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$Find_unbound_unregistered_products.coverage" NAME="Find_unbound_unregistered_products 覆盖结果" MODIFIED="1749674829821" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/camper/jingya" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$import_clarks_txt_to_db.coverage" NAME="import_clarks_txt_to_db Coverage Results" MODIFIED="1750406569497" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$camper_tool_pipeline_runner.coverage" NAME="camper_tool_pipeline_runner Coverage Results" MODIFIED="1754043159915" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper" />
   </component>
 </project>

@@ -7,7 +7,7 @@ from config import BARBOUR
 from barbour.supplier.philipmorrisdirect_get_links import philipmorris_get_links
 from barbour.supplier.philipmorrisdirect_fetch_info import fetch_all
 from barbour.import_supplier_to_db_offers import import_txt_for_supplier
-from barbour.supplier_import_to_barbour_products import batch_import_txt_to_barbour_product
+
 def run_step(desc, cmd):
     print(f"\n🟢 {desc}")
     result = subprocess.run(cmd, shell=True)

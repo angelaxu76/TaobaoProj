@@ -1,4 +1,3 @@
-import os
 import sys
 import csv
 import re
@@ -7,8 +6,7 @@ import psycopg2
 from datetime import datetime
 from pathlib import Path
 from config import BARBOUR
-from barbour.keyword_mapping import KEYWORD_EQUIVALENTS
-from common_taobao.size_utils import clean_size_for_barbour
+from barbour.core.keyword_mapping import KEYWORD_EQUIVALENTS
 
 # === 通用关键词排除 ===
 COMMON_WORDS = {

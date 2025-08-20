@@ -21,7 +21,7 @@ except Exception:
 
 # 可选：使用你自有的颜色标准化
 try:
-    from barbour.color_utils import normalize_color as _normalize_color
+    from barbour.core.color_utils import normalize_color as _normalize_color
 except Exception:
     _normalize_color = None
 

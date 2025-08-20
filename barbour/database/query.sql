@@ -146,6 +146,8 @@ ORDER BY site_count DESC, q.color_code;
 
 select * from barbour_inventory
 
+select count(*) from offers
+
 select * from camper_inventory
 
-select * from barbour_products
+select count(*) from barbour_products
