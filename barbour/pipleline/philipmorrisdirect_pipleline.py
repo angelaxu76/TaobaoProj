@@ -2,11 +2,8 @@
 # ✅ 用于抓取 Outdoor and Country 网站的 Barbour 商品链接并后续处理
 
 import subprocess
-from pathlib import Path
-from config import BARBOUR
-from barbour.supplier.philipmorrisdirect_get_links import philipmorris_get_links
 from barbour.supplier.philipmorrisdirect_fetch_info import fetch_all
-from barbour.import_supplier_to_db_offers import import_txt_for_supplier
+
 
 def run_step(desc, cmd):
     print(f"\n🟢 {desc}")

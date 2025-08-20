@@ -1,7 +1,6 @@
-from pathlib import Path
 from barbour.supplier.barbour_get_links import barbour_get_links
 from barbour.supplier.barbour_fetch_info import fetch_and_write_txt
-from barbour.import_supplier_to_db_offers import import_txt_for_supplier
+from barbour.common.import_supplier_to_db_offers import import_txt_for_supplier
 
 def pipeline_barbour():
     print("\n🚀 启动 Barbour - House of Fraser 全流程抓取")

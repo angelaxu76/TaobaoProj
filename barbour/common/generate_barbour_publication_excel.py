@@ -4,14 +4,13 @@
 """
 
 import sys
-from pathlib import Path
 import re
 import unicodedata
 import openpyxl
 from sqlalchemy import create_engine, text
 
 from config import BRAND_CONFIG, BARBOUR, SETTINGS
-from barbour.generate_barbour_taobao_title import generate_barbour_taobao_title
+from barbour.common.generate_barbour_taobao_title import generate_barbour_taobao_title
 from common_taobao.core.price_utils import calculate_jingya_prices
 
 # ========== 路径 ==========

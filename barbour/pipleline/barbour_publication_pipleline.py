@@ -1,10 +1,6 @@
 from pathlib import Path
-from barbour.generate_barbour_publication_excel import generate_publication_excel
-from tools.image.image_composer_background import image_composer
 from config import BARBOUR
-from barbour.image_move_for_publication_folder import move_image_for_publication
-from barbour.generate_barbour_prices_from_avg import generate_price_for_jingya_publication
-from barbour.insert_jingyaid_to_db_barbour import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
+from barbour.jingya.insert_jingyaid_to_db_barbour import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
 
 
 def pipeline_barbour():

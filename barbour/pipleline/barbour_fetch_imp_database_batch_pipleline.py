@@ -1,11 +1,9 @@
 import multiprocessing as mp
 import traceback
-import sys
-from pathlib import Path
 
 # ==== 你现有的导入 ====
-from barbour.import_supplier_to_db_offers import import_txt_for_supplier
-from barbour.barbour_import_to_barbour_products import batch_import_txt_to_barbour_product
+from barbour.common.import_supplier_to_db_offers import import_txt_for_supplier
+from barbour.common.barbour_import_to_barbour_products import batch_import_txt_to_barbour_product
 from barbour.supplier.barbour_get_links import barbour_get_links
 from barbour.supplier.barbour_fetch_info import fetch_and_write_txt
 from barbour.supplier.outdoorandcountry_get_links import outdoorandcountry_fetch_and_save_links

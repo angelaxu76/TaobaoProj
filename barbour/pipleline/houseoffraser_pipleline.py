@@ -1,6 +1,6 @@
 from barbour.supplier.houseoffraser_get_links import houseoffraser_get_links
 from barbour.supplier.houseoffraser_fetch_info import houseoffraser_fetch_all
-from barbour.import_supplier_to_db_offers import import_txt_for_supplier
+from barbour.common.import_supplier_to_db_offers import import_txt_for_supplier
 
 def pipeline_houseoffraser():
     print("\n🚀 启动 Barbour - House of Fraser 全流程抓取")
