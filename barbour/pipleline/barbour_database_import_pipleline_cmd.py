@@ -13,31 +13,30 @@ def barbour_database_import_pipleline():
 
     print("\n🌐 步骤 1：抓取商品链接")
     # barbour
-    barbour_get_links()
-    outdoorandcountry_fetch_and_save_links()
-    allweathers_get_links()
-    houseoffraser_get_links()
+    # barbour_get_links()
+    # outdoorandcountry_fetch_and_save_links()
+    # allweathers_get_links()
+    # houseoffraser_get_links()
 
 
     # Step 1: TODO 将txt中数据导入barbour product中
     #barbour
-    fetch_and_write_txt()
-    batch_import_txt_to_barbour_product()
-    fetch_outdoor_product_offers_concurrent(max_workers=15)
-    fetch_allweathers_products(7)
-    houseoffraser_fetch_all()
+    # fetch_and_write_txt()
+    # fetch_outdoor_product_offers_concurrent(max_workers=15)
+    # fetch_allweathers_products(7)
+    # houseoffraser_fetch_all()
 
     # Step 3: TODO 将txt中数据导入barbour product中
-    batch_import_txt_to_barbour_product("barbour")
-    batch_import_txt_to_barbour_product("outdoorandcountry")
-    batch_import_txt_to_barbour_product("allweathers")
+    # batch_import_txt_to_barbour_product("barbour")
+    # batch_import_txt_to_barbour_product("outdoorandcountry")
+    # batch_import_txt_to_barbour_product("allweathers")
 
 
 
     # Step 2: TODO 将各个供货商的库存价格等从txt中数据导入数据库offers
-    import_txt_for_supplier("barbour")
-    import_txt_for_supplier("outdoorandcountry")
-    import_txt_for_supplier("allweathers")
+    # import_txt_for_supplier("barbour")
+    # import_txt_for_supplier("outdoorandcountry")
+    # import_txt_for_supplier("allweathers")
     import_txt_for_supplier("houseoffraser")
 
 
