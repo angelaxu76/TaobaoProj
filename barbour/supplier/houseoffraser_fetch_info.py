@@ -3,7 +3,7 @@
 """
 House of Fraser | Barbour
 - 抓取逻辑保持不变（parse_product_page → Offer List）
-- pipeline 方法名保持不变：process_link(url), fetch_all()
+- pipeline 方法名保持不变：process_link(url), houseoffraser_fetch_all()
 - 统一用 txt_writer.format_txt 写出“同一模板”的 TXT
 - 本站无商品编码 => Product Code 固定写 "No Data"
 - 尺码：由 Offer List 生成 Product Size / Product Size Detail（不写 SizeMap）
@@ -56,16 +56,16 @@ def parse_product_page(html: str, url: str):
     title = (soup.title.text or "").strip() if soup.title else ""
     product_name = title.split("|")[1].strip() if "|" in title else title
 
-    # 价格
+    # 价格（有时为空，后面会用 Offer List 兜底）
     price_tag = soup.find("span", id="lblSellingPrice")
-    price = price_tag.text.replace("\xa3", "").strip() if price_tag else "0.00"
+    page_price = price_tag.text.replace("\xa3", "").strip() if price_tag else ""
 
     # 颜色
     color_tag = soup.find("span", id="colourName")
     raw_color = color_tag.text.strip() if color_tag else "No Color"
     color = clean_color(raw_color)
 
-    # 尺码列表
+    # 尺码 → Offer List
     offer_list = []
     size_select = soup.find("select", id="sizeDdl")
     if size_select:
@@ -77,7 +77,7 @@ def parse_product_page(html: str, url: str):
             stock_status = "有货" if stock_qty and stock_qty != "0" else "无货"
             cleaned_size = clean_size(size)
             # 仍保持你原来的 Offer List 字符串格式
-            offer_list.append(f"{cleaned_size}|{price}|{stock_status}|True")
+            offer_list.append(f"{cleaned_size}|{page_price}|{stock_status}|True")
 
     return {
         "Product Name": product_name,
@@ -85,7 +85,8 @@ def parse_product_page(html: str, url: str):
         "Site Name": SITE_NAME,
         "Product URL": url,
         "Offer List": offer_list,
-        "Updated At": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        "Page Price": page_price,  # 🔹保留原始页面价格（可能为空）
+        "Updated At": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
 
@@ -189,6 +190,34 @@ def offers_to_size_lines(offer_list: list[str], gender: str) -> tuple[str, str]:
     return ps, psd
 
 
+# ---------------- 价格回填（本模块内完成，writer/parser 不参与） ----------------
+
+def price_from_offer_list(offer_list: list[str]) -> str | None:
+    """
+    从 Offer List 中回填价格：优先选“有货”的第一条价格；若都无货，取第一条可解析价格。
+    Offer List 行形如 'size|price|stock|True'
+    """
+    candidate = None
+    for row in offer_list or []:
+        parts = [p.strip() for p in row.split("|")]
+        if len(parts) < 2:
+            continue
+        size, price, *rest = parts
+        price = price.replace("£", "").strip()
+        # 跳过空价或非数字
+        try:
+            val = float(price)
+        except Exception:
+            continue
+        # 有货优先
+        stock = (rest[0] if rest else "")
+        if stock == "有货":
+            return f"{val:.2f}"
+        if candidate is None:
+            candidate = f"{val:.2f}"
+    return candidate
+
+
 # ---------------- 写入 TXT（统一模板） ----------------
 
 def process_link(url):
@@ -205,16 +234,21 @@ def process_link(url):
         gender = _infer_gender_from_name(parsed.get("Product Name", ""))
         ps, psd = offers_to_size_lines(parsed.get("Offer List", []), gender)
 
+        # ✅ 价格回填（有货优先）
+        price_val = parsed.get("Page Price") or ""
+        if not price_val:
+            price_val = price_from_offer_list(parsed.get("Offer List", [])) or ""
+
         info = {
             "Product Code": "No Data",                # 本站无编码 → 固定 No Data
             "Product Name": parsed.get("Product Name", "No Data"),
             "Product Description": "No Data",
             "Product Gender": gender,
             "Product Color": parsed.get("Product Color", "No Data"),
-            "Product Price": None,
+            "Product Price": price_val or None,       # 🔹回填到 Product Price
             "Adjusted Price": None,
             "Product Material": "No Data",
-            "Style Category": "",                     # 交给 txt_writer 推断
+            "Style Category": "",                     # 交给 txt_writer 推断（若你那边有推断）
             "Feature": "No Data",
             "Product Size": ps,                       # 两行尺码（不写 SizeMap）
             "Product Size Detail": psd,
@@ -229,7 +263,7 @@ def process_link(url):
         filename = f"{safe_name}_{safe_color}.txt"
         txt_path = TXT_DIR / filename
 
-        # ✅ 统一模板写入
+        # ✅ 统一模板写入（writer 只做 I/O，保持品牌无关）
         format_txt(info, txt_path, brand="Barbour")
         print(f"✅ 已写入: {txt_path.name}")
 
@@ -239,7 +273,7 @@ def process_link(url):
         driver.quit()
 
 
-def houseoffraser_fetch_all():
+def houseoffraser_fetch_info():
     links = [u.strip() for u in LINKS_FILE.read_text(encoding="utf-8").splitlines() if u.strip()]
     print(f"🚀 共需抓取 {len(links)} 个商品链接\n")
 
@@ -250,4 +284,4 @@ def houseoffraser_fetch_all():
 
 
 if __name__ == "__main__":
-    houseoffraser_fetch_all()
+    houseoffraser_fetch_info()

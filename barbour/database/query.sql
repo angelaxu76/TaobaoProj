@@ -1,14 +1,15 @@
 
 
 
-select * from barbour_products where style_name ILIKE '%beadnell%' and color ILIKE '%sage%'
+select * from barbour_products where style_name ILIKE '%beadnell%' and color ILIKE '%sage%';
 
-select distinct color_code,style_name,color from barbour_products where style_name ILIKE '%beadnell%' and color_code ILIKE '%LQU0471%'
+select distinct color_code,style_name,color
+from barbour_products where style_name ILIKE '%beadnell%' and color_code ILIKE '%LQU0471%';
 
 
-select distinct color_code,style_name,color from barbour_products where color_code ILIKE '%LWX0667NY91%'
+select distinct color_code,style_name,color from barbour_products where color_code ILIKE '%LWX0667NY91%';
 
-select * from ecco_inventory where product_code ='13090301007' and stock_name = '五小剑'
+select * from ecco_inventory where product_code ='13090301007' and stock_name = '五小剑';
 
 
 SELECT COUNT(*) AS need_update_count
@@ -26,13 +27,13 @@ FROM ecco_inventory
 WHERE stock_name = '五小剑'
   AND skuid IS NOT NULL;
 
-select COUNT(*) from offers where site_name = 'Barbour'
+select COUNT(*) from offers where site_name = 'Barbour';
 
-select COUNT(*) from barbour_products
+select COUNT(*) from barbour_products;
 
-select * from offers where site_name = 'Barbour'
+select * from offers where site_name = 'Barbour';
 
-select * from barbour_products where color_code ILIKE '%LQU1776%'
+select * from barbour_products where color_code ILIKE '%LQU1776%';
 
 
 select * from barbour_products;
@@ -144,10 +145,22 @@ ORDER BY site_count DESC, q.color_code;
 
 
 
-select * from barbour_inventory
+select distinct product_code from barbour_inventory
 
-select count(*) from offers
+select count(*) from offers;
 
-select * from camper_inventory
+select * from camper_inventory;
 
-select count(*) from barbour_products
+select count(*) from barbour_products;
+
+select * from barbour_inventory where product_code = 'MCA1051NY71';
+;
+select * from barbour_products where color_code = 'MCA1051NY71';
+
+select * from offers where color_code = 'MCA1051NY71';
+
+
+SELECT site_name, size, stock_status, can_order
+FROM offers
+WHERE color_code = 'MCA1051NY71'
+ORDER BY site_name, size;

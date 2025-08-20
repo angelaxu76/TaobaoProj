@@ -14,6 +14,10 @@ Outdoor & Country | Barbour 商品抓取（统一 TXT 模板版）
    - 不写 SizeMap
    - 过滤 52 及更大的男装数字尺码
 4) 类目兜底：遇到 wax + jacket 或 code 前缀 MWX/LWX 时，强制 "waxed jacket"
+5) ✅ 新增（仅在本模块内完成的业务处理，不侵入 writer/parser）：
+   - 从 Offers 回填 Product Price（有货优先）
+   - 对 Product Size / Product Size Detail 的尺码做清洗
+   - 若无 Product Size Detail，按 Size 兜底生成（有货=1/无货=0，EAN 占位）
 """
 
 import time
@@ -31,6 +35,9 @@ from barbour.supplier.outdoorandcountry_parse_offer_info import parse_offer_info
 
 # ✅ 统一 TXT 写入（与其它站点一致）
 from common_taobao.txt_writer import format_txt
+
+# ✅ 尺码清洗（保守：识别不了就原样返回）
+from common_taobao.size_utils import clean_size_for_barbour  # 见你上传的实现
 
 # ========== 浏览器与 Cookie ==========
 def accept_cookies(driver, timeout=8):
@@ -197,6 +204,74 @@ def _build_sizes_from_offers(offers, gender: str):
     product_size_detail = ";".join(f"{k}:{1 if bucket[k]=='有货' else 0}:0000000000000" for k in ordered)
     return product_size, product_size_detail
 
+# ========= 新增：仅在本模块内做的 Outdoor 专属业务处理 =========
+def _inject_price_from_offers(info: dict) -> None:
+    """Outdoor 页无显式价格时，从 Offers 回填（有货优先，其次第一条）"""
+    if info.get("Product Price"):
+        return
+    offers = info.get("Offers") or []
+    price_val = None
+    for size, price, stock_text, can_order in offers:
+        if price:
+            if can_order:              # 有货价优先
+                price_val = price
+                break
+            if price_val is None:      # 否则先记第一条
+                price_val = price
+    if price_val:
+        info["Product Price"] = str(price_val)
+
+def _clean_sizes(info: dict) -> None:
+    """对两行尺码做一次清洗；不识别则保持原样"""
+    # Product Size: "S:有货;M:无货..."
+    if info.get("Product Size"):
+        cleaned = []
+        for token in str(info["Product Size"]).split(";"):
+            token = token.strip()
+            if not token:
+                continue
+            try:
+                size, status = token.split(":")
+                size = clean_size_for_barbour(size)
+                cleaned.append(f"{size}:{status}")
+            except ValueError:
+                cleaned.append(token)
+        info["Product Size"] = ";".join(cleaned)
+
+    # Product Size Detail: "S:1:EAN;M:0:EAN..."
+    if info.get("Product Size Detail"):
+        cleaned = []
+        for token in str(info["Product Size Detail"]).split(";"):
+            token = token.strip()
+            if not token:
+                continue
+            parts = token.split(":")
+            if len(parts) == 3:
+                size, stock, ean = parts
+                size = clean_size_for_barbour(size)
+                cleaned.append(f"{size}:{stock}:{ean}")
+            else:
+                cleaned.append(token)
+        info["Product Size Detail"] = ";".join(cleaned)
+
+def _ensure_detail_from_size(info: dict) -> None:
+    """若无 Detail，用 Size 兜底生成（有货=1，无货=0，EAN 占位）"""
+    if info.get("Product Size") and not info.get("Product Size Detail"):
+        detail = []
+        for token in str(info["Product Size"]).split(";"):
+            token = token.strip()
+            if not token:
+                continue
+            try:
+                size, status = token.split(":")
+                size = clean_size_for_barbour(size)
+                stock = 1 if status.strip() == "有货" else 0
+                detail.append(f"{size}:{stock}:0000000000000")
+            except ValueError:
+                continue
+        if detail:
+            info["Product Size Detail"] = ";".join(detail)
+
 # ========== 主流程 ==========
 def process_url(url, output_dir):
     options = uc.ChromeOptions()
@@ -224,21 +299,6 @@ def process_url(url, output_dir):
         info.setdefault("Site Name", "Outdoor and Country")
         info["Source URL"] = url  # 与其他站点保持一致的字段名
 
-        # ✅ 兜底生成 Product Size Detail（若还没生成）
-        if info.get("Product Size") and not info.get("Product Size Detail"):
-            # 把 34:有货;36:无货… 转为 34:1:000...;36:0:000...
-            kv = [t.strip() for t in info["Product Size"].split(";") if t.strip()]
-            detail = []
-            for token in kv:
-                try:
-                    size, status = token.split(":")
-                    detail.append(f"{size}:{1 if status == '有货' else 0}:0000000000000")
-                except ValueError:
-                    continue
-            info["Product Size Detail"] = ";".join(detail)
-
-
-
         # 3) Product Code / Product Color Code（你的策略：组合码即可）
         color_code = info.get("Product Color Code") or _extract_color_code_from_jsonld(html)
         if color_code:
@@ -254,7 +314,6 @@ def process_url(url, output_dir):
         ps, psd = _build_sizes_from_offers(offers, info["Product Gender"])
         info["Product Size"] = ps
         info["Product Size Detail"] = psd
-        # 不写 SizeMap：按你的要求，直接略过
 
         # 6) 类目（本地兜底，防止 category_utils 旧版误判）
         if not info.get("Style Category"):
@@ -263,6 +322,11 @@ def process_url(url, output_dir):
                 info.get("Product Description",""),
                 info.get("Product Code","") or ""
             )
+
+        # ========= ✅ Outdoor 专属增强：写盘前一次性处理 =========
+        _inject_price_from_offers(info)   # Outdoor 无价 → 从 offers 补
+        _clean_sizes(info)                 # 尺码清洗（两行）
+        _ensure_detail_from_size(info)     # 没 Detail 就从 Size 兜底
 
         # 7) 文件名策略
         if color_code:
@@ -283,7 +347,7 @@ def process_url(url, output_dir):
     finally:
         driver.quit()
 
-def fetch_outdoor_product_offers_concurrent(max_workers=3):
+def outdoorandcountry_fetch_info(max_workers=3):
     links_file = BARBOUR["LINKS_FILES"]["outdoorandcountry"]
     output_dir = BARBOUR["TXT_DIRS"]["outdoorandcountry"]
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -303,4 +367,4 @@ def fetch_outdoor_product_offers_concurrent(max_workers=3):
             pass
 
 if __name__ == "__main__":
-    fetch_outdoor_product_offers_concurrent(max_workers=3)
+    outdoorandcountry_fetch_info(max_workers=3)
