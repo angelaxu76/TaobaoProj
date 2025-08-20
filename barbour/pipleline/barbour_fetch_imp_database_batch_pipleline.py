@@ -58,20 +58,20 @@ def run_with_timeout(step_name, fn, timeout_sec, *args, **kwargs):
 # ========= 安全版 Pipeline（不改你的函数签名/内部逻辑）=========
 def barbour_database_import_pipleline_safe():
     print("\n🌐 步骤 1：抓取商品链接（每站点单独超时）")
-    run_with_timeout("barbour_get_links", barbour_get_links, 180)
-    run_with_timeout("outdoorandcountry_get_links", outdoorandcountry_fetch_and_save_links, 300)
-    run_with_timeout("allweathers_get_links", allweathers_get_links, 300)
-    run_with_timeout("houseoffraser_get_links", houseoffraser_get_links, 300)
+    #run_with_timeout("barbour_get_links", barbour_get_links, 180)
+    #run_with_timeout("outdoorandcountry_get_links", outdoorandcountry_fetch_and_save_links, 300)
+    #run_with_timeout("allweathers_get_links", allweathers_get_links, 300)
+    #run_with_timeout("houseoffraser_get_links", houseoffraser_get_links, 300)
 
     print("\n🧰 步骤 2：抓取商品详情并写 TXT（每站点设总时长上限）")
     # Barbour 官网
-    run_with_timeout("barbour_fetch_and_write_txt", barbour_fetch_info, 3600)
+    run_with_timeout("barbour_fetch_info", barbour_fetch_info, 3600)
     # Outdoor & Country（内部自己多线程），给一个总超时
     run_with_timeout("outdoorandcountry_fetch_info", outdoorandcountry_fetch_info, 3600, max_workers=15)
     # Allweathers
     run_with_timeout("allweathers_fetch_info", allweathers_fetch_info, 3000, 7)  # 7 = max_workers
     # House of Fraser
-    run_with_timeout("houseoffraser_fetch_all", houseoffraser_fetch_info, 3000)
+    run_with_timeout("houseoffraser_fetch_info", houseoffraser_fetch_info, 3000)
 
     print("\n📥 步骤 3：导入 barbour_products（按供应商分开导，避免一个出问题影响其它）")
     # 你也可以先来一次全量（如果目录很大，这步可能更慢）
