@@ -211,7 +211,7 @@ def extract_product_info_from_html(html: str, url: str) -> dict:
     return info
 
 # ---------- 主流程（保持函数名） ----------
-def fetch_and_write_txt():
+def barbour_fetch_info():
     links_file = BARBOUR["LINKS_FILE"]
     txt_output_dir = Path(BARBOUR["TXT_DIR"])
     txt_output_dir.mkdir(parents=True, exist_ok=True)
@@ -239,4 +239,4 @@ def fetch_and_write_txt():
             print(f"❌ [{idx}/{len(urls)}] 失败：{url}，错误：{e}")
 
 if __name__ == "__main__":
-    fetch_and_write_txt()
+    barbour_fetch_info()

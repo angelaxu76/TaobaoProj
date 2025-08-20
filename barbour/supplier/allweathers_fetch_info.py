@@ -397,7 +397,7 @@ def fetch_one_product(url: str, idx: int, total: int):
         return (url, f"❌ 失败: {e}")
 
 
-def fetch_allweathers_products(max_workers: int = MAX_WORKERS):
+def allweathers_fetch_info(max_workers: int = MAX_WORKERS):
     print(f"🚀 启动 Allweathers 多线程商品详情抓取（线程数: {max_workers}）")
     links = LINK_FILE.read_text(encoding="utf-8").splitlines()
     links = [u.strip() for u in links if u.strip()]
@@ -416,4 +416,4 @@ def fetch_allweathers_products(max_workers: int = MAX_WORKERS):
 
 
 if __name__ == "__main__":
-    fetch_allweathers_products()
+    allweathers_fetch_info()

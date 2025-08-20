@@ -1,4 +1,4 @@
-from barbour.supplier.allweathers_fetch_info import fetch_allweathers_products
+from barbour.supplier.allweathers_fetch_info import allweathers_fetch_info
 from barbour.supplier.allweathers_get_links import allweathers_get_links
 from barbour.common.import_supplier_to_db_offers import import_txt_for_supplier
 
@@ -11,7 +11,7 @@ def pipeline_houseoffraser():
 
     # 步骤 2：抓取商品详情并生成 TXT
     print("\n📦 步骤 2：抓取商品详情并生成 TXT")
-    fetch_allweathers_products(7)
+    allweathers_fetch_info(7)
 
     # Step 3: TODO 将txt中数据导入barbour product中
     # batch_import_txt_to_barbour_product("allweathers")

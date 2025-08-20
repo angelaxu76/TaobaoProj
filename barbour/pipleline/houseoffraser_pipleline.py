@@ -1,5 +1,5 @@
 from barbour.supplier.houseoffraser_get_links import houseoffraser_get_links
-from barbour.supplier.houseoffraser_fetch_info import houseoffraser_fetch_all
+from barbour.supplier.houseoffraser_fetch_info import houseoffraser_fetch_info
 from barbour.common.import_supplier_to_db_offers import import_txt_for_supplier
 
 def pipeline_houseoffraser():
@@ -11,7 +11,7 @@ def pipeline_houseoffraser():
 
     # 步骤 2：抓取商品详情并生成 TXT
     print("\n📦 步骤 2：抓取商品详情并生成 TXT")
-    houseoffraser_fetch_all()
+    houseoffraser_fetch_info()
 
     # 步骤 3：将 TXT 数据导入 offers 表
     print("\n🗃️ 步骤 3：导入数据库 offers 表")

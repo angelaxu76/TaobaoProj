@@ -5,13 +5,13 @@ import traceback
 from barbour.common.import_supplier_to_db_offers import import_txt_for_supplier
 from barbour.common.barbour_import_to_barbour_products import batch_import_txt_to_barbour_product
 from barbour.supplier.barbour_get_links import barbour_get_links
-from barbour.supplier.barbour_fetch_info import fetch_and_write_txt
+from barbour.supplier.barbour_fetch_info import barbour_fetch_info
 from barbour.supplier.outdoorandcountry_get_links import outdoorandcountry_fetch_and_save_links
-from barbour.supplier.outdoorandcountry_fetch_info import fetch_outdoor_product_offers_concurrent
-from barbour.supplier.allweathers_fetch_info import fetch_allweathers_products
+from barbour.supplier.outdoorandcountry_fetch_info import outdoorandcountry_fetch_info
+from barbour.supplier.allweathers_fetch_info import allweathers_fetch_info
 from barbour.supplier.allweathers_get_links import allweathers_get_links
 from barbour.supplier.houseoffraser_get_links import houseoffraser_get_links
-from barbour.supplier.houseoffraser_fetch_info import houseoffraser_fetch_all
+from barbour.supplier.houseoffraser_fetch_info import houseoffraser_fetch_info
 
 
 # ========= 通用：进程级超时执行器 =========
@@ -65,13 +65,13 @@ def barbour_database_import_pipleline_safe():
 
     print("\n🧰 步骤 2：抓取商品详情并写 TXT（每站点设总时长上限）")
     # Barbour 官网
-    run_with_timeout("barbour_fetch_and_write_txt", fetch_and_write_txt, 3600)
+    run_with_timeout("barbour_fetch_and_write_txt", barbour_fetch_info, 3600)
     # Outdoor & Country（内部自己多线程），给一个总超时
-    run_with_timeout("outdoorandcountry_fetch_info", fetch_outdoor_product_offers_concurrent, 3600, max_workers=15)
+    run_with_timeout("outdoorandcountry_fetch_info", outdoorandcountry_fetch_info, 3600, max_workers=15)
     # Allweathers
-    run_with_timeout("allweathers_fetch_info", fetch_allweathers_products, 3000, 7)  # 7 = max_workers
+    run_with_timeout("allweathers_fetch_info", allweathers_fetch_info, 3000, 7)  # 7 = max_workers
     # House of Fraser
-    run_with_timeout("houseoffraser_fetch_all", houseoffraser_fetch_all, 3000)
+    run_with_timeout("houseoffraser_fetch_all", houseoffraser_fetch_info, 3000)
 
     print("\n📥 步骤 3：导入 barbour_products（按供应商分开导，避免一个出问题影响其它）")
     # 你也可以先来一次全量（如果目录很大，这步可能更慢）

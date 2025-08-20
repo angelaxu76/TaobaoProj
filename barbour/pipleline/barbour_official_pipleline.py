@@ -1,5 +1,5 @@
 from barbour.supplier.barbour_get_links import barbour_get_links
-from barbour.supplier.barbour_fetch_info import fetch_and_write_txt
+from barbour.supplier.barbour_fetch_info import barbour_fetch_info
 from barbour.common.import_supplier_to_db_offers import import_txt_for_supplier
 
 def pipeline_barbour():
@@ -11,7 +11,7 @@ def pipeline_barbour():
 
     # 步骤 2：抓取商品详情并生成 TXT
     print("\n📦 步骤 2：抓取商品详情并生成 TXT")
-    fetch_and_write_txt()
+    barbour_fetch_info()
 
     # Step 3: TODO 将txt中数据导入barbour product中
     #batch_import_txt_to_barbour_product("barbour")

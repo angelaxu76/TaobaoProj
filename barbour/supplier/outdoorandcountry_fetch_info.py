@@ -347,7 +347,7 @@ def process_url(url, output_dir):
     finally:
         driver.quit()
 
-def fetch_outdoor_product_offers_concurrent(max_workers=3):
+def outdoorandcountry_fetch_info(max_workers=3):
     links_file = BARBOUR["LINKS_FILES"]["outdoorandcountry"]
     output_dir = BARBOUR["TXT_DIRS"]["outdoorandcountry"]
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -367,4 +367,4 @@ def fetch_outdoor_product_offers_concurrent(max_workers=3):
             pass
 
 if __name__ == "__main__":
-    fetch_outdoor_product_offers_concurrent(max_workers=3)
+    outdoorandcountry_fetch_info(max_workers=3)
