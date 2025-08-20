@@ -6,11 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="7ad83b3f-8c84-4560-8d4c-2361cece7f17" name="更改" comment="增加第三方barbour爬取">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/barbour/pipleline/allweathers_pipleline.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/pipleline/allweathers_pipleline.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/barbour/pipleline/barbour_official_pipleline.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/pipleline/barbour_official_pipleline.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/barbour/pipleline/outdoorandcountry_pipeline.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/pipleline/outdoorandcountry_pipeline.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/barbour/pipleline/philipmorrisdirect_pipleline.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/pipleline/philipmorrisdirect_pipleline.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/barbour/query.sql" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/query.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/pipleline/barbour_database_import_pipleline_cmd.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/pipleline/barbour_database_import_pipleline_cmd.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/supplier/houseoffraser_fetch_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/supplier/houseoffraser_fetch_info.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -55,162 +52,165 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Database Script.db_create_sql.sql.executor&quot;: &quot;Run&quot;,
-    &quot;Database Script.query.sql.executor&quot;: &quot;Run&quot;,
-    &quot;Python.CamperFilterGoodsExport.executor&quot;: &quot;Run&quot;,
-    &quot;Python.ECCOImageRename.executor&quot;: &quot;Run&quot;,
-    &quot;Python.FetchEccoDetailAndImage.executor&quot;: &quot;Run&quot;,
-    &quot;Python.FetchEccoDetailAndImage_fixed.executor&quot;: &quot;Run&quot;,
-    &quot;Python.FetchImangeAndInfo.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Find_unbound_unregistered_products.executor&quot;: &quot;Run&quot;,
-    &quot;Python.GetAllLink.executor&quot;: &quot;Run&quot;,
-    &quot;Python.GetEccoProductLinks.executor&quot;: &quot;Run&quot;,
-    &quot;Python.GetOutletProductURL.executor&quot;: &quot;Run&quot;,
-    &quot;Python.GetProductLink.executor&quot;: &quot;Run&quot;,
-    &quot;Python.GetProductURLs.executor&quot;: &quot;Run&quot;,
-    &quot;Python.GroupImage.executor&quot;: &quot;Run&quot;,
-    &quot;Python.HTMLToPGNBatchMutipleThread.executor&quot;: &quot;Run&quot;,
-    &quot;Python.HtmlToPGNBatch.executor&quot;: &quot;Run&quot;,
-    &quot;Python.ImageMaxCutter.executor&quot;: &quot;Run&quot;,
-    &quot;Python.MaxCutter.executor&quot;: &quot;Run&quot;,
-    &quot;Python.MergeImages.executor&quot;: &quot;Run&quot;,
-    &quot;Python.TestClarks.executor&quot;: &quot;Run&quot;,
-    &quot;Python.allweathers_fetch_info.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.allweathers_get_links.executor&quot;: &quot;Run&quot;,
-    &quot;Python.allweathers_pipleline.executor&quot;: &quot;Run&quot;,
-    &quot;Python.barbour_database_import_pipleline.executor&quot;: &quot;Run&quot;,
-    &quot;Python.barbour_download_images_only.executor&quot;: &quot;Run&quot;,
-    &quot;Python.barbour_pipeline_runner.executor&quot;: &quot;Run&quot;,
-    &quot;Python.barbour_pipleline.executor&quot;: &quot;Run&quot;,
-    &quot;Python.barbour_publication_pipleline.executor&quot;: &quot;Run&quot;,
-    &quot;Python.barbour_unified_link_collector.executor&quot;: &quot;Run&quot;,
-    &quot;Python.birkenstock_gender_updater.executor&quot;: &quot;Run&quot;,
-    &quot;Python.birkenstock_image_pipeline_runner.executor&quot;: &quot;Run&quot;,
-    &quot;Python.birkenstock_link_collector.executor&quot;: &quot;Run&quot;,
-    &quot;Python.birkenstock_pipeline_runner.executor&quot;: &quot;Run&quot;,
-    &quot;Python.brand_data_aggregator.executor&quot;: &quot;Run&quot;,
-    &quot;Python.cainiao_generate_excel_binding_goods_jingya.executor&quot;: &quot;Run&quot;,
-    &quot;Python.cainiao_generate_update_goods_excel.executor&quot;: &quot;Run&quot;,
-    &quot;Python.camperChannelId.executor&quot;: &quot;Run&quot;,
-    &quot;Python.camperGlobal_pipeline_runner.executor&quot;: &quot;Run&quot;,
-    &quot;Python.camper_image_pipeline_runner.executor&quot;: &quot;Run&quot;,
-    &quot;Python.camper_pipeline_runner.executor&quot;: &quot;Run&quot;,
-    &quot;Python.camper_pipeline_updateStock.executor&quot;: &quot;Run&quot;,
-    &quot;Python.camper_tool_pipeline_runner.executor&quot;: &quot;Run&quot;,
-    &quot;Python.changeImageSize.executor&quot;: &quot;Run&quot;,
-    &quot;Python.clarks_image_pipeline_runner.executor&quot;: &quot;Run&quot;,
-    &quot;Python.clarks_jingya_pipeline_runner.executor&quot;: &quot;Run&quot;,
-    &quot;Python.clarks_pipeline_runner.executor&quot;: &quot;Run&quot;,
-    &quot;Python.clarks_pipepline_size_newproduct.executor&quot;: &quot;Run&quot;,
-    &quot;Python.clean_brands.executor&quot;: &quot;Run&quot;,
-    &quot;Python.compose_with_background.executor&quot;: &quot;Run&quot;,
-    &quot;Python.compose_with_background_batch.executor&quot;: &quot;Run&quot;,
-    &quot;Python.config.executor&quot;: &quot;Run&quot;,
-    &quot;Python.convert_xls_to_xlsx.executor&quot;: &quot;Run&quot;,
-    &quot;Python.crop_gray_to_square.executor&quot;: &quot;Run&quot;,
-    &quot;Python.cutterAllsiderSpace.executor&quot;: &quot;Run&quot;,
-    &quot;Python.download_images_only.executor&quot;: &quot;Run&quot;,
-    &quot;Python.download_product_images.executor&quot;: &quot;Run&quot;,
-    &quot;Python.ecco_image_pipeline_runner.executor&quot;: &quot;Run&quot;,
-    &quot;Python.ecco_pipeline_runner.executor&quot;: &quot;Run&quot;,
-    &quot;Python.excel_splitor.executor&quot;: &quot;Run&quot;,
-    &quot;Python.expand_to_square.executor&quot;: &quot;Run&quot;,
-    &quot;Python.export_excel_from_jingya_copy.executor&quot;: &quot;Run&quot;,
-    &quot;Python.export_gender_split_excel.executor&quot;: &quot;Run&quot;,
-    &quot;Python.export_skuid_stock.executor&quot;: &quot;Run&quot;,
-    &quot;Python.export_store_discount_price.executor&quot;: &quot;Run&quot;,
-    &quot;Python.export_store_skuid_stock.executor&quot;: &quot;Run&quot;,
-    &quot;Python.extract_product_codes_and_unappointProd_from_excel.executor&quot;: &quot;Run&quot;,
-    &quot;Python.fetch_barbour_product_info.executor&quot;: &quot;Run&quot;,
-    &quot;Python.fetch_missing_images.executor&quot;: &quot;Run&quot;,
-    &quot;Python.fetch_product_info.executor&quot;: &quot;Run&quot;,
-    &quot;Python.find_duplicate_codes_in_store.executor&quot;: &quot;Run&quot;,
-    &quot;Python.find_taobaoID_from_url.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.flip_images_horizontal.executor&quot;: &quot;Run&quot;,
-    &quot;Python.generate_Exce_For_Goods_Update.executor&quot;: &quot;Run&quot;,
-    &quot;Python.generate_barbour_prices_from_avg.executor&quot;: &quot;Run&quot;,
-    &quot;Python.generate_barbour_publication_excel.executor&quot;: &quot;Run&quot;,
-    &quot;Python.generate_barbour_taobao_title.executor&quot;: &quot;Run&quot;,
-    &quot;Python.generate_discount_price_excel.executor&quot;: &quot;Run&quot;,
-    &quot;Python.generate_html.executor&quot;: &quot;Run&quot;,
-    &quot;Python.generate_html_noImage.executor&quot;: &quot;Run&quot;,
-    &quot;Python.generate_product_excels.executor&quot;: &quot;Run&quot;,
-    &quot;Python.generate_publication_excel.executor&quot;: &quot;Run&quot;,
-    &quot;Python.generate_store_reports.executor&quot;: &quot;Run&quot;,
-    &quot;Python.generate_unbound_goods_excel.executor&quot;: &quot;Run&quot;,
-    &quot;Python.geox_DetailAndImages.executor&quot;: &quot;Run&quot;,
-    &quot;Python.geox_detailAndImage_MutipleThread.executor&quot;: &quot;Run&quot;,
-    &quot;Python.geox_getTxt_image_mutipleThread.executor&quot;: &quot;Run&quot;,
-    &quot;Python.geox_pipeline_runner.executor&quot;: &quot;Run&quot;,
-    &quot;Python.get_ecco_links.executor&quot;: &quot;Run&quot;,
-    &quot;Python.get_geox_links.executor&quot;: &quot;Run&quot;,
-    &quot;Python.get_outdoorandcountry_links.executor&quot;: &quot;Run&quot;,
-    &quot;Python.get_publishable_product_codes.executor&quot;: &quot;Run&quot;,
-    &quot;Python.houseoffraser_fetch_info.executor&quot;: &quot;Run&quot;,
-    &quot;Python.houseoffraser_get_links.executor&quot;: &quot;Run&quot;,
-    &quot;Python.houseoffraser_pipleline.executor&quot;: &quot;Run&quot;,
-    &quot;Python.imageNameFormat.executor&quot;: &quot;Run&quot;,
-    &quot;Python.image_defender.executor&quot;: &quot;Run&quot;,
-    &quot;Python.image_reduce_size.executor&quot;: &quot;Run&quot;,
-    &quot;Python.import_barbour_txt_to_products.executor&quot;: &quot;Run&quot;,
-    &quot;Python.import_channel_info_from_excel.executor&quot;: &quot;Run&quot;,
-    &quot;Python.import_clarks_txt_to_db.executor&quot;: &quot;Run&quot;,
-    &quot;Python.import_geox_txt_to_db.executor&quot;: &quot;Run&quot;,
-    &quot;Python.import_outdoor_txt_to_barbour_products.executor&quot;: &quot;Run&quot;,
-    &quot;Python.import_supplier_to_db_offers.executor&quot;: &quot;Run&quot;,
-    &quot;Python.import_txt_to_db.executor&quot;: &quot;Run&quot;,
-    &quot;Python.jinga_pipleline.executor&quot;: &quot;Run&quot;,
-    &quot;Python.jingya_pipeline_runner.executor&quot;: &quot;Run&quot;,
-    &quot;Python.move_image_model_flat.executor&quot;: &quot;Run&quot;,
-    &quot;Python.move_jacket_image.executor&quot;: &quot;Run&quot;,
-    &quot;Python.outdoorandcountry_pipeline.executor&quot;: &quot;Run&quot;,
-    &quot;Python.parse_offer_info.executor&quot;: &quot;Run&quot;,
-    &quot;Python.philipmorrisdirect_fetch_info.executor&quot;: &quot;Run&quot;,
-    &quot;Python.philipmorrisdirect_get_links.executor&quot;: &quot;Run&quot;,
-    &quot;Python.pipeline_suppliers.executor&quot;: &quot;Run&quot;,
-    &quot;Python.prepare_products_for_publication.executor&quot;: &quot;Run&quot;,
-    &quot;Python.prepare_products_for_publication_updated.executor&quot;: &quot;Run&quot;,
-    &quot;Python.prepare_utils_extended.executor&quot;: &quot;Run&quot;,
-    &quot;Python.price_utils.executor&quot;: &quot;Run&quot;,
-    &quot;Python.query_stock_by_productcode.executor&quot;: &quot;Run&quot;,
-    &quot;Python.resize_images.executor&quot;: &quot;Run&quot;,
-    &quot;Python.run_camper_pipeline.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.testPrice.executor&quot;: &quot;Run&quot;,
-    &quot;Python.testStore.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test_publishable_codes.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test_unpublished_valid_stock.executor&quot;: &quot;Run&quot;,
-    &quot;Python.unified_link_collector.executor&quot;: &quot;Run&quot;,
-    &quot;Python.检查GEI重复值.executor&quot;: &quot;Run&quot;,
-    &quot;Python.生意参谋商品分析.executor&quot;: &quot;Run&quot;,
-    &quot;Python.细节裁剪.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/Projects/TaobaoProj/brands/clarks_Jingya&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;run.code.analysis.last.selected.profile&quot;: &quot;aDefault&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Database Script.db_create_sql.sql.executor": "Run",
+    "Database Script.query.sql.executor": "Run",
+    "Python.CamperFilterGoodsExport.executor": "Run",
+    "Python.ECCOImageRename.executor": "Run",
+    "Python.FetchEccoDetailAndImage.executor": "Run",
+    "Python.FetchEccoDetailAndImage_fixed.executor": "Run",
+    "Python.FetchImangeAndInfo.executor": "Run",
+    "Python.Find_unbound_unregistered_products.executor": "Run",
+    "Python.GetAllLink.executor": "Run",
+    "Python.GetEccoProductLinks.executor": "Run",
+    "Python.GetOutletProductURL.executor": "Run",
+    "Python.GetProductLink.executor": "Run",
+    "Python.GetProductURLs.executor": "Run",
+    "Python.GroupImage.executor": "Run",
+    "Python.HTMLToPGNBatchMutipleThread.executor": "Run",
+    "Python.HtmlToPGNBatch.executor": "Run",
+    "Python.ImageMaxCutter.executor": "Run",
+    "Python.MaxCutter.executor": "Run",
+    "Python.MergeImages.executor": "Run",
+    "Python.TestClarks.executor": "Run",
+    "Python.allweathers_fetch_info.executor": "Debug",
+    "Python.allweathers_get_links.executor": "Run",
+    "Python.allweathers_pipleline.executor": "Run",
+    "Python.barbour_database_import_pipleline.executor": "Run",
+    "Python.barbour_database_import_pipleline_cmd.executor": "Run",
+    "Python.barbour_download_images_only.executor": "Run",
+    "Python.barbour_pipeline_runner.executor": "Run",
+    "Python.barbour_pipleline.executor": "Run",
+    "Python.barbour_publication_pipleline.executor": "Run",
+    "Python.barbour_unified_link_collector.executor": "Run",
+    "Python.birkenstock_gender_updater.executor": "Run",
+    "Python.birkenstock_image_pipeline_runner.executor": "Run",
+    "Python.birkenstock_link_collector.executor": "Run",
+    "Python.birkenstock_pipeline_runner.executor": "Run",
+    "Python.brand_data_aggregator.executor": "Run",
+    "Python.cainiao_generate_excel_binding_goods_jingya.executor": "Run",
+    "Python.cainiao_generate_update_goods_excel.executor": "Run",
+    "Python.camperChannelId.executor": "Run",
+    "Python.camperGlobal_pipeline_runner.executor": "Run",
+    "Python.camper_image_pipeline_runner.executor": "Run",
+    "Python.camper_pipeline_runner.executor": "Run",
+    "Python.camper_pipeline_updateStock.executor": "Run",
+    "Python.camper_tool_pipeline_runner.executor": "Run",
+    "Python.changeImageSize.executor": "Run",
+    "Python.clarks_image_pipeline_runner.executor": "Run",
+    "Python.clarks_jingya_pipeline_runner.executor": "Run",
+    "Python.clarks_pipeline_runner.executor": "Run",
+    "Python.clarks_pipepline_size_newproduct.executor": "Run",
+    "Python.clean_brands.executor": "Run",
+    "Python.compose_with_background.executor": "Run",
+    "Python.compose_with_background_batch.executor": "Run",
+    "Python.config.executor": "Run",
+    "Python.convert_xls_to_xlsx.executor": "Run",
+    "Python.crop_gray_to_square.executor": "Run",
+    "Python.cutterAllsiderSpace.executor": "Run",
+    "Python.download_images_only.executor": "Run",
+    "Python.download_product_images.executor": "Run",
+    "Python.ecco_image_pipeline_runner.executor": "Run",
+    "Python.ecco_pipeline_runner.executor": "Run",
+    "Python.excel_splitor.executor": "Run",
+    "Python.expand_to_square.executor": "Run",
+    "Python.export_excel_from_jingya_copy.executor": "Run",
+    "Python.export_gender_split_excel.executor": "Run",
+    "Python.export_skuid_stock.executor": "Run",
+    "Python.export_store_discount_price.executor": "Run",
+    "Python.export_store_skuid_stock.executor": "Run",
+    "Python.extract_product_codes_and_unappointProd_from_excel.executor": "Run",
+    "Python.fetch_barbour_product_info.executor": "Run",
+    "Python.fetch_missing_images.executor": "Run",
+    "Python.fetch_product_info.executor": "Run",
+    "Python.find_duplicate_codes_in_store.executor": "Run",
+    "Python.find_taobaoID_from_url.executor": "Debug",
+    "Python.flip_images_horizontal.executor": "Run",
+    "Python.generate_Exce_For_Goods_Update.executor": "Run",
+    "Python.generate_barbour_prices_from_avg.executor": "Run",
+    "Python.generate_barbour_publication_excel.executor": "Run",
+    "Python.generate_barbour_taobao_title.executor": "Run",
+    "Python.generate_discount_price_excel.executor": "Run",
+    "Python.generate_html.executor": "Run",
+    "Python.generate_html_noImage.executor": "Run",
+    "Python.generate_product_excels.executor": "Run",
+    "Python.generate_publication_excel.executor": "Run",
+    "Python.generate_store_reports.executor": "Run",
+    "Python.generate_unbound_goods_excel.executor": "Run",
+    "Python.geox_DetailAndImages.executor": "Run",
+    "Python.geox_detailAndImage_MutipleThread.executor": "Run",
+    "Python.geox_getTxt_image_mutipleThread.executor": "Run",
+    "Python.geox_pipeline_runner.executor": "Run",
+    "Python.get_ecco_links.executor": "Run",
+    "Python.get_geox_links.executor": "Run",
+    "Python.get_outdoorandcountry_links.executor": "Run",
+    "Python.get_publishable_product_codes.executor": "Run",
+    "Python.houseoffraser_fetch_info.executor": "Run",
+    "Python.houseoffraser_get_links.executor": "Run",
+    "Python.houseoffraser_pipleline.executor": "Run",
+    "Python.imageNameFormat.executor": "Run",
+    "Python.image_defender.executor": "Run",
+    "Python.image_reduce_size.executor": "Run",
+    "Python.import_barbour_txt_to_products.executor": "Run",
+    "Python.import_channel_info_from_excel.executor": "Run",
+    "Python.import_clarks_txt_to_db.executor": "Run",
+    "Python.import_geox_txt_to_db.executor": "Run",
+    "Python.import_outdoor_txt_to_barbour_products.executor": "Run",
+    "Python.import_supplier_to_db_offers.executor": "Run",
+    "Python.import_txt_to_db.executor": "Run",
+    "Python.jinga_pipleline.executor": "Run",
+    "Python.jingya_pipeline_runner.executor": "Run",
+    "Python.move_image_model_flat.executor": "Run",
+    "Python.move_jacket_image.executor": "Run",
+    "Python.outdoorandcountry_pipeline.executor": "Run",
+    "Python.parse_offer_info.executor": "Run",
+    "Python.philipmorrisdirect_fetch_info.executor": "Run",
+    "Python.philipmorrisdirect_get_links.executor": "Run",
+    "Python.pipeline_suppliers.executor": "Run",
+    "Python.prepare_products_for_publication.executor": "Run",
+    "Python.prepare_products_for_publication_updated.executor": "Run",
+    "Python.prepare_utils_extended.executor": "Run",
+    "Python.price_utils.executor": "Run",
+    "Python.query_stock_by_productcode.executor": "Run",
+    "Python.resize_images.executor": "Run",
+    "Python.run_camper_pipeline.executor": "Run",
+    "Python.test.executor": "Debug",
+    "Python.testPrice.executor": "Run",
+    "Python.testStore.executor": "Run",
+    "Python.test_publishable_codes.executor": "Run",
+    "Python.test_unpublished_valid_stock.executor": "Run",
+    "Python.unified_link_collector.executor": "Run",
+    "Python.检查GEI重复值.executor": "Run",
+    "Python.生意参谋商品分析.executor": "Run",
+    "Python.细节裁剪.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "database.data.extractors.current.export.id": "Comma-separated (CSV)_id",
+    "database.data.extractors.current.id": "Comma-separated (CSV)_id",
+    "git-widget-placeholder": "main",
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "D:/Projects/TaobaoProj/brands/clarks_Jingya",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "run.code.analysis.last.selected.profile": "aDefault",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "vue.rearranger.settings.migration": "true"
   },
-  &quot;keyToStringList&quot;: {
-    &quot;DatabaseDriversLRU&quot;: [
-      &quot;postgresql&quot;
+  "keyToStringList": {
+    "DatabaseDriversLRU": [
+      "postgresql"
     ],
-    &quot;RunConfigurationTargetLRU&quot;: [
-      &quot;dd567798-8b43-4191-a9b6-87a0bdcbf664&quot;,
-      &quot;443808b4-81d2-4728-a5bd-d3088bb1da27/database/\&quot;taobao_inventory_db\&quot;/schema/\&quot;public\&quot;&quot;
+    "RunConfigurationTargetLRU": [
+      "dd567798-8b43-4191-a9b6-87a0bdcbf664",
+      "443808b4-81d2-4728-a5bd-d3088bb1da27/database/\"taobao_inventory_db\"/schema/\"public\""
     ]
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\Projects\TaobaoProj\brands\clarks_Jingya" />
@@ -220,11 +220,11 @@
       <recent name="D:\Projects\TaobaoProj\brands\camper_global" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
-      <recent name="D:\Projects\TaobaoProj\barbour" />
-      <recent name="D:\Projects\TaobaoProj\brands\barbour\image" />
-      <recent name="D:\Projects\TaobaoProj\barbour\supplier" />
-      <recent name="D:\Projects\TaobaoProj\common_taobao\jingya" />
-      <recent name="D:\Projects\TaobaoProj\brands\camper_global" />
+      <recent name="D:\Projects\TaobaoProj\barbour\jingya" />
+      <recent name="D:\Projects\TaobaoProj\barbour\common" />
+      <recent name="D:\Projects\TaobaoProj\barbour\image" />
+      <recent name="D:\Projects\TaobaoProj\barbour\core" />
+      <recent name="D:\Projects\TaobaoProj\barbour\database" />
     </key>
   </component>
   <component name="SharedIndexes">
@@ -321,55 +321,7 @@
       <workItem from="1755594359155" duration="879000" />
       <workItem from="1755595274306" duration="4339000" />
       <workItem from="1755607838509" duration="20235000" />
-      <workItem from="1755684451376" duration="3919000" />
-    </task>
-    <task id="LOCAL-00095" summary="增加第三方barbour爬取">
-      <option name="closed" value="true" />
-      <created>1754557545376</created>
-      <option name="number" value="00095" />
-      <option name="presentableId" value="LOCAL-00095" />
-      <option name="project" value="LOCAL" />
-      <updated>1754557545376</updated>
-    </task>
-    <task id="LOCAL-00096" summary="增加第三方barbour爬取">
-      <option name="closed" value="true" />
-      <created>1754557599128</created>
-      <option name="number" value="00096" />
-      <option name="presentableId" value="LOCAL-00096" />
-      <option name="project" value="LOCAL" />
-      <updated>1754557599128</updated>
-    </task>
-    <task id="LOCAL-00097" summary="增加第三方barbour爬取">
-      <option name="closed" value="true" />
-      <created>1754558197356</created>
-      <option name="number" value="00097" />
-      <option name="presentableId" value="LOCAL-00097" />
-      <option name="project" value="LOCAL" />
-      <updated>1754558197356</updated>
-    </task>
-    <task id="LOCAL-00098" summary="增加第三方barbour爬取">
-      <option name="closed" value="true" />
-      <created>1754592121961</created>
-      <option name="number" value="00098" />
-      <option name="presentableId" value="LOCAL-00098" />
-      <option name="project" value="LOCAL" />
-      <updated>1754592121961</updated>
-    </task>
-    <task id="LOCAL-00099" summary="增加第三方barbour爬取">
-      <option name="closed" value="true" />
-      <created>1754598488836</created>
-      <option name="number" value="00099" />
-      <option name="presentableId" value="LOCAL-00099" />
-      <option name="project" value="LOCAL" />
-      <updated>1754598488836</updated>
-    </task>
-    <task id="LOCAL-00100" summary="增加第三方barbour爬取">
-      <option name="closed" value="true" />
-      <created>1754601916342</created>
-      <option name="number" value="00100" />
-      <option name="presentableId" value="LOCAL-00100" />
-      <option name="project" value="LOCAL" />
-      <updated>1754601916342</updated>
+      <workItem from="1755684451376" duration="22922000" />
     </task>
     <task id="LOCAL-00101" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
@@ -715,7 +667,55 @@
       <option name="project" value="LOCAL" />
       <updated>1755636221385</updated>
     </task>
-    <option name="localTasksCounter" value="144" />
+    <task id="LOCAL-00144" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755692060101</created>
+      <option name="number" value="00144" />
+      <option name="presentableId" value="LOCAL-00144" />
+      <option name="project" value="LOCAL" />
+      <updated>1755692060103</updated>
+    </task>
+    <task id="LOCAL-00145" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755692230626</created>
+      <option name="number" value="00145" />
+      <option name="presentableId" value="LOCAL-00145" />
+      <option name="project" value="LOCAL" />
+      <updated>1755692230626</updated>
+    </task>
+    <task id="LOCAL-00146" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755693646517</created>
+      <option name="number" value="00146" />
+      <option name="presentableId" value="LOCAL-00146" />
+      <option name="project" value="LOCAL" />
+      <updated>1755693646517</updated>
+    </task>
+    <task id="LOCAL-00147" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755704325776</created>
+      <option name="number" value="00147" />
+      <option name="presentableId" value="LOCAL-00147" />
+      <option name="project" value="LOCAL" />
+      <updated>1755704325776</updated>
+    </task>
+    <task id="LOCAL-00148" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755705153662</created>
+      <option name="number" value="00148" />
+      <option name="presentableId" value="LOCAL-00148" />
+      <option name="project" value="LOCAL" />
+      <updated>1755705153662</updated>
+    </task>
+    <task id="LOCAL-00149" summary="增加第三方barbour爬取">
+      <option name="closed" value="true" />
+      <created>1755714476016</created>
+      <option name="number" value="00149" />
+      <option name="presentableId" value="LOCAL-00149" />
+      <option name="project" value="LOCAL" />
+      <updated>1755714476016</updated>
+    </task>
+    <option name="localTasksCounter" value="150" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -761,19 +761,19 @@
           <option name="timeStamp" value="30" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/barbour/import_supplier_to_db_offers.py</url>
-          <line>142</line>
-          <option name="timeStamp" value="35" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/barbour/import_supplier_to_db_offers.py</url>
-          <line>44</line>
+          <url>file://$PROJECT_DIR$/barbour/common/import_supplier_to_db_offers.py</url>
+          <line>42</line>
           <option name="timeStamp" value="38" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/common_taobao/core/price_utils.py</url>
           <line>74</line>
           <option name="timeStamp" value="41" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/barbour/supplier/outdoorandcountry_fetch_info.py</url>
+          <line>181</line>
+          <option name="timeStamp" value="42" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
@@ -785,8 +785,8 @@
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/TaobaoProj$import_txt_to_db.coverage" NAME="import_txt_to_db Coverage Results" MODIFIED="1750415218153" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$pipeline_suppliers.coverage" NAME="pipeline_suppliers Coverage Results" MODIFIED="1754341779113" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour" />
     <SUITE FILE_PATH="coverage/TaobaoProj$ImageMaxCutter.coverage" NAME="ImageMaxCutter Coverage Results" MODIFIED="1750521423351" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/ecco/image" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$pipeline_suppliers.coverage" NAME="pipeline_suppliers Coverage Results" MODIFIED="1754341779113" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour" />
     <SUITE FILE_PATH="coverage/TaobaoProj$allweathers_get_links.coverage" NAME="allweathers_get_links Coverage Results" MODIFIED="1754411428848" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
     <SUITE FILE_PATH="coverage/TaobaoProj$barbour_pipeline_runner.coverage" NAME="barbour_pipeline_runner Coverage Results" MODIFIED="1753815628024" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/barbour" />
     <SUITE FILE_PATH="coverage/TaobaoProj$image_defender_with_flip.coverage" NAME="image_defender_with_flip Coverage Results" MODIFIED="1750811451516" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper/image" />
@@ -811,6 +811,7 @@
     <SUITE FILE_PATH="coverage/TaobaoProj$splite_image_by_size.coverage" NAME="splite_image_by_size Coverage Results" MODIFIED="1755017813499" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
     <SUITE FILE_PATH="coverage/TaobaoProj$testPrice.coverage" NAME="testPrice Coverage Results" MODIFIED="1755455912231" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
     <SUITE FILE_PATH="coverage/TaobaoProj$generate_html_noImage.coverage" NAME="generate_html_noImage Coverage Results" MODIFIED="1753812486220" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$barbour_database_import_pipleline_cmd.coverage" NAME="barbour_database_import_pipleline_cmd Coverage Results" MODIFIED="1755714665597" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/pipleline" />
     <SUITE FILE_PATH="coverage/TaobaoProj$resize_images.coverage" NAME="resize_images Coverage Results" MODIFIED="1755109567698" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
     <SUITE FILE_PATH="coverage/TaobaoProj$houseoffraser_pipleline.coverage" NAME="houseoffraser_pipleline Coverage Results" MODIFIED="1754427832266" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
     <SUITE FILE_PATH="coverage/TaobaoProj$get_geox_links.coverage" NAME="get_geox_links 覆盖结果" MODIFIED="1749763137976" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
