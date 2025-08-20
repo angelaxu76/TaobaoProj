@@ -22,9 +22,7 @@ def barbour_database_import_pipleline():
 
     # Step 1: TODO 将txt中数据导入barbour product中
     # barbour
-    # fetch_and_write_txt()
-    # batch_import_txt_to_barbour_product()
-    # fetch_outdoor_product_offers_concurrent(max_workers=15)
+    fetch_outdoor_product_offers_concurrent(max_workers=1)
     # fetch_allweathers_products(7)
     # houseoffraser_fetch_all()
 
@@ -44,7 +42,7 @@ def barbour_database_import_pipleline():
     # insert_jingyaid_to_db("barbour")
 
     # Step 4: TODO 将barbour product和offers中的价格库存和商品信息回填到barbour inventory表
-    backfill_barbour_inventory()
+    #backfill_barbour_inventory()
 
 if __name__ == "__main__":
     barbour_database_import_pipleline()
