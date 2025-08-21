@@ -170,3 +170,22 @@ SELECT site_name, size, stock_status, can_order
 FROM offers
 WHERE color_code = 'MCA1051NY71'
 ORDER BY site_name, size;
+
+select * from barbour_products where style_name ILIKE '%Piper%';
+
+select * from barbour_products where color_code ILIKE '%LSP0220%';
+
+select * from offers where color_code ILIKE '%LSP0220%';
+
+SELECT distinct color_code
+FROM barbour_products
+WHERE color_code LIKE ANY (ARRAY[
+  'LWX0003%', 'LWX1414%', 'LWX1411%', 'LWX1410%', 'LWX1404%', 'LWX1482%',
+  'LWX1412%', 'LWX1470%', 'LWX1402%', 'LWX1497%', 'LWX1483%', 'LWX0534%',
+  'LWX1493%', 'LWX1515%', 'LWX1495%', 'LWX1498%',
+  'LQU1815%', 'LQU1825%', 'LQU1821%', 'LQU1820%', 'LQU1813%', 'LQS0058%',
+  'LQU1836%', 'LQU1824%', 'LQU1833%', 'LQU1837%', 'LQU1844%', 'LQU1856%',
+  'LQU1839%', 'LQU1840%', 'LQU1852%', 'LQU1851%',
+  'LCA0358%', 'LCA0362%', 'LCA0365%', 'LCA0366%', 'LCA0367%', 'LCA0370%',
+  'LCA0353%', 'LCA0354%', 'LCA0355%', 'LCA0359%', 'LCA0360%', 'LCA0361%'
+]);

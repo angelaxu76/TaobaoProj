@@ -2,8 +2,8 @@ from PIL import Image
 import os
 
 # 输入输出目录
-input_dir = r"C:\Users\martin\Desktop\boots\scan"
-output_dir = r"C:\Users\martin\Desktop\boots\scan\compressed"
+input_dir = r"D:\TB\Products\barbour\repulibcation\imagesSQUARE"
+output_dir = r"D:\TB\Products\barbour\repulibcation\imagesDEST"
 os.makedirs(output_dir, exist_ok=True)
 
 # 压缩目标大小（每张 < 500KB，5张合计<2MB）
