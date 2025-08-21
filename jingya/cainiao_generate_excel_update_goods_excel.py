@@ -1,174 +1,154 @@
-import pandas as pd
 import os
 import re
+import pandas as pd
 import psycopg2
 from pathlib import Path
 from config import BRAND_CONFIG
+from common_taobao.size_utils import clean_size_for_barbour
 
 # ======================= ✅【参数配置区】=======================
-BRAND = "camper"  # 👈 品牌名（必须是 config.py 中 BRAND_CONFIG 的 key）
-GOODS_DIR = Path("D:/TB/taofenxiao/goods")  # 👈 Excel 文件所在目录（自动查找以“货品导出”开头的文件）
-GROUP_SIZE = 500  # 👈 每个输出 Excel 的最大记录数
-# ===============================================================
+BRAND = "barbour"                     # 这里默认做 Barbour 服装
+GOODS_DIR = Path("D:/TB/taofenxiao/goods")
+GROUP_SIZE = 500
+# =============================================================
 
-BRAND_MAP  = {
+BRAND_MAP = {
+    "barbour": "barbour巴伯尔",
     "clarks_jingya": "clarks其乐",
     "camper": "camper看步",
     "clarks": "clarks其乐",
     "ecco": "ecco爱步",
     "geox": "geox健乐士",
-    "barbour": "barbour巴伯尔"
 }
 
-STYLE_MAP = {
-    "boots": "靴",
-    "sandal": "凉鞋",
-    "loafers": "乐福鞋",
-    "slip-on": "便鞋",
-    "casual": "休闲鞋"
+# 服装类关键字 → 中文款式（简单映射，可随时补充）
+STYLE_MAP_CLOTHING = {
+    "wax": "蜡棉夹克", "jacket": "夹克", "jackets": "夹克",
+    "quilt": "菱格夹克", "gilet": "马甲", "vest": "马甲",
+    "coat": "大衣", "parka": "派克大衣", "anorak": "防风外套",
+    "shirt": "衬衫", "t-shirt": "T恤", "polo": "POLO衫",
+    "sweater": "毛衣", "knit": "针织衫", "jumper": "套头衫",
+    "hoodie": "连帽卫衣", "sweat": "卫衣", "cardigan": "开衫",
+    "trousers": "长裤", "jeans": "牛仔裤", "shorts": "短裤",
+    "skirt": "半身裙", "dress": "连衣裙",
+    "scarf": "围巾", "hat": "帽", "cap": "帽",
 }
 
-def build_product_name(brand: str, gender: str, style_en: str, product_code: str, size: str) -> str:
-    """
-    根据品牌、性别、鞋款英文、商品编码、尺码 生成中文商品名称
-    """
-    brand_label = BRAND_MAP.get(brand.lower(), brand)
-    gender_label = "男鞋" if "男" in (gender or "") else "女鞋"
-    style_zh = STYLE_MAP.get((style_en or "").lower(), "休闲鞋")
-    return f"{brand_label}{gender_label}{style_zh}{product_code}尺码{size}"
+def guess_style_zh(text: str) -> str:
+    t = (text or "").lower()
+    for k, v in STYLE_MAP_CLOTHING.items():
+        if k in t:
+            return v
+    return "外套"
+
+def normalize_gender(g: str, title: str = "") -> str:
+    """将 gender 标准化为：男装 / 女装 / ''"""
+    src = f"{g} {title}".lower()
+    # 英文优先识别
+    if any(x in src for x in ["men", "men's", "mens", "male"]): return "男装"
+    if any(x in src for x in ["women", "women's", "womens", "female"]): return "女装"
+    # 中文兜底
+    if "男" in g: return "男装"
+    if "女" in g: return "女装"
+    return ""  # 不确定则留空（需要的话可返回“中性/童装”）
 
 def is_all_zeros(s: str) -> bool:
     return bool(s) and all(ch == "0" for ch in s.strip())
 
 def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 500):
-    config = BRAND_CONFIG[brand]
-    table_name = config["TABLE_NAME"]
-    pg_config = config["PGSQL_CONFIG"]
+    cfg = BRAND_CONFIG[brand]
+    pg = cfg["PGSQL_CONFIG"]
 
-    # 自动查找“货品导出”开头的 Excel
-    excel_files = [f for f in os.listdir(goods_dir) if f.startswith("货品导出") and f.endswith(".xlsx")]
-    if not excel_files:
+    # 找最新一份“货品导出*.xlsx”
+    candidates = [f for f in os.listdir(goods_dir) if f.startswith("货品导出") and f.endswith(".xlsx")]
+    if not candidates:
         raise FileNotFoundError("❌ 未找到以 '货品导出' 开头的 Excel 文件")
-    excel_files.sort(reverse=True)
-    input_excel_path = goods_dir / excel_files[0]
+    candidates.sort(reverse=True)
+    infile = goods_dir / candidates[0]
 
-    # 查询数据库中基础信息（一次性查出，避免重复连接）
-    def fetch_product_info():
-        try:
-            conn = psycopg2.connect(**pg_config)
-            cur = conn.cursor()
-            cur.execute(f"""
-                SELECT product_code, size, gender, product_description, style_category, ean
-                FROM {table_name}
-            """)
-            result = cur.fetchall()
-            info_map = {}
-            for row in result:
-                code, size, gender, desc, style, ean = row
-                info_map[(code, size)] = {
-                    "gender": gender or "",
-                    "description": desc or "",
-                    "style": style or "",
-                    "ean": ean or ""
-                }
-            return info_map
-        except Exception as e:
-            print(f"❌ 数据库查询失败: {e}")
-            return {}
-        finally:
-            if 'conn' in locals():
-                conn.close()
+    # 读 barbour_products（一次性）
+    prod = {}
+    with psycopg2.connect(**pg) as conn, conn.cursor() as cur:
+        cur.execute("""
+            SELECT color_code, size, COALESCE(gender,''), COALESCE(title,''), COALESCE(category,'')
+            FROM barbour_products
+        """)
+        for code, sz, gender, title, cat in cur.fetchall():
+            key = (str(code), clean_size_for_barbour(str(sz)))
+            prod[key] = {"gender": gender, "title": title, "category": cat}
 
-    info_lookup = fetch_product_info()
+    brand_label = BRAND_MAP.get(brand, brand)
 
-    required_columns = [
-        "货品编码", "货品名称", "货品名称（英文）", "条形码", "吊牌价", "零售价", "成本价", "易碎品", "危险品",
-        "温控要求", "效期管理", "有效期（天）", "临期预警（天）", "禁售天数（天）", "禁收天数（天）",
-        "长", "宽", "高", "毛重", "净重", "长-运输单元", "宽-运输单元", "高-运输单元", "重量-运输单元", "包含电池"
-    ]
-    fixed_values = {
-        "长": 360, "宽": 160, "高": 120,
-        "毛重": 1200, "净重": 1000
-    }
+    # 读取 Excel
+    df = pd.read_excel(infile)
+    out_rows = []
 
-    df = pd.read_excel(input_excel_path)
-    output_rows = []
+    # 既支持 “颜色分类:CODE;尺码:S” 也支持 “颜色:CODE;尺码:S”
+    pat = re.compile(r"(?:颜色分类|颜色)\s*:\s*([^;]+)\s*;\s*尺码\s*:\s*(.+)")
 
     for _, row in df.iterrows():
-        raw_name = str(row.get("货品名称", ""))
-        code = str(row.get("货品编码", ""))
+        raw = str(row.get("货品名称", ""))  # 原列名就是“货品名称”
+        code_field = str(row.get("货品编码", ""))
         barcode = str(row.get("条形码", ""))
 
-        if not raw_name.startswith("颜色分类"):
+        m = pat.search(raw)
+        if not m:
             continue
 
-        match = re.search(r"颜色分类:([^;]+);尺码:(.+)", raw_name)
-        if not match:
-            continue
-        product_code, size = match.groups()
+        color_code = m.group(1).strip()
+        size_raw = m.group(2).strip()
+        size_norm = clean_size_for_barbour(size_raw)
 
-        key = (product_code, size)
-        if key not in info_lookup:
-            print(f"⚠️ 数据库缺少: {product_code}, 尺码 {size}")
-            continue
+        # 先按 (code,size_norm) 精确找；找不到再仅按 code 找任意尺码的信息兜底
+        info = prod.get((color_code, size_norm))
+        if info is None:
+            # fallback：同编码取第一条
+            any_keys = [k for k in prod.keys() if k[0] == color_code]
+            if any_keys:
+                info = prod[any_keys[0]]
+            else:
+                # 数据库没有这件商品，跳过
+                continue
 
-        info = info_lookup[key]
-        gender = info["gender"]
-        desc = info["description"]
-        style_en = info["style"]
-        ean = info["ean"]
+        gender_std = normalize_gender(info.get("gender",""), info.get("title",""))
+        style_zh = guess_style_zh(info.get("category","") or info.get("title",""))
 
-        # 中文名称构建
-        gender_label = "男鞋" if "男" in gender else "女鞋"
-        style_zh = {
-            "boots": "靴",
-            "sandal": "凉鞋",
-            "loafers": "乐福鞋",
-            "slip-on": "便鞋",
-            "casual": "休闲鞋"
-        }.get(style_en.lower(), "休闲鞋")
+        new_name = f"{brand_label}{gender_std}{style_zh}{color_code}尺码{size_raw}"
 
-        brand_label = BRAND_MAP.get(brand.lower(), brand)  # 找不到就用原值
-
-        new_name = f"{brand_label}{gender_label}{style_zh}{product_code}尺码{size}"
-
-        # 条形码拼接
-        if ean and not is_all_zeros(ean):
-            # EAN 有效且不在 barcode 中 → 追加
-            final_barcode = barcode if ean in barcode else f"{barcode}#{ean}"
-        else:
-            # EAN 无效（全是 0）→ 直接用 barcode
-            final_barcode = barcode
-
-        row_data = {
-            "货品编码": code,
+        row_out = {
+            "货品编码": code_field,
             "货品名称": new_name,
-            "货品名称（英文）": "",
-            "条形码": final_barcode,
+            "货品名称（英文）": info.get("title",""),
+            "条形码": barcode,   # Barbour 当前无 EAN 合并逻辑；以后加列再合并
             "吊牌价": "", "零售价": "", "成本价": "",
             "易碎品": "", "危险品": "", "温控要求": "",
             "效期管理": "", "有效期（天）": "", "临期预警（天）": "",
             "禁售天数（天）": "", "禁收天数（天）": "",
+            "长": 400, "宽": 300, "高": 70, "毛重": 1200, "净重": 900,
             "长-运输单元": "", "宽-运输单元": "", "高-运输单元": "", "重量-运输单元": "",
             "包含电池": ""
         }
+        out_rows.append(row_out)
 
-        row_data.update(fixed_values)
-        output_rows.append(row_data)
-
-    if not output_rows:
+    if not out_rows:
         print("⚠️ 没有可导出的记录")
         return
 
-    for i in range(0, len(output_rows), group_size):
-        group_rows = output_rows[i:i + group_size]
-        output_df = pd.DataFrame(group_rows, columns=required_columns)
-        group_index = i // group_size + 1
-        output_file = goods_dir / f"更新后的货品导入_第{group_index}组.xlsx"
-        output_df.to_excel(output_file, sheet_name="商品信息", index=False)
-        print(f"✅ 已生成文件：{output_file}")
+    cols = [
+        "货品编码", "货品名称", "货品名称（英文）", "条形码", "吊牌价", "零售价", "成本价",
+        "易碎品", "危险品", "温控要求", "效期管理", "有效期（天）", "临期预警（天）",
+        "禁售天数（天）", "禁收天数（天）",
+        "长", "宽", "高", "毛重", "净重",
+        "长-运输单元", "宽-运输单元", "高-运输单元", "重量-运输单元",
+        "包含电池"
+    ]
 
+    for i in range(0, len(out_rows), GROUP_SIZE):
+        part = out_rows[i:i+GROUP_SIZE]
+        out_df = pd.DataFrame(part, columns=cols)
+        out_path = goods_dir / f"更新后的货品导入_第{i//GROUP_SIZE+1}组.xlsx"
+        out_df.to_excel(out_path, sheet_name="商品信息", index=False)
+        print(f"✅ 已生成：{out_path}")
 
-# === ✅ 若作为脚本运行 ===
 if __name__ == "__main__":
     export_goods_excel_from_db(BRAND, GOODS_DIR, GROUP_SIZE)
