@@ -1,3 +1,4 @@
+# fetch_product_info.py
 import os
 import re
 import time
@@ -34,20 +35,52 @@ def infer_gender_from_url(url: str) -> str:
 
 def create_driver():
     chrome_options = Options()
-    chrome_options.add_argument("--headless")
+    # ✅ 更稳的新 headless；并关闭不必要特性与图片渲染，降低 CPU/带宽
+    chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--window-size=1920x1080")
     chrome_options.add_argument("user-agent=Mozilla/5.0")
+    chrome_options.add_argument("--log-level=3")
+    chrome_options.add_argument("--disable-logging")
+    chrome_options.add_argument("--disable-notifications")
+    chrome_options.add_argument("--disable-background-networking")
+    chrome_options.add_argument("--disable-default-apps")
+    chrome_options.add_argument("--disable-sync")
+    chrome_options.add_argument("--no-first-run")
+    chrome_options.add_argument("--no-default-browser-check")
+    chrome_options.add_argument("--disable-gcm-driver")
+    chrome_options.add_argument("--disable-features=Translate,MediaRouter,AutofillServerCommunication")
+    chrome_options.add_argument("--blink-settings=imagesEnabled=false")  # 不加载图片
+
+    # ✅ 降噪（也可改为 Service(CHROMEDRIVER_PATH)）
     service = Service(CHROMEDRIVER_PATH)
     return webdriver.Chrome(service=service, options=chrome_options)
+
+# === 新增：全局记录 driver 并统一回收，避免多轮运行残留进程 ===
+drivers_lock = threading.Lock()
+_all_drivers = set()
 
 thread_local = threading.local()
 def get_driver():
     if not hasattr(thread_local, "driver"):
-        thread_local.driver = create_driver()
+        d = create_driver()
+        thread_local.driver = d
+        # 记录该线程创建的 driver，任务结束统一 quit
+        with drivers_lock:
+            _all_drivers.add(d)
     return thread_local.driver
+
+def shutdown_all_drivers():
+    # 任务结束统一关闭所有无头浏览器，防泄漏
+    with drivers_lock:
+        for d in list(_all_drivers):
+            try:
+                d.quit()
+            except Exception:
+                pass
+        _all_drivers.clear()
 
 def process_product_url(PRODUCT_URL):
     try:
@@ -84,7 +117,6 @@ def process_product_url(PRODUCT_URL):
         color_data = data.get("color", "")
         color = color_data.get("name", "") if isinstance(color_data, dict) else str(color_data)
 
-        # === 提取 features ===
         # === 提取 features ===
         features_raw = data.get("features") or []  # ✅ 保证是列表
         feature_texts = []
@@ -163,10 +195,14 @@ def camper_fetch_product_info(max_workers=MAX_WORKERS):
     with open(PRODUCT_URLS_FILE, "r", encoding="utf-8") as f:
         urls = [line.strip() for line in f if line.strip()]
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [executor.submit(process_product_url, url) for url in urls]
-        for future in as_completed(futures):
-            future.result()
+    try:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(process_product_url, url) for url in urls]
+            for future in as_completed(futures):
+                future.result()
+    finally:
+        # ✅ 关键：每轮任务结束都关闭全部 driver，避免残留进程堆积
+        shutdown_all_drivers()
 
 if __name__ == "__main__":
     camper_fetch_product_info()
