@@ -170,3 +170,49 @@ SELECT site_name, size, stock_status, can_order
 FROM offers
 WHERE color_code = 'MCA1051NY71'
 ORDER BY site_name, size;
+
+select * from barbour_products where style_name ILIKE '%bedale%';
+
+select * from barbour_products where color_code ILIKE '%LSP0220%';
+
+select * from offers where color_code ILIKE '%LSP0220%';
+
+SELECT distinct color_code
+FROM barbour_products
+WHERE color_code LIKE ANY (ARRAY[
+  'LWX0003%', 'LWX1414%', 'LWX1411%', 'LWX1410%', 'LWX1404%', 'LWX1482%',
+  'LWX1412%', 'LWX1470%', 'LWX1402%', 'LWX1497%', 'LWX1483%', 'LWX0534%',
+  'LWX1493%', 'LWX1515%', 'LWX1495%', 'LWX1498%',
+  'LQU1815%', 'LQU1825%', 'LQU1821%', 'LQU1820%', 'LQU1813%', 'LQS0058%',
+  'LQU1836%', 'LQU1824%', 'LQU1833%', 'LQU1837%', 'LQU1844%', 'LQU1856%',
+  'LQU1839%', 'LQU1840%', 'LQU1852%', 'LQU1851%',
+  'LCA0358%', 'LCA0362%', 'LCA0365%', 'LCA0366%', 'LCA0367%', 'LCA0370%',
+  'LCA0353%', 'LCA0354%', 'LCA0355%', 'LCA0359%', 'LCA0360%', 'LCA0361%'
+]);
+
+select * from barbour_inventory;
+
+SELECT DISTINCT product_code
+FROM barbour_inventory
+WHERE size ~ '^(XS|S|M|L|XL|XXL|3XL|4XL)$';
+
+SELECT DISTINCT product_code
+FROM barbour_inventory
+WHERE size ~ '^(30|32|34|36|38|40|42|44)$';
+
+SELECT DISTINCT product_code
+FROM barbour_inventory
+WHERE size ~ '^(XS|S|M|L|XL|XXL|3XL|4XL)$'
+  AND product_code NOT IN ('MWX0700OL51', 'MWX0700RU71', 'MWX0700NY51', 'MQU0240OL71', 'MQU0240BK11', 'MQU0240NY92', 'MWX0339OL71', 'MWX0339NY92', 'MWX0339BK72');
+
+
+SELECT * from barbour_inventory where product_code = 'LWX1515BK71'
+
+
+SELECT DISTINCT product_code
+FROM barbour_inventory
+WHERE size ~ '^(8|10|12|14|16|19)$'
+  AND product_code NOT IN ('MWX0700OL51', 'MWX0700RU71', 'MWX0700NY51', 'MQU0240OL71', 'MQU0240BK11', 'MQU0240NY92', 'MWX0339OL71', 'MWX0339NY92', 'MWX0339BK72');
+
+
+select * from barbour_inventory where channel_item_id = '969817808097'

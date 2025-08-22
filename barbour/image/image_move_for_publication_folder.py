@@ -105,8 +105,8 @@ def move_image_for_publication(
 if __name__ == "__main__":
     # 示例：使用 config.BARBOUR 配置
     from config import BARBOUR
-    codes_file   = BARBOUR["OUTPUT_DIR"] / "codes.txt"
-    out_dir_src  = Path(r"D:\TB\Products\barbour\images\output")
+    codes_file   = BARBOUR["OUTPUT_DIR"] / "missing_image.txt"
+    out_dir_src  = Path(r"D:\TB\Products\barbour\images\images")
     dest_img_dir = BARBOUR["OUTPUT_DIR"] / "images"
     missing_file = BARBOUR["OUTPUT_DIR"] / "missing_image.txt"
 
