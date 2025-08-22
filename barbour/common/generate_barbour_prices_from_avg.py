@@ -1,13 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-读取 BARBOUR["OUTPUT_DIR"]/channel_products.xlsx（至少两列：商品编码, 渠道产品ID），
+从 D:/TB/Products/barbour/repulibcation/codes.txt 读取商品编码，
 到 PostgreSQL 的 offers 表为每个【商品编码】计算「可下单均价(GBP)」，
 再用 calculate_jingya_prices 计算鲸芽价与淘宝零售价（RMB），
+并从 barbour_inventory 表获取渠道产品ID（channel_product_id），
 结果导出到 BARBOUR["OUTPUT_DIR"]/barbour_price_quote.xlsx。
-
-列名容错：
-- 商品编码：也接受 商品编码 / code / colorcode
-- 渠道产品ID：也接受 渠道产品ID / 渠道id / channel_id / jingyaid
 """
 
 import sys
@@ -19,17 +16,15 @@ import psycopg2
 
 # ==== 项目配置 ====
 from config import BARBOUR
-# 允许两种来源：common_taobao 或本地 price_utils，谁能导入就用谁
 try:
     from common_taobao.core.price_utils import calculate_jingya_prices
 except Exception:
-    from price_utils import calculate_jingya_prices  # 兜底
+    from common_taobao.core.price_utils import calculate_jingya_prices  # 兜底
 
 OUTPUT_DIR: Path = BARBOUR["OUTPUT_DIR"]
 PGSQL = BARBOUR["PGSQL_CONFIG"]
 
-# 默认输入/输出文件（都在 OUTPUT_DIR）
-DEFAULT_INFILE = OUTPUT_DIR / "channel_products.xlsx"
+CODES_FILE = Path(r"D:\TB\Products\barbour\repulibcation\codes.txt")
 DEFAULT_OUTFILE = OUTPUT_DIR / "barbour_price_quote.xlsx"
 
 SQL_AVG_STRICT = """
@@ -46,41 +41,47 @@ FROM offers
 WHERE color_code = %s
 """
 
-def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
-    # 将不同写法的列名统一到标准名（商品编码 / 渠道产品ID）
-    alias = {c.lower().strip(): c for c in df.columns}
-    cc = next((alias[k] for k in alias if k in ("商品编码", "code", "colorcode")), None)
-    jid = next((alias[k] for k in alias if k in ("渠道产品id", "渠道id", "channel_id", "jingyaid", "渠道产品ID")), None)
-    if not cc or not jid:
-        raise ValueError("输入 Excel 需包含列：商品编码 与 渠道产品ID（不区分大小写，也可用同义列名）。")
-    df = df.rename(columns={cc: "商品编码", jid: "渠道产品ID"})
-    df["商品编码"] = df["商品编码"].astype(str).str.strip()
-    df["渠道产品ID"] = df["渠道产品ID"].astype(str).str.strip()
-    df = df[df["商品编码"] != ""]
-    df = df.drop_duplicates(subset=["商品编码", "渠道产品ID"])
-    return df
+SQL_CHANNEL_ID = """
+SELECT string_agg(DISTINCT channel_product_id::text, ',') AS channel_ids
+FROM barbour_inventory
+WHERE product_code = %s
+  AND channel_product_id IS NOT NULL
+  AND channel_product_id <> ''
+"""
 
 def fetch_avg_price(conn, color_code: str):
     with conn.cursor() as cur:
-        # 优先取「可下单」均价
         cur.execute(SQL_AVG_STRICT, (color_code,))
         row = cur.fetchone()
         if row and row[0] is not None:
             return float(row[0])
-        # 若没有，则退化为全部记录的均价
         cur.execute(SQL_AVG_RELAX, (color_code,))
         row = cur.fetchone()
         if row and row[0] is not None:
             return float(row[0])
     return None
 
-def generate_price_for_jingya_publication(infile: Path = DEFAULT_INFILE, outfile: Path = DEFAULT_OUTFILE):
-    if not infile.exists():
-        print(f"❌ 找不到输入文件：{infile}")
+def fetch_channel_product_id(conn, color_code: str) -> str | None:
+    """从 barbour_inventory 中按 product_code 匹配，返回去重后的渠道产品ID（逗号拼接）。"""
+    with conn.cursor() as cur:
+        cur.execute(SQL_CHANNEL_ID, (color_code,))
+        row = cur.fetchone()
+        if row:
+            return row[0]  # 可能是 None 或 'id1,id2'
+    return None
+
+def generate_price_for_jingya_publication(outfile: Path = DEFAULT_OUTFILE):
+    if not CODES_FILE.exists():
+        print(f"❌ 找不到 codes.txt：{CODES_FILE}")
         sys.exit(1)
 
-    df_in = pd.read_excel(infile)
-    df_in = normalize_columns(df_in)
+    # 读取商品编码
+    codes = []
+    with open(CODES_FILE, "r", encoding="utf-8") as f:
+        for line in f:
+            code = line.strip()
+            if code:
+                codes.append(code)
 
     try:
         conn = psycopg2.connect(**PGSQL)
@@ -90,21 +91,24 @@ def generate_price_for_jingya_publication(infile: Path = DEFAULT_INFILE, outfile
 
     rows = []
     try:
-        for _, r in df_in.iterrows():
-            code = r["商品编码"]          # -> offers.color_code
-            jid = r["渠道产品ID"]
+        for code in codes:
             note = ""
             try:
+                channel_id = fetch_channel_product_id(conn, code)
                 avg_gbp = fetch_avg_price(conn, code)
+
                 if avg_gbp is None:
                     note = "未找到价格记录"
                     untaxed = retail = None
                 else:
-                    # 使用你的价格计算（可按需传 delivery_cost / exchange_rate 调整）
                     untaxed, retail = calculate_jingya_prices(avg_gbp)
+
+                if not channel_id:
+                    note = (note + "；" if note else "") + "无渠道产品ID"
+
                 rows.append({
                     "商品编码": code,
-                    "渠道产品ID": jid,
+                    "渠道产品ID": channel_id,
                     "avg_price_gbp": avg_gbp,
                     "未税价格": untaxed,
                     "零售价": retail,
@@ -113,7 +117,7 @@ def generate_price_for_jingya_publication(infile: Path = DEFAULT_INFILE, outfile
             except Exception as e:
                 rows.append({
                     "商品编码": code,
-                    "渠道产品ID": jid,
+                    "渠道产品ID": None,
                     "avg_price_gbp": None,
                     "未税价格": None,
                     "零售价": None,
@@ -128,19 +132,17 @@ def generate_price_for_jingya_publication(infile: Path = DEFAULT_INFILE, outfile
 
     outfile.parent.mkdir(parents=True, exist_ok=True)
     with pd.ExcelWriter(outfile, engine="openpyxl") as writer:
+        df_out.to_excel(writer, index=False, sheet_name="报价")
         meta = pd.DataFrame({
             "生成时间": [datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
-            "输入文件": [str(infile)],
+            "输入文件": [str(CODES_FILE)],
             "数据库": [PGSQL.get("dbname")]
         })
-        df_out.to_excel(writer, index=False, sheet_name="Sheet1")
+        meta.to_excel(writer, index=False, sheet_name="Meta")
 
     print(f"✅ 已完成：{outfile}")
 
 if __name__ == "__main__":
-    # 支持命令行可选自定义文件名（仍限定在 OUTPUT_DIR 下）
-    in_arg = sys.argv[1] if len(sys.argv) > 1 else None
-    out_arg = sys.argv[2] if len(sys.argv) > 2 else None
-    in_file = OUTPUT_DIR / in_arg if in_arg else DEFAULT_INFILE
+    out_arg = sys.argv[1] if len(sys.argv) > 1 else None
     out_file = OUTPUT_DIR / out_arg if out_arg else DEFAULT_OUTFILE
-    generate_price_for_jingya_publication(in_file, out_file)
+    generate_price_for_jingya_publication(out_file)

@@ -159,11 +159,11 @@ def process_product_url(PRODUCT_URL):
     except Exception as e:
         print(f"❌ 错误: {PRODUCT_URL} - {e}")
 
-def camper_fetch_product_info():
+def camper_fetch_product_info(max_workers=MAX_WORKERS):
     with open(PRODUCT_URLS_FILE, "r", encoding="utf-8") as f:
         urls = [line.strip() for line in f if line.strip()]
 
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(process_product_url, url) for url in urls]
         for future in as_completed(futures):
             future.result()
