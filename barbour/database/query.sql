@@ -211,8 +211,12 @@ SELECT * from barbour_inventory where product_code = 'LWX1515BK71'
 
 SELECT DISTINCT product_code
 FROM barbour_inventory
-WHERE size ~ '^(8|10|12|14|16|19)$'
-  AND product_code NOT IN ('MWX0700OL51', 'MWX0700RU71', 'MWX0700NY51', 'MQU0240OL71', 'MQU0240BK11', 'MQU0240NY92', 'MWX0339OL71', 'MWX0339NY92', 'MWX0339BK72');
-
+WHERE size ~ '^(8|10|12|14|16|18)$'
+  AND product_code NOT IN ('LQU1012PI14', 'LQU1012NY71', 'LQU1012OL51',
+  'LQU1012BE34', 'LWX0668OL71', 'LWX0667SG91', 'LWX0667RU52', 'LWX0667NY91', 'LWX0667BR31', 'LWX0667BK11', 'LQU0475NY91', 'LQU0475BK91', 'LQU0475OL91',
+  'LQU0475BE93', 'LQU0471NY91', 'LQU0471BK91', 'LQU0471OL91');
 
 select * from barbour_inventory where channel_item_id = '969817808097'
+
+
+select distinct product_code from clarks_jingya_inventory where gender ILIKE '%女%'

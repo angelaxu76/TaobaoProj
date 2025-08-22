@@ -5,7 +5,8 @@ from brands.camper.image.image_defender_with_flip import batch_process_images
 from brands.camper.image.ResizeImage import expand_images_in_folder
 from common_taobao.generate_html import generate_html_main
 from common_taobao.generate_html_FristPage import generate_html_for_first_page
-from tools.merge_product_images import batch_merge_images
+from helper.merge_product_images import batch_merge_images
+
 
 def main():
     print("检查哪些图片缺少，TXT中编码但图片文件夹中没有图片")
