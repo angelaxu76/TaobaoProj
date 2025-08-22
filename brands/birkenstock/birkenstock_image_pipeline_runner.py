@@ -1,4 +1,4 @@
-from tools.image_defender_leftright import batch_process_images
+from helper.image_defender_leftright import batch_process_images
 from tools import run_crop_and_expand
 from config import BIRKENSTOCK
 

@@ -1,6 +1,5 @@
-from tools.HtmlToPGNBatch import process_html_folder
-from tools.cutterAllsiderSpace import trim_sides_batch
-from watermark import watermark_batch
+from helper.HtmlToPGNBatch import process_html_folder
+from helper.cutterAllsiderSpace import trim_sides_batch
 from text_watermark import text_watermark_batch
 
 

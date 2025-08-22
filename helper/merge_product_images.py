@@ -63,7 +63,7 @@ def batch_merge_images(image_dir, merged_dir, width=750):
 # ========= main 入口 =========
 def main():
     DEFAULT_INPUT = Path(r"D:\Projects\TaobaoProj\images_trimmed")   # 输入目录（按需改）
-    DEFAULT_OUTPUT = Path(r"D:\Projects\TaobaoProj\images_merged")   # 输出目录（按需改）
+    DEFAULT_OUTPUT = Path(r"/images_merged")   # 输出目录（按需改）
     DEFAULT_OUTPUT.mkdir(parents=True, exist_ok=True)
 
     print(f"▶ 合并图片: {DEFAULT_INPUT} → {DEFAULT_OUTPUT}")

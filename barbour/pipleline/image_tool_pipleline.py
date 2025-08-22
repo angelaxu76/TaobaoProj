@@ -1,10 +1,7 @@
-from tools.cutterAllsiderSpace import trim_sides_batch
-from config import BARBOUR
+from helper.cutterAllsiderSpace import trim_sides_batch
 from pathlib import Path
-from common_taobao.generate_html import generate_html_from_images
-from common_taobao.generate_html_FristPage import generate_first_page_from_images
-from tools.HtmlToPGNBatch import process_html_folder
-from tools.splite_image_by_size import split_image_by_size
+from helper.HtmlToPGNBatch import process_html_folder
+from helper.splite_image_by_size import split_image_by_size
 
 def main():
     HTML_FOLDER = Path(r"D:/TB/HTMLToImage/input")

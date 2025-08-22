@@ -1,4 +1,4 @@
-from tools.image_defender_leftright import batch_process_images
+from helper.image_defender_leftright import batch_process_images
 from brands.ecco.image.ImageMaxCutter import batch_convert_webp_to_jpg,process_images_in_folder
 
 from config import ECCO

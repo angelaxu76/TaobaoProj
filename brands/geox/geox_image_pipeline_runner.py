@@ -1,6 +1,6 @@
 from config import GEOX
 from pathlib import Path
-from tools.image_defender_leftright import batch_process_images
+from helper.image_defender_leftright import batch_process_images
 
 def main():
     #下载指定编码的图片
