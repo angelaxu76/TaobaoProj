@@ -7,6 +7,7 @@ import pandas as pd
 from pathlib import Path
 from typing import Dict, Tuple, Optional
 from config import BRAND_CONFIG, PGSQL_CONFIG
+from common_taobao.size_utils import clean_size_for_barbour
 
 # 仅保留模板的 6 列（按你要求的顺序，“*菜鸟货品ID”放最后）
 TEMPLATE_COLUMNS = [
@@ -14,57 +15,103 @@ TEMPLATE_COLUMNS = [
     "*外部渠道商品ID", "*商品名称", "*菜鸟货品ID",
 ]
 
-# —— 商品名生成（与 cainiao_generate_update_goods_excel 一致）——
+# —— 品牌显示名（Barbour 使用中英组合，便于识别）——
 BRAND_MAP  = {
     "clarks_jingya": "clarks其乐",
     "camper": "camper看步",
     "clarks": "clarks其乐",
-    "ecco": "爱步",
-    "geox": "健乐士",
-    "barbour": "巴伯尔",
+    "ecco": "ecco爱步",
+    "geox": "geox健乐士",
+    "barbour": "barbour巴伯尔",
 }
-STYLE_MAP = {
+
+# 鞋类风格映射（保持原样）
+STYLE_MAP_SHOES = {
     "boots": "靴",
     "sandal": "凉鞋",
     "loafers": "乐福鞋",
     "slip-on": "便鞋",
     "casual": "休闲鞋",
 }
-def build_product_name(brand: str, gender: str, style_en: str, product_code: str, size: str) -> str:
-    brand_label = BRAND_MAP.get((brand or "").lower(), brand)
-    gender_label = "男鞋" if "男" in (gender or "") else "女鞋"
-    style_zh = STYLE_MAP.get((style_en or "").lower(), "休闲鞋")
-    # 一定把编码与尺码拼进去
-    return f"{brand_label}{gender_label}{style_zh}{product_code}尺码{size}".replace("None", "")
 
-def _clean_join(code: str, size: str) -> str:
-    """编码+尺码，去掉非字母数字字符。"""
-    return re.sub(r"[^A-Za-z0-9]", "", f"{str(code or '')}{str(size or '')}")
+# 服装风格 → 中文（Barbour 用）
+CLOTHING_STYLE_MAP = {
+    # 外套
+    "t-shirt": "T恤", "tee": "T恤",
+    "wax": "蜡棉夹克", "jacket": "夹克", "jackets": "夹克",
+    "quilt": "菱格夹克", "puffer": "羽绒服",
+    "gilet": "马甲", "vest": "马甲",
+    "coat": "大衣", "parka": "派克",
+    # 上装
+    "overshirt": "衬衫", "shirt": "衬衫",
+    "sweat": "卫衣", "hoodie": "卫衣",
+    "knit": "针织衫", "sweater": "毛衣", "jumper": "毛衣",
+    "fleece": "抓绒",
+    # 下装
+    "trouser": "长裤", "trousers": "长裤",
+    "jeans": "牛仔裤", "shorts": "短裤",
+    # 其他
+    "dress": "连衣裙", "skirt": "半身裙", "shirt-dress": "衬衫裙",
+    "scarf": "围巾", "cap": "帽", "hat": "帽",
+}
+
+def _guess_clothing_style_zh(text: str) -> str:
+    """从英文标题/类别里猜中文服装款式（Barbour 用）"""
+    t = (text or "").lower()
+    # 为避免 "t-shirt" 被 "shirt" 抢匹配，按 key 长度倒序
+    for k in sorted(CLOTHING_STYLE_MAP.keys(), key=len, reverse=True):
+        if k in t:
+            return CLOTHING_STYLE_MAP[k]
+    return "服装"
+
+def _normalize_gender(gender: str, title: str = "") -> str:
+    """统一性别：男装 / 女装 / ''"""
+    src = f"{gender} {title}".lower()
+    if any(x in src for x in ["women", "women's", "womens", "female", "lady", "ladies"]):
+        return "女装"
+    if any(x in src for x in ["men", "men's", "mens", "male"]):
+        return "男装"
+    if "女" in gender:
+        return "女装"
+    if "男" in gender:
+        return "男装"
+    return ""
+
+def _parse_code_size_from_goods_name(name: str) -> Tuple[str, str]:
+    """
+    从 “货品名称” 中解析：颜色分类:CODE;尺码:S    （也兼容 “颜色:CODE;尺码:S”）
+    """
+    s = str(name or "")
+    m = re.search(r"(?:颜色分类|颜色)\s*:\s*([^;]+)\s*;\s*尺码\s*:\s*(.+)", s)
+    if not m:
+        return "", ""
+    code = m.group(1).strip()
+    size_raw = m.group(2).strip()
+    return code, size_raw
 
 def _parse_code_size_from_any(text: str) -> Tuple[str, str]:
     """
-    从 channel_item_id 或任意字符串兜底解析 (product_code, size)。
+    兜底：从 channel_item_id 或任意字符串里解析 (code, size)
     兼容如 K100300-00142 / 26178475-395 / 2617847539540 等写法。
     """
     s = str(text or "")
-    # 先尝试：编码(字母可选+5位以上数字+可选连接符+最多3位) + 可选尺码(2-3位)
     m = re.search(r"([A-Za-z]*\d{5,}[-_\.]?\d{0,3})(\d{2,3})?$", s)
     if m:
-        code = m.group(1) or ""
-        size = m.group(2) or ""
-        return code, size
-    # 再尝试常见 “编码-尺码 / 编码_尺码 / 编码.尺码”
-    m2 = re.search(r"([A-Za-z]*\d{5,})[-_\.]?(\d{2,3})", s)
+        return m.group(1) or "", m.group(2) or ""
+    m2 = re.search(r"([A-Za-z]*\d{5,})[-_\.]?(\d{1,3})", s)
     if m2:
         return m2.group(1) or "", m2.group(2) or ""
     return "", ""
 
+def _alnum(s: str) -> str:
+    return re.sub(r"[^A-Za-z0-9]", "", str(s or ""))
+
 def _fetch_maps(table: str, pgcfg: Dict):
     """
-    一次性拉取映射，避免逐行查库：
-      - id_to_channel_item: 货品ID(channel_product_id) -> channel_item_id；以及 channel_item_id -> channel_item_id（双路径，最大化命中）
-      - item_to_code_size:  channel_item_id -> (product_code, size)
-      - code_size_to_gender_style: (product_code, size) -> (gender, style_category)
+    从品牌 inventory 表拿到：
+      - id_to_channel_item: 货品ID(channel_product_id) -> channel_item_id；以及 channel_item_id -> channel_item_id（双路径）
+      - item_to_code_size:  channel_item_id -> (code, size_raw)  （注意 size 为源字符串，后续会 normalize）
+      - code_size_to_gender_style: (code, size_raw) -> (gender, style_category)  （若无则空）
     """
     id_to_channel_item: Dict[str, str] = {}
     item_to_code_size: Dict[str, Tuple[str, str]] = {}
@@ -81,21 +128,64 @@ def _fetch_maps(table: str, pgcfg: Dict):
                 ch_item = str(channel_item_id or "")
                 ch_prod = str(channel_product_id or "")
                 code = str(product_code or "")
-                sz = str(size or "")
-                # 双路径：货品ID→item 以及 item→item
+                sz_raw = str(size or "")
                 if ch_prod:
                     id_to_channel_item[ch_prod] = ch_item
                 if ch_item:
                     id_to_channel_item[ch_item] = ch_item
-                    item_to_code_size[ch_item] = (code, sz)
-                # 命名映射
-                key = (code, sz)
+                    item_to_code_size[ch_item] = (code, sz_raw)
+                key = (code, sz_raw)
                 if key not in code_size_to_gender_style:
                     code_size_to_gender_style[key] = (str(gender or ""), str(style or ""))
     finally:
         conn.close()
-
     return id_to_channel_item, item_to_code_size, code_size_to_gender_style
+
+def _fetch_barbour_products(pgcfg: Dict) -> Dict[Tuple[str, str], Dict[str, str]]:
+    """
+    读取 barbour_products：用 (color_code, clean_size) → {title, gender, category}
+    """
+    m: Dict[Tuple[str, str], Dict[str, str]] = {}
+    conn = psycopg2.connect(**pgcfg)
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT color_code, size, COALESCE(gender,''), COALESCE(title,''), COALESCE(category,'')
+                FROM barbour_products
+            """)
+            for code, sz, gender, title, cat in cur.fetchall():
+                key = (str(code or ""), clean_size_for_barbour(str(sz or "")))
+                m[key] = {"gender": gender, "title": title, "category": cat}
+    finally:
+        conn.close()
+    return m
+
+def _build_product_name(brand: str,
+                        code: str,
+                        size_raw: str,
+                        gender_from_inv: str = "",
+                        style_from_inv: str = "",
+                        bp_title: str = "",
+                        bp_gender: str = "",
+                        bp_category: str = "") -> str:
+    """
+    统一生成 *商品名称
+    - Barbour：优先使用 barbour_products 的 title/gender/category 推断服装品类（中文），输出：{品牌}{男装/女装}{品类}{编码}尺码{size}
+    - 其他品牌：保留鞋类逻辑：{品牌}{男鞋/女鞋}{风格}{编码}尺码{size}
+    """
+    b = (brand or "").lower()
+    brand_label = BRAND_MAP.get(b, brand)
+
+    if b == "barbour":
+        gender_std = _normalize_gender(bp_gender or gender_from_inv, bp_title)
+        style_zh = _guess_clothing_style_zh(bp_category or bp_title)
+        return f"{brand_label}{gender_std}{style_zh}{code}尺码{size_raw}".replace("None", "")
+
+    # 鞋类
+    gender_label = "男鞋" if "男" in (gender_from_inv or bp_gender or "") else "女鞋"
+    style_key = (style_from_inv or "").lower()
+    style_zh = STYLE_MAP_SHOES.get(style_key, "休闲鞋")
+    return f"{brand_label}{gender_label}{style_zh}{code}尺码{size_raw}".replace("None", "")
 
 def generate_channel_binding_excel(brand: str, goods_dir: Path, debug: bool = True) -> Path:
     t0 = time.time()
@@ -152,6 +242,13 @@ def generate_channel_binding_excel(brand: str, goods_dir: Path, debug: bool = Tr
         f"(code,size)→(gender,style) {len(code_size_to_gender_style)}，用时 {time.time()-t:.2f}s"
     )
 
+    # Barbour: 预取 barbour_products
+    bp_map: Dict[Tuple[str, str], Dict[str, str]] = {}
+    if brand == "barbour":
+        t = time.time()
+        bp_map = _fetch_barbour_products(pgcfg)
+        log(f"✓ 读取 barbour_products：{len(bp_map)} 条，用时 {time.time()-t:.2f}s")
+
     # 固定列
     unbound_df["*销售渠道"] = "淘分销"
     unbound_df["*渠道店铺ID"] = "2219163936872"
@@ -159,42 +256,72 @@ def generate_channel_binding_excel(brand: str, goods_dir: Path, debug: bool = Tr
     unbound_df["*菜鸟货品ID"] = unbound_df["货品ID"]
     log("✓ 已填充固定列：*销售渠道 / *渠道店铺ID / *发货模式 / *菜鸟货品ID")
 
-    # 先得到每行的 channel_item_id（命中不到就用 货品ID 兜底）
+    # —— 先尝试从 Excel 的 “货品名称” 中直接解析 (code, size_raw)
+    unbound_df["_code_from_name"], unbound_df["_size_raw_from_name"] = zip(
+        *unbound_df.get("货品名称", pd.Series([""]*len(unbound_df))).apply(_parse_code_size_from_goods_name)
+    )
+
+    # 再得到 channel_item_id（命中不到就用 货品ID 兜底）
     unbound_df["_ch_item"] = unbound_df["货品ID"].map(id_to_channel_item).fillna(unbound_df["货品ID"])
 
-    # 映射出 (code,size)
+    # 从 channel_item 映射 (code, size_raw)
     codes_sizes = unbound_df["_ch_item"].map(item_to_code_size)
+    def _safe_get_code(cs): return cs[0] if isinstance(cs, (tuple, list)) and len(cs) == 2 and cs[0] is not None else ""
+    def _safe_get_size(cs): return cs[1] if isinstance(cs, (tuple, list)) and len(cs) == 2 and cs[1] is not None else ""
+    unbound_df["_code_from_map"] = codes_sizes.apply(_safe_get_code)
+    unbound_df["_size_raw_from_map"] = codes_sizes.apply(_safe_get_size)
 
-    def _safe_get_code(cs):
-        return cs[0] if isinstance(cs, (tuple, list)) and len(cs) == 2 and cs[0] is not None else ""
+    # 兜底：从 ch_item 文本解析
+    mask_need_fallback = (unbound_df["_code_from_name"] == "") & (unbound_df["_code_from_map"] == "")
+    if mask_need_fallback.any():
+        parsed = unbound_df.loc[mask_need_fallback, "_ch_item"].apply(_parse_code_size_from_any)
+        unbound_df.loc[mask_need_fallback, "_code_from_map"] = [p[0] for p in parsed]
+        unbound_df.loc[mask_need_fallback, "_size_raw_from_map"] = [p[1] for p in parsed]
 
-    def _safe_get_size(cs):
-        return cs[1] if isinstance(cs, (tuple, list)) and len(cs) == 2 and cs[1] is not None else ""
+    # 选择优先来源：Excel 名称 > DB map > 文本兜底
+    unbound_df["_code"] = unbound_df["_code_from_name"].where(unbound_df["_code_from_name"] != "", unbound_df["_code_from_map"])
+    unbound_df["_size_raw"] = unbound_df["_size_raw_from_name"].where(unbound_df["_size_raw_from_name"] != "", unbound_df["_size_raw_from_map"])
 
-    unbound_df["_code"] = codes_sizes.apply(_safe_get_code)
-    unbound_df["_size"] = codes_sizes.apply(_safe_get_size)
+    # 规范化
+    unbound_df["_code"] = unbound_df["_code"].map(_alnum)
+    unbound_df["_size_norm"] = unbound_df["_size_raw"].apply(clean_size_for_barbour)
 
-    # 兜底：对缺失的，从 ch_item 文本解析
-    mask_missing = (unbound_df["_code"] == "") | (unbound_df["_size"] == "")
-    if mask_missing.any():
-        parsed = unbound_df.loc[mask_missing, "_ch_item"].apply(_parse_code_size_from_any)
-        unbound_df.loc[mask_missing, "_code"] = [p[0] for p in parsed]
-        unbound_df.loc[mask_missing, "_size"] = [p[1] for p in parsed]
-
-    # 规范化：只保留字母数字
-    unbound_df["_code"] = unbound_df["_code"].astype(str).str.replace(r"[^A-Za-z0-9]", "", regex=True)
-    unbound_df["_size"] = unbound_df["_size"].astype(str).str.replace(r"[^A-Za-z0-9]", "", regex=True)
-
-    # *外部渠道商品ID（vectorized）
-    unbound_df["*外部渠道商品ID"] = (unbound_df["_code"] + unbound_df["_size"]).fillna("")
+    # 生成 *外部渠道商品ID = code + size_norm
+    unbound_df["*外部渠道商品ID"] = (unbound_df["_code"].fillna("") + unbound_df["_size_norm"].fillna(""))
     null_rate = (unbound_df["*外部渠道商品ID"] == "").mean()
     log(f"✓ 生成 *外部渠道商品ID 完成（空值占比 {null_rate:.1%}）")
 
-    # *商品名称（vectorized + DB性别/款式映射）
+    # 生成 *商品名称
     def _name_row(row):
-        code, size = row["_code"], row["_size"]
-        gender, style = code_size_to_gender_style.get((code, size), ("", ""))
-        return build_product_name(brand, gender, style, code, size)
+        code = row["_code"]
+        size_raw = row["_size_raw"]
+        size_norm = row["_size_norm"]
+        # inventory 提供的性别/风格（鞋类）
+        inv_gender, inv_style = code_size_to_gender_style.get((code, row.get("_size_raw_from_map","")), ("", ""))
+        # Barbour: 用 bp_map 提升准确性（用 clean_size 匹配）
+        bp_title = bp_gender = bp_category = ""
+        if brand == "barbour" and code and size_norm:
+            info = bp_map.get((code, size_norm))
+            if info is None:
+                # 同编码任意尺码兜底
+                for (c, s), v in bp_map.items():
+                    if c == code:
+                        info = v
+                        break
+            if info:
+                bp_title = info.get("title", "")
+                bp_gender = info.get("gender", "")
+                bp_category = info.get("category", "")
+        return _build_product_name(
+            brand=brand,
+            code=code,
+            size_raw=size_raw,
+            gender_from_inv=inv_gender,
+            style_from_inv=inv_style,
+            bp_title=bp_title,
+            bp_gender=bp_gender,
+            bp_category=bp_category
+        )
 
     t = time.time()
     unbound_df["*商品名称"] = unbound_df.apply(_name_row, axis=1)
@@ -229,4 +356,4 @@ def generate_channel_binding_excel(brand: str, goods_dir: Path, debug: bool = Tr
 
 if __name__ == "__main__":
     # 本地快速测试
-    generate_channel_binding_excel("camper", Path("D:/TB/taofenxiao/goods"))
+    generate_channel_binding_excel("barbour", Path("D:/TB/taofenxiao/goods"))

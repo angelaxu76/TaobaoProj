@@ -132,13 +132,12 @@ def generate_price_for_jingya_publication(outfile: Path = DEFAULT_OUTFILE):
 
     outfile.parent.mkdir(parents=True, exist_ok=True)
     with pd.ExcelWriter(outfile, engine="openpyxl") as writer:
-        df_out.to_excel(writer, index=False, sheet_name="报价")
+        df_out.to_excel(writer, index=False, sheet_name="Sheet1")
         meta = pd.DataFrame({
             "生成时间": [datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
             "输入文件": [str(CODES_FILE)],
             "数据库": [PGSQL.get("dbname")]
         })
-        meta.to_excel(writer, index=False, sheet_name="Meta")
 
     print(f"✅ 已完成：{outfile}")
 
