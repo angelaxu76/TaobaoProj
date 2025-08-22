@@ -1,32 +1,22 @@
 import os
 from PIL import Image
-from config import CAMPER
 
 def expand_to_square(img, background_color=(255, 255, 255)):
-    """
-    将图片扩展为正方形，居中显示，其余部分用背景色填充
-    """
     width, height = img.size
     if width == height:
-        return img  # 已经是正方形，直接返回
-
+        return img
     max_side = max(width, height)
-    # 创建一个新图像，背景色可自定义
     new_img = Image.new('RGB', (max_side, max_side), background_color)
-    # 计算粘贴位置，使原图居中
     paste_position = ((max_side - width) // 2, (max_side - height) // 2)
     new_img.paste(img, paste_position)
     return new_img
 
-def process_folder(input_folder, output_folder, background_color=(255, 255, 255)):
-    """
-    批量处理文件夹下的图片
-    """
-    # 确保输出文件夹存在
+def expand_images_in_folder(input_folder, output_folder, background_color=(255, 255, 255)):
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
     supported_formats = ('.jpg', '.jpeg', '.png', '.bmp', '.gif')
+    count = 0
 
     for filename in os.listdir(input_folder):
         if filename.lower().endswith(supported_formats):
@@ -37,12 +27,7 @@ def process_folder(input_folder, output_folder, background_color=(255, 255, 255)
                 with Image.open(input_path) as img:
                     img_converted = expand_to_square(img, background_color)
                     img_converted.save(output_path)
-                    print(f"已处理: {filename}")
+                    count += 1
             except Exception as e:
-                print(f"处理 {filename} 时出错: {e}")
-
-# 使用方法
-input_folder = CAMPER["DEF_IMAGE_DIR"]   # 例如：'./images'
-output_folder = CAMPER["IMAGE_DIR"]  # 例如：'./square_images'
-
-process_folder(input_folder, output_folder)
+                print(f"❌ 处理 {filename} 出错: {e}")
+    print(f"✅ 已处理图片数量: {count}")

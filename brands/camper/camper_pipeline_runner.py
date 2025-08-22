@@ -16,13 +16,13 @@ from brands.camper.unified_link_collector import camper_get_links
 
 def main():
     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    #backup_and_clear_brand_dirs(CAMPER)
+    # backup_and_clear_brand_dirs(CAMPER)
 
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    camper_get_links()
+    #camper_get_links()
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    camper_fetch_product_info()
+    #camper_fetch_product_info()
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
     #import_txt_to_db_supplier("camper")  # ✅ 新逻辑
@@ -50,9 +50,9 @@ def main():
     # export_skuid_stock_excel("camper")
 
     print("\n🟡 Step: 7️⃣ 为各店铺生成上架 Excel + 拷贝图片")
-    store_list = ["五小剑", "英国伦敦代购2015"]
-    for store in store_list:
-     export_store_discount_price("camper", store)  # ✅ 导出价格文件
+    # store_list = ["五小剑", "英国伦敦代购2015"]
+    # for store in store_list:
+    #   export_store_discount_price("camper", store)  # ✅ 导出价格文件
 
     print("\n✅ CAMPER pipeline 完成")
 
