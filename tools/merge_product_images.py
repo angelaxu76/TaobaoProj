@@ -1,10 +1,6 @@
-import os
-from collections import defaultdict
 from PIL import Image, ImageDraw, ImageFont
 
 def merge_images_grid(img_files, export_file, product_name, width=750, margin=10, gap=10, title_height=150):
-    from PIL import Image, ImageDraw, ImageFont
-
     img_size = (width - margin * 2 - gap) // 2
     num_images = len(img_files)
     is_odd = (num_images % 2 == 1)
@@ -73,7 +69,3 @@ def batch_merge_images(image_dir, merged_dir, width=750):
         merge_images_grid(files, export_file, code, width=width)
 
 
-
-if __name__ == "__main__":
-    from config import CAMPER
-    batch_merge_images(CAMPER, width=750)
