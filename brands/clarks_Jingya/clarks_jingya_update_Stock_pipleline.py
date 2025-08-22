@@ -214,6 +214,11 @@ def main():
     print("\n🟡 Step: 5️⃣ 绑定渠道 SKU 信息（导入鲸芽 Excel）")
     insert_jingyaid_to_db("clarks_jingya")
 
+    print("\n🟡 Step: 5️⃣ 将最新TXT中没有的产品，说明刚商品已经下架，但鲸芽这边没办法删除，全部补库存为0")
+    insert_missing_products_with_zero_stock("clarks_jingya")
+
+
+
     # 🟡 Step: 6️⃣ 依次更新男款、女款
     for cfg in GENDER_RUNS:
         gender = cfg["gender"]

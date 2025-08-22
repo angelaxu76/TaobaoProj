@@ -171,7 +171,7 @@ FROM offers
 WHERE color_code = 'MCA1051NY71'
 ORDER BY site_name, size;
 
-select * from barbour_products where style_name ILIKE '%Piper%';
+select * from barbour_products where style_name ILIKE '%bedale%';
 
 select * from barbour_products where color_code ILIKE '%LSP0220%';
 
@@ -189,3 +189,21 @@ WHERE color_code LIKE ANY (ARRAY[
   'LCA0358%', 'LCA0362%', 'LCA0365%', 'LCA0366%', 'LCA0367%', 'LCA0370%',
   'LCA0353%', 'LCA0354%', 'LCA0355%', 'LCA0359%', 'LCA0360%', 'LCA0361%'
 ]);
+
+select * from barbour_inventory;
+
+SELECT DISTINCT product_code
+FROM barbour_inventory
+WHERE size ~ '^(XS|S|M|L|XL|XXL|3XL|4XL)$';
+
+SELECT DISTINCT product_code
+FROM barbour_inventory
+WHERE size ~ '^(30|32|34|36|38|40|42|44)$';
+
+SELECT DISTINCT product_code
+FROM barbour_inventory
+WHERE size ~ '^(XS|S|M|L|XL|XXL|3XL|4XL)$'
+  AND product_code NOT IN ('MWX0700OL51', 'MWX0700RU71', 'MWX0700NY51', 'MQU0240OL71', 'MQU0240BK11', 'MQU0240NY92', 'MWX0339OL71', 'MWX0339NY92', 'MWX0339BK72');
+
+
+SELECT * from barbour_inventory where product_code = 'MCA0427BE31'

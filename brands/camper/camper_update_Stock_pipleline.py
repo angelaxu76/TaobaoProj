@@ -10,7 +10,7 @@ from datetime import datetime
 import psycopg2  # 用于查询数据库
 
 from config import CAMPER, TAOBAO_STORES, BRAND_CONFIG
-from common_taobao.jingya.import_channel_info_from_excel import insert_jingyaid_to_db
+from common_taobao.jingya.import_channel_info_from_excel import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
 from common_taobao.backup_and_clear import backup_and_clear_brand_dirs
 from common_taobao.jingya.jingya_import_txt_to_db import import_txt_to_db_supplier
 from brands.camper.fetch_product_info import camper_fetch_product_info
@@ -209,6 +209,9 @@ def main():
 
     print("\n🟡 Step: 5️⃣ 绑定渠道 SKU 信息（淘经销 Excel）将鲸芽那边的货品ID等输入到数据库")
     insert_jingyaid_to_db("camper")
+
+    print("\n🟡 Step: 5️⃣ 将最新TXT中没有的产品，说明刚商品已经下架，但鲸芽这边没办法删除，全部补库存为0")
+    insert_missing_products_with_zero_stock("camper")
     # 🟡 Step: 6️⃣ 依次更新男款、女款
     for cfg in GENDER_RUNS:
         gender = cfg["gender"]
