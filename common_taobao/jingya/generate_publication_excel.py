@@ -137,9 +137,14 @@ def generate_publication_excels(brand: str):
         original = price_info.get("original_price_gbp", 0) or 0
         discount = price_info.get("discount_price_gbp", 0) or 0
 
+        # 过滤掉为0的价格
+        valid_prices = [p for p in [original, discount] if p > 0]
+
+        # 如果有有效价格，取最小的那个，否则为0
+        final_price = min(valid_prices) if valid_prices else 0
+
         try:
-            _, rmb_price = calculate_jingya_prices(original, discount,
-                                                   exchange_rate=SETTINGS["EXCHANGE_RATE"])
+            _, rmb_price = calculate_jingya_prices(final_price, delivery_cost=7,exchange_rate=SETTINGS["EXCHANGE_RATE"])
         except:
             rmb_price = ""
 
