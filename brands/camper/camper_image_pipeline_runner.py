@@ -3,8 +3,8 @@ from pathlib import Path
 from brands.camper.download_images_only import download_images_from_codes
 from brands.camper.image.image_defender_with_flip import batch_process_images
 from brands.camper.image.ResizeImage import expand_images_in_folder
-from common_taobao.generate_html import generate_html_main
-from common_taobao.generate_html_FristPage import generate_html_for_first_page
+from common_taobao.generate_html import generate_html_from_codes_files
+from common_taobao.generate_html_FristPage import generate_first_page_from_codes_files
 from helper.merge_product_images import batch_merge_images
 from helper.HtmlToPGNBatch import process_html_folder
 from helper.cutterAllsiderSpace import trim_sides_batch
@@ -35,8 +35,9 @@ def main():
     batch_merge_images(CAMPER["IMAGE_CUTTER"],CAMPER["MERGED_DIR"], width=750)
 
     print("生成产品详情卡HTML")
-    generate_html_main("camper")
-    generate_html_for_first_page("camper")
+    code_file_path = r"D:\TB\Products\camper\repulibcation\publication_codes.txt"
+    generate_html_from_codes_files(code_file_path)
+    generate_first_page_from_codes_files(code_file_path)
 
     GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径
     print("生成产品详情卡图片")

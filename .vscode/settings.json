@@ -1,0 +1,30 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "server": "192.168.5.9",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "name": "mydb",
+            "database": "taobao_inventory_db",
+            "username": "postgres",
+            "password": "516518",
+            "connectionTimeout": 50
+        }
+    ],
+
+    // ✅ 指定 Python 解释器
+    "python.defaultInterpreterPath": "C:/Users/martin/AppData/Local/Programs/Python/Python313/python.exe",
+
+    // ✅ 设置运行目录为项目根目录
+    "terminal.integrated.cwd": "D:/Projects/VS-TaobaoProj/TaobaoProj",
+
+    // ✅ Python 执行和测试时默认目录
+    "python.terminal.executeInFileDir": false,
+    "python.testing.cwd": "D:/Projects/VS-TaobaoProj/TaobaoProj",
+
+    // ✅ 让 Python 能识别项目根路径
+    "python.analysis.extraPaths": [
+        "D:/Projects/VS-TaobaoProj/TaobaoProj"
+    ]
+}

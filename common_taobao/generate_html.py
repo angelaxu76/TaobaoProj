@@ -458,3 +458,111 @@ def generate_html_from_images(brand: str, max_workers: int = 4):
 
     print(f"✅ 所有 HTML 已生成到：{html_dir}")
 
+
+# === 从商品编码列表生成 HTML（编码来自一个txt文件）===
+def _read_codes_file(codes_file: Path) -> list[str]:
+    """
+    读取一个包含商品编码的txt文件。
+    支持：一行一个编码；或逗号/空格分隔；自动忽略空行与注释(#开头)。
+    """
+    codes = []
+    if not codes_file.exists():
+        print(f"❌ 编码文件不存在：{codes_file}")
+        return codes
+
+    import re
+    with open(codes_file, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            # 支持一行多个：逗号/空格/制表符分隔
+            parts = re.split(r"[,\s]+", line)
+            for p in parts:
+                p = p.strip()
+                if p:
+                    codes.append(p)
+    # 去重并保持顺序
+    seen = set()
+    ordered = []
+    for c in codes:
+        k = _norm_code(c)
+        if k not in seen:
+            seen.add(k)
+            ordered.append(c)
+    return ordered
+
+
+def generate_html_from_codes_files(brand: str, codes_file: str | Path, max_workers: int = 4):
+    """
+    根据“商品编码列表txt”选择对应TXT并生成HTML。
+    路径与 generate_html_from_images 一致：读取 BRAND_CONFIG[brand] 的 TXT/IMAGE/HTML 目录。
+    :param brand: 品牌名（如 'camper', 'barbour', 'clarks_jingya'）
+    :param codes_file: 商品编码列表txt路径（如 D:\\TB\\Products\\camper\\repulibcation\\publication_codes.txt）
+    :param max_workers: 线程数
+    """
+    brand = brand.lower()
+    if brand not in BRAND_CONFIG:
+        print(f"❌ 未找到品牌配置: {brand}")
+        return
+
+    cfg = BRAND_CONFIG[brand]
+    image_dir = cfg["IMAGE_DIR"]      # 读取图片目录
+    txt_dir   = cfg["TXT_DIR"]        # TXT 目录
+    html_dir  = cfg["HTML_DIR_DES"]   # 输出目录
+    html_dir.mkdir(parents=True, exist_ok=True)
+
+    codes_path = Path(codes_file)
+    codes_raw = _read_codes_file(codes_path)
+    if not codes_raw:
+        print(f"❌ 在编码文件中未读取到有效编码：{codes_path}")
+        return
+    # 规范化后的键
+    code_keys = [_norm_code(c) for c in codes_raw]
+    print(f"🔎 从编码文件收集到 {len(code_keys)} 个编码。示例：{codes_raw[:5]}")
+
+    # 建立 TXT 索引（以“规范化后的编码”为键）
+    txt_index = {}
+    for txt in txt_dir.glob("*.txt"):
+        try:
+            d = parse_txt(txt)
+            code_in_txt = d.get("Product Code", "")
+            if not code_in_txt:
+                # 兜底：从文件名猜
+                code_in_txt = _guess_code_from_filename(txt.name)
+            key = _norm_code(code_in_txt)
+            if key:
+                # 若重复，保留先入（通常无影响）
+                txt_index.setdefault(key, txt)
+        except Exception:
+            continue
+
+    # 用编码列表筛选 TXT
+    selected_txts, missing_codes = [], []
+    for k, raw in zip(code_keys, codes_raw):
+        if k in txt_index:
+            selected_txts.append(txt_index[k])
+        else:
+            missing_codes.append(raw)
+
+    if not selected_txts:
+        print(f"❌ 根据提供的编码，在 {txt_dir} 未匹配到任何 TXT")
+        if missing_codes:
+            print("   （示例缺失编码）", missing_codes[:10])
+        return
+
+    if missing_codes:
+        print(f"⚠️ 有 {len(missing_codes)} 个编码在 TXT 目录中缺失，已跳过。示例：{missing_codes[:10]}")
+
+    # 复用原有多线程处理逻辑
+    print(f"开始处理 {len(selected_txts)} 个文件，使用 {max_workers} 个线程.")
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(process_file, txt_file, image_dir, html_dir, brand): txt_file
+            for txt_file in selected_txts
+        }
+        for future in as_completed(futures):
+            print(future.result())
+
+    print(f"✅ 所有 HTML 已生成到：{html_dir}")
+

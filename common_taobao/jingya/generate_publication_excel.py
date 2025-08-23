@@ -208,16 +208,38 @@ def generate_publication_excels(brand: str):
         print(f"✅ 导出：{out_file}")
 
     # 拷贝图片
+    # 拷贝图片
     image_dst_dir.mkdir(parents=True, exist_ok=True)
     print("\n🖼️ 正在复制商品图片...")
+    missing_codes = []  # <== 新增：收集缺图编码
     for code in product_codes:
         code_clean = code.strip().upper()
         matched_images = list(image_src_dir.glob(f"{code_clean}*.jpg"))
         if not matched_images:
             print(f"⚠️ 未找到图片: {code_clean}")
+            missing_codes.append(code_clean)   # <== 记录缺图编码
             continue
         for img_path in matched_images:
             shutil.copy(img_path, image_dst_dir / img_path.name)
+
+    # === 新增：写出 publication_codes.txt 与 missing_codes.txt ===
+        # === 新增：写出 publication_codes.txt 与 missing_codes.txt ===
+    pub_codes_file = config["OUTPUT_DIR"] / "publication_codes.txt"
+    miss_codes_file = config["OUTPUT_DIR"] / "missing_codes.txt"
+
+    # 所有符合条件的商品编码
+    with open(pub_codes_file, "w", encoding="utf-8") as f:
+        for code in sorted(set(product_codes)):
+            f.write(f"{code}\n")
+    print(f"📝 已写出商品编码列表: {pub_codes_file} ({len(product_codes)} 个)")
+
+    # 缺图的编码
+    with open(miss_codes_file, "w", encoding="utf-8") as f:
+        for code in sorted(set(missing_codes)):
+            f.write(f"{code}\n")
+    print(f"📝 已写出缺图编码列表: {miss_codes_file} ({len(missing_codes)} 个)")
+
+
 
     print("\n✅ 所有操作完成。")
 

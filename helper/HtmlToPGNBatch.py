@@ -95,7 +95,7 @@ def process_html_folder(html_folder: Path, output_folder: Path, geckodriver_path
             continue
         html_path = html_folder / name
         # 维持你的命名规则：去掉下划线
-        out_name = f"{html_path.stem.replace('_', '')}.png"
+        out_name = f"{html_path.stem}.png"
         output_image = output_folder / out_name
 
         print(f"[proc] {html_path}")

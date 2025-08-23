@@ -121,7 +121,7 @@ def find_image_url(code: str, image_dir: Path, priority: list[str]) -> str:
 def process_one(code: str, image_dir: Path, out_dir: Path, priority: list[str]):
     img_url = find_image_url(code, image_dir, priority)
     html = render_template(img_url)
-    out_path = out_dir / f"{code}_Hero.html"
+    out_path = out_dir / f"{code}_First.html"
     out_path.write_text(html, encoding="utf-8")
     return f"✅ {out_path.name}"
 
@@ -259,3 +259,73 @@ if __name__ == "__main__":
         sys.exit(1)
     brand = sys.argv[1]
     generate_html_for_first_page(brand)
+
+
+# === 读取商品编码列表（txt）===
+def _read_codes_file(codes_file: Path) -> list[str]:
+    """
+    读取一个包含商品编码的txt文件。
+    支持：一行一个编码；或逗号/空格/制表符分隔；自动忽略空行与 # 注释行。
+    返回：去重且保持顺序的编码列表（原样保留大小写，但内部匹配用 _norm_code）
+    """
+    import re
+    codes_raw = []
+    if not codes_file.exists():
+        print(f"❌ 编码文件不存在：{codes_file}")
+        return codes_raw
+
+    with open(codes_file, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = re.split(r"[,\s]+", line)
+            for p in parts:
+                if p:
+                    codes_raw.append(p.strip())
+
+    # 去重并保持顺序（按规范化键判断）
+    seen = set()
+    ordered = []
+    for c in codes_raw:
+        k = _norm_code(c)
+        if k and k not in seen:
+            seen.add(k)
+            ordered.append(c)
+    return ordered
+
+
+def generate_first_page_from_codes_files(brand: str, codes_file: str | Path, max_workers: int = 6):
+    """
+    根据“商品编码列表txt”生成首屏 HTML。
+    图片与输出目录沿用 BRAND_CONFIG[brand]（与 generate_html_for_first_page 一致）。
+    :param brand: 品牌（如 'camper', 'barbour', 'clarks_jingya'）
+    :param codes_file: 商品编码列表txt路径（如 D:\\TB\\Products\\camper\\repulibcation\\publication_codes.txt）
+    :param max_workers: 线程数
+    """
+    brand = brand.lower()
+    if brand not in BRAND_CONFIG:
+        print(f"❌ 未找到品牌配置：{brand}")
+        return
+
+    cfg = BRAND_CONFIG[brand]
+    image_dir: Path = _get_image_dir(cfg)
+    hero_dir: Path = cfg.get("HTML_DIR_FIRST_PAGE") or (Path.cwd() / "HTML_FIRST_PAGE")
+    hero_dir.mkdir(parents=True, exist_ok=True)
+    priority = cfg.get("IMAGE_FIRST_PRIORITY", IMAGE_PRIORITY_DEFAULT)
+
+    codes_path = Path(codes_file)
+    codes_raw = _read_codes_file(codes_path)
+    if not codes_raw:
+        print(f"❌ 在编码文件中未读取到有效编码：{codes_path}")
+        return
+
+    print(f"▶ 生成首屏 HTML（按编码列表驱动）：brand={brand}，编码数={len(codes_raw)}，输出目录={hero_dir}")
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futs = [
+            ex.submit(process_one, _norm_code(code), image_dir, hero_dir, priority)
+            for code in codes_raw
+        ]
+        for f in as_completed(futs):
+            print(f.result())
+    print("✅ 全部完成。")
