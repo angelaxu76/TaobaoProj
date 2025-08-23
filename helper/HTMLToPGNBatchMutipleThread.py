@@ -7,6 +7,13 @@ from selenium.webdriver.firefox.options import Options
 from PIL import Image
 
 
+# 从 config.py 读取 GeckoDriver 路径；如未配置则用常见默认
+try:
+    from config import SETTINGS  # 建议在 SETTINGS 里加 key: "GECKODRIVER_PATH"
+    GECKODRIVER_PATH = SETTINGS.get("GECKODRIVER_PATH", r"D:/Software/geckodriver.exe")
+except Exception:
+    GECKODRIVER_PATH = r"D:/Software/geckodriver.exe"
+
 def trim_image(image_path):
     """去除图片左右空白区域"""
     image = Image.open(image_path)
@@ -45,11 +52,12 @@ def process_html_file(file, html_folder, output_folder, suffix,geckodriver_path)
     """处理单个 HTML 文件"""
     if file.endswith(".html"):
         html_path = os.path.join(html_folder, file)
-        output_image = os.path.join(output_folder, f"{os.path.splitext(file)[0].replace('_', '')}_{suffix}.png")
+        output_image = os.path.join(output_folder,f"{os.path.splitext(file)[0]}.png"
+)
         html_to_full_screenshot(html_path, output_image, geckodriver_path)
 
 
-def convert_html_to_images(input_dir, output_dir, geckodriver_path,suffix, max_workers=4):
+def convert_html_to_images(input_dir, output_dir, suffix, max_workers=4):
     """
     将 HTML 转换为图片（支持多线程）
 
@@ -66,6 +74,6 @@ def convert_html_to_images(input_dir, output_dir, geckodriver_path,suffix, max_w
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         for file in html_files:
-            executor.submit(process_html_file, file, input_dir, output_dir,suffix, geckodriver_path)
+            executor.submit(process_html_file, file, input_dir, output_dir,suffix, GECKODRIVER_PATH)
 
     print(f"[Done] All screenshots saved to {output_dir}")

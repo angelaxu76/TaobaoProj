@@ -102,28 +102,66 @@ def render_template(image_url: str) -> str:
     return HTML_TEMPLATE.replace("__IMAGE_URL__", image_url, 1)
 
 
+def _code_variants(code: str) -> list[str]:
+    """基于原始编码构造多种文件名变体用于匹配图片。"""
+    raw = code.strip()
+    no_sep = re.sub(r"[^A-Za-z0-9]", "", raw)
+    under = raw.replace("-", "_")
+    # 去掉末尾 _数字（如 _1）
+    raw_trim = re.sub(r"_[0-9]+$", "", raw)
+    under_trim = re.sub(r"_[0-9]+$", "", under)
+    no_sep_trim = re.sub(r"_[0-9]+$", "", no_sep)
+    # 去重保持顺序
+    seen = set()
+    out = []
+    for v in [raw, raw_trim, under, under_trim, no_sep, no_sep_trim]:
+        if v and v not in seen:
+            seen.add(v)
+            out.append(v)
+    return out
+
 def find_image_url(code: str, image_dir: Path, priority: list[str]) -> str:
     if not image_dir.exists():
         return PLACEHOLDER_IMG
-    candidates = []
-    for suf in priority:
-        candidates.append(image_dir / f"{code}_{suf}.jpg")
-        candidates.append(image_dir / f"{code}-{suf}.jpg")
-        candidates.append(image_dir / f"{code}{suf}.jpg")
-    candidates.append(image_dir / f"{code}.jpg")
-    candidates.append(image_dir / f"{code}.png")
-    for c in candidates:
-        if c.exists():
-            return f"file:///{c.as_posix()}"
+
+    exts = [".jpg", ".jpeg", ".png", ".webp"]
+    variants = _code_variants(code)
+
+    # 1) 先按变体+优先级+扩展名精确匹配
+    for v in variants:
+        for suf in priority:
+            for e in exts:
+                for pat in (f"{v}_{suf}{e}", f"{v}-{suf}{e}", f"{v}{suf}{e}"):
+                    p = image_dir / pat
+                    if p.exists():
+                        return p.resolve().as_uri()
+
+        for e in exts:
+            p = image_dir / f"{v}{e}"
+            if p.exists():
+                return p.resolve().as_uri()
+
+    # 2) 兜底：任意以任一变体开头的图片文件
+    for v in variants:
+        for p in sorted(image_dir.glob(f"{v}*")):
+            if p.is_file() and p.suffix.lower() in exts:
+                return p.resolve().as_uri()
+
     return PLACEHOLDER_IMG
 
 
-def process_one(code: str, image_dir: Path, out_dir: Path, priority: list[str]):
-    img_url = find_image_url(code, image_dir, priority)
+
+def process_one(display_code: str, image_dir: Path, out_dir: Path, priority: list[str]):
+    """
+    display_code: 原始编码（保留连字符），用于输出文件名。
+    找图时会自动尝试多种变体（带 -、带 _、无分隔）。
+    """
+    img_url = find_image_url(display_code, image_dir, priority)
     html = render_template(img_url)
-    out_path = out_dir / f"{code}_First.html"
+    out_path = out_dir / f"{display_code}_First.html"   # ✅ 保留连字符
     out_path.write_text(html, encoding="utf-8")
     return f"✅ {out_path.name}"
+
 
 
 def generate_html_for_first_page(brand: str, max_workers: int = 6):
@@ -323,7 +361,7 @@ def generate_first_page_from_codes_files(brand: str, codes_file: str | Path, max
     print(f"▶ 生成首屏 HTML（按编码列表驱动）：brand={brand}，编码数={len(codes_raw)}，输出目录={hero_dir}")
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         futs = [
-            ex.submit(process_one, _norm_code(code), image_dir, hero_dir, priority)
+            ex.submit(process_one, code, image_dir, hero_dir, priority)
             for code in codes_raw
         ]
         for f in as_completed(futs):

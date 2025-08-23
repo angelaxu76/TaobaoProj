@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run current Python file",
+      "type": "python",
+      "request": "launch",
+      "program": "${file}",                 // ✅ 运行当前打开的文件
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",          // ✅ 工作目录固定为项目根
+      "env": { "PYTHONPATH": "${workspaceFolder}" } // ✅ 确保能 import config.py
+    }
+  ]
+}
