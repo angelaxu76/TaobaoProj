@@ -43,19 +43,22 @@ def run_script(filename: str):
 
 def main():
     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    # backup_and_clear_brand_dirs(CLARKS_JINGYA)  # ✅ 使用共享方法
+    backup_and_clear_brand_dirs(CLARKS_JINGYA)  # ✅ 使用共享方法
 
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    #generate_product_links("clarks_jingya")
+    generate_product_links("clarks_jingya")
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    #clarks_fetch_info()
+    clarks_fetch_info()
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
-    #import_txt_to_db_supplier("clarks_jingya")  # ✅ 新逻辑
+    import_txt_to_db_supplier("clarks_jingya")  # ✅ 新逻辑
 
     print("\n🟡 Step: 5️⃣ 绑定渠道 SKU 信息（淘经销 Excel）将鲸芽那边的货品ID等输入到数据库")
-    # insert_jingyaid_to_db("clarks_jingya")
+    insert_jingyaid_to_db("clarks_jingya")
+
+    print("\n🟡 Step: 5️⃣ 将最新TXT中没有的产品，说明刚商品已经下架，但鲸芽这边没办法删除，全部补库存为0")
+    insert_missing_products_with_zero_stock("clarks_jingya")
 
     print("\\n🟡 Step: 6️⃣生成发布产品的excel")
     generate_publication_excels("clarks_jingya")
