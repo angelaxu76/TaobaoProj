@@ -5,7 +5,7 @@ from brands.camper.image.image_defender_with_flip import batch_process_images
 from brands.camper.image.ResizeImage import expand_images_in_folder
 from common_taobao.generate_html import generate_html_from_codes_files
 from common_taobao.generate_html_FristPage import generate_first_page_from_codes_files
-from common_taobao.jingya.export_channel_price_excel import export_channel_price_excel_from_txt
+from common_taobao.jingya.export_channel_price_excel import export_channel_price_excel_from_txt,export_channel_price_excel_from_channel_ids
 from helper.merge_product_images import batch_merge_images
 from helper.HtmlToPGNBatch import process_html_folder
 from helper.HTMLToPGNBatchMutipleThread import convert_html_to_images
@@ -52,6 +52,8 @@ def main():
 
     print("导出发布商品的价格")
     export_channel_price_excel_from_txt("camper",code_file_path)
+    code_missing_path = r"D:\TB\Products\camper\repulibcation\publication_codes_missing.txt"
+    export_channel_price_excel_from_channel_ids("camper",code_missing_path)
 
 
 if __name__ == "__main__":

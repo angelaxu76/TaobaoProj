@@ -18,5 +18,6 @@ def pipeline_jingya():
     generate_channel_binding_excel_shoes("camper", Path("D:/TB/taofenxiao/goods"))
 
 
+
 if __name__ == "__main__":
     pipeline_jingya()

@@ -8,3 +8,7 @@ FROM clarks_jingya_inventory
 WHERE stock_count > 0
 GROUP BY product_code
 HAVING COUNT(*) >= 4;
+
+select * from clarks_jingya_inventory where channel_product_id = '969865905287'
+
+select * from clarks_jingya_inventory where product_code = '26154186';

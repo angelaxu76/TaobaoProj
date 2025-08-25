@@ -145,6 +145,52 @@ def export_channel_price_excel_from_txt(brand: str, txt_path: str):
     generate_channel_price_excel(df, brand, out_path)
 
 
+def export_channel_price_excel_from_channel_ids(brand: str, txt_path: str):
+    """
+    从 TXT 读取【channel_product_id】列表生成价格表
+    - TXT 每行一个 channel_product_id（字符串原样匹配）
+    - 统一调用 generate_channel_price_excel 导出
+    输出：{OUTPUT_DIR}/{brand}_channel_prices_by_ids.xlsx
+    """
+    config = BRAND_CONFIG[brand.lower()]
+    pg_cfg = config["PGSQL_CONFIG"]
+    table_name = config["TABLE_NAME"]
+    out_dir = config["OUTPUT_DIR"]
+    out_path = out_dir / f"{brand.lower()}_channel_prices_by_ids.xlsx"
+
+    if not os.path.exists(txt_path):
+        raise FileNotFoundError(f"❌ 未找到 TXT 文件: {txt_path}")
+
+    # 读取 channel_product_id 清单
+    with open(txt_path, "r", encoding="utf-8") as f:
+        selected_ids = {line.strip() for line in f if line.strip()}
+
+    if not selected_ids:
+        raise ValueError("❌ TXT 文件中没有有效的 channel_product_id")
+
+    conn = psycopg2.connect(**pg_cfg)
+    try:
+        query = f"""
+            SELECT channel_product_id, original_price_gbp, discount_price_gbp, product_code
+            FROM {table_name}
+            WHERE channel_product_id IS NOT NULL
+        """
+        df = pd.read_sql_query(query, conn)
+    finally:
+        conn.close()
+
+    # 过滤到这些 channel_product_id
+    df["channel_product_id"] = df["channel_product_id"].astype(str)
+    df = df[df["channel_product_id"].isin(selected_ids)]
+
+    if df.empty:
+        print("⚠️ 没有匹配到任何 channel_product_id。")
+        return
+
+    # 调用统一导出逻辑（自动计算 采购价→未税价→零售价）
+    generate_channel_price_excel(df, brand, out_path)
+    print(f"🔎 使用【channel_product_id】筛选，共 {len(selected_ids)} 个 ID，匹配 {len(df.groupby('channel_product_id'))} 个商品。")
+
 
 # ============ ✅ 函数 3：导出 SKU 对应的价格（用于淘宝发布） =============
 def export_all_sku_price_excel(brand: str):
