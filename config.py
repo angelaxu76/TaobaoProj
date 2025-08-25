@@ -275,22 +275,34 @@ CAMPER = {
     }
 }
 
-# === Camper Global（调货）路径配置 ===
-CAMPER_GLOBAL_BASE = BASE_DIR / "camper_global"
-CAMPER_GLOBAL = {
-    "BRAND": "camper_global",
-    "BASE": CAMPER_GLOBAL_BASE,
-    "TXT_DIR": CAMPER_GLOBAL_BASE / "publication" / "TXT",
-    "OUTPUT_DIR": CAMPER_GLOBAL_BASE / "repulibcation",
-    "STORE_DIR": CAMPER_GLOBAL_BASE / "document" / "store",
-    "IMAGE_DIR": CAMPER_GLOBAL_BASE / "document" / "image",
-    "IMAGE_DOWNLOAD": CAMPER_GLOBAL_BASE / "document" / "image_download",
-    "IMAGE_PROCESS": CAMPER_GLOBAL_BASE / "document" / "image_process",
-    "IMAGE_cutter": CAMPER_GLOBAL_BASE / "document" / "image_cutter",
-    "HTML_DIR": CAMPER_GLOBAL_BASE / "document" / "html",
-    "TABLE_NAME": "camper_inventory_global",
+
+REISS_BASE = BASE_DIR / "reiss"
+REISS = {
+    "BRAND": "reiss",
+    "BASE": REISS_BASE,
+    "IMAGE_FIRST_PRIORITY": ["F", "C", "L", "T"],
+    "IMAGE_DES_PRIORITY": ["C", "F", "L", "T"],
+    "TXT_DIR": REISS_BASE / "publication" / "TXT",
+    "ORG_IMAGE_DIR": REISS_BASE / "document" / "orgin_images",
+    "DEF_IMAGE_DIR": REISS_BASE / "document" / "DEF_images",
+    "IMAGE_DIR": REISS_BASE / "document" / "images",
+    "IMAGE_DOWNLOAD": REISS_BASE / "publication" / "image_download",
+    "IMAGE_PROCESS": REISS_BASE / "publication" / "image_process",
+    "IMAGE_CUTTER": REISS_BASE / "publication" / "image_cutter",
+    "MERGED_DIR": REISS_BASE / "document" / "image_merged",
+    "HTML_DIR": REISS_BASE / "publication" / "html",
+    "HTML_DIR_DES": REISS_BASE / "publication" / "html" / "description",
+    "HTML_DIR_FIRST_PAGE": REISS_BASE / "publication" / "html" / "first_page",
+    "HTML_IMAGE": REISS_BASE / "publication" / "html_image",
+    "HTML_IMAGE_DES": REISS_BASE / "publication" / "html_image" / "description",
+    "HTML_IMAGE_FIRST_PAGE": REISS_BASE / "publication" / "html_image" / "first_page",
+    "HTML_CUTTER_DES": REISS_BASE / "document" / "html_cutter" / "description",
+    "HTML_CUTTER_FIRST_PAGE": REISS_BASE / "document" / "html_cutter" / "first_page",
+    "STORE_DIR": REISS_BASE / "document" / "store",
+    "OUTPUT_DIR": REISS_BASE / "repulibcation",
+    "TABLE_NAME": "reiss_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
-    "LINKS_FILE": CAMPER_GLOBAL_BASE / "publication" / "product_links.txt",
+    "LINKS_FILE": REISS_BASE / "publication" / "product_links.txt",
     "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
@@ -298,10 +310,11 @@ CAMPER_GLOBAL = {
         "discount_price": "discount_price_gbp",
         "original_price": "original_price_gbp",
         "size": "size",
-        "stock": "stock_count",  # ✅ 改为数值型
+        "stock": "stock_count",
         "gender": "gender"
     }
 }
+
 
 # === Clarks 品牌路径配置 ===
 CLARKS_BASE = BASE_DIR / "clarks"
@@ -460,14 +473,15 @@ BRAND_CONFIG = {
     "clarks": CLARKS,
     "clarks_jingya": CLARKS_JINGYA,
     "camper": CAMPER,
-    "camper_global": CAMPER_GLOBAL,
     "geox": GEOX,
     "ecco": ECCO,
     "birkenstock": BIRKENSTOCK,
-    "barbour": BARBOUR  # ✅ 加这一行
+    "barbour": BARBOUR,  # ✅ 加这一行
+    "reiss": REISS  # ✅ 加这一行
 }
 
-# === 品牌中英文名映射 ===
+
+# ==== 品牌中英文名映射 ====
 BRAND_NAME_MAP = {
     "camper": ("Camper", "看步"),
     "clarks": ("Clarks", "其乐"),
@@ -475,5 +489,6 @@ BRAND_NAME_MAP = {
     "geox": ("GEOX", "健乐士"),
     "ecco": ("ECCO", "爱步"),
     "barbour": ("Barbour", "巴伯尔"),
-    "birkenstock": ("BIRKENSTOCK", "勃肯")
+    "birkenstock": ("BIRKENSTOCK", "勃肯"),
+    "reiss": ("REISS", "REISS"),  # ✅ 新增（中文名若需本地化可改为“瑞斯/锐思”等）
 }
