@@ -5,6 +5,7 @@ from brands.camper.image.image_defender_with_flip import batch_process_images
 from brands.camper.image.ResizeImage import expand_images_in_folder
 from common_taobao.generate_html import generate_html_from_codes_files
 from common_taobao.generate_html_FristPage import generate_first_page_from_codes_files
+from common_taobao.jingya.export_channel_price_excel import export_channel_price_excel_from_txt
 from helper.merge_product_images import batch_merge_images
 from helper.HtmlToPGNBatch import process_html_folder
 from helper.HTMLToPGNBatchMutipleThread import convert_html_to_images
@@ -12,11 +13,12 @@ from helper.cutterAllsiderSpace import trim_sides_batch
 
 
 def main():
+    code_file_path = r"D:\TB\Products\camper\repulibcation\publication_codes.txt"
     print("检查哪些图片缺少，TXT中编码但图片文件夹中没有图片")
     # check_missing_images("camper")
 
     print("下载指定商品编码的的图片")
-    # download_images_from_codes(r"D:\TB\Products\camper\repulibcation\publication_codes.txt")
+    # download_images_from_codes(code_file_path)
 
     print("下载product_link中包含商品编码URL的图片")
     # download_camper_images()
@@ -36,7 +38,6 @@ def main():
     # batch_merge_images(CAMPER["IMAGE_CUTTER"],CAMPER["MERGED_DIR"], width=750)
 
     print("生成产品详情卡HTML")
-    code_file_path = r"D:\TB\Products\camper\repulibcation\publication_codes.txt"
     # generate_html_from_codes_files("camper",code_file_path)
     # generate_first_page_from_codes_files("camper",code_file_path)
 
@@ -47,7 +48,10 @@ def main():
 
     print("生成产品首页图片")
     # convert_html_to_images(CAMPER["HTML_DIR_FIRST_PAGE"], CAMPER["HTML_IMAGE_FIRST_PAGE"],"",6)
-    trim_sides_batch(CAMPER["HTML_IMAGE_FIRST_PAGE"],CAMPER["HTML_CUTTER_FIRST_PAGE"])
+    #trim_sides_batch(CAMPER["HTML_IMAGE_FIRST_PAGE"],CAMPER["HTML_CUTTER_FIRST_PAGE"])
+
+    print("导出发布商品的价格")
+    export_channel_price_excel_from_txt("camper",code_file_path)
 
 
 if __name__ == "__main__":

@@ -102,36 +102,74 @@ def export_channel_price_excel(brand: str, exclude_txt: Optional[str] = None):
 
 # ============ ✅ 函数 2：导出指定 TXT 列表价格 =============
 def export_channel_price_excel_from_txt(brand: str, txt_path: str):
+    """
+    从 TXT 读取筛选条件生成价格表：
+    - TXT 每行可填【商品编码】或【渠道产品ID】
+    - 自动判断：若大多数行包含字母/非纯数字，则按【商品编码】过滤；否则按【渠道产品ID】过滤
+    - 统一调用 generate_channel_price_excel 导出
+    """
+    from collections import Counter
+
     config = BRAND_CONFIG[brand.lower()]
     pg_cfg = config["PGSQL_CONFIG"]
     table_name = config["TABLE_NAME"]
-    out_path = config["OUTPUT_DIR"] / f"{brand.lower()}_channel_prices_filtered.xlsx"
+    out_dir = config["OUTPUT_DIR"]
 
     if not os.path.exists(txt_path):
         raise FileNotFoundError(f"❌ 未找到 TXT 文件: {txt_path}")
 
+    # 读取筛选项
     with open(txt_path, "r", encoding="utf-8") as f:
-        selected_ids = set(line.strip() for line in f if line.strip())
-    if not selected_ids:
-        raise ValueError("❌ TXT 文件中没有有效的 channel_product_id")
+        lines = [line.strip() for line in f if line.strip()]
+
+    if not lines:
+        raise ValueError("❌ TXT 文件中没有有效内容")
+
+    # 简单判断：包含字母/非纯数字的比例（视为编码）
+    def looks_like_code(s: str) -> bool:
+        return not s.isdigit()  # 只要不是全数字，就按编码处理（含字母或有连字符等）
+
+    kinds = [ "code" if looks_like_code(x) else "id" for x in lines ]
+    pick = Counter(kinds).most_common(1)[0][0]  # 'code' or 'id'
 
     conn = psycopg2.connect(**pg_cfg)
-    query = f"""
-        SELECT channel_product_id, original_price_gbp, discount_price_gbp, product_code
-        FROM {table_name}
-        WHERE channel_product_id IS NOT NULL
-    """
-    df = pd.read_sql_query(query, conn)
-    conn.close()
-
-    df["channel_product_id"] = df["channel_product_id"].astype(str)
-    df = df[df["channel_product_id"].isin(selected_ids)]
+    try:
+        if pick == "code":
+            # 按商品编码过滤
+            codes = set(x.upper() for x in lines)
+            query = f"""
+                SELECT channel_product_id, original_price_gbp, discount_price_gbp, product_code
+                FROM {table_name}
+                WHERE product_code IS NOT NULL
+            """
+            df = pd.read_sql_query(query, conn)
+            df["product_code"] = df["product_code"].astype(str).str.strip().str.upper()
+            df = df[df["product_code"].isin(codes)]
+            out_path = out_dir / f"{brand.lower()}_channel_prices_by_codes.xlsx"
+            print(f"🔎 识别为【商品编码】筛选，共 {len(codes)} 个编码")
+        else:
+            # 按渠道产品ID过滤
+            ids = set(lines)
+            query = f"""
+                SELECT channel_product_id, original_price_gbp, discount_price_gbp, product_code
+                FROM {table_name}
+                WHERE channel_product_id IS NOT NULL
+            """
+            df = pd.read_sql_query(query, conn)
+            df["channel_product_id"] = df["channel_product_id"].astype(str)
+            df = df[df["channel_product_id"].isin(ids)]
+            out_path = out_dir / f"{brand.lower()}_channel_prices_filtered.xlsx"
+            print(f"🔎 识别为【渠道产品ID】筛选，共 {len(ids)} 个ID")
+    finally:
+        conn.close()
 
     if df.empty:
-        print("⚠️ 没有匹配到任何 channel_product_id。")
+        print("⚠️ 没有匹配到任何记录。")
         return
 
+    # 按你现有统一逻辑导出
     generate_channel_price_excel(df, brand, out_path)
+
 
 # ============ ✅ 函数 3：导出 SKU 对应的价格（用于淘宝发布） =============
 def export_all_sku_price_excel(brand: str):

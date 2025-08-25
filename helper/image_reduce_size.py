@@ -2,8 +2,8 @@ from PIL import Image
 import os
 
 # 输入输出目录
-input_dir = r"D:\TB\Products\barbour\repulibcation\imagesSQUARE"
-output_dir = r"D:\TB\Products\barbour\repulibcation\imagesDEST"
+input_dir = r"D:\TB\Products\clarks_jingya\publication\image_cutter"
+output_dir = r"D:\TB\Products\clarks_jingya\publication\image_cutter_reduceSize"
 os.makedirs(output_dir, exist_ok=True)
 
 # 压缩目标大小（每张 < 500KB，5张合计<2MB）
