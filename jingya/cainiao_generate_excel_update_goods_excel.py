@@ -58,6 +58,7 @@ def is_all_zeros(s: str) -> bool:
 def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 500):
     cfg = BRAND_CONFIG[brand]
     pg = cfg["PGSQL_CONFIG"]
+    table_inventory = cfg["TABLE_NAME"]  # 各品牌自己的 inventory 表名（来自 config）
 
     # 找最新一份“货品导出*.xlsx”
     candidates = [f for f in os.listdir(goods_dir) if f.startswith("货品导出") and f.endswith(".xlsx")]
@@ -66,20 +67,38 @@ def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 50
     candidates.sort(reverse=True)
     infile = goods_dir / candidates[0]
 
-    # 读 barbour_products（一次性）
+    # === 品牌差异化：准备产品基础信息（code+size -> {gender,title,category}） ===
     prod = {}
     with psycopg2.connect(**pg) as conn, conn.cursor() as cur:
-        cur.execute("""
-            SELECT color_code, size, COALESCE(gender,''), COALESCE(title,''), COALESCE(category,'')
-            FROM barbour_products
-        """)
-        for code, sz, gender, title, cat in cur.fetchall():
-            key = (str(code), clean_size_for_barbour(str(sz)))
-            prod[key] = {"gender": gender, "title": title, "category": cat}
+        if brand.lower() == "barbour":
+            # 服装：从 barbour_products 取（写死仅对 barbour 生效）
+            cur.execute("""
+                SELECT color_code, size, COALESCE(gender,''), COALESCE(title,''), COALESCE(category,'')
+                FROM barbour_products
+            """)
+            for code, sz, gender, title, cat in cur.fetchall():
+                key = (str(code), clean_size_for_barbour(str(sz)))
+                prod[key] = {"gender": gender, "title": title, "category": cat}
+        else:
+            # 其他品牌：从各自的 inventory 表取（字段名以你现有结构为准）
+            # 这里尽量做了字段兜底：product_name 为编码（你数据库里用它存 code），
+            # product_code 也尝试取一下，title/类别字段也做了 COALESCE。
+            cur.execute(f"""
+                SELECT
+                    COALESCE(NULLIF(product_code, ''), product_name) AS code,
+                    size,
+                    COALESCE(gender, '') AS gender,
+                    COALESCE(product_title, COALESCE(product_name, '')) AS title,
+                    COALESCE(style_category, '') AS category
+                FROM {table_inventory}
+            """)
+            for code, sz, gender, title, cat in cur.fetchall():
+                key = (str(code), str(sz))  # 非 barbour 不做 barbour 尺码清洗
+                prod[key] = {"gender": gender, "title": title, "category": cat}
 
+    # —— 下面沿用你原有逻辑（保持不变），仅在取 key 时按品牌差异化 —— 
     brand_label = BRAND_MAP.get(brand, brand)
 
-    # 读取 Excel
     df = pd.read_excel(infile)
     out_rows = []
 
@@ -87,7 +106,7 @@ def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 50
     pat = re.compile(r"(?:颜色分类|颜色)\s*:\s*([^;]+)\s*;\s*尺码\s*:\s*(.+)")
 
     for _, row in df.iterrows():
-        raw = str(row.get("货品名称", ""))  # 原列名就是“货品名称”
+        raw = str(row.get("货品名称", ""))
         code_field = str(row.get("货品编码", ""))
         barcode = str(row.get("条形码", ""))
 
@@ -97,18 +116,26 @@ def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 50
 
         color_code = m.group(1).strip()
         size_raw = m.group(2).strip()
-        size_norm = clean_size_for_barbour(size_raw)
 
-        # 先按 (code,size_norm) 精确找；找不到再仅按 code 找任意尺码的信息兜底
-        info = prod.get((color_code, size_norm))
-        if info is None:
-            # fallback：同编码取第一条
-            any_keys = [k for k in prod.keys() if k[0] == color_code]
-            if any_keys:
-                info = prod[any_keys[0]]
-            else:
-                # 数据库没有这件商品，跳过
-                continue
+        if brand.lower() == "barbour":
+            size_norm = clean_size_for_barbour(size_raw)
+            info = prod.get((color_code, size_norm))
+            if info is None:
+                # fallback：同编码取第一条
+                any_keys = [k for k in prod.keys() if k[0] == color_code]
+                if any_keys:
+                    info = prod[any_keys[0]]
+                else:
+                    continue
+        else:
+            # 其他品牌：key 使用原始尺码
+            info = prod.get((color_code, size_raw))
+            if info is None:
+                any_keys = [k for k in prod.keys() if k[0] == color_code]
+                if any_keys:
+                    info = prod[any_keys[0]]
+                else:
+                    continue
 
         gender_std = normalize_gender(info.get("gender",""), info.get("title",""))
         style_zh = guess_style_zh(info.get("category","") or info.get("title",""))
@@ -119,7 +146,7 @@ def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 50
             "货品编码": code_field,
             "货品名称": new_name,
             "货品名称（英文）": info.get("title",""),
-            "条形码": barcode,   # Barbour 当前无 EAN 合并逻辑；以后加列再合并
+            "条形码": barcode,
             "吊牌价": "", "零售价": "", "成本价": "",
             "易碎品": "", "危险品": "", "温控要求": "",
             "效期管理": "", "有效期（天）": "", "临期预警（天）": "",
@@ -143,12 +170,13 @@ def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 50
         "包含电池"
     ]
 
-    for i in range(0, len(out_rows), GROUP_SIZE):
-        part = out_rows[i:i+GROUP_SIZE]
+    for i in range(0, len(out_rows), group_size):
+        part = out_rows[i:i+group_size]
         out_df = pd.DataFrame(part, columns=cols)
-        out_path = goods_dir / f"更新后的货品导入_第{i//GROUP_SIZE+1}组.xlsx"
+        out_path = goods_dir / f"更新后的货品导入_第{i//group_size+1}组.xlsx"
         out_df.to_excel(out_path, sheet_name="商品信息", index=False)
         print(f"✅ 已生成：{out_path}")
+
 
 if __name__ == "__main__":
     export_goods_excel_from_db(BRAND, GOODS_DIR, GROUP_SIZE)
