@@ -30,3 +30,28 @@ HAVING COUNT(*) FILTER (WHERE max_stock > 0) > 2    -- 至少5个尺码有货
 ORDER BY in_stock_sizes DESC, product_code;
 
 select DISTINCT product_code from reiss_inventory where style_category IS NOT NULL
+
+
+
+SELECT
+    product_code,
+    MIN(discount_price_gbp) AS discount_price_gbp,  -- 取最低折扣价
+    COUNT(DISTINCT size) AS available_sizes
+FROM reiss_inventory
+WHERE stock_count > 0
+GROUP BY product_code
+HAVING COUNT(DISTINCT size) >= 3
+ORDER BY product_code;
+
+SELECT
+    product_code,
+    MAX(product_title) AS product_title,          -- 商品标题（取一个代表值）
+    MAX(style_category) AS style_category,        -- 类别
+    MIN(discount_price_gbp) AS discount_price_gbp,-- 最低折扣价
+    COUNT(DISTINCT size) AS available_sizes,      -- 有货尺码数量
+    SUM(stock_count) AS total_stock               -- 总库存
+FROM reiss_inventory
+WHERE stock_count > 0
+GROUP BY product_code
+HAVING COUNT(DISTINCT size) >= 3
+ORDER BY discount_price_gbp ASC;      

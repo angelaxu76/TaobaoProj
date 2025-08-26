@@ -1,0 +1,44 @@
+from config import REISS
+from pathlib import Path
+from brands.camper.image.ResizeImage import expand_images_in_folder
+from common_taobao.generate_html import generate_html_from_codes_files
+from common_taobao.generate_html_FristPage import generate_first_page_from_codes_files
+from common_taobao.jingya.export_channel_price_excel import export_channel_price_excel_from_txt,export_channel_price_excel_from_channel_ids
+from helper.merge_product_images import batch_merge_images
+from helper.HtmlToPGNBatch import process_html_folder
+from helper.HTMLToPGNBatchMutipleThread import convert_html_to_images
+from helper.cutterAllsiderSpace import trim_sides_batch
+from brands.reiss.core.download_reiss_images import download_reiss_images_from_codes
+
+
+def main():
+    code_file_path = r"D:\TB\Products\reiss\repulibcation\publication_codes_outerwear.txt"
+
+
+    print("\n🟡 Step: 4️⃣ 下载指定编码的图片")
+    sample_codes_file = Path(r"D:\TB\Products\reiss\repulibcation\publication_codes_outerwear.txt")
+    #download_reiss_images_from_codes(sample_codes_file)
+
+    input_folder = REISS["IMAGE_DOWNLOAD"]
+    output_folder = REISS["IMAGE_CUTTER"]
+    print("将图片变成正方形")
+    expand_images_in_folder(input_folder, output_folder)
+
+    print("将图片merge到一张图片中")
+    batch_merge_images(REISS["IMAGE_DOWNLOAD"],REISS["MERGED_DIR"], width=750)
+
+    print("生成产品详情卡HTML")
+    generate_html_from_codes_files("reiss",code_file_path)
+    generate_first_page_from_codes_files("reiss",code_file_path)
+
+    print("生成产品详情卡图片")
+    convert_html_to_images(REISS["HTML_DIR_DES"], REISS["HTML_IMAGE_DES"],"",6)
+    trim_sides_batch(REISS["HTML_IMAGE_DES"],REISS["HTML_CUTTER_DES"])
+
+    print("生成产品首页图片")
+    convert_html_to_images(REISS["HTML_DIR_FIRST_PAGE"], REISS["HTML_IMAGE_FIRST_PAGE"],"",6)
+    trim_sides_batch(REISS["HTML_IMAGE_FIRST_PAGE"],REISS["HTML_CUTTER_FIRST_PAGE"])
+
+
+if __name__ == "__main__":
+    main()
