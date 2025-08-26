@@ -8,15 +8,13 @@ import requests
 from bs4 import BeautifulSoup
 
 # === 项目内路径/配置 ===
-# 你之前已经在 config 里加了 REISS 配置，这里直接引用
 try:
     from config import REISS  # 包含 TXT_DIR / LINKS_FILE / BRAND / ...
 except ImportError:
-    # 允许独立运行（可手工传参）
     REISS = None
 
-# === 文本写入：沿用你上传的 writer，输出完全兼容 parse_txt / parse_barbour_jingya 等 ===
-from txt_writer import format_txt
+# === 文本写入：沿用你的 writer ===
+from common_taobao.txt_writer import format_txt
 
 UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -26,7 +24,7 @@ UA = (
 HEADERS = {"User-Agent": UA, "Accept-Language": "en-GB,en;q=0.9,zh-CN;q=0.8"}
 
 def _clean_text(s: str) -> str:
-    return re.sub(r"\s+", " ", s).strip()
+    return re.sub(r"\s+", " ", s or "").strip()
 
 def _money_to_float(text: Optional[str]) -> float:
     if not text:
@@ -37,7 +35,7 @@ def _money_to_float(text: Optional[str]) -> float:
 
 def _fetch_html(url: str, retry: int = 3, timeout: int = 25) -> str:
     last_exc = None
-    for i in range(retry):
+    for _ in range(retry):
         try:
             r = requests.get(url, headers=HEADERS, timeout=timeout)
             if r.status_code == 200 and r.text:
@@ -64,7 +62,6 @@ def _parse_next_data(soup: BeautifulSoup) -> Optional[Dict]:
     data = json.loads(tag.string or "{}")
     q = (((data.get("props") or {}).get("pageProps") or {})
          .get("dehydratedState") or {}).get("queries") or []
-    # 找到 queryKey = ["product", "<pid>"] 的项
     for item in q:
         state = item.get("state") or {}
         key = item.get("queryKey")
@@ -79,7 +76,7 @@ def _parse_dom_prices(soup: BeautifulSoup) -> Tuple[float, float]:
     original = _money_to_float(was_el.get_text(strip=True) if was_el else "")
     discount = _money_to_float(now_el.get_text(strip=True) if now_el else "")
     if original == 0.0 and discount > 0.0:
-        original = discount  # 非折扣场景只有一个价
+        original = discount
     return original, discount
 
 def _parse_dom_color(soup: BeautifulSoup) -> str:
@@ -87,21 +84,18 @@ def _parse_dom_color(soup: BeautifulSoup) -> str:
     return _clean_text(el.get_text()) if el else ""
 
 def _parse_dom_desc_features(soup: BeautifulSoup) -> Tuple[str, str]:
-    # 描述
     desc_el = soup.select_one('p[data-testid="item-description"]')
     description = _clean_text(desc_el.get_text()) if desc_el else ""
-    # 特性点
-    feats = [ _clean_text(li.get_text())
-              for li in soup.select('li[data-translate-id="tov-bullet"]') ]
+    feats = [_clean_text(li.get_text())
+             for li in soup.select('li[data-translate-id="tov-bullet"]')]
     feature_str = " | ".join([f for f in feats if f]) if feats else ""
     return description, feature_str
 
 def _parse_dom_sizes_fallback(soup: BeautifulSoup) -> Dict[str, str]:
-    # 兜底：用按钮 aria-label 提取（"16 unavailable" / "10 available"...）
-    size_map = {}
+    size_map: Dict[str, str] = {}
     for b in soup.select('[data-testid="size-chips-button-group"] button[aria-label]'):
         size_txt = _clean_text(b.get_text())
-        size = size_txt or re.sub(r"[^\d\.A-Za-z/]", "", b.get("aria-label","").split()[0])
+        size = size_txt or re.sub(r"[^\d\.A-Za-z/]", "", (b.get("aria-label","").split() or [""])[0])
         label = (b.get("aria-label") or "").lower()
         status = "无货" if "unavailable" in label else "有货"
         if size:
@@ -111,21 +105,124 @@ def _parse_dom_sizes_fallback(soup: BeautifulSoup) -> Dict[str, str]:
 def _parse_name_from_title(soup: BeautifulSoup) -> str:
     t = (soup.title.string or "") if soup.title else ""
     t = t.replace(" - REISS", "")
-    t = re.sub(r"^\s*Reiss\s+", "", t, flags=re.I)  # 去掉前缀品牌
+    t = re.sub(r"^\s*Reiss\s+", "", t, flags=re.I)
     return _clean_text(t)
+
+# === 尺码规范化（仅格式化字母为 XS/S/M/L/XL，数字不变） ===
+ALPHA_CANON_MAP = {
+    "xx-small": "XXS", "xxs": "XXS", "x x small": "XXS",
+    "x-small": "XS", "x small": "XS", "xsmall": "XS", "xs": "XS",
+    "small": "S", "s": "S",
+    "medium": "M", "m": "M",
+    "large": "L", "l": "L",
+    "x-large": "XL", "x large": "XL", "xlarge": "XL", "xl": "XL",
+    "one size": "One Size", "onesize": "One Size", "os": "One Size",
+}
+ALPHA_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "One Size"]
+
+def _normalize_alpha_sizes(size_map: Dict[str, str],
+                           size_detail: Dict[str, Dict] | None = None
+                           ) -> Tuple[Dict[str, str], Dict[str, Dict]]:
+    size_detail = size_detail or {}
+    norm_map: Dict[str, str] = {}
+    norm_detail: Dict[str, Dict] = {}
+
+    def is_numeric(k: str) -> bool:
+        return bool(re.fullmatch(r"\d{1,2}", k.strip()))
+
+    for raw_key, status in size_map.items():
+        k0 = (raw_key or "").strip()
+        if not k0:
+            continue
+        if is_numeric(k0):
+            key = k0
+        else:
+            k = k0.lower().replace("_", " ").replace("-", " ")
+            k = re.sub(r"\s+", " ", k)
+            key = ALPHA_CANON_MAP.get(k, k0)
+
+        prev = norm_map.get(key, "无货")
+        norm_map[key] = "有货" if ("有货" in (prev, status)) else "无货"
+        norm_detail.setdefault(key, size_detail.get(raw_key, {"stock_count": 0, "ean": ""}))
+
+    def sort_key(k: str):
+        if k in ALPHA_ORDER:
+            return (0, ALPHA_ORDER.index(k), 0)
+        if k.isdigit():
+            return (1, int(k), 0)
+        return (2, 0, k)
+
+    norm_map = dict(sorted(norm_map.items(), key=lambda x: sort_key(x[0])))
+    norm_detail = {k: norm_detail[k] for k in norm_map.keys()}
+    return norm_map, norm_detail
+
+# === 新增：补齐 + 量化库存（不改抓取，只在写入前处理） ===
+NUMERIC_RANGE = [str(x) for x in range(4, 22, 2)]  # 4,6,...,20
+ALPHA_RANGE   = ["XS", "S", "M", "L", "XL"]
+
+def _detect_size_schema(size_keys: List[str]) -> str:
+    has_num   = any(k.isdigit() for k in size_keys)
+    has_alpha = any(k in ALPHA_ORDER or k in ALPHA_RANGE for k in size_keys)
+    if has_num and not has_alpha:
+        return "numeric"
+    if has_alpha and not has_num:
+        return "alpha"
+    if has_num and has_alpha:
+        num_cnt = sum(1 for k in size_keys if k.isdigit())
+        alp_cnt = sum(1 for k in size_keys if k in ALPHA_ORDER or k in ALPHA_RANGE)
+        return "numeric" if num_cnt >= alp_cnt else "alpha"
+    return "unknown"
+
+def _fill_and_quantify_sizes(size_map: Dict[str, str],
+                             size_detail: Dict[str, Dict]) -> Tuple[Dict[str, str], Dict[str, Dict]]:
+    """
+    - “有货” => stock_count = 3；“无货” => 0
+    - 按 schema 补齐尺码范围（numeric: 4..22; alpha: XS..XL）
+    - 否则（unknown/One Size等）不补齐，仅量化
+    """
+    keys = list(size_map.keys())
+    schema = _detect_size_schema(keys)
+
+    def quantize(status: str) -> int:
+        return 3 if (status or "").strip() == "有货" else 0
+
+    if schema == "numeric":
+        full = NUMERIC_RANGE
+    elif schema == "alpha":
+        full = ALPHA_RANGE
+    else:
+        # 仅把已有的量化
+        new_map = {}
+        new_detail = {}
+        for k, st in size_map.items():
+            stock = quantize(st)
+            new_map[k] = "有货" if stock > 0 else "无货"
+            new_detail[k] = {"stock_count": stock,
+                             "ean": size_detail.get(k, {}).get("ean", "0000000000000")}
+        return new_map, new_detail
+
+    new_map: Dict[str, str] = {}
+    new_detail: Dict[str, Dict] = {}
+    for s in full:
+        st = size_map.get(s, "无货")
+        stock = quantize(st)
+        new_map[s] = "有货" if stock > 0 else "无货"
+        new_detail[s] = {
+            "stock_count": stock,
+            "ean": size_detail.get(s, {}).get("ean", "0000000000000")
+        }
+    return new_map, new_detail
+# === 补齐 + 量化结束 ===
 
 def parse_reiss_product(html: str, url: str) -> Dict:
     soup = BeautifulSoup(html, "html.parser")
 
-    # 1) 优先从 __NEXT_DATA__ 拿结构化数据（有 gender / category / sizes 等）
     next_data = _parse_next_data(soup)
 
-    # 2) 名称/颜色/描述/特性（DOM）
     product_title = _parse_name_from_title(soup)
     color = _parse_dom_color(soup)
     description, feature_str = _parse_dom_desc_features(soup)
 
-    # 3) 编码（先 DOM，后 URL 兜底）
     product_code = ""
     code_label = soup.find(string=re.compile(r"Product Code", re.I))
     if code_label:
@@ -138,10 +235,8 @@ def parse_reiss_product(html: str, url: str) -> Dict:
         if pc:
             product_code = pc
 
-    # 4) 价格（DOM；必要时用 JSON sizes 的统一价兜底）
     original, discount = _parse_dom_prices(soup)
     if next_data and discount == 0.0:
-        # 部分页面没有展示折后价，用 options 里的 priceUnformatted
         try:
             opts = (next_data.get("options") or {}).get("options") or []
             if opts:
@@ -151,66 +246,63 @@ def parse_reiss_product(html: str, url: str) -> Dict:
         except Exception:
             pass
 
-    # 5) 性别 / 类别
     gender = ""
     style_category = ""
     if next_data:
-        gender = (next_data.get("gender") or "").strip()  # e.g. "Women" / "Men"
+        gender = (next_data.get("gender") or "").strip()
         style_category = (next_data.get("category") or "").strip()
 
-    # 6) 尺码与库存
     size_map: Dict[str, str] = {}
     size_detail: Dict[str, Dict] = {}
-
     if next_data:
         try:
             for o in (next_data.get("options") or {}).get("options", []):
-                name = str(o.get("name") or "").strip()  # 显示尺码（如 "10"）
+                name = str(o.get("name") or "").strip()
                 st = (o.get("stockStatus") or "").lower()
                 status = "有货" if st in ("instock", "lowstock") else "无货"
                 if name:
                     size_map[name] = status
-                    # Reiss 这边没有明确库存数/EAN，这里只留空结构，兼容 txt_parser
                     size_detail[name] = {"stock_count": 0, "ean": ""}
         except Exception:
             pass
-
     if not size_map:
         size_map = _parse_dom_sizes_fallback(soup)
 
-    # 7) 特性/描述兜底（若为空用简短组合）
     if not description and feature_str:
         description = feature_str
     if not feature_str and description:
-        # 把描述首句当特性简述
         feature_str = description.split(".")[0].strip()
 
-    # 8) 组织写入字段（完全贴合 txt_writer 的键）
+    # 1) 规范字母尺码
+    if size_map:
+        size_map, size_detail = _normalize_alpha_sizes(size_map, size_detail)
+    # 2) 按规则补齐 + 量化库存（有货=3，无货=0）
+    if size_map:
+        size_map, size_detail = _fill_and_quantify_sizes(size_map, size_detail)
+
     info = {
         "Product Code": product_code or "UNKNOWN",
         "Product Name": product_title or "No Name",
         "Product Description": description or "No Data",
-        "Product Gender": gender,                     # 可为空
-        "Product Color": color,                       # 可为空
+        "Product Gender": gender,
+        "Product Color": color,
         "Product Price": str(original or 0),
         "Adjusted Price": str(discount or original or 0),
         "Product Material": "No Data",
-        "Style Category": style_category,             # 可为空（例如 Dresses）
+        "Style Category": style_category,
         "Feature": feature_str or "No Data",
-        "SizeMap": size_map,                          # e.g. {"10":"有货","16":"无货"}
-        "SizeDetail": size_detail,                    # 结构保留，值缺省
+        "SizeMap": size_map,          # 已补齐，状态“有货/无货”
+        "SizeDetail": size_detail,    # 已量化：3/0，EAN 占位 "0000000000000"
         "Source URL": url
     }
     return info
 
-# === 公共入口 ===
-
+# === 公共入口（名称/签名未改） ===
 def fetch_one_and_write(url: str, save_dir: Path, brand: str = "reiss") -> Tuple[str, bool, str]:
     try:
         html = _fetch_html(url)
         info = parse_reiss_product(html, url)
 
-        # 文件名优先用 Product Code；退化用 URL 尾段
         fname = info["Product Code"].replace("/", "_")
         if not fname or fname == "UNKNOWN":
             fname = (_product_code_from_url(url) or re.sub(r"\W+", "_", url))[:80]
@@ -220,7 +312,6 @@ def fetch_one_and_write(url: str, save_dir: Path, brand: str = "reiss") -> Tuple
         print(f"✅ TXT 写入: {path.name}")
         return url, True, ""
     except Exception as e:
-        # 页失败也不影响其它 URL，且尽量输出一个最小 TXT（只含 URL + 占位）
         try:
             print(f"💥 解析失败（继续）：{url} -> {e}")
             minimal = {
@@ -234,11 +325,10 @@ def fetch_one_and_write(url: str, save_dir: Path, brand: str = "reiss") -> Tuple
                 "Product Material": "No Data",
                 "Style Category": "",
                 "Feature": "No Data",
-                "SizeMap": {},          # 为空则 parse_generic 不会入库，留待复抓
+                "SizeMap": {},
                 "SizeDetail": {},
                 "Source URL": url
             }
-            # 即使失败也尽量留一份记录
             fallback_name = minimal["Product Code"] or "UNKNOWN"
             path = Path(save_dir) / f"{fallback_name}.txt"
             format_txt(minimal, path, brand=brand)

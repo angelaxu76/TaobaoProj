@@ -12,7 +12,7 @@ CREATE TABLE reiss_inventory (
     -- 商品补充字段
     product_description TEXT,                         -- 商品描述（来自 TXT）
     product_title TEXT,                               -- 商品标题（英文名称）
-    style_category VARCHAR(20),                       -- 商品分类，如 coat、dress、shirt
+    style_category VARCHAR(50),                       -- 商品分类，如 coat、dress、shirt
 
     -- 淘宝&渠道绑定信息
     channel_product_id VARCHAR(50),                   -- 渠道产品 ID

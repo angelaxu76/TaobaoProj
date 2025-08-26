@@ -490,5 +490,5 @@ BRAND_NAME_MAP = {
     "ecco": ("ECCO", "爱步"),
     "barbour": ("Barbour", "巴伯尔"),
     "birkenstock": ("BIRKENSTOCK", "勃肯"),
-    "reiss": ("REISS", "REISS"),  # ✅ 新增（中文名若需本地化可改为“瑞斯/锐思”等）
+    "reiss": ("REISS", ""),  # ✅ 新增（中文名若需本地化可改为“瑞斯/锐思”等）
 }

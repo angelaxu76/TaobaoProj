@@ -1,0 +1,183 @@
+# -*- coding: utf-8 -*-
+"""
+square_pack_images.py
+
+将输入目录中的图片扩展为正方形并压缩为 JPEG，按 <商品编码>_1.jpg, <商品编码>_2.jpg ... 命名后
+输出到目标目录。默认保持原始清晰度/分辨率（不缩图），仅通过 JPEG 有损压缩减少文件体积。
+如需限制长边像素，可传 --max-side。
+
+用法（命令行）:
+    python square_pack_images.py \
+        --input "D:/TB/source_images" \
+        --output "D:/TB/packed_images" \
+        --code "K100300-001" \
+        --quality 88 \
+        --bg "#FFFFFF"
+
+作为模块:
+    from square_pack_images import process_images
+    process_images("D:/TB/source_images", "D:/TB/packed_images", "K100300-001", quality=88)
+"""
+
+import argparse
+import io
+import os
+import re
+from pathlib import Path
+from typing import Iterable, Tuple
+
+from PIL import Image, ImageOps
+
+# -------- 可调默认参数 --------
+DEFAULT_JPEG_QUALITY = 88   # 建议 82~92 之间；越大越清晰、体积越大
+DEFAULT_BG_COLOR = "#FFFFFF"  # 正方形填充背景色
+VALID_EXT = (".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff")
+
+# -------------- 工具函数 --------------
+
+def hex_to_rgb(color: str) -> Tuple[int, int, int]:
+    c = color.strip().lstrip("#")
+    if len(c) == 3:
+        c = "".join(ch*2 for ch in c)
+    if len(c) != 6 or not re.fullmatch(r"[0-9a-fA-F]{6}", c):
+        raise ValueError(f"无效颜色值: {color}")
+    return tuple(int(c[i:i+2], 16) for i in (0, 2, 4))
+
+def natural_sort_key(s: str):
+    # 让 2 < 10（人类自然序）
+    return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", s)]
+
+def iter_images(input_dir: Path) -> Iterable[Path]:
+    for p in sorted(input_dir.iterdir(), key=lambda x: natural_sort_key(x.name)):
+        if p.is_file() and p.suffix.lower() in VALID_EXT and not p.name.startswith("."):
+            yield p
+
+def exif_transpose(im: Image.Image) -> Image.Image:
+    # 自动按 EXIF 进行方向纠正（等价于 ImageOps.exif_transpose，但旧 Pillow 兜底）
+    try:
+        return ImageOps.exif_transpose(im)
+    except Exception:
+        return im
+
+def to_square_canvas(im: Image.Image, bg_rgb=(255, 255, 255)) -> Image.Image:
+    # 仅扩展画布为正方形，不裁剪不缩放
+    w, h = im.size
+    side = max(w, h)
+    mode = "RGB"
+    if im.mode in ("RGBA", "LA"):
+        # 先贴到白底，避免透明转 jpg 出现黑底
+        base = Image.new("RGB", im.size, bg_rgb)
+        im = im.convert("RGBA")
+        base.paste(im, mask=im.split()[-1])
+        im = base
+    else:
+        if im.mode != "RGB":
+            im = im.convert("RGB")
+    canvas = Image.new(mode, (side, side), bg_rgb)
+    offset = ((side - w) // 2, (side - h) // 2)
+    canvas.paste(im, offset)
+    return canvas
+
+def maybe_downscale(im: Image.Image, max_side: int | None) -> Image.Image:
+    # 仅当设置了 max_side 且长边超过它时才缩放（保持清晰的高质量缩放）
+    if not max_side:
+        return im
+    w, h = im.size
+    side = max(w, h)
+    if side <= max_side:
+        return im
+    scale = max_side / float(side)
+    new_w, new_h = int(w * scale), int(h * scale)
+    return im.resize((new_w, new_h), Image.LANCZOS)
+
+def save_jpeg_optimized(im: Image.Image, out_path: Path, quality: int):
+    # 采用 progressive + optimize 降体积；subsampling=1 通常在质量和体积之间较均衡
+    # 你也可以改为 subsampling=0 获得更高色彩质量（体积更大）
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    im.save(
+        out_path,
+        format="JPEG",
+        quality=quality,
+        optimize=True,
+        progressive=True,
+        subsampling=1,   # 4:2:2
+    )
+
+# -------------- 核心流程 --------------
+
+def process_images(
+    input_dir: str | Path,
+    output_dir: str | Path,
+    product_code: str,
+    *,
+    quality: int = DEFAULT_JPEG_QUALITY,
+    bg: str = DEFAULT_BG_COLOR,
+    max_side: int | None = None,
+    overwrite: bool = True,
+) -> int:
+    """
+    处理图片并输出为正方形 JPEG。
+    返回成功处理的图片数量。
+
+    参数:
+        input_dir: 输入目录
+        output_dir: 输出目录
+        product_code: 商品编码，用于命名 <code>_1.jpg ...
+        quality: JPEG 质量（默认 88）
+        bg: 背景色（#RRGGBB），用于方形填充
+        max_side: 可选，限制输出长边像素；默认不限制（不缩图）
+        overwrite: 是否覆盖已存在的输出文件
+    """
+    input_dir = Path(input_dir)
+    output_dir = Path(output_dir)
+    bg_rgb = hex_to_rgb(bg)
+
+    images = list(iter_images(input_dir))
+    count = 0
+    for idx, src in enumerate(images, start=1):
+        out_name = f"{product_code}_{idx}.jpg"
+        out_path = output_dir / out_name
+        if out_path.exists() and not overwrite:
+            continue
+
+        try:
+            with Image.open(src) as im:
+                im = exif_transpose(im)
+                im = to_square_canvas(im, bg_rgb=bg_rgb)
+                im = maybe_downscale(im, max_side=max_side)
+                save_jpeg_optimized(im, out_path, quality=quality)
+            count += 1
+        except Exception as e:
+            print(f"⚠ 跳过 {src.name}: {e}")
+    return count
+
+# -------------- CLI --------------
+
+def parse_args():
+    ap = argparse.ArgumentParser(
+        description="将目录内图片扩展为正方形并压缩为 JPEG，按 <商品编码>_序号.jpg 命名输出"
+    )
+    ap.add_argument("--input", required=True, help="输入图片目录")
+    ap.add_argument("--output", required=True, help="输出目录")
+    ap.add_argument("--code", required=True, help="商品编码（用于重命名）")
+    ap.add_argument("--quality", type=int, default=DEFAULT_JPEG_QUALITY, help="JPEG 质量（默认 88，范围建议 75~95）")
+    ap.add_argument("--bg", default=DEFAULT_BG_COLOR, help="方形填充背景色，#RRGGBB（默认 #FFFFFF）")
+    ap.add_argument("--max-side", type=int, default=None, help="可选：限制输出长边像素；默认不缩放")
+    ap.add_argument("--no-overwrite", action="store_true", help="不覆盖已有同名输出文件")
+    return ap.parse_args()
+
+def main():
+    args = parse_args()
+    n = process_images(
+        input_dir=args.input,
+        output_dir=args.output,
+        product_code=args.code,
+        quality=args.quality,
+        bg=args.bg,
+        max_side=args.max_side,
+        overwrite=not args.no_overwrite,
+    )
+    print(f"✅ 处理完成：输出 {n} 张图片 → {args.output}")
+
+if __name__ == "__main__":
+    main()
