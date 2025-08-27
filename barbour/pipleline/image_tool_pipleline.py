@@ -19,13 +19,15 @@ def main():
     print("将JPG按长度切分")
    #  split_image_by_size(CUTTER_FOLDER,SPLIT_FOLDER,1900)
 
-    count = process_images(
-    input_dir=r"C:\Users\martin\Downloads",
-    output_dir=r"D:\TB\Products\barbour\images",
-    product_code="LQU1833BK11",
-    defend=True,
-    # defend=False,
-)
+    process_images(
+        input_dir=r"C:\Users\martin\Downloads",
+        output_dir=r"D:\TB\Products\barbour\images",
+        product_code="LQU1856GN91",
+        defend=True,                 # 是否做扰动
+        watermark=True,              # 是否加水印
+        wm_text="英国代购",           # 斜纹文字水印
+        wm_logo_text="英国代购"       # 右下角小文字水印
+    )
 
 
 if __name__ == "__main__":
