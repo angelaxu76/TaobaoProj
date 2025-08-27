@@ -44,6 +44,36 @@ def make_driver(headless: bool = HEADLESS):
     return driver
 
 # ===== 工具函数 =====
+
+
+def format_reiss_code(code: str) -> str:
+    """
+    把编码规范化为 REISS 展示样式：
+    e.g. 'W22548' / 'W22-548' -> 'W22-548'
+    """
+    z = re.sub(r'[^A-Za-z0-9]+', '', (code or ''))
+    m = re.match(r'^([A-Za-z]+)(\d{2})(\d{3})$', z, flags=re.I)
+    if m:
+        return f"{m.group(1).upper()}{m.group(2)}-{m.group(3)}"
+    return code
+
+def derive_suffix_from_fname(fname: str) -> str:
+    """
+    从原始文件名里提取 s 后缀：
+    - 'W22548s.jpg'   -> 's'
+    - 'W22548s6.jpg'  -> 's6'
+    - 兜底：若仅有 _数字 / -数字 结尾，则转成 s数字；再兜底为 's'
+    """
+    stem = Path(fname).stem
+    m = re.search(r'([sS]\d*)$', stem)
+    if m:
+        return m.group(1).lower()
+    m = re.search(r'[_-](\d+)$', stem)
+    if m:
+        return f"s{m.group(1)}"
+    return "s"
+
+
 def read_codes(codes_file: Path) -> List[str]:
     with open(codes_file, "r", encoding="utf-8") as f:
         return [line.strip() for line in f if line.strip()]
@@ -89,11 +119,20 @@ def extract_codes_from_url(url: str) -> List[str]:
             uniq.append(c); seen.add(c)
     return uniq
 
-def download_image(img_url: str, out_dir: Path):
+def download_image(img_url: str, out_dir: Path, out_name: str | None = None):
     try:
         resp = requests.get(img_url, headers={"User-Agent": "Mozilla/5.0"}, stream=True, timeout=15)
         resp.raise_for_status()
-        filename = os.path.basename(img_url.split("?")[0])
+
+        # 原始扩展名
+        src_name = os.path.basename(img_url.split("?")[0])
+        src_ext = os.path.splitext(src_name)[1].lower() or ".jpg"
+
+        # 目标文件名
+        filename = (out_name if out_name else src_name)
+        if os.path.splitext(filename)[1] == "":
+            filename += src_ext  # 保证有扩展名
+
         out_path = out_dir / filename
         with open(out_path, "wb") as f:
             for chunk in resp.iter_content(1024 * 16):
@@ -102,6 +141,7 @@ def download_image(img_url: str, out_dir: Path):
         print(f"✅ 图片已保存: {out_path}")
     except Exception as e:
         print(f"❌ 图片下载失败 [{img_url}]: {e}")
+
 
 def parse_candidate_image_urls(soup: BeautifulSoup) -> List[str]:
     """从页面尽可能多地收集图片 URL（img/src, data-*, srcset, preload/imagesrcset）"""
@@ -166,13 +206,27 @@ def extract_and_download_images(html: str, url: str, code: str, image_dir: Path,
             matched.append(u)
 
     if matched:
+        display_code = format_reiss_code(code)  # 例如 'W22-548'
+        seen = set()
         for idx, img_url in enumerate(matched, 1):
-            print(f"🖼️ 找到图片 [{idx}]: {img_url}")
-            download_image(img_url, image_dir)
+            fname = os.path.basename(img_url.split("?")[0])
+            suffix = derive_suffix_from_fname(fname)  # e.g. 's' / 's6'
+            ext = os.path.splitext(fname)[1].lower() or ".jpg"
+
+            # 目标名：W22-548_s6.jpg
+            out_name = f"{display_code}_{suffix}{ext}"
+
+            # 避免重复命名（极端情况下同后缀重复）
+            if out_name.lower() in seen:
+                out_name = f"{display_code}_{suffix}_{idx}{ext}"
+            seen.add(out_name.lower())
+
+            download_image(img_url, image_dir, out_name=out_name)
     else:
         print(f"⚠ 未找到任何图片 [{code}]，保存 HTML 以便排查")
         debug_file = debug_dir / f"{_norm(code) or code}.html"
         debug_file.write_text(html, encoding="utf-8", errors="ignore")
+
 
 # ===== 主流程 =====
 def download_reiss_images_from_codes(codes_file: Path):

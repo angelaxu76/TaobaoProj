@@ -75,15 +75,15 @@ HTML_TEMPLATE = """
           </li>
           <li class="item">
             <span class="ico">📦</span>
-            <span class="txt">英国直邮 · 关税预付</span>
+            <span class="txt">英国直邮 · 关税包税</span>
           </li>
           <li class="item">
             <span class="ico">🚚</span>
-            <span class="txt">清关无忧 · 淘宝菜鸟平台代办</span>
+            <span class="txt">绿色清关 · 淘宝菜鸟代办 · 无海关短信打搅</span>
           </li>
           <li class="item">
             <span class="ico">🛡️</span>
-            <span class="txt">8年老店 · 正品保障 · 假一赔三</span>
+            <span class="txt">10年老店 · 正品保障 · 假一赔三</span>
           </li>
           <li class="item">
             <span class="ico">📏</span>

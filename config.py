@@ -280,8 +280,8 @@ REISS_BASE = BASE_DIR / "reiss"
 REISS = {
     "BRAND": "reiss",
     "BASE": REISS_BASE,
-    "IMAGE_FIRST_PRIORITY": ["F", "C", "L", "T"],
-    "IMAGE_DES_PRIORITY": ["C", "F", "L", "T"],
+    "IMAGE_FIRST_PRIORITY": ["s", "s3", "s4"],
+    "IMAGE_DES_PRIORITY": ["s2", "s3", "s4", "s5"],
     "TXT_DIR": REISS_BASE / "publication" / "TXT",
     "ORG_IMAGE_DIR": REISS_BASE / "document" / "orgin_images",
     "DEF_IMAGE_DIR": REISS_BASE / "document" / "DEF_images",
