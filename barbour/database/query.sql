@@ -157,13 +157,13 @@ select * from barbour_inventory where product_code ILIKE '%LWX1492%';
 
 select * from barbour_inventory where product_code = 'LWX0667SG91';
 ;
-select * from barbour_products where color_code = 'MCA1051NY71';
+select * from barbour_products where product_code = 'MCA1051NY71';
 
 select * from barbour_products where style_name ILIKE '%Icons Spey%';
 
 select * from barbour_products where style_name ILIKE '%beadnell%'
 
-select * from offers where color_code = 'LWX0667SG91';
+select * from barbour_offers where product_code = 'LWX0667SG91';
 
 
 SELECT site_name, size, stock_status, can_order
