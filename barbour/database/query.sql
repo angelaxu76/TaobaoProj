@@ -153,13 +153,13 @@ select * from camper_inventory;
 
 select count(*) from barbour_products;
 
-select * from barbour_inventory where product_code ILIKE '%LWX0667%';
+select * from barbour_inventory where product_code ILIKE '%LWX1492%';
 
 select * from barbour_inventory where product_code = 'LWX0667SG91';
 ;
 select * from barbour_products where color_code = 'MCA1051NY71';
 
-select * from barbour_products where style_name ILIKE '%Ashby %';
+select * from barbour_products where style_name ILIKE '%Icons Spey%';
 
 select * from barbour_products where style_name ILIKE '%beadnell%'
 

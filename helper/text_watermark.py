@@ -8,15 +8,15 @@ LOCAL_LOGO_ENABLE = True  # 这里表示“右下角文字”启用（不需要 
 DIAGONAL_TEXT = "英国哈梅尔百货"
 LOCAL_LOGO_TEXT = "英国哈梅尔百货"
 
-DIAGONAL_ALPHA = 48        # 0~255，斜纹文字透明度（数字越小越淡）
-DIAGONAL_FONT_SIZE_RATIO = 0.08  # 文字大小 = 图宽 * 此比例
-DIAGONAL_STEP_RATIO = 0.28       # 两行之间的间距 = 图宽 * 此比例
+DIAGONAL_ALPHA = 30        # 0~255，斜纹文字透明度（数字越小越淡）
+DIAGONAL_FONT_SIZE_RATIO = 0.02  # 文字大小 = 图宽 * 此比例
+DIAGONAL_STEP_RATIO = 0.50       # 两行之间的间距 = 图宽 * 此比例
 DIAGONAL_ANGLE_DEG =  -30        # 斜纹角度（-30° 更常见）
 
 LOCAL_FONT_SIZE_RATIO = 0.04     # 右下角文字字号
 LOCAL_MARGIN_RATIO = 0.03        # 距离右下边距
 LOCAL_BG_ALPHA = 96              # 右下角背景透明度（0~255）
-LOCAL_TEXT_ALPHA = 220           # 右下角文字透明度（0~255）
+LOCAL_TEXT_ALPHA = 40           # 右下角文字透明度（0~255）
 
 # 若你有自定义字体（中文更美观），把路径填到这里；否则自动用默认字体
 FONT_PATH = None  # 例如 r"C:\Windows\Fonts\msyh.ttc"

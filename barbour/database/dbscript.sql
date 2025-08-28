@@ -3,41 +3,83 @@ DROP TABLE IF EXISTS offers;
 DROP TABLE IF EXISTS barbour_products;
 DROP TABLE IF EXISTS barbour_inventory;
 
--- ========== 表 1：产品表 products ==========
+-- ========== 创建新表 ==========
 CREATE TABLE barbour_products (
     id SERIAL PRIMARY KEY,
-    color_code VARCHAR(50) NOT NULL,          -- Barbour颜色编码，如 MWX0339NY91
-    style_name VARCHAR(255) NOT NULL,         -- 款式名，如 Ashby Wax Jacket
-    color VARCHAR(100) NOT NULL,              -- 颜色，如 Navy
+
+    -- Barbour 核心 SKU（商品编码 + 尺码）
+    product_code VARCHAR(50) NOT NULL,          -- Barbour 商品编码，如 MWX0339NY91
     size VARCHAR(20) NOT NULL,                -- 尺码，如 M / UK 10 / XL
 
+    -- 基础属性
+    style_name VARCHAR(255) NOT NULL,         -- 款式名，如 Ashby Wax Jacket
+    color VARCHAR(100) NOT NULL,              -- 颜色，如 Navy
     gender VARCHAR(20),                       -- 性别：Men / Women / Kids
     category VARCHAR(100),                    -- 分类：Jacket / Coat / Shirt / Bag ...
     title VARCHAR(255),                       -- 标题（完整商品名，带品牌+款式+颜色）
     product_description TEXT,                 -- 商品描述（来自官网/站点）
-
     match_keywords TEXT[],                    -- 提取的关键词，用于匹配其他网站标题
 
+    -- 数据来源追踪
+    source_site VARCHAR(100),                 -- 来源站点（barbour / O&C / PMD / manual）
+    source_url TEXT,                          -- 来源链接
+    source_rank INT DEFAULT 999,              -- 来源优先级：0=barbour官网,1=有编码站点,2=人工补码,999=未知
+
+    -- 时间戳
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    UNIQUE(color_code, size)                  -- 每个 SKU 唯一（颜色编码 + 尺码）
+    -- 唯一约束：每个 SKU 唯一（编码 + 尺码）
+    UNIQUE(product_code, size)
 );
+
+-- ========== 自动更新时间戳触发器 ==========
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at := NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_barbour_products_updated ON barbour_products;
+CREATE TRIGGER trg_barbour_products_updated
+BEFORE UPDATE ON barbour_products
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ========== 表 2：库存价格表 offers ==========
-CREATE TABLE offers (
-    id SERIAL PRIMARY KEY,
-    color_code VARCHAR(50) NOT NULL,         -- 匹配产品 color_code
-    size VARCHAR(10) NOT NULL,               -- 匹配产品尺码
-    site_name VARCHAR(100) NOT NULL,         -- 站点名，如 Country Attire
-    offer_url TEXT NOT NULL,                 -- 商品链接
-    price_gbp NUMERIC(10, 2),                -- 当前价格
-    stock_status VARCHAR(50),                -- 如 In Stock / Out of Stock
-    can_order BOOLEAN DEFAULT FALSE,         -- 是否可下单
-    last_checked TIMESTAMP DEFAULT NOW(),    -- 抓取时间
+-- 1) 表结构（product_code 允许为空）
+DROP TABLE IF EXISTS barbour_offers CASCADE;
 
-    UNIQUE(color_code, size, site_name)      -- 每个网站对同一 SKU 仅一条记录
+CREATE TABLE barbour_offers (
+  id SERIAL PRIMARY KEY,
+
+  -- 唯一识别：站点 + 链接 + 尺码
+  site_name VARCHAR(100) NOT NULL,
+  offer_url TEXT NOT NULL,
+  size      VARCHAR(10) NOT NULL,
+
+  -- 商品编码（可空；人工后续回填）
+  product_code VARCHAR(50),
+
+  -- 价格与库存
+  price_gbp NUMERIC(10,2),
+  original_price_gbp NUMERIC(10,2),
+  stock_status VARCHAR(50),          -- '有货' / '无货' 或 'In Stock' / 'Out of Stock'
+  can_order BOOLEAN DEFAULT FALSE,
+
+  -- 维护字段
+  is_active   BOOLEAN   DEFAULT TRUE,  -- 软删除/下架标记
+  first_seen  TIMESTAMP DEFAULT NOW(),
+  last_seen   TIMESTAMP DEFAULT NOW(),
+  last_checked TIMESTAMP DEFAULT NOW(),
+
+  UNIQUE (site_name, offer_url, size)
 );
+
+-- 可选索引
+
+
 
 -- =========================
 -- Barbour 发布表（与 clarks_jingya_inventory 对齐）
@@ -89,3 +131,5 @@ CREATE TABLE barbour_inventory (
 CREATE INDEX IF NOT EXISTS idx_barbour_inv_sku   ON barbour_inventory(product_code, size);
 CREATE INDEX IF NOT EXISTS idx_barbour_inv_item  ON barbour_inventory(item_id);
 CREATE INDEX IF NOT EXISTS idx_barbour_inv_skuid ON barbour_inventory(skuid);
+CREATE INDEX IF NOT EXISTS idx_bo_code   ON barbour_offers(product_code);
+CREATE INDEX IF NOT EXISTS idx_bo_active ON barbour_offers(is_active);
