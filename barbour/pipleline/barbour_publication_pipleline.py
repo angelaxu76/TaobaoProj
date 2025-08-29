@@ -8,7 +8,7 @@ def pipeline_barbour():
     print("\n🚀 启动 Barbour - House of Fraser 全流程抓取")
 
     # 步骤 1：导出打折的商品可以发布的商品列表到excel
-    excel_path = export_barbour_discounts_excel(19, 3, "LQS")
+    excel_path = export_barbour_discounts_excel(19, 3, "MWX")
     print(excel_path)
 
     # 步骤 1：将产品的编码放到D:\TB\Products\barbour\repulibcation\codes.txt

@@ -27,7 +27,7 @@ FROM ecco_inventory
 WHERE stock_name = '五小剑'
   AND skuid IS NOT NULL;
 
-select COUNT(*) from offers where site_name = 'Barbour';
+select COUNT(*) from barbour_offers where site_name = 'Barbour';
 
 select COUNT(*) from barbour_products;
 

@@ -150,7 +150,7 @@ def load_codes_with_supplier():
     """
     返回列表 [(code, supplier or None), ...]
     - 优先读取 OUTPUT_DIR/codes.xlsx
-      * 头部容错：['Product Code', '商品编码', 'code'] / ['Supplier', '供应商', 'site']
+      * 头部容错：['Product Code', '商品编码', 'code'] / ['Supplier', '供应商', 'site_name']
     - 否则回退 OUTPUT_DIR/codes.txt（每行一个 code）
     """
     pairs = []
