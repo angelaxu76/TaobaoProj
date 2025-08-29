@@ -279,6 +279,7 @@ def process_url(url, output_dir):
     # 如需无头：options.add_argument("--headless=new")
     driver = uc.Chrome(options=options)
 
+
     try:
         print(f"\n🌐 正在抓取: {url}")
         driver.get(url)
@@ -290,6 +291,10 @@ def process_url(url, output_dir):
         info = parse_offer_info(html, url) or {}
         url_color = _normalize_color_from_url(url)
 
+        if info.get("original_price_gbp"):
+            info["Product Price"] = info["original_price_gbp"]
+        if info.get("discount_price_gbp"):
+            info["Adjusted Price"] = info["discount_price_gbp"]
         # 2) 基础字段补齐（统一）
         info.setdefault("Brand", "Barbour")
         info.setdefault("Product Name", "No Data")

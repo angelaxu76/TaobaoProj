@@ -202,6 +202,37 @@ def _extract_header_price(soup: BeautifulSoup) -> float | None:
             pass
     return None
 
+# —— 新增：从主商品区成对抽取（原价/现价） —— 
+def _extract_price_pair_from_dom(soup: BeautifulSoup):
+    """
+    返回 (original_price, current_price)。
+    仅从主商品块 <price-list class="price-list--product"> 里抓：
+      <sale-price>£现价</sale-price>
+      <compare-at-price>£原价</compare-at-price>
+    若取不到，返回 (None, None) 交给上层用 _extract_header_price 兜底。
+    """
+    block = soup.find("price-list", class_=re.compile(r"\bprice-list--product\b"))
+    if not block:
+        return (None, None)
+
+    def _to_float(x: str):
+        try:
+            return float(re.search(r"([0-9]+(?:\.[0-9]+)?)", x.replace(",", "")).group(1))
+        except Exception:
+            return None
+
+    sale_el = block.find("sale-price")
+    comp_el = block.find("compare-at-price")
+    sale = _to_float(sale_el.get_text(" ", strip=True)) if sale_el else None
+    comp = _to_float(comp_el.get_text(" ", strip=True)) if comp_el else None
+
+    if sale and comp:
+        return (comp, sale)           # (原价, 现价)
+    if sale and not comp:
+        return (sale, sale)           # 无原价节点 → 视为无折扣
+    if comp and not sale:
+        return (comp, comp)           # 极少数主题写反 → 兜底
+    return (None, None)
 
 # ============ 解析详情页为统一 info（爬取逻辑保持不变） ============
 
@@ -248,7 +279,13 @@ def parse_detail_page(html: str, url: str) -> dict:
     description = _extract_description(soup)
     features = _extract_features(soup)
     material_outer = _extract_material_outer(soup)
-    price_header = _extract_header_price(soup)
+    # 价格：优先 DOM 成对价；缺失则回退 header（现价）
+    price_header = _extract_header_price(soup)  # 常等于现价
+    orig, curr = _extract_price_pair_from_dom(soup)
+    original_price = orig or price_header
+    current_price = curr or price_header
+
+
 
     info = {
         "Product Code": base_sku,
@@ -256,8 +293,8 @@ def parse_detail_page(html: str, url: str) -> dict:
         "Product Description": description,
         "Product Gender": gender,
         "Product Color": color,
-        "Product Price": price_header,
-        "Adjusted Price": price_header,
+        "Product Price": original_price,   # ✅ 原价
+        "Adjusted Price": current_price,   # ✅ 现价/折后价
         "Product Material": material_outer,
         # "Style Category": 留空让写入器自动 infer（如你已升级分类器）
         "Feature": features,

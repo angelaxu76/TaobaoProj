@@ -11,6 +11,16 @@ from barbour.core.keyword_mapping import KEYWORD_EQUIVALENTS
 from common_taobao.size_utils import clean_size_for_barbour  # 保留旧名
 
 # === 通用关键词排除 ===
+# ✨ 新增两个小工具（如果你文件里已有同名函数，可忽略）
+import re
+_PRICE_NUM = re.compile(r"([0-9]+(?:\.[0-9]+)?)")
+
+def _parse_price(text):
+    if not text:
+        return None
+    m = _PRICE_NUM.search(str(text).replace(",", ""))
+    return float(m.group(1)) if m else None
+
 COMMON_WORDS = {
     "bag", "jacket", "coat", "top", "shirt",
     "backpack", "vest", "tote", "crossbody", "holdall", "briefcase"
@@ -167,7 +177,11 @@ def parse_txt(filepath: Path):
                     "can_order": can_order
                 })
 
-    return info
+    # parse_txt(...) 末尾、return info 之前加入：
+        info["price_line"] = price_line                # Product Price: 原价（字符串）
+        info["adjusted_price_line"] = adjusted_price_line  # Adjusted Price: 折后价（字符串）
+        return info
+
 
 
 def is_keyword_equivalent(k1, k2):
@@ -253,6 +267,10 @@ def insert_offer(info, conn, missing_log: list) -> int:
         print("⚠️ 没有可导入的 offers（TXT 未包含 Offer List，且 Size/Detail 也未解析到）")
         return 0
 
+    # 取整单两行价格（若缺，以 None 表示）
+    op = _parse_price(info.get("price_line"))             # 原价(Product Price)
+    dp = _parse_price(info.get("adjusted_price_line"))    # 折后价(Adjusted Price)
+
     # 逐行 UPSERT 到 barbour_offers
     inserted = 0
     with conn.cursor() as cur:
@@ -263,11 +281,15 @@ def insert_offer(info, conn, missing_log: list) -> int:
                 print(f"⚠️ 无法清洗尺码: {raw_size}，跳过")
                 continue
 
+            price_gbp = (dp if dp is not None else op) if (dp is not None or op is not None) else float(offer.get("price", 0.0))
+            original_price_gbp = op if op is not None else price_gbp
+
+            # 然后执行 SQL（注意 SQL 里不要动！）
             cur.execute("""
                 INSERT INTO barbour_offers
                     (site_name, offer_url, size,
-                     price_gbp, original_price_gbp, stock_status, can_order,
-                     product_code, first_seen, last_seen, is_active, last_checked)
+                    price_gbp, original_price_gbp, stock_status, can_order,
+                    product_code, first_seen, last_seen, is_active, last_checked)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s, NOW(), NOW(), TRUE, NOW())
                 ON CONFLICT (site_name, offer_url, size) DO UPDATE SET
                     price_gbp          = EXCLUDED.price_gbp,
@@ -280,7 +302,7 @@ def insert_offer(info, conn, missing_log: list) -> int:
                     last_checked       = NOW()
             """, (
                 site, offer_url, size,
-                offer.get("price", 0.0), None, offer.get("stock", "未知"), bool(offer.get("can_order", False)),
+                price_gbp, original_price_gbp, offer.get("stock", "未知"), bool(offer.get("can_order", False)),
                 product_code if product_code else None
             ))
             inserted += 1

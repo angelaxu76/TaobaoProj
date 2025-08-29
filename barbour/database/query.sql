@@ -3,11 +3,11 @@
 
 select * from barbour_products where style_name ILIKE '%beadnell%' and color ILIKE '%sage%';
 
-select distinct color_code,style_name,color
-from barbour_products where style_name ILIKE '%beadnell%' and color_code ILIKE '%LQU0471%';
+select distinct product_code,style_name,color
+from barbour_products where style_name ILIKE '%beadnell%' and product_code ILIKE '%LQU0471%';
 
 
-select distinct color_code,style_name,color from barbour_products where color_code ILIKE '%LWX0667NY91%';
+select distinct product_code,style_name,color from barbour_products where product_code ILIKE '%LWX0667NY91%';
 
 select * from ecco_inventory where product_code ='13090301007' and stock_name = '五小剑';
 
@@ -33,7 +33,7 @@ select COUNT(*) from barbour_products;
 
 select * from offers where site_name = 'Barbour';
 
-select * from barbour_products where color_code ILIKE '%LQU1776%';
+select * from barbour_products where product_code ILIKE '%LQU1776%';
 
 
 select * from barbour_products;
@@ -42,18 +42,17 @@ select * from offers;
 
 
 WITH sku_sizes AS (
-  SELECT color_code, COUNT(*) AS total_sizes
+  SELECT product_code, COUNT(*) AS total_sizes
   FROM barbour_products
-  GROUP BY color_code
+  GROUP BY product_code
 ),
 site_coverage AS (
   SELECT
-    o.color_code,
+    o.product_code,
     o.site_name,
     COUNT(DISTINCT o.size) AS available_sizes
   FROM offers o
   JOIN barbour_products p
-    ON p.color_code = o.color_code AND p.size = o.size
   WHERE
     o.can_order = TRUE
     AND (
@@ -61,31 +60,31 @@ site_coverage AS (
       OR o.stock_status ILIKE 'in stock'
       OR o.stock_status = '有货'
     )
-  GROUP BY o.color_code, o.site_name
+  GROUP BY o.product_code, o.site_name
 ),
 full_sites AS (
-  SELECT sc.color_code, sc.site_name
+  SELECT sc.product_code, sc.site_name
   FROM site_coverage sc
-  JOIN sku_sizes s USING (color_code)
+  JOIN sku_sizes s USING (product_code)
   WHERE sc.available_sizes = s.total_sizes
 ),
 qualified AS (
-  SELECT color_code, COUNT(DISTINCT site_name) AS site_count
+  SELECT product_code, COUNT(DISTINCT site_name) AS site_count
   FROM full_sites
-  GROUP BY color_code
+  GROUP BY product_code
   HAVING COUNT(DISTINCT site_name) >= 2
 )
 SELECT
-  q.color_code,
+  q.product_code,
   MIN(p.style_name) AS style_name,
   ARRAY_AGG(DISTINCT p.size ORDER BY p.size) AS all_sizes,
   ARRAY_AGG(DISTINCT f.site_name ORDER BY f.site_name) AS full_sites,
   MAX(q.site_count) AS site_count         -- ← 加出来
 FROM qualified q
-JOIN barbour_products p USING (color_code)
-JOIN full_sites f USING (color_code)
-GROUP BY q.color_code
-ORDER BY site_count DESC, q.color_code;    -- ← 用上面的别名排序
+JOIN barbour_products p USING (product_code)
+JOIN full_sites f USING (product_code)
+GROUP BY q.product_code
+ORDER BY site_count DESC, q.product_code;    -- ← 用上面的别名排序
 
 
 
@@ -97,18 +96,18 @@ WHERE lower(color) LIKE '%empire%';
 
 
 WITH sku_sizes AS (
-  SELECT color_code, COUNT(*) AS total_sizes
+  SELECT product_code, COUNT(*) AS total_sizes
   FROM barbour_products
-  GROUP BY color_code
+  GROUP BY product_code
 ),
 site_coverage AS (
   SELECT
-    o.color_code,
+    o.product_code,
     o.site_name,
     COUNT(DISTINCT o.size) AS available_sizes
   FROM offers o
   JOIN barbour_products p
-    ON p.color_code = o.color_code AND p.size = o.size
+    ON p.product_code = o.product_code AND p.size = o.size
   WHERE
     o.can_order = TRUE
     AND (
@@ -116,40 +115,40 @@ site_coverage AS (
       OR o.stock_status ILIKE 'in stock'
       OR o.stock_status = '有货'
     )
-  GROUP BY o.color_code, o.site_name
+  GROUP BY o.product_code, o.site_name
 ),
 full_sites AS (
-  SELECT sc.color_code, sc.site_name
+  SELECT sc.product_code, sc.site_name
   FROM site_coverage sc
-  JOIN sku_sizes s USING (color_code)
+  JOIN sku_sizes s USING (product_code)
   WHERE sc.available_sizes = s.total_sizes
 ),
 qualified AS (
-  SELECT color_code, COUNT(DISTINCT site_name) AS site_count
+  SELECT product_code, COUNT(DISTINCT site_name) AS site_count
   FROM full_sites
-  GROUP BY color_code
+  GROUP BY product_code
   HAVING COUNT(DISTINCT site_name) >= 2
 )
 SELECT
-  q.color_code,
+  q.product_code,
   MIN(p.style_name) AS style_name,
   ARRAY_AGG(DISTINCT p.size ORDER BY p.size) AS all_sizes,
   ARRAY_AGG(DISTINCT f.site_name ORDER BY f.site_name) AS full_sites,
   MAX(q.site_count) AS site_count
 FROM qualified q
-JOIN barbour_products p USING (color_code)
-JOIN full_sites f USING (color_code)
-WHERE q.color_code LIKE 'MQU%'    -- ✅ 只要 MCA 开头的 color_code
-GROUP BY q.color_code
-ORDER BY site_count DESC, q.color_code;
+JOIN barbour_products p USING (product_code)
+JOIN full_sites f USING (product_code)
+WHERE q.product_code LIKE 'MQU%'    -- ✅ 只要 MCA 开头的 color_code
+GROUP BY q.product_code
+ORDER BY site_count DESC, q.product_code;
 
 
 
 select distinct product_code from barbour_inventory
 
-select count(*) from offers;
+select count(*) from barbour_offers;
 
-select * from camper_inventory;
+select * from barbour_inventory;
 
 select count(*) from barbour_products;
 
@@ -165,21 +164,23 @@ select * from barbour_products where style_name ILIKE '%beadnell%'
 
 select * from barbour_offers where product_code = 'LWX0667SG91';
 
+select count(*) from barbour_offers
+
 
 SELECT site_name, size, stock_status, can_order
 FROM offers
-WHERE color_code = 'MCA1051NY71'
+WHERE product_code = 'MCA1051NY71'
 ORDER BY site_name, size;
 
 select * from barbour_products where style_name ILIKE '%bedale%';
 
-select * from barbour_products where color_code ILIKE '%LSP0220%';
+select * from barbour_products where product_code ILIKE '%LSP0220%';
 
-select * from offers where color_code ILIKE '%LSP0220%';
+select * from offers where product_code ILIKE '%LSP0220%';
 
-SELECT distinct color_code
+SELECT distinct product_code
 FROM barbour_products
-WHERE color_code LIKE ANY (ARRAY[
+WHERE product_code LIKE ANY (ARRAY[
   'LWX0003%', 'LWX1414%', 'LWX1411%', 'LWX1410%', 'LWX1404%', 'LWX1482%',
   'LWX1412%', 'LWX1470%', 'LWX1402%', 'LWX1497%', 'LWX1483%', 'LWX0534%',
   'LWX1493%', 'LWX1515%', 'LWX1495%', 'LWX1498%',
@@ -220,3 +221,81 @@ select * from barbour_inventory where channel_item_id = '969817808097'
 
 
 select distinct product_code from clarks_jingya_inventory where gender ILIKE '%女%'
+
+
+
+
+
+
+
+
+
+WITH params AS (
+  SELECT 3::int AS min_available_sizes, 20::numeric AS min_discount_pct
+),
+base AS (
+  SELECT
+    o.product_code,
+    o.site_name,
+    MIN(o.original_price_gbp)            AS rrp_gbp,
+    MIN(o.sale_price_gbp)                AS sale_gbp,      -- 生成列
+    MAX(o.discount_pct)                  AS discount_pct,  -- 生成列
+    STRING_AGG(DISTINCT o.size, ',' ORDER BY o.size)
+      FILTER (WHERE o.can_order)         AS sizes_available,
+    COUNT(DISTINCT o.size)
+      FILTER (WHERE o.can_order)         AS available_count
+  FROM barbour_offers o, params p
+  WHERE o.is_active
+    AND o.discount_pct >= p.min_discount_pct
+  GROUP BY o.product_code, o.site_name
+)
+SELECT
+  product_code,
+  site_name,
+  rrp_gbp::numeric(10,2)   AS original_price_gbp,
+  sale_gbp::numeric(10,2)  AS discount_price_gbp,
+  discount_pct,
+  sizes_available
+FROM base, params p
+WHERE available_count >= p.min_available_sizes
+ORDER BY discount_pct DESC, sale_gbp ASC, product_code ASC;
+
+
+select * from barbour_offers where original_price_gbp IS NOT NULL
+
+
+
+
+select * from barbour_offers where discount_pct > 15
+
+
+
+WITH params AS (
+  SELECT 3::int AS min_available_sizes, 20::numeric AS min_discount_pct
+),
+base AS (
+  SELECT
+    o.product_code,
+    o.site_name,
+    MIN(o.original_price_gbp) AS rrp_gbp,
+    MIN(o.sale_price_gbp)     AS sale_gbp,
+    MAX(o.discount_pct)       AS discount_pct,
+    STRING_AGG(DISTINCT o.size, ',' ORDER BY o.size)
+      FILTER (WHERE o.stock_count > 0) AS sizes_available,
+    COUNT(DISTINCT o.size)
+      FILTER (WHERE o.stock_count > 0) AS available_count
+  FROM barbour_offers o, params p
+  WHERE o.is_active
+    AND o.discount_pct >= p.min_discount_pct
+  GROUP BY o.product_code, o.site_name
+)
+SELECT
+  product_code,
+  site_name,
+  rrp_gbp::numeric(10,2)   AS original_price_gbp,
+  sale_gbp::numeric(10,2)  AS discount_price_gbp,
+  discount_pct,
+  sizes_available
+FROM base, params p
+WHERE available_count >= p.min_available_sizes
+ORDER BY discount_pct DESC, sale_gbp ASC, product_code ASC;
