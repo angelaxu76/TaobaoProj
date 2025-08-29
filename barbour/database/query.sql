@@ -36,9 +36,9 @@ select * from offers where site_name = 'Barbour';
 select * from barbour_products where product_code ILIKE '%LQU1776%';
 
 
-select * from barbour_products;
+select count(*) from barbour_products;
 
-select * from offers;
+select * from barbour_offers;
 
 
 WITH sku_sizes AS (

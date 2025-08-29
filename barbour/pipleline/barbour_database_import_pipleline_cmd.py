@@ -21,15 +21,15 @@ def barbour_database_import_pipleline():
     # houseoffraser_get_links()
 
     # Step 1: TODO 将txt中数据导入barbour product中
-    #barbour_fetch_info()
-    #outdoorandcountry_fetch_info(max_workers=10)
-    #allweathers_fetch_info(7)
+    barbour_fetch_info()
+    outdoorandcountry_fetch_info(max_workers=10)
+    allweathers_fetch_info(7)
     houseoffraser_fetch_info()
 
     # Step 2: TODO 将txt中数据导入barbour product中
-    ##batch_import_txt_to_barbour_product("barbour")
-    #batch_import_txt_to_barbour_product("outdoorandcountry")
-    # batch_import_txt_to_barbour_product("allweathers")
+    batch_import_txt_to_barbour_product("barbour")
+    batch_import_txt_to_barbour_product("outdoorandcountry")
+    batch_import_txt_to_barbour_product("allweathers")
 
     # Step 3: TODO 将各个供货商的库存价格等从txt中数据导入数据库offers
     #import_txt_for_supplier("barbour")

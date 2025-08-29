@@ -183,6 +183,24 @@ def enrich_record_optional(rec: Dict) -> Dict:
 
     return rec
 
+def _parse_sizes_from_size_detail_line(text: str) -> list[str]:
+    """
+    统一模板变体：Product Size Detail: 6:0:000...;8:3:000...;...
+    仅提取尺码，不管后面的数量/占位码。
+    """
+    line = _extract_field(text, r'(?i)Product\s+Size\s+Detail')
+    if not line:
+        return []
+    sizes = []
+    for token in line.split(";"):
+        token = token.strip()
+        if not token:
+            continue
+        size = token.split(":", 1)[0].strip()
+        if size and size not in sizes:
+            sizes.append(size)
+    return sizes
+
 # -------------------- TXT 解析（统一 + 兼容） --------------------
 def parse_txt_file(filepath: Path) -> List[Dict]:
     """
@@ -235,11 +253,8 @@ def parse_txt_file(filepath: Path) -> List[Dict]:
         info["category"] = cat
 
     # Product Size（统一模板）
-    sizes = _parse_sizes_from_product_size_line(text)
-    if not sizes:
-        sizes = _extract_sizes_from_offer_list_block(text)
-    if not sizes:
-        sizes = _extract_sizes_from_sizes_line(text)
+    # Product Size Detail（唯一来源）
+    sizes = _parse_sizes_from_size_detail_line(text)
     info["sizes"] = sizes
 
     # 来源（用于写入 source_* 与 rank）
