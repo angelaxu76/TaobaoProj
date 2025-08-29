@@ -1,5 +1,5 @@
 import psycopg2
-from config import CAMPER, CLARKS, ECCO, GEOX, CAMPER_GLOBAL
+from config import CAMPER, CLARKS, ECCO, GEOX
 
 # ✅ 品牌配置
 BRAND_MAP = {
