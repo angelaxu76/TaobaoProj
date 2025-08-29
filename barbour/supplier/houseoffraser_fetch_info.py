@@ -201,7 +201,7 @@ def _build_size_lines(pairs: List[Tuple[str, str]]) -> Tuple[str, str]:
         return (0, int(k)) if m else (1, k)
     ordered = sorted(bucket.keys(), key=_key)
     ps = ";".join(f"{k}:{bucket[k]}" for k in ordered)
-    psd = ";".join(f"{k}:{1 if bucket[k]=='有货' else 0}:{EAN_PLACEHOLDER}" for k in ordered)
+    psd = ";".join(f"{k}:{3 if bucket[k]=='有货' else 0}:{EAN_PLACEHOLDER}" for k in ordered)
     return ps or "No Data", psd or "No Data"
 
 def _infer_style_category(name: str) -> str:
