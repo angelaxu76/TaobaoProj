@@ -154,6 +154,7 @@ def parse_offer_info(html: str, url: str, site_name="Outdoor and Country") -> di
             size_str = sizes_map.get(size_id, size_id)
             uk_size = size_str.split(",")[0].replace("UK:", "").strip()
 
+           # 价格保持原样
             raw_price = value.get("priceGbp", 0)
             try:
                 price = float(raw_price)
@@ -163,14 +164,33 @@ def parse_offer_info(html: str, url: str, site_name="Outdoor and Country") -> di
                 except Exception:
                     price = 0.0
 
-            try:
-                availability = int(value.get("availability", 0))
-            except Exception:
-                availability = 0
+            # ✅ 以 stockLevelMessage 判定有/无货
+            msg = str(value.get("stockLevelMessage", "")).lower()
+            no_stock = any(k in msg for k in [
+                "unavailable online",        # sorry this item is currently unavailable online
+                "out of stock",
+            ])
+            has_stock_kw = any(k in msg for k in [
+                "available online",
+                "in stock",
+                "more than",                 # e.g. "More than 10 available online"
+                "available",
+            ])
+            has_stock = (not no_stock) and has_stock_kw
 
-            stock_status = "有货" if availability > 0 else "无货"
-            can_order = availability > 0
+            # 若两者都没命中，才回退 availability
+            if not no_stock and not has_stock:
+                try:
+                    availability = int(value.get("availability", 0))
+                except Exception:
+                    availability = 0
+                has_stock = availability in (1, 2)
+
+            stock_status = "有货" if has_stock else "无货"
+            can_order    = has_stock   # 仅向下游传递用；DB 已不使用该列
+
             offers.append((uk_size, price, stock_status, can_order))
+
 
     return {
         "Product Name": product_name,

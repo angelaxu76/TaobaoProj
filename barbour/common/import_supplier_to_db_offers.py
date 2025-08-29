@@ -1,4 +1,4 @@
-# import_supplier_to_db_offers.py  （在你原文件上“最小改动”）
+# import_supplier_to_db_offers.py  — 仅保留数字库存 stock_count（可覆盖）
 import sys
 import csv
 import re
@@ -8,12 +8,11 @@ from datetime import datetime
 from pathlib import Path
 from config import BARBOUR
 from barbour.core.keyword_mapping import KEYWORD_EQUIVALENTS
-from common_taobao.size_utils import clean_size_for_barbour  # 保留旧名
+from common_taobao.size_utils import clean_size_for_barbour  # 旧名保留
 
-# === 通用关键词排除 ===
-# ✨ 新增两个小工具（如果你文件里已有同名函数，可忽略）
-import re
+# ---------- 小工具 ----------
 _PRICE_NUM = re.compile(r"([0-9]+(?:\.[0-9]+)?)")
+RE_CODE = re.compile(r'[A-Z]{3}\d{3,4}[A-Z]{2,3}\d{2,3}')
 
 def _parse_price(text):
     if not text:
@@ -21,16 +20,40 @@ def _parse_price(text):
     m = _PRICE_NUM.search(str(text).replace(",", ""))
     return float(m.group(1)) if m else None
 
+def _to_stock_count(stock_text, can_order_text=None, default_has_stock=3):
+    """
+    把各种库存表示统一成数字：
+    - 数字字符串：直接取 int
+    - “有货/available/in stock/true”：default_has_stock（默认 3）
+    - 其他：0
+    """
+    s = (stock_text or "").strip()
+    # 1) 纯数字
+    if re.fullmatch(r"\d+", s):
+        try:
+            return max(0, int(s))
+        except Exception:
+            return 0
+
+    sl = s.lower()
+    if sl in ("有货", "in stock", "instock", "available", "true", "yes"):
+        return default_has_stock
+
+    # 兼容 can_order 列
+    if can_order_text is not None:
+        av = str(can_order_text).strip().lower()
+        if av in ("true", "1", "t", "yes", "y"):
+            return default_has_stock
+
+    return 0
+
+def normalize_text(text: str) -> str:
+    return unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode("ascii")
+
 COMMON_WORDS = {
     "bag", "jacket", "coat", "top", "shirt",
     "backpack", "vest", "tote", "crossbody", "holdall", "briefcase"
 }
-
-# Barbour 编码识别：支持 LCA0360CR11 / LQU1852BK91 / MWX0339NY91 ...
-RE_CODE = re.compile(r'[A-Z]{3}\d{3,4}[A-Z]{2,3}\d{2,3}')
-
-def normalize_text(text: str) -> str:
-    return unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode("ascii")
 
 def extract_match_keywords(style_name: str):
     style_name = normalize_text(style_name)
@@ -40,15 +63,15 @@ def extract_match_keywords(style_name: str):
 def get_connection():
     return psycopg2.connect(**BARBOUR["PGSQL_CONFIG"])
 
-
+# ---------- TXT 解析 ----------
 def parse_txt(filepath: Path):
     """
-    解析统一 TXT：
-      - 兼容字段名：Product Code / Product Color Code；Product URL / Source URL
-      - 清理 Product Color 前导 '- '
-      - offer 行：size|price|stock|can_order
-      - 若无 offer 行，则从 Product Size Detail / Product Size 生成
-      - 若未提供 product_code，则从文件名兜底推断（可空）
+    解析统一 TXT，目标是产出：
+      info = {
+        "style_name": "", "color": "", "product_code": "", "url": "", "site": "",
+        "price_line": "...", "adjusted_price_line": "...",
+        "offers": [ { "size": "UK 10", "price": 199.0, "stock_count": 3 }, ... ]
+      }
     """
     with open(filepath, "r", encoding="utf-8") as f:
         lines = f.read().splitlines()
@@ -56,15 +79,14 @@ def parse_txt(filepath: Path):
     info = {
         "style_name": "",
         "color": "",
-        "product_code": "",   # ← 统一改名：允许为空
+        "product_code": "",
         "url": "",
         "site": "",
         "offers": []
     }
 
-    # 额外收集，便于兜底生成
-    size_line = None                # Product Size: "8:有货;10:无货;..."
-    size_detail_line = None         # Product Size Detail: "8:1:EAN;10:0:EAN;..."
+    size_line = None                # Product Size:  "8:有货;10:无货"
+    size_detail_line = None         # Product Size Detail: "8:1:EAN;10:0:EAN"
     price_line = None               # Product Price:
     adjusted_price_line = None      # Adjusted Price:
 
@@ -78,43 +100,33 @@ def parse_txt(filepath: Path):
             val = line.split(":", 1)[1].strip()
             info["color"] = re.sub(r'^\-+\s*', '', val)
 
-        # 兼容两种写法：Product Color Code / Product Code
         elif line.startswith("Product Color Code:") or line.startswith("Product Code:"):
             val = line.split(":", 1)[1].strip()
             if val and val.lower() not in {"no data", "null"}:
                 info["product_code"] = val
 
-        # 兼容两种写法：Product URL / Source URL
         elif line.startswith("Product URL:") or line.startswith("Source URL:"):
             info["url"] = line.split(":", 1)[1].strip()
 
         elif line.startswith("Site Name:"):
             info["site"] = line.split(":", 1)[1].strip()
 
+        # 兼容旧 offer 行：size|price|stock|can_order
         elif "|" in line and line.count("|") == 3:
-            # offer 行：size|price|stock|can_order
             try:
                 raw_size, price, stock, avail = [x.strip() for x in line.split("|")]
-                std_size = clean_size_for_barbour(raw_size)  # 识别失败会保留原样并打印⚠️
-                # 统一库存文案
-                s = (stock or "").strip().lower()
-                if s in ("in stock", "instock", "available", "有货"):
-                    stock_std = "有货"
-                elif s in ("out of stock", "oos", "sold out", "无货"):
-                    stock_std = "无货"
-                else:
-                    stock_std = stock or ""
+                std_size = clean_size_for_barbour(raw_size)
+                price_val = float(str(price).replace(",", "")) if price else 0.0
+                stock_count = _to_stock_count(stock, avail)
                 info["offers"].append({
                     "size": std_size,
-                    "price": float(str(price).replace(",", "")),
-                    "stock": stock_std,
-                    "can_order": str(avail).upper() == "TRUE"
+                    "price": price_val,
+                    "stock_count": stock_count
                 })
             except Exception as e:
                 print(f"⚠️ Offer 行解析失败: {line} -> {e}")
                 continue
 
-        # ===== 收集兜底字段 =====
         elif line.startswith("Product Size:"):
             size_line = line.split(":", 1)[1].strip()
         elif line.startswith("Product Size Detail:"):
@@ -124,141 +136,96 @@ def parse_txt(filepath: Path):
         elif line.startswith("Product Price:"):
             price_line = line.split(":", 1)[1].strip()
 
-    # 文件名兜底：如 LQU1852BK91.txt
+    # 文件名兜底编码
     if not info["product_code"]:
         m = RE_CODE.search(filepath.stem.upper())
         if m:
             info["product_code"] = m.group(0)
 
-    # 如果没有 offer 行，尝试从 Size Detail / Size 生成
+    # 如果没有显式 offer 行，用 Size Detail / Size 生成
     if not info["offers"]:
-        def _parse_price(s):
-            try:
-                return float(str(s).strip().replace(",", ""))
-            except Exception:
-                return 0.0
-        base_price = _parse_price(adjusted_price_line or price_line)
+        base_price = None
+        if adjusted_price_line:
+            base_price = _parse_price(adjusted_price_line)
+        if base_price is None and price_line:
+            base_price = _parse_price(price_line)
+        if base_price is None:
+            base_price = 0.0
 
-        # 1) 优先用 Product Size Detail: "M:1:EAN;L:0:EAN;..."
         if size_detail_line:
+            # 形如 "M:1:EAN;L:0:EAN" → 第二段数字就是库存数
             for token in filter(None, [t.strip() for t in size_detail_line.split(";")]):
                 parts = [p.strip() for p in token.split(":")]
                 if len(parts) >= 2:
                     raw_size = parts[0]
-                    stock_count = parts[1]
                     try:
-                        stock_n = int(stock_count)
+                        stock_n = int(parts[1])
                     except Exception:
                         stock_n = 0
-                    stock_status = "有货" if stock_n > 0 else "无货"
-                    can_order = (stock_n > 0)
                     std_size = clean_size_for_barbour(raw_size)
                     info["offers"].append({
                         "size": std_size,
                         "price": base_price,
-                        "stock": stock_status,
-                        "can_order": can_order
+                        "stock_count": max(0, stock_n)
                     })
-
-        # 2) 其次用 Product Size: "S:有货;M:无货;..."
         elif size_line:
+            # 形如 "S:有货;M:无货" → 有货=3，无货=0
             for token in filter(None, [t.strip() for t in size_line.split(";")]):
                 if ":" not in token:
                     continue
                 raw_size, status = token.split(":", 1)
-                status = status.strip().lower()
-                stock_status = "有货" if ("有" in status or status in ("in stock", "available", "true")) else "无货"
-                can_order = (stock_status == "有货")
+                stock_count = _to_stock_count(status, None, default_has_stock=3)
                 std_size = clean_size_for_barbour(raw_size)
                 info["offers"].append({
                     "size": std_size,
                     "price": base_price,
-                    "stock": stock_status,
-                    "can_order": can_order
+                    "stock_count": stock_count
                 })
 
-    # parse_txt(...) 末尾、return info 之前加入：
-        info["price_line"] = price_line                # Product Price: 原价（字符串）
-        info["adjusted_price_line"] = adjusted_price_line  # Adjusted Price: 折后价（字符串）
-        return info
+    info["price_line"] = price_line
+    info["adjusted_price_line"] = adjusted_price_line
+    return info
 
-
-
+# ----------（可选）旧的关键词匹配：保留以兼容 ----------
 def is_keyword_equivalent(k1, k2):
     for group in KEYWORD_EQUIVALENTS:
         if k1 in group and k2 in group:
             return True
     return False
 
-# —— 注意：保留函数以兼容调用，但新策略默认不再强制使用自动匹配 —— #
 def find_color_code_by_keywords(conn, style_name: str, color: str):
-    """
-    如果你需要保留旧的“无编码时尝试匹配”的能力：
-    - 这里把 barbour_products 的 color_code 改为 product_code
-    - 但新默认流程允许 product_code 为空照样入库，后续人工回填
-    """
     keywords = extract_match_keywords(style_name)
     if not keywords:
         return None
-
     with conn.cursor() as cur:
         cur.execute("""
             SELECT product_code, style_name, match_keywords
             FROM barbour_products
             WHERE LOWER(color) LIKE '%%' || LOWER(%s) || '%%'
         """, (color.lower(),))
-
         candidates = cur.fetchall()
-        best_match = None
-        best_score = 0
-
-        print(f'\n🔍 正在匹配 supplier 商品标题: "{style_name}" (颜色: {color})')
-        print("关键词:", ", ".join(keywords))
-
-        for product_code, candidate_title, match_kw in candidates:
+        best_match, best_score = None, 0
+        for product_code, _title, match_kw in candidates:
             if not match_kw:
                 continue
-            match_kw_tokens = [w.lower() for w in match_kw] if isinstance(match_kw, list) else str(match_kw).lower().split()
-            match_count = sum(
-                1 for k in keywords
-                if any(is_keyword_equivalent(k, mk) or k == mk for mk in match_kw_tokens)
-            )
-            print(f"🔸 候选: {product_code} ({candidate_title}), 匹配关键词数: {match_count} / {len(keywords)}")
-            if match_count > best_score:
-                best_match = product_code
-                best_score = match_count
-
-        required_min_score = 2
-        required_min_ratio = 0.33
-        actual_ratio = best_score / len(keywords) if keywords else 0
-
-        if best_score >= required_min_score or actual_ratio >= required_min_ratio:
-            print(f"✅ 匹配成功: {best_match}（匹配数: {best_score} / {len(keywords)}，比例: {actual_ratio:.0%}）\n")
+            toks = [w.lower() for w in match_kw] if isinstance(match_kw, list) else str(match_kw).lower().split()
+            score = sum(1 for k in keywords if any(is_keyword_equivalent(k, mk) or k == mk for mk in toks))
+            if score > best_score:
+                best_match, best_score = product_code, score
+        if best_match:
             return best_match
-        else:
-            print(f"❌ 匹配失败：匹配数 {best_score} / {len(keywords)}，比例: {actual_ratio:.0%}，返回 None\n")
-            return None
+        return None
 
-
+# ---------- 写库（只写 stock_count） ----------
 def insert_offer(info, conn, missing_log: list) -> int:
-    """
-    返回实际写入条数：
-      - 允许 product_code 为空；会照常入库（新策略）
-      - 用 (site_name, offer_url, size) 作为唯一键
-      - 更新 price/stock/can_order/last_seen/is_active
-      - 仅当主表 product_code 为空且本次提供了非空编码时才写入编码
-    """
     site = info.get("site") or ""
     offer_url = info.get("url") or ""
     style_name = info.get("style_name") or ""
     color = info.get("color") or ""
-
-    # 直接使用 TXT/文件名提供的编码；若没有则保持 None（不再强制做关键词匹配）
     product_code = info.get("product_code")
     if not product_code:
-        # 兼容：如需启用旧的关键词匹配，取消下面注释
+        # 如需自动匹配，可打开下一行：
         # product_code = find_color_code_by_keywords(conn, style_name, color)
-        # 收集到“缺码清单”
         for offer in info.get("offers", []):
             missing_log.append(("", offer.get("size"), site, style_name, color, offer_url))
 
@@ -267,11 +234,9 @@ def insert_offer(info, conn, missing_log: list) -> int:
         print("⚠️ 没有可导入的 offers（TXT 未包含 Offer List，且 Size/Detail 也未解析到）")
         return 0
 
-    # 取整单两行价格（若缺，以 None 表示）
-    op = _parse_price(info.get("price_line"))             # 原价(Product Price)
-    dp = _parse_price(info.get("adjusted_price_line"))    # 折后价(Adjusted Price)
+    op = _parse_price(info.get("price_line"))
+    dp = _parse_price(info.get("adjusted_price_line"))
 
-    # 逐行 UPSERT 到 barbour_offers
     inserted = 0
     with conn.cursor() as cur:
         for offer in offers:
@@ -283,26 +248,26 @@ def insert_offer(info, conn, missing_log: list) -> int:
 
             price_gbp = (dp if dp is not None else op) if (dp is not None or op is not None) else float(offer.get("price", 0.0))
             original_price_gbp = op if op is not None else price_gbp
+            stock_count = int(offer.get("stock_count") or 0)
 
-            # 然后执行 SQL（注意 SQL 里不要动！）
+            # 仅写 stock_count，不写 stock_status/can_order
             cur.execute("""
                 INSERT INTO barbour_offers
                     (site_name, offer_url, size,
-                    price_gbp, original_price_gbp, stock_status, can_order,
-                    product_code, first_seen, last_seen, is_active, last_checked)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s, NOW(), NOW(), TRUE, NOW())
+                     price_gbp, original_price_gbp, stock_count,
+                     product_code, first_seen, last_seen, is_active, last_checked)
+                VALUES (%s,%s,%s,%s,%s,%s,%s, NOW(), NOW(), TRUE, NOW())
                 ON CONFLICT (site_name, offer_url, size) DO UPDATE SET
                     price_gbp          = EXCLUDED.price_gbp,
                     original_price_gbp = EXCLUDED.original_price_gbp,
-                    stock_status       = EXCLUDED.stock_status,
-                    can_order          = EXCLUDED.can_order,
+                    stock_count        = EXCLUDED.stock_count,
                     product_code       = COALESCE(barbour_offers.product_code, EXCLUDED.product_code),
                     last_seen          = NOW(),
                     is_active          = TRUE,
                     last_checked       = NOW()
             """, (
                 site, offer_url, size,
-                price_gbp, original_price_gbp, offer.get("stock", "未知"), bool(offer.get("can_order", False)),
+                price_gbp, original_price_gbp, stock_count,
                 product_code if product_code else None
             ))
             inserted += 1
@@ -313,19 +278,12 @@ def insert_offer(info, conn, missing_log: list) -> int:
         conn.rollback()
     return inserted
 
-
 def import_txt_for_supplier(supplier: str):
-    """
-    按站点目录导入所有 TXT：
-      1) 逐文件解析并 UPSERT → barbour_offers
-      2) 对该站点执行一次“软删除”：把本轮未出现(未更新 last_seen)的旧记录 is_active=FALSE
-         实现方式：以 run_start_ts 为分界线，凡 last_seen < run_start_ts 的该站点记录标记下线
-    """
     if supplier not in BARBOUR["TXT_DIRS"]:
         print(f"❌ 未找到 supplier: {supplier}")
         return
 
-    run_start_ts = datetime.now()  # 软删除的时间分界
+    run_start_ts = datetime.now()
     txt_dir = BARBOUR["TXT_DIRS"][supplier]
     conn = get_connection()
     files = sorted(Path(txt_dir).glob("*.txt"))
@@ -345,17 +303,14 @@ def import_txt_for_supplier(supplier: str):
             if written > 0:
                 total_rows += written
                 print(f"✅ 导入成功: {fname} | 写入 {written} 条 offers")
-            elif written == 0:
-                print(f"❗ 导入未写入数据: {fname}（无可用 offers）")
             else:
-                # 新策略不再返回 -1；保留日志兼容
-                print(f"❗ 导入完成但存在缺编码: {fname}")
+                print(f"❗ 导入未写入数据: {fname}（无可用 offers）")
             if info.get("site"):
                 seen_sites.add(info["site"])
         except Exception as e:
             print(f"❌ 导入失败: {fname}，错误: {e}")
 
-    # —— 软删除（仅本目录对应的站点；若 TXT 中的 Site Name 不统一，则对所有出现过的站点各做一次）——
+    # 软删除：本次未见到的老记录 is_active = FALSE
     try:
         with conn.cursor() as cur:
             for site in (seen_sites or {supplier}):

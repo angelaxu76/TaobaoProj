@@ -271,7 +271,7 @@ select * from barbour_offers where discount_pct > 15
 
 
 WITH params AS (
-  SELECT 3::int AS min_available_sizes, 20::numeric AS min_discount_pct
+  SELECT 15::numeric AS min_discount_pct
 ),
 base AS (
   SELECT
@@ -280,22 +280,18 @@ base AS (
     MIN(o.original_price_gbp) AS rrp_gbp,
     MIN(o.sale_price_gbp)     AS sale_gbp,
     MAX(o.discount_pct)       AS discount_pct,
-    STRING_AGG(DISTINCT o.size, ',' ORDER BY o.size)
-      FILTER (WHERE o.stock_count > 0) AS sizes_available,
-    COUNT(DISTINCT o.size)
-      FILTER (WHERE o.stock_count > 0) AS available_count
+    STRING_AGG(DISTINCT o.size, ',' ORDER BY o.size) AS all_sizes
   FROM barbour_offers o, params p
   WHERE o.is_active
-    AND o.discount_pct >= p.min_discount_pct
+    AND o.discount_pct > p.min_discount_pct
   GROUP BY o.product_code, o.site_name
 )
 SELECT
   product_code,
   site_name,
-  rrp_gbp::numeric(10,2)   AS original_price_gbp,
-  sale_gbp::numeric(10,2)  AS discount_price_gbp,
+  rrp_gbp::numeric(10,2)  AS original_price_gbp,
+  sale_gbp::numeric(10,2) AS discount_price_gbp,
   discount_pct,
-  sizes_available
-FROM base, params p
-WHERE available_count >= p.min_available_sizes
+  all_sizes
+FROM base
 ORDER BY discount_pct DESC, sale_gbp ASC, product_code ASC;

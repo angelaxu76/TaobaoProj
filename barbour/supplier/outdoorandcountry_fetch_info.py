@@ -14,10 +14,10 @@ Outdoor & Country | Barbour 商品抓取（统一 TXT 模板版）
    - 不写 SizeMap
    - 过滤 52 及更大的男装数字尺码
 4) 类目兜底：遇到 wax + jacket 或 code 前缀 MWX/LWX 时，强制 "waxed jacket"
-5) ✅ 新增（仅在本模块内完成的业务处理，不侵入 writer/parser）：
+5) ✅ Outdoor 专属业务处理：
    - 从 Offers 回填 Product Price（有货优先）
    - 对 Product Size / Product Size Detail 的尺码做清洗
-   - 若无 Product Size Detail，按 Size 兜底生成（有货=1/无货=0，EAN 占位）
+   - 若无 Product Size Detail，按 Size 兜底生成（有货=3/无货=0，EAN 占位）
 """
 
 import time
@@ -111,7 +111,6 @@ def _extract_color_code_from_jsonld(html: str) -> str:
                         # 先尝试取 MWX0017NY91 这种完整组合码（截掉最后2位尺码）
                         if len(mpn) >= 11:
                             maybe_code = mpn[:-2]
-                            # 简单校验：前三位字母 + 数字 + 两位字母两位数字
                             if re.match(r"^[A-Z]{3}\d{4}[A-Z]{2}\d{2}$", maybe_code):
                                 return maybe_code
                         # 其次回退到末尾颜色块（OL99/NY91）
@@ -133,9 +132,6 @@ def _infer_gender_from_name(name: str) -> str:
     return "男款"  # 兜底按男款
 
 def _fallback_style_category(name: str, desc: str, product_code: str) -> str:
-    """
-    本地兜底：即使你的 category_utils 还是鞋类版，也不会把外套误判。
-    """
     text = f"{name} {desc}".lower()
     if ("wax" in text and "jacket" in text) or (product_code[:3] in {"MWX", "LWX"}):
         return "waxed jacket"
@@ -143,30 +139,37 @@ def _fallback_style_category(name: str, desc: str, product_code: str) -> str:
         return "quilted jacket"
     return "casual wear"
 
+
+            
 def _build_sizes_from_offers(offers, gender: str):
     """
-    不依赖公共 size_normalizer，按你的新规则生成两行：
-    - Product Size（不含 52，也不含 >50 的数字尺码）
-    - Product Size Detail（同上）
-    说明：你明确不要 SizeMap，就不返回它。
+    不依赖公共 size_normalizer，按你的新规则生成两行（内部保持原样）：
+    - Product Size（内部仍构建以兼容返回值，但稍后不写入 TXT）
+    - Product Size Detail（仅此写入；有货=3，无货=0）
     """
+    # 先准备空返回，确保任何分支都有双返回
+    product_size = ""
+    product_size_detail = ""
+
     # 归一 + 过滤
     def norm(raw):
         s = (raw or "").strip().upper().replace("UK ", "")
         s = re.sub(r"\s*\(.*?\)\s*", "", s)
-        # 数字抽取优先
+        # 数字抽取优先（女款允许 1-2 位数字）
         m = re.findall(r"\d{2,3}", s)
+        if not m and gender == "女款" and re.fullmatch(r"\d{1,2}", s):
+            m = [s]
         if m:
             n = int(m[0])
             # 女：4..20（偶数）
             if 4 <= n <= 20 and n % 2 == 0 and gender == "女款":
                 return str(n)
-            # 男数字：30..50（偶数），且你要求不要 52
+            # 男数字：30..50（偶数）
             if 30 <= n <= 50 and n % 2 == 0 and gender == "男款":
                 return str(n)
-            # 其它情况：尝试靠近就近偶数
+            # 其它情况：尝试靠近就近偶数（男款）
             if gender == "男款" and 28 <= n <= 54:
-                candidate = n if n % 2 == 0 else n-1
+                candidate = n if n % 2 == 0 else n - 1
                 candidate = max(30, min(50, candidate))
                 return str(candidate)
         # 字母尺码
@@ -178,33 +181,33 @@ def _build_sizes_from_offers(offers, gender: str):
         key = s.replace("-", "").replace(" ", "")
         return map_alpha.get(key)
 
+    # ↓↓↓ 这块要与 norm 平级（把你文件里这几行整体左移一层） ↓↓↓
     bucket = {}
-    for size, price, stock_text, can_order in offers or []:
+    for size, price, stock_text, _ in offers or []:
         ns = norm(size)
         if not ns:
             continue
-        # 有货优先覆盖
-        curr = "有货" if bool(can_order) else "无货"
+        # 只按 stock_text 判定（来自上游 stockLevelMessage）
+        curr = "有货" if (isinstance(stock_text, str) and stock_text.strip() == "有货") else "无货"
         prev = bucket.get(ns)
         if prev is None or (prev == "无货" and curr == "有货"):
             bucket[ns] = curr
 
-    # 排序：女 4..20；男 字母→数字（30..50）；不输出 52
     WOMEN = ["4","6","8","10","12","14","16","18","20"]
     MEN_ALPHA = ["2XS","XS","S","M","L","XL","2XL","3XL"]
-    MEN_NUM = [str(n) for n in range(30, 52, 2)]  # 30..50
+    MEN_NUM = [str(n) for n in range(30, 52, 2)]
 
-    ordered = []
-    if gender == "女款":
-        ordered = [k for k in WOMEN if k in bucket]
-    else:
-        ordered = [k for k in MEN_ALPHA if k in bucket] + [k for k in MEN_NUM if k in bucket]
+    ordered = [k for k in WOMEN if k in bucket] if gender == "女款" \
+              else [k for k in MEN_ALPHA if k in bucket] + [k for k in MEN_NUM if k in bucket]
 
-    product_size = ";".join(f"{k}:{bucket[k]}" for k in ordered)
-    product_size_detail = ";".join(f"{k}:{1 if bucket[k]=='有货' else 0}:0000000000000" for k in ordered)
+    product_size = ";".join(f"{k}:{bucket[k]}" for k in ordered)  # 仍返回但不写入
+    # Detail 数量：有货=3，无货=0（按你要求）
+    product_size_detail = ";".join(f"{k}:{3 if bucket[k]=='有货' else 0}:0000000000000" for k in ordered)
     return product_size, product_size_detail
 
-# ========= 新增：仅在本模块内做的 Outdoor 专属业务处理 =========
+
+
+# ========= Outdoor 专属业务处理 =========
 def _inject_price_from_offers(info: dict) -> None:
     """Outdoor 页无显式价格时，从 Offers 回填（有货优先，其次第一条）"""
     if info.get("Product Price"):
@@ -238,7 +241,7 @@ def _clean_sizes(info: dict) -> None:
                 cleaned.append(token)
         info["Product Size"] = ";".join(cleaned)
 
-    # Product Size Detail: "S:1:EAN;M:0:EAN..."
+    # Product Size Detail: "S:3:EAN;M:0:EAN..."
     if info.get("Product Size Detail"):
         cleaned = []
         for token in str(info["Product Size Detail"]).split(";"):
@@ -255,7 +258,7 @@ def _clean_sizes(info: dict) -> None:
         info["Product Size Detail"] = ";".join(cleaned)
 
 def _ensure_detail_from_size(info: dict) -> None:
-    """若无 Detail，用 Size 兜底生成（有货=1，无货=0，EAN 占位）"""
+    """若无 Detail，用 Size 兜底生成（有货=3，无货=0，EAN 占位）"""
     if info.get("Product Size") and not info.get("Product Size Detail"):
         detail = []
         for token in str(info["Product Size"]).split(";"):
@@ -265,7 +268,7 @@ def _ensure_detail_from_size(info: dict) -> None:
             try:
                 size, status = token.split(":")
                 size = clean_size_for_barbour(size)
-                stock = 1 if status.strip() == "有货" else 0
+                stock = 3 if status.strip() == "有货" else 0
                 detail.append(f"{size}:{stock}:0000000000000")
             except ValueError:
                 continue
@@ -278,7 +281,6 @@ def process_url(url, output_dir):
     options.add_argument("--start-maximized")
     # 如需无头：options.add_argument("--headless=new")
     driver = uc.Chrome(options=options)
-
 
     try:
         print(f"\n🌐 正在抓取: {url}")
@@ -317,7 +319,7 @@ def process_url(url, output_dir):
         # 5) Offers → 两行尺码（不写 SizeMap，且过滤 52）
         offers = info.get("Offers") or []
         ps, psd = _build_sizes_from_offers(offers, info["Product Gender"])
-        info["Product Size"] = ps
+        # ⚠️ 按你的要求：不再写入 Product Size，只保留 Detail
         info["Product Size Detail"] = psd
 
         # 6) 类目（本地兜底，防止 category_utils 旧版误判）
@@ -330,8 +332,8 @@ def process_url(url, output_dir):
 
         # ========= ✅ Outdoor 专属增强：写盘前一次性处理 =========
         _inject_price_from_offers(info)   # Outdoor 无价 → 从 offers 补
-        _clean_sizes(info)                 # 尺码清洗（两行）
-        _ensure_detail_from_size(info)     # 没 Detail 就从 Size 兜底
+        _clean_sizes(info)                 # 清洗（仅 Detail 生效）
+        _ensure_detail_from_size(info)     # 没 Detail 就从 Size 兜底（Detail 用 3/0）
 
         # 7) 文件名策略
         if color_code:
