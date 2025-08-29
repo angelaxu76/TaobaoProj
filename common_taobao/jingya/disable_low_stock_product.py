@@ -7,7 +7,6 @@ BRAND_MAP = {
     "clarks": CLARKS,
     "ecco": ECCO,
     "geox": GEOX,
-    "camper_global": CAMPER_GLOBAL
 }
 
 # ✅ 可配置变量
