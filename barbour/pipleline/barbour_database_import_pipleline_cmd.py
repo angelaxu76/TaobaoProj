@@ -22,9 +22,9 @@ def barbour_database_import_pipleline():
 
     # Step 1: TODO 将txt中数据导入barbour product中
     #barbour_fetch_info()
-    outdoorandcountry_fetch_info(max_workers=10)
+    #outdoorandcountry_fetch_info(max_workers=10)
     #allweathers_fetch_info(7)
-    # houseoffraser_fetch_info()
+    houseoffraser_fetch_info()
 
     # Step 2: TODO 将txt中数据导入barbour product中
     ##batch_import_txt_to_barbour_product("barbour")

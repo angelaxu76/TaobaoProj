@@ -378,7 +378,7 @@ def _build_size_lines_from_sizedetail(size_detail: dict, gender: str) -> tuple[s
         prev = bucket_status.get(norm)
         if prev is None or (prev == "无货" and status == "有货"):
             bucket_status[norm] = status
-            bucket_stock[norm] = 1 if stock > 0 else 0
+            bucket_stock[norm] = 3 if stock > 0 else 0
 
     ordered = _sort_sizes(list(bucket_status.keys()), gender)
 

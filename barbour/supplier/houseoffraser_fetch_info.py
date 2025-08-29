@@ -1,286 +1,296 @@
-# barbour/supplier/houseoffraser_fetch_info.py
 # -*- coding: utf-8 -*-
 """
-House of Fraser | Barbour
-- 抓取逻辑保持不变（parse_product_page → Offer List）
-- pipeline 方法名保持不变：process_link(url), houseoffraser_fetch_all()
-- 统一用 txt_writer.format_txt 写出“同一模板”的 TXT
-- 本站无商品编码 => Product Code 固定写 "No Data"
-- 尺码：由 Offer List 生成 Product Size / Product Size Detail（不写 SizeMap）
-- 女：4–20（偶数）；男：30–50（偶数）；不写 52
+House of Fraser | Barbour 商品抓取（统一 TXT 模板版）
+- 与其它站点保持一致：零参数、从 config 读取路径与链接
+- 爬取技术：Selenium + BeautifulSoup（与现有 allweathers/outdoorandcountry 一致）
+- 写入：common_taobao.txt_writer.format_txt（与现有站点一致）
+
+输出字段补齐：
+- Product Description：meta[property="og:description"]
+- Feature：#DisplayAttributes li → "key: value; ..."
+- Product Material：Feature 中 Fabric/Material/Shell 的值（无则 No Data）
+- Product Size：从 #sizeDdl > option 解析（greyOut=无货）→ "6:无货;8:有货;..."
+- Product Size Detail：与上对应，"size:1/0:0000000000000"（有货=1，无货=0）
+- Product Price：优先 DOM 提取的现价；若未取到保留 "No Data"
+- Adjusted Price：留空，由下游 price_utils 计算
+- Style Category：基于标题关键字的简单推断（jacket / quilted jacket / wax jacket）
+- Product Code：HOF 页面无，固定 "No Data"
 """
 
+import re
 import time
 from pathlib import Path
-import re
-from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Optional, List, Tuple
 
 import undetected_chromedriver as uc
 from bs4 import BeautifulSoup
 
 from config import BARBOUR
+from common_taobao.txt_writer import format_txt  # 统一写入模板（与你现有站点一致）
 
-# ✅ 统一写入：使用项目里的 txt_writer（与其它站点同模板）
-from common_taobao.txt_writer import format_txt
+# ========== 站点级常量 ==========
+SITE_NAME = "House of Fraser"
+EAN_PLACEHOLDER = "0000000000000"
 
 LINKS_FILE = BARBOUR["LINKS_FILES"]["houseoffraser"]
-TXT_DIR = BARBOUR["TXT_DIRS"]["houseoffraser"]
-TXT_DIR.mkdir(parents=True, exist_ok=True)
-SITE_NAME = "House of Fraser"
+TXT_DIR: Path = BARBOUR["TXT_DIRS"]["houseoffraser"]
+TXT_DIR.mkdir(parents=True, exist_ok=True)  # 确保目录存在
 
 
-# ---------------- 浏览器 ----------------
-
+# ========== Selenium 驱动（与现有风格一致） ==========
 def get_driver():
     options = uc.ChromeOptions()
-    # 如需静默运行可打开：
-    # options.add_argument("--headless=new")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--no-sandbox")
+    # 如需无头：options.add_argument("--headless=new")
     options.add_argument("--disable-blink-features=AutomationControlled")
-    return uc.Chrome(options=options, use_subprocess=True)
+    options.add_argument("--start-maximized")
+    driver = uc.Chrome(options=options)
+    return driver
 
 
-# ---------------- 页面解析（保持你现有逻辑） ----------------
-
-def parse_product_page(html: str, url: str):
+# ========== 工具函数 ==========
+def _extract_gender(title: str, soup: BeautifulSoup) -> str:
     """
-    原有解析：返回 {Product Name, Product Color, Site Name, Product URL, Offer List, Updated At}
-    Offer List 元素形如: "size|price|stock_status|True"
+    从标题/meta/breadcrumb 推断性别
     """
+    t = (title or "").lower()
+    if "women" in t:
+        return "女款"
+    if "men" in t:
+        return "男款"
+    if "kids" in t or "girls" in t or "boys" in t:
+        return "童款"
+    # 兜底：从 meta og:title 判断
+    m = soup.find("meta", attrs={"property": "og:title"})
+    if m and "women" in m.get("content", "").lower():
+        return "女款"
+    return "No Data"
+
+
+def _extract_color(soup: BeautifulSoup) -> str:
+    """
+    从颜色选择器中提取当前颜色
+    """
+    ul = soup.find("ul", id="ulColourImages")
+    if ul:
+        li = ul.find("li", attrs={"aria-checked": "true"})
+        if li:
+            # data-text 属性优先
+            txt = li.get("data-text") or ""
+            if txt.strip():
+                return _clean_text(txt)
+            # 再尝试 <img alt>
+            img = li.find("img")
+            if img and img.get("alt"):
+                return _clean_text(img["alt"])
+    return "No Data"
+
+
+def _clean_text(s: Optional[str]) -> str:
+    return re.sub(r"\s+", " ", (s or "").strip())
+
+def _price_from_text_block(text: str) -> Tuple[Optional[float], Optional[float]]:
+    """
+    从一段并排价格字符串里提取 (current, original)
+    例如 "£95.00 £189.00" → (95.00, 189.00)
+    经验策略：第一个视为现价；最大值视为原价（若比现价大）
+    """
+    vals = re.findall(r"£?\s*([0-9]+(?:\.[0-9]{1,2})?)", text or "")
+    nums = [float(v) for v in vals]
+    if not nums:
+        return (None, None)
+    curr = nums[0]
+    orig = None
+    if len(nums) >= 2:
+        mx = max(nums)
+        if mx > curr:
+            orig = mx
+        else:
+            orig = nums[-1]
+    return (curr, orig)
+
+def _extract_title(soup: BeautifulSoup) -> str:
+    # 取 <title>，去掉站点后缀
+    t = _clean_text(soup.title.get_text()) if soup.title else "No Data"
+    t = re.sub(r"\s*\|\s*House of Fraser\s*$", "", t, flags=re.I)
+    return t or "No Data"
+
+def _extract_og_description(soup: BeautifulSoup) -> str:
+    m = soup.find("meta", attrs={"property": "og:description"})
+    return _clean_text(m["content"]) if (m and m.get("content")) else "No Data"
+
+def _extract_features_and_material(soup: BeautifulSoup) -> Tuple[str, str]:
+    """
+    从 #DisplayAttributes li 拿特征列表，并从中抽取 Fabric/Material/Shell 等作为 Product Material
+    """
+    ul = soup.find("ul", id="DisplayAttributes")
+    features = []
+    material = ""
+    if ul:
+        for li in ul.find_all("li"):
+            k = li.find("span", class_="feature-name")
+            v = li.find("span", class_="feature-value")
+            key = _clean_text(k.get_text() if k else "")
+            val = _clean_text(v.get_text() if v else "")
+            if key and val:
+                features.append(f"{key}: {val}")
+                if not material and key.lower() in {"fabric", "material", "shell", "outer"}:
+                    material = val
+    feat_str = "; ".join(features) if features else "No Data"
+    return feat_str, (material or "No Data")
+
+def _extract_prices(soup: BeautifulSoup) -> Tuple[Optional[float], Optional[float]]:
+    """
+    从多个常见节点里凑一段价格文本，然后调用 _price_from_text_block
+    """
+    blocks = []
+    # 常见类名/ID（HOF 主题可能变化，尽量多路收集）
+    for sel in [
+        {"id": "lblSellingPrice"},
+        {"class_": re.compile(r"(product-price|price-now|now-price|current|selling)", re.I)},
+        {"class_": re.compile(r"(prices?|productPrices?)", re.I)},
+    ]:
+        node = soup.find(attrs=sel)
+        if node:
+            blocks.append(node.get_text(" ", strip=True))
+    # WAS/Was 节点
+    was_nodes = soup.find_all(string=re.compile(r"\bwas\b", re.I))
+    for n in was_nodes:
+        blocks.append(str(n))
+        if getattr(n, "parent", None):
+            blocks.append(n.parent.get_text(" ", strip=True))
+    merged = " | ".join({b for b in blocks if b})
+    return _price_from_text_block(merged)
+
+def _extract_size_offers(soup: BeautifulSoup) -> List[Tuple[str, str]]:
+    """
+    解析 #sizeDdl > option
+    返回 [(norm_size, stock_status)]；greyOut 或 title 含 'out of stock' → 无货，否则 有货
+    """
+    sel = soup.find("select", id="sizeDdl")
+    results: List[Tuple[str, str]] = []
+    if not sel:
+        return results
+    for opt in sel.find_all("option"):
+        txt = _clean_text(opt.get_text())
+        if not txt or txt.lower().startswith("select"):
+            continue
+        cls = opt.get("class") or []
+        title = _clean_text(opt.get("title") or "")
+        oos = ("greyOut" in cls) or ("out of stock" in title.lower())
+        status = "无货" if oos else "有货"
+        # 归一：把 "8 (XS)" → "8"
+        norm = re.sub(r"\s*\(.*?\)\s*", "", txt).strip()
+        norm = re.sub(r"^(UK|EU|US)\s+", "", norm, flags=re.I)
+        results.append((norm, status))
+    return results
+
+def _build_size_lines(pairs: List[Tuple[str, str]]) -> Tuple[str, str]:
+    """
+    - Product Size: "8:有货;10:有货;..."
+    - Product Size Detail: "8:1:000...;10:1:000...;..."（有货=1，无货=0）
+    对同尺码多次出现：有货优先覆盖
+    """
+    bucket = {}
+    for size, status in pairs or []:
+        prev = bucket.get(size)
+        if prev is None or (prev == "无货" and status == "有货"):
+            bucket[size] = status
+    # 排序：女款优先用 6,8,10,12... 的自然次序；否则按数字优先、再字母
+    def _key(k: str):
+        m = re.fullmatch(r"\d{1,3}", k)
+        return (0, int(k)) if m else (1, k)
+    ordered = sorted(bucket.keys(), key=_key)
+    ps = ";".join(f"{k}:{bucket[k]}" for k in ordered)
+    psd = ";".join(f"{k}:{1 if bucket[k]=='有货' else 0}:{EAN_PLACEHOLDER}" for k in ordered)
+    return ps or "No Data", psd or "No Data"
+
+def _infer_style_category(name: str) -> str:
+    n = (name or "").lower()
+    if "jacket" in n and "quilt" in n:
+        return "quilted jacket"
+    if "jacket" in n and "wax" in n:
+        return "wax jacket"
+    if "jacket" in n:
+        return "jacket"
+    return "casual wear"
+
+
+# ========== 解析与写盘 ==========
+def parse_and_build_info(html: str, url: str) -> dict:
     soup = BeautifulSoup(html, "html.parser")
 
-    # 标题：一般是 "House of Fraser | <Product Name> | ..."
-    title = (soup.title.text or "").strip() if soup.title else ""
-    product_name = title.split("|")[1].strip() if "|" in title else title
+    title = _extract_title(soup)
+    description = _extract_og_description(soup)
+    features, material = _extract_features_and_material(soup)
+    curr_price, orig_price = _extract_prices(soup)
+    pairs = _extract_size_offers(soup)
+    product_size, product_size_detail = _build_size_lines(pairs)
 
-    # 价格（有时为空，后面会用 Offer List 兜底）
-    price_tag = soup.find("span", id="lblSellingPrice")
-    page_price = price_tag.text.replace("\xa3", "").strip() if price_tag else ""
-
-    # 颜色
-    color_tag = soup.find("span", id="colourName")
-    raw_color = color_tag.text.strip() if color_tag else "No Color"
-    color = clean_color(raw_color)
-
-    # 尺码 → Offer List
-    offer_list = []
-    size_select = soup.find("select", id="sizeDdl")
-    if size_select:
-        for option in size_select.find_all("option"):
-            size = option.text.strip()
-            if not size or "Select Size" in size:
-                continue
-            stock_qty = option.get("data-stock-qty", "0")
-            stock_status = "有货" if stock_qty and stock_qty != "0" else "无货"
-            cleaned_size = clean_size(size)
-            # 仍保持你原来的 Offer List 字符串格式
-            offer_list.append(f"{cleaned_size}|{page_price}|{stock_status}|True")
-
-    return {
-        "Product Name": product_name,
-        "Product Color": color,
+    info = {
+        "Product Code": "No Data",               # HOF 无编码
+        "Product Name": title,
+        "Product Description": description or "No Data",
+        "Product Gender": _extract_gender(title, soup),
+        "Product Color": _extract_color(soup),
+        "Product Price": f"{curr_price:.2f}" if curr_price is not None else "No Data",
+        "Adjusted Price": "",                    # 由下游计算
+        "Product Material": material or "No Data",
+        "Style Category": _infer_style_category(title),
+        "Feature": features or "No Data",
+        "Product Size": product_size,
+        "Product Size Detail": product_size_detail,
+        "Source URL": url,
         "Site Name": SITE_NAME,
-        "Product URL": url,
-        "Offer List": offer_list,
-        "Page Price": page_price,  # 🔹保留原始页面价格（可能为空）
-        "Updated At": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
+    # 若原价存在，把它附加到 Feature 末尾，不增字段名（与你其它站点的写法一致）
+    if orig_price is not None:
+        extra = f"Original Price: {orig_price:.2f}"
+        info["Feature"] = (info["Feature"] + "; " + extra) if info["Feature"] != "No Data" else extra
 
-# ---------------- 清洗工具 ----------------
-
-def clean_size(size: str) -> str:
-    return size.split("(")[0].strip()
-
-def clean_color(color: str) -> str:
-    txt = (color or "").strip()
-    txt = re.sub(r"\([^)]*\)", "", txt)          # 去括号注释
-    txt = re.sub(r"[^\w\s/+-]", " ", txt)        # 去奇怪符号
-    txt = re.sub(r"\s+", " ", txt).strip()
-    # 去掉含数字的词
-    parts = [p for p in txt.split() if not any(c.isdigit() for c in p)]
-    base = " ".join(parts) if parts else txt
-    return base.strip()
-
-def safe_filename(name: str) -> str:
-    return "".join(c for c in name if c.isalnum() or c in (" ", "-", "_")).rstrip()
-
-# ------- 尺码标准化（与其它站点同规则；不写 52） -------
-
-WOMEN_ORDER = ["4","6","8","10","12","14","16","18","20"]
-MEN_ALPHA_ORDER = ["2XS","XS","S","M","L","XL","2XL","3XL"]
-MEN_NUM_ORDER = [str(n) for n in range(30, 52, 2)]  # 30..50（不含 52）
-
-ALPHA_MAP = {
-    "XXXS": "2XS", "2XS": "2XS",
-    "XXS": "XS", "XS": "XS",
-    "S": "S", "SMALL": "S",
-    "M": "M", "MEDIUM": "M",
-    "L": "L", "LARGE": "L",
-    "XL": "XL", "X-LARGE": "XL",
-    "XXL": "2XL", "2XL": "2XL",
-    "XXXL": "3XL", "3XL": "3XL",
-}
-
-def _infer_gender_from_name(name: str) -> str:
-    n = (name or "").lower()
-    if any(k in n for k in ["women", "women's", "womens", "ladies", "lady"]):
-        return "女款"
-    if any(k in n for k in ["men", "men's", "mens"]):
-        return "男款"
-    return "男款"  # 兜底
-
-def _normalize_size(token: str, gender: str) -> str | None:
-    s = (token or "").strip().upper()
-    s = s.replace("UK ", "").replace("EU ", "").replace("US ", "")
-    s = re.sub(r"\s*\(.*?\)\s*", "", s)
-    s = re.sub(r"\s+", " ", s)
-    # 先数字
-    m = re.findall(r"\d{1,3}", s)
-    if m:
-        n = int(m[0])
-        if gender == "女款" and n in {4,6,8,10,12,14,16,18,20}:
-            return str(n)
-        if gender == "男款":
-            if 30 <= n <= 50 and n % 2 == 0:
-                return str(n)
-            if 28 <= n <= 54:  # 就近容错到 30..50 偶数
-                cand = n if n % 2 == 0 else n-1
-                cand = max(30, min(50, cand))
-                return str(cand)
-        return None
-    # 再字母
-    key = s.replace("-", "").replace(" ", "")
-    return ALPHA_MAP.get(key)
-
-def _sort_sizes(keys: list[str], gender: str) -> list[str]:
-    if gender == "女款":
-        return [k for k in WOMEN_ORDER if k in keys]
-    return [k for k in MEN_ALPHA_ORDER if k in keys] + [k for k in MEN_NUM_ORDER if k in keys]
-
-def offers_to_size_lines(offer_list: list[str], gender: str) -> tuple[str, str]:
-    """
-    Offer List（'size|price|stock|bool'）→
-      Product Size: "6:有货;8:有货;..."
-      Product Size Detail: "6:1:0000000000000;8:1:0000000000000;..."
-    同尺码出现多次时“有货”优先；不输出 SizeMap。
-    """
-    status = {}
-    count = {}
-    for row in offer_list or []:
-        parts = [p.strip() for p in row.split("|")]
-        if len(parts) < 3:
-            continue
-        raw_size, _price, stock_status = parts[0], parts[1], parts[2]
-        norm = _normalize_size(raw_size, gender)
-        if not norm:
-            continue
-        curr = "有货" if stock_status == "有货" else "无货"
-        prev = status.get(norm)
-        if prev is None or (prev == "无货" and curr == "有货"):
-            status[norm] = curr
-            count[norm] = 1 if curr == "有货" else 0
-
-    ordered = _sort_sizes(list(status.keys()), gender)
-    ps  = ";".join(f"{k}:{status[k]}" for k in ordered)
-    psd = ";".join(f"{k}:{count[k]}:0000000000000" for k in ordered)
-    return ps, psd
+    return info
 
 
-# ---------------- 价格回填（本模块内完成，writer/parser 不参与） ----------------
-
-def price_from_offer_list(offer_list: list[str]) -> str | None:
-    """
-    从 Offer List 中回填价格：优先选“有货”的第一条价格；若都无货，取第一条可解析价格。
-    Offer List 行形如 'size|price|stock|True'
-    """
-    candidate = None
-    for row in offer_list or []:
-        parts = [p.strip() for p in row.split("|")]
-        if len(parts) < 2:
-            continue
-        size, price, *rest = parts
-        price = price.replace("£", "").strip()
-        # 跳过空价或非数字
-        try:
-            val = float(price)
-        except Exception:
-            continue
-        # 有货优先
-        stock = (rest[0] if rest else "")
-        if stock == "有货":
-            return f"{val:.2f}"
-        if candidate is None:
-            candidate = f"{val:.2f}"
-    return candidate
-
-
-# ---------------- 写入 TXT（统一模板） ----------------
-
-def process_link(url):
+def process_url(url: str):
+    print(f"\n🌐 正在抓取: {url}")
     driver = get_driver()
     try:
         driver.get(url)
-        time.sleep(6)
+        time.sleep(2.5)  # 轻等待，视页面复杂度可适当增加
         html = driver.page_source
-
-        # 保持原有解析逻辑
-        parsed = parse_product_page(html, url)
-
-        # —— 构造统一 info（不依赖商品编码；Product Code 固定 No Data）——
-        gender = _infer_gender_from_name(parsed.get("Product Name", ""))
-        ps, psd = offers_to_size_lines(parsed.get("Offer List", []), gender)
-
-        # ✅ 价格回填（有货优先）
-        price_val = parsed.get("Page Price") or ""
-        if not price_val:
-            price_val = price_from_offer_list(parsed.get("Offer List", [])) or ""
-
-        info = {
-            "Product Code": "No Data",                # 本站无编码 → 固定 No Data
-            "Product Name": parsed.get("Product Name", "No Data"),
-            "Product Description": "No Data",
-            "Product Gender": gender,
-            "Product Color": parsed.get("Product Color", "No Data"),
-            "Product Price": price_val or None,       # 🔹回填到 Product Price
-            "Adjusted Price": None,
-            "Product Material": "No Data",
-            "Style Category": "",                     # 交给 txt_writer 推断（若你那边有推断）
-            "Feature": "No Data",
-            "Product Size": ps,                       # 两行尺码（不写 SizeMap）
-            "Product Size Detail": psd,
-            "Site Name": SITE_NAME,
-            "Source URL": parsed.get("Product URL", url),
-            "Brand": "Barbour",
-        }
-
-        # 文件名：本站无编码 → 用 名称_颜色
-        safe_name  = safe_filename(info["Product Name"])
-        safe_color = safe_filename(info["Product Color"])
-        filename = f"{safe_name}_{safe_color}.txt"
-        txt_path = TXT_DIR / filename
-
-        # ✅ 统一模板写入（writer 只做 I/O，保持品牌无关）
-        format_txt(info, txt_path, brand="Barbour")
-        print(f"✅ 已写入: {txt_path.name}")
-
-    except Exception as e:
-        print(f"❌ 抓取失败: {url}\n{e}\n")
     finally:
-        driver.quit()
+        try:
+            driver.quit()
+        except Exception:
+            pass
+
+    info = parse_and_build_info(html, url)
+
+    # 文件名：HOF 无编码 → 用标题安全化
+    safe_name = re.sub(r"[\\/:*?\"<>|'\s]+", "_", info.get("Product Name") or "NoName")
+    out_path = TXT_DIR / f"{safe_name}.txt"
+    format_txt(info, out_path, brand="Barbour")  # 与 barbour_fetch_info 等保持一致
+    print(f"✅ 写入: {out_path.name}")
+    return out_path
 
 
+# ========== 主入口：零参数，读取 config 链接文件 ==========
 def houseoffraser_fetch_info():
-    links = [u.strip() for u in LINKS_FILE.read_text(encoding="utf-8").splitlines() if u.strip()]
-    print(f"🚀 共需抓取 {len(links)} 个商品链接\n")
+    links_file = Path(LINKS_FILE)
+    if not links_file.exists():
+        print(f"⚠ 找不到链接文件：{links_file}")
+        return
 
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        futures = [executor.submit(process_link, url) for url in links]
-        for future in as_completed(futures):
-            _ = future.result()
+    urls = [line.strip() for line in links_file.read_text(encoding="utf-8", errors="ignore").splitlines()
+            if line.strip() and not line.strip().startswith("#")]
+    print(f"📄 共 {len(urls)} 个商品页面待解析...")
+
+    for idx, url in enumerate(urls, 1):
+        try:
+            print(f"[{idx}/{len(urls)}] 处理中...")
+            process_url(url)
+        except Exception as e:
+            print(f"❌ 处理失败: {url}\n    {e}")
 
 
 if __name__ == "__main__":
