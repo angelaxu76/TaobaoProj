@@ -292,7 +292,7 @@ def process_url(url, output_dir):
         html = driver.page_source
 
         # 1) 解析（复用你已有的站点解析）
-        info = parse_offer_info(html, url) or {}
+        info = parse_offer_info(html, url, site_name=CANON_SITE) or {}
         url_color = _normalize_color_from_url(url)
 
         if info.get("original_price_gbp"):
