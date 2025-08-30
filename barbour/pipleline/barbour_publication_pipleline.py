@@ -2,13 +2,14 @@ from pathlib import Path
 from config import BARBOUR
 from barbour.jingya.insert_jingyaid_to_db_barbour import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
 from barbour.common.export_barbour_discounts import export_barbour_discounts_excel
+from barbour.common.generate_barbour_publication_excel import generate_publication_excel
 
 
 def pipeline_barbour():
     print("\n🚀 启动 Barbour - House of Fraser 全流程抓取")
 
     # 步骤 1：导出打折的商品可以发布的商品列表到excel
-    excel_path = export_barbour_discounts_excel(19, 3, "MWX")
+    excel_path = export_barbour_discounts_excel(19, 3, "MQU")
     print(excel_path)
 
     # 步骤 1：将产品的编码放到D:\TB\Products\barbour\repulibcation\codes.txt

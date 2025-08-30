@@ -12,12 +12,14 @@ from sqlalchemy import create_engine, text
 from config import BRAND_CONFIG, BARBOUR, SETTINGS
 from barbour.common.generate_barbour_taobao_title import generate_barbour_taobao_title
 from common_taobao.core.price_utils import calculate_jingya_prices
+from datetime import datetime
 
 # ========== 路径 ==========
 TXT_DIR = BARBOUR["TXT_DIR_ALL"]
 CODES_FILE = BARBOUR["OUTPUT_DIR"] / "codes.txt"
 CODES_XLSX = BARBOUR["OUTPUT_DIR"] / "codes.xlsx"   # ← 新增：支持 Excel 输入（商品编码+供应商）
-OUTPUT_FILE = BARBOUR["OUTPUT_DIR"] / "barbour_publication.xlsx"
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+OUTPUT_FILE = BARBOUR["PUBLICATION_DIR"] / f"barbour_publication_{timestamp}.xlsx"
 
 # ========== 正则规则 ==========
 FIT_PAT = {
@@ -108,26 +110,34 @@ def infer_fit_neck_length(name: str, desc: str = "", feature: str = ""):
 SQL_PRODUCT = text("""
     SELECT DISTINCT style_name, color
     FROM barbour_products
-    WHERE color_code = :code
+    WHERE product_code = :code
     ORDER BY style_name
     LIMIT 1
 """)
 
 # 基础 SQL（按需拼接站点过滤）
 SQL_OFFERS_ORDERABLE_BASE = """
-    SELECT site_name, offer_url, price_gbp, stock_status, can_order, last_checked, size
-    FROM offers
-    WHERE color_code = :code
-      AND can_order = TRUE
+    SELECT site_name, offer_url, price_gbp,
+           stock_count, last_checked, size
+    FROM barbour_offers
+    WHERE product_code = :code
       AND (
-        stock_status IS NULL
-        OR stock_status ILIKE 'in stock'
-        OR stock_status = '有货'
+        stock_count IS NULL
+        OR stock_count > 0
       )
       AND price_gbp IS NOT NULL
 """
 
 SQL_OFFERS_ORDER_BY = " ORDER BY price_gbp ASC"
+
+
+def _in_stock_can_order(row: dict) -> bool:
+    cnt = row.get("stock_count")
+    try:
+        cnt = int(cnt) if cnt is not None else None
+    except Exception:
+        cnt = None
+    return bool(row.get("can_order")) and (cnt is None or cnt > 0)
 
 
 def compute_rmb_price(min_gbp: float, exchange_rate: float):
@@ -150,7 +160,7 @@ def load_codes_with_supplier():
     """
     返回列表 [(code, supplier or None), ...]
     - 优先读取 OUTPUT_DIR/codes.xlsx
-      * 头部容错：['Product Code', '商品编码', 'code'] / ['Supplier', '供应商', 'site_name']
+      * 头部容错：['Product Code', '商品编码', 'product_code'] / ['Supplier', '供应商', 'site_name']
     - 否则回退 OUTPUT_DIR/codes.txt（每行一个 code）
     """
     pairs = []
@@ -170,8 +180,8 @@ def load_codes_with_supplier():
                         return col
             return None
 
-        col_code = _col(["product code", "商品编码", "code", "color_code", "编码"])
-        col_sup  = _col(["supplier", "供应商", "site", "站点"])
+        col_code = _col(["product code", "商品编码", "product_code", "color_code", "编码"])
+        col_sup  = _col(["supplier", "供应商", "site_name", "站点"])
 
         if not col_code:
             raise SystemExit("❌ codes.xlsx 缺少 'Product Code/商品编码' 列")
@@ -218,8 +228,8 @@ def generate_publication_excel():
         "Min Price (GBP)", "鲸芽价格", "淘宝价格",
         "版型", "领口设计", "衣长",
         "Sizes (In Stock)",
-        "Supplier",           # ← 新增：输入指定的供应商（便于后续回填 manifest）
-        "Site", "Offer URL", "Stock Status", "Last Checked"
+        "Supplier",
+        "Site", "Offer URL", "Stock Count", "Last Checked"
     ]
     ws.append(header)
 
@@ -253,15 +263,19 @@ def generate_publication_excel():
                 print(f"[{idx}/{len(code_pairs)}] {code} ⚠️ 未找到可下单报价")
                 continue
 
-            # 计算“可下单 & in stock/有货”的尺码集合
-            def _in_stock_can_order(row: dict) -> bool:
-                s = (row.get("stock_status") or "").strip().lower()
-                return bool(row.get("can_order")) and (not s or s.startswith("in stock") or s == "有货")
+            def _row_is_available(row: dict) -> bool:
+                cnt = row.get("stock_count")
+                try:
+                    cnt = int(cnt) if cnt is not None else None
+                except Exception:
+                    cnt = None
+                # 约定：NULL 视为未知（保留），>0 视为可下单，<=0 视为不可下单
+                return (cnt is None) or (cnt > 0)
 
             sizes_in_stock = sorted({
                 (row.get("size") or "").strip()
                 for row in offers_rows
-                if row.get("size") and _in_stock_can_order(row)
+                if row.get("size") and _row_is_available(row)
             })
             sizes_str = ", ".join(sizes_in_stock) if sizes_in_stock else ""
 
@@ -270,7 +284,7 @@ def generate_publication_excel():
             site_name = best["site_name"]
             offer_url = best["offer_url"]
             price_gbp = best["price_gbp"]
-            stock_status = best["stock_status"]
+            stock_count = best["stock_count"]
             last_checked = best["last_checked"]
 
             # 中文标题
@@ -291,7 +305,7 @@ def generate_publication_excel():
                 fit, neckline, coat_len,
                 sizes_str,
                 supplier or "",   # ← 新增：把输入 supplier 原样写入（作为发布清单锚点）
-                site_name, offer_url, stock_status, last_checked
+                site_name, offer_url, stock_count, last_checked
             ]
             ws.append(row)
 

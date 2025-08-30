@@ -69,6 +69,7 @@ BARBOUR = {
     "TXT_DIR_ALL": BARBOUR_BASE / "publication" /"TXT",
     "OUTPUT_DIR": BARBOUR_BASE / "repulibcation",
     "STORE_DIR": BARBOUR_BASE / "document" / "store",
+    "PUBLICATION_DIR": BARBOUR_BASE / "document" / "publication",
     "IMAGE_DIR": BARBOUR_BASE / "document" / "images",
     "IMAGE_DOWNLOAD": BARBOUR_BASE / "document" / "images_download",
     "IMAGE_PROCESS": BARBOUR_BASE / "document" / "images_process",

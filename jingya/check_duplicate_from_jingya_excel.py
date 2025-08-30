@@ -13,9 +13,9 @@ import pandas as pd
 from pathlib import Path
 
 # ======================== 默认参数（可修改） ========================
-DEFAULT_INPUT = r"D:\TEMP\GEI@sales_catalogue_export@250825180537@3797.xlsx"
+DEFAULT_INPUT = r"D:\TEMP\货品导出2025-08-30+05_09_41结果_00_00_91274.xlsx"
 DEFAULT_OUTPUT = r"D:\TEMP\duplicate_skus.txt"
-SKU_COLUMN = "sku名称"   # Excel 中的列名
+SKU_COLUMN = "货品名称"   # Excel 中的列名
 # ================================================================
 
 def check_duplicates(input_file: str, output_file: str, sku_column: str = SKU_COLUMN):

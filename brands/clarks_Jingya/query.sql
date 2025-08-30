@@ -12,3 +12,5 @@ HAVING COUNT(*) >= 4;
 select * from clarks_jingya_inventory where channel_product_id = '969865905287'
 
 select * from clarks_jingya_inventory where product_code = '26154186';
+
+select * from clarks_jingya_inventory where channel_item_id = '970364276754'
