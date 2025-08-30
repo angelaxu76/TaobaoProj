@@ -166,6 +166,8 @@ select * from barbour_offers where product_code = 'LWX0667SG91';
 
 select count(*) from barbour_offers
 
+select * from barbour_supplier_map
+
 select * from barbour_offers where site_name = 'houseoffraser'
 
 SELECT site_name, size, stock_status, can_order
