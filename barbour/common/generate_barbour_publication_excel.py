@@ -13,6 +13,7 @@ from config import BRAND_CONFIG, BARBOUR, SETTINGS
 from barbour.common.generate_barbour_taobao_title import generate_barbour_taobao_title
 from common_taobao.core.price_utils import calculate_jingya_prices
 from datetime import datetime
+from barbour.core.site_utils import canonical_site
 
 # ========== 路径 ==========
 TXT_DIR = BARBOUR["TXT_DIR_ALL"]
@@ -190,8 +191,9 @@ def load_codes_with_supplier():
             code = _nfkc(ws.cell(i, col_code).value or "")
             if not code:
                 continue
-            supplier = _nfkc(ws.cell(i, col_sup).value) if col_sup else ""
-            supplier = supplier or None
+            supplier_raw = _nfkc(ws.cell(i, col_sup).value) if col_sup else ""
+            # 新增：统一站点名为配置键名；无法识别就置为 None
+            supplier = canonical_site(supplier_raw) if supplier_raw else None
             pairs.append((code, supplier))
         if not pairs:
             raise SystemExit("❌ codes.xlsx 未读取到任何编码")

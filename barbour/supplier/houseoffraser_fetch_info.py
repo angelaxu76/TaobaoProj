@@ -27,9 +27,10 @@ from bs4 import BeautifulSoup
 
 from config import BARBOUR
 from common_taobao.txt_writer import format_txt  # 统一写入模板（与你现有站点一致）
+from barbour.core.site_utils import assert_site_or_raise as canon
 
 # ========== 站点级常量 ==========
-SITE_NAME = "House of Fraser"
+SITE_NAME = canon("houseoffraser")
 EAN_PLACEHOLDER = "0000000000000"
 
 LINKS_FILE = BARBOUR["LINKS_FILES"]["houseoffraser"]

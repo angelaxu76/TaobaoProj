@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 
 from config import BARBOUR
+from barbour.core.site_utils import assert_site_or_raise as canon
 
 # ✅ 统一写入：使用你的 txt_writer，保证与其它站点同模板
 from common_taobao.txt_writer import format_txt  # 与项目当前用法保持一致
@@ -31,6 +32,7 @@ except Exception:
     infer_gender_for_barbour = None  # 若未提供共享模块，下面会用本地兜底
 
 # -------- 全局配置 --------
+CANON_SITE = canon("allweathers")  # 这里是注释，不要写成（= "allweathers"）
 LINK_FILE = BARBOUR["LINKS_FILES"]["allweathers"]
 TXT_DIR = BARBOUR["TXT_DIRS"]["allweathers"]
 TXT_DIR.mkdir(parents=True, exist_ok=True)
@@ -300,7 +302,7 @@ def parse_detail_page(html: str, url: str) -> dict:
         "Feature": features,
         "SizeDetail": size_detail,       # 每码库存/占位 EAN（写入前再转两行）
         "Source URL": url,
-        "Site Name": "Allweathers",
+        "Site Name": CANON_SITE,
     }
     return info
 
@@ -404,7 +406,7 @@ def fetch_one_product(url: str, idx: int, total: int):
         # —— 写入前的规范化：只做字段清洗，不触碰抓取流程 ——
         # 品牌与站点信息
         info.setdefault("Brand", "Barbour")
-        info.setdefault("Site Name", "Allweathers")
+        info.setdefault("Site Name", CANON_SITE)
         info.setdefault("Source URL", url)
 
         # 性别修正（优先 Barbour 编码前缀；再看标题/描述；否则用原值）

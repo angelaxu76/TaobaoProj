@@ -12,18 +12,16 @@ from typing import List, Tuple, Optional, Dict, Any
 
 import psycopg2
 from psycopg2.extras import execute_values
-
+from barbour.core.site_utils import canonical_site
 from config import BRAND_CONFIG
 from common_taobao.size_utils import clean_size_for_barbour  # 复用现成清洗逻辑
+
 
 # ============ 可调参数 ============
 STOCK_WHEN_AVAILABLE = 3
 
 # 站点优先级（越靠前优先级越高）
-SITE_PRIORITY = [
-    'Outdoor and Country', 'Allweathers', 'Philip Morris Direct', 'Philip Morris',
-    'Country Attire', 'Scotts', 'Aphrodite', 'Tessuti', 'END.'
-]
+SITE_PRIORITY = ['outdoorandcountry', 'allweathers', 'houseoffraser', 'philipmorris', 'barbour']
 
 # 折扣规则：按顺序匹配，命中即应用（先到先得）
 # 说明：
@@ -33,12 +31,10 @@ SITE_PRIORITY = [
 #   - percent: 折扣系数，例如 0.9 表示 9 折；不写则视为 1.0（不打折）
 #   - minus:   直接减价（GBP），默认 0
 #   - floor:   折后向下取整到多少小数位（例如 2 表示保留 2 位小数），缺省为 2
-DISCOUNT_RULES: List[Dict[str, Any]] = [
-    # 示例：Outdoor and Country 上，MWX/LWX 开头 9 折
-    {"site": "Allweathers", "prefix": ("MWX0018","MWX0010","MWX0017","MWX0339","LWX0667","LWX0668"), "percent": 0.75},
-    {"site": "Allweathers", "percent": 0.90},
-    # 示例：Philip Morris Direct 上，正则匹配 MSH5694* 额外减 5 英镑（叠加 percent）
-    {"site": "Outdoor and Country", "percent": 0.95},
+DISCOUNT_RULES = [
+    {"site": "allweathers", "prefix": ("MWX0018","MWX0010","MWX0017","MWX0339","LWX0667","LWX0668"), "percent": 0.75},
+    {"site": "allweathers", "percent": 0.90},
+    {"site": "outdoorandcountry", "percent": 0.95},
 ]
 
 # ============ 工具函数 ============
@@ -54,15 +50,15 @@ def _site_rank_case_sql(alias: str = "tpo") -> str:
     return "CASE " + " ".join(parts) + " END"
 
 def _normalize_sites_field(site_field: Any) -> List[str]:
-    """把折扣规则的 site 字段统一成列表"""
     if site_field is None:
         return []
-    if isinstance(site_field, (list, tuple, set)):
-        return [str(s) for s in site_field]
-    return [str(site_field)]
+    vals = (list(site_field) if isinstance(site_field, (list,tuple,set)) else [site_field])
+    canon = [canonical_site(str(s)) for s in vals]
+    return [s for s in canon if s]
 
 def _match_rule(site: str, code: str, rule: Dict[str, Any]) -> bool:
     """判断单条规则是否命中"""
+    site = canonical_site(site or "") or ""  # ← 把 offers 里的站点也标准化
     sites = _normalize_sites_field(rule.get("site"))
     if sites and site not in sites:
         return False
@@ -177,10 +173,11 @@ def backfill_barbour_inventory():
 
             offer_payload = []
             for (i, code, sz, site, url, price, stock, can, ts) in offer_rows:
+                # 位置：for (i, code, sz, site, url, price, stock, can, ts) in offer_rows: 这一段
                 norm_size = clean_size_for_barbour(sz)
+                site = canonical_site(site) or site      # ← 加这一行（只改名，不动逻辑）
                 disc_price = _apply_discount_by_rules(site or "", code or "", float(price) if price is not None else None)
                 offer_payload.append((i, code, norm_size, site, url, price, disc_price, stock, can, ts))
-
             execute_values(
                 cur,
                 "INSERT INTO tmp_o (o_id, color_code, size_norm, site_name, offer_url, price_gbp, discount_price_gbp, stock_status, can_order, last_checked) VALUES %s",
@@ -220,18 +217,7 @@ def backfill_barbour_inventory():
                     tpo.discount_price_gbp,
                     COALESCE(tpo.discount_price_gbp, tpo.price_gbp) AS eff_price,
                     /* 站点优先级 */
-                    CASE
-                        WHEN tpo.site_name = 'Outdoor and Country' THEN 0
-                        WHEN tpo.site_name = 'Allweathers' THEN 1
-                        WHEN tpo.site_name = 'Philip Morris Direct' THEN 2
-                        WHEN tpo.site_name = 'Philip Morris' THEN 3
-                        WHEN tpo.site_name = 'Country Attire' THEN 4
-                        WHEN tpo.site_name = 'Scotts' THEN 5
-                        WHEN tpo.site_name = 'Aphrodite' THEN 6
-                        WHEN tpo.site_name = 'Tessuti' THEN 7
-                        WHEN tpo.site_name = 'END.' THEN 8
-                        ELSE 999
-                    END AS site_rank,
+                   {site_rank_case} AS site_rank,
                     tpo.last_checked
                 FROM tmp_o tpo
                 WHERE tpo.can_order IS TRUE
@@ -279,18 +265,7 @@ def backfill_barbour_inventory():
                         tpo.price_gbp,
                         tpo.discount_price_gbp,
                         COALESCE(tpo.discount_price_gbp, tpo.price_gbp) AS eff_price,
-                        CASE
-                            WHEN tpo.site_name = 'Outdoor and Country' THEN 0
-                            WHEN tpo.site_name = 'Allweathers' THEN 1
-                            WHEN tpo.site_name = 'Philip Morris Direct' THEN 2
-                            WHEN tpo.site_name = 'Philip Morris' THEN 3
-                            WHEN tpo.site_name = 'Country Attire' THEN 4
-                            WHEN tpo.site_name = 'Scotts' THEN 5
-                            WHEN tpo.site_name = 'Aphrodite' THEN 6
-                            WHEN tpo.site_name = 'Tessuti' THEN 7
-                            WHEN tpo.site_name = 'END.' THEN 8
-                            ELSE 999
-                        END AS site_rank,
+                        {site_rank_case} AS site_rank,
                         tpo.last_checked
                     FROM tmp_o tpo
                 ),

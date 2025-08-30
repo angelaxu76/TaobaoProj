@@ -295,3 +295,10 @@ SELECT
   all_sizes
 FROM base
 ORDER BY discount_pct DESC, sale_gbp ASC, product_code ASC;
+
+
+
+select * from barbour_supplier_map
+
+
+select * from barbour_inventory where product_code ='MWX2341BK11'

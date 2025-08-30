@@ -2,6 +2,7 @@
 DROP TABLE IF EXISTS barbour_offers;
 DROP TABLE IF EXISTS barbour_products;
 DROP TABLE IF EXISTS barbour_inventory;
+DROP TABLE IF EXISTS barbour_supplier_map;
 
 -- ========== 创建新表 ==========
 CREATE TABLE barbour_products (
@@ -186,3 +187,14 @@ CREATE INDEX IF NOT EXISTS idx_barbour_inv_item  ON barbour_inventory(item_id);
 CREATE INDEX IF NOT EXISTS idx_barbour_inv_skuid ON barbour_inventory(skuid);
 CREATE INDEX IF NOT EXISTS idx_bo_code   ON barbour_offers(product_code);
 CREATE INDEX IF NOT EXISTS idx_bo_active ON barbour_offers(is_active);
+
+
+
+-- =========================
+-- Barbour 发布表（与 supplier和鲸芽 的映射关系表）
+-- =========================
+
+CREATE TABLE IF NOT EXISTS barbour_supplier_map (
+  product_code VARCHAR(50) PRIMARY KEY,
+  site_name    VARCHAR(100) NOT NULL  -- 和 barbour_offers.site_name 对齐
+);

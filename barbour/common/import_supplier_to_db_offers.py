@@ -9,6 +9,7 @@ from pathlib import Path
 from config import BARBOUR
 from barbour.core.keyword_mapping import KEYWORD_EQUIVALENTS
 from common_taobao.size_utils import clean_size_for_barbour  # 旧名保留
+from barbour.core.site_utils import canonical_site, assert_site_or_raise
 
 # ---------- 小工具 ----------
 _PRICE_NUM = re.compile(r"([0-9]+(?:\.[0-9]+)?)")
@@ -184,6 +185,13 @@ def parse_txt(filepath: Path):
 
     info["price_line"] = price_line
     info["adjusted_price_line"] = adjusted_price_line
+
+    # 统一站点名（优先用 Site Name，找不到或不可识别时尝试用 URL 推断）
+    site_raw = (info.get("site") or "").strip()
+    url_raw  = (info.get("url") or "").strip()
+    site_canon = canonical_site(site_raw) or canonical_site(url_raw)
+    info["site"] = site_canon or ""
+
     return info
 
 # ----------（可选）旧的关键词匹配：保留以兼容 ----------
@@ -223,6 +231,8 @@ def insert_offer(info, conn, missing_log: list) -> int:
     style_name = info.get("style_name") or ""
     color = info.get("color") or ""
     product_code = info.get("product_code")
+
+    site = assert_site_or_raise(info.get("site") or info.get("url") or "")
     if not product_code:
         # 如需自动匹配，可打开下一行：
         # product_code = find_color_code_by_keywords(conn, style_name, color)
@@ -279,6 +289,7 @@ def insert_offer(info, conn, missing_log: list) -> int:
     return inserted
 
 def import_txt_for_supplier(supplier: str):
+    supplier = canonical_site(supplier) or supplier
     if supplier not in BARBOUR["TXT_DIRS"]:
         print(f"❌ 未找到 supplier: {supplier}")
         return

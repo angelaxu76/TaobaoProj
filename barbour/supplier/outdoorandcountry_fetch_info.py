@@ -38,6 +38,8 @@ from common_taobao.txt_writer import format_txt
 
 # ✅ 尺码清洗（保守：识别不了就原样返回）
 from common_taobao.size_utils import clean_size_for_barbour  # 见你上传的实现
+from barbour.core.site_utils import assert_site_or_raise as canon
+CANON_SITE = canon("outdoorandcountry")
 
 # ========== 浏览器与 Cookie ==========
 def accept_cookies(driver, timeout=8):
@@ -303,7 +305,7 @@ def process_url(url, output_dir):
         info.setdefault("Product Color", url_color or "No Data")
         info.setdefault("Product Description", _extract_description(html))
         info.setdefault("Feature", _extract_features(html))
-        info.setdefault("Site Name", "Outdoor and Country")
+        info.setdefault("Site Name", CANON_SITE)
         info["Source URL"] = url  # 与其他站点保持一致的字段名
 
         # 3) Product Code / Product Color Code（你的策略：组合码即可）

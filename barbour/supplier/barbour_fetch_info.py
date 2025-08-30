@@ -9,6 +9,8 @@ from pathlib import Path
 
 from config import BARBOUR
 from common_taobao.txt_writer import format_txt              # ✅ 统一写入模板
+from barbour.core.site_utils import assert_site_or_raise as canon
+
 
 # 可选：更稳的 Barbour 性别兜底（M*/L* 前缀）
 try:
@@ -23,6 +25,8 @@ HEADERS = {
         "Chrome/120.0.0.0 Safari/537.36"
     )
 }
+
+CANON_SITE = canon("barbour")
 
 # ---------- 尺码标准化（与其它站点一致） ----------
 WOMEN_ORDER = ["4","6","8","10","12","14","16","18","20"]
@@ -205,7 +209,7 @@ def extract_product_info_from_html(html: str, url: str) -> dict:
         "Product Size Detail": psd,
         # 不写 SizeMap（按你的统一规范）
         "Source URL": url,
-        "Site Name": "Barbour",
+        "Site Name": CANON_SITE,
         # 不传 Style Category → 交给 txt_writer 做统一推断
     }
     return info

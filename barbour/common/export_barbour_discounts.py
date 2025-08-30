@@ -43,7 +43,7 @@ def export_barbour_discounts_excel(min_discount: float, min_sizes: int, code_lik
     """
     导出到 Excel 并返回文件路径
     """
-    out_dir: Path = BARBOUR["OUTPUT_DIR"]
+    out_dir: Path = BARBOUR["PUBLICATION_DIR"]
     ensure_all_dirs(out_dir)
 
     kw_like = f"%{code_like}%" if code_like else None
