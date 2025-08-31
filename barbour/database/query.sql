@@ -222,6 +222,10 @@ WHERE size ~ '^(8|10|12|14|16|18)$'
 
 select * from barbour_inventory where channel_item_id = '969817808097'
 
+select * from barbour_inventory where  product_code = 'MWX2381BK71'
+
+select * from barbour_offers where product_code = 'MWX2381BK71'
+
 
 select distinct product_code from clarks_jingya_inventory where gender ILIKE '%女%'
 
@@ -305,3 +309,59 @@ select * from barbour_supplier_map
 
 
 select * from barbour_inventory where product_code ='MWX2341BK11'
+
+
+
+SELECT 
+  COUNT(*)                        AS offers_total,
+  SUM(CASE WHEN product_code IS NOT NULL THEN 1 ELSE 0 END) AS offers_with_code,
+  SUM(CASE WHEN product_code IS NULL THEN 1 ELSE 0 END)     AS offers_without_code
+FROM barbour_offers
+WHERE is_active = TRUE;
+
+====10
+
+SELECT COUNT(*) AS offer_rows_mapped
+FROM barbour_offers bo
+JOIN barbour_supplier_map sm
+  ON lower(trim(sm.product_code)) = lower(trim(bo.product_code))
+ AND lower(trim(sm.site_name))    = lower(trim(bo.site_name))
+WHERE bo.is_active = TRUE 
+  AND bo.product_code IS NOT NULL;
+
+===0
+
+
+SELECT bo.site_name,
+       SUM(CASE WHEN bo.product_code IS NOT NULL THEN 1 ELSE 0 END) AS with_code,
+       SUM(CASE WHEN bo.product_code IS NULL THEN 1 ELSE 0 END)     AS without_code
+FROM barbour_offers bo
+WHERE bo.is_active = TRUE
+GROUP BY bo.site_name
+ORDER BY without_code DESC;
+
+===10
+
+
+SELECT
+  bo.product_code,
+  bo.site_name,
+  bo.size,
+  bo.offer_url,
+  bo.price_gbp,
+  bo.sale_price_gbp,
+  bo.stock_count,
+  bo.last_checked
+FROM barbour_offers bo
+JOIN barbour_supplier_map sm
+  ON lower(trim(sm.product_code)) = lower(trim(bo.product_code))
+ AND lower(trim(sm.site_name))    = lower(trim(bo.site_name))
+WHERE bo.is_active = TRUE
+  AND bo.product_code IS NOT NULL
+
+
+  ===NO DATA
+
+
+
+

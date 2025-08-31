@@ -11,6 +11,7 @@ from config import BARBOUR
 from barbour.core.keyword_mapping import KEYWORD_EQUIVALENTS
 from common_taobao.size_utils import clean_size_for_barbour  # 旧名保留
 from barbour.core.site_utils import canonical_site, assert_site_or_raise
+from collections import defaultdict
 
 # ---------- 小工具 ----------
 _PRICE_NUM = re.compile(r"([0-9]+(?:\.[0-9]+)?)")
@@ -295,60 +296,88 @@ def import_txt_for_supplier(supplier: str):
         print(f"❌ 未找到 supplier: {supplier}")
         return
 
-    run_start_ts = datetime.now()
-    txt_dir = BARBOUR["TXT_DIRS"][supplier]
+    # ✅ 先建连接，再用它取数据库时间
     conn = get_connection()
-    files = sorted(Path(txt_dir).glob("*.txt"))
-    missing = []
-
-    total_files = 0
-    total_rows = 0
-    seen_sites = set()
-
-    for fpath in files:
-        fname = fpath.name
-        try:
-            print(f"\n=== 📄 正在处理文件: {fname} ===")
-            info = parse_txt(fpath)
-            written = insert_offer(info, conn, missing)
-            total_files += 1
-            if written > 0:
-                total_rows += written
-                print(f"✅ 导入成功: {fname} | 写入 {written} 条 offers")
-            else:
-                print(f"❗ 导入未写入数据: {fname}（无可用 offers）")
-            if info.get("site"):
-                seen_sites.add(info["site"])
-        except Exception as e:
-            print(f"❌ 导入失败: {fname}，错误: {e}")
-
-    # 软删除：本次未见到的老记录 is_active = FALSE
     try:
         with conn.cursor() as cur:
-            for site in (seen_sites or {supplier}):
-                print(f"🧹 软删除站点未出现的旧记录：{site}")
-                cur.execute("""
-                    UPDATE barbour_offers
-                    SET is_active = FALSE
-                    WHERE site_name = %s
-                      AND last_seen < %s
-                """, (site, run_start_ts))
-        conn.commit()
-    except Exception as e:
-        conn.rollback()
-        print(f"⚠️ 软删除出现异常：{e}")
+            cur.execute("SELECT NOW()")
+            run_start_ts = cur.fetchone()[0]
 
-    conn.close()
+        txt_dir = BARBOUR["TXT_DIRS"][supplier]
+        files = sorted(Path(txt_dir).glob("*.txt"))
+        missing = []
 
-    print(f"\n📊 汇总：处理 {total_files} 个文件，成功写入 {total_rows} 条 offers。")
+        total_files = 0
+        total_rows = 0
+        seen_sites = set()
 
-    if missing:
-        output = Path(f"missing_products_{supplier}.csv")
-        with open(output, "w", encoding="utf-8", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(["product_code", "size", "site", "style_name", "color", "offer_url"])
-            writer.writerows(missing)
-        print(f"⚠️ 有 {len(missing)} 个产品缺少 product_code，已记录到: {output}")
+        from collections import defaultdict
+        written_by_site = defaultdict(int)
+        urls_by_site = defaultdict(set)
+
+        for fpath in files:
+            fname = fpath.name
+            try:
+                print(f"\n=== 📄 正在处理文件: {fname} ===")
+                info = parse_txt(fpath)
+                written = insert_offer(info, conn, missing)
+                total_files += 1
+                if written > 0:
+                    total_rows += written
+                    print(f"✅ 导入成功: {fname} | 写入 {written} 条 offers")
+                else:
+                    print(f"❗ 导入未写入数据: {fname}（无可用 offers）")
+                if info.get("site"):
+                    seen_sites.add(info["site"])
+                # 记录本轮触达 URL + 写入计数（用于精准软删）
+                site_for_del = canonical_site(info.get("site") or supplier) or (info.get("site") or supplier)
+                url_for_del = info.get("url") or info.get("product_url")
+                if url_for_del:
+                    urls_by_site[site_for_del].add(url_for_del)
+                if written > 0:
+                    written_by_site[site_for_del] += written
+
+            except Exception as e:
+                print(f"❌ 导入失败: {fname}，错误: {e}")
+
+        # ✅ 精准软删（仅对本轮触达的 URL，且站点需有成功写入）
+        try:
+            with conn.cursor() as cur:
+                for site, cnt in written_by_site.items():
+                    if cnt <= 0:
+                        continue
+                    url_list = list(urls_by_site.get(site, set()))
+                    if not url_list:
+                        continue
+                    print(f"🧹 软删除站点内本轮未出现的旧记录（按 URL 作用域）：{site} | URL数={len(url_list)}")
+                    cur.execute("""
+                        UPDATE barbour_offers
+                           SET is_active = FALSE
+                         WHERE site_name = %s
+                           AND offer_url = ANY(%s)
+                           AND last_seen < %s
+                    """, (site, url_list, run_start_ts))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            print(f"⚠️ 软删除出现异常：{e}")
+
+        print(f"\n📊 汇总：处理 {total_files} 个文件，成功写入 {total_rows} 条 offers。")
+        if missing:
+            output = Path(f"missing_products_{supplier}.csv")
+            with open(output, "w", encoding="utf-8", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["product_code", "size", "site", "style_name", "color", "offer_url"])
+                writer.writerows(missing)
+            print(f"⚠️ 有 {len(missing)} 个产品缺少 product_code，已记录到: {output}")
+
+    finally:
+        # ✅ 确保连接一定被关闭
+        try:
+            conn.close()
+        except Exception:
+            pass
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
