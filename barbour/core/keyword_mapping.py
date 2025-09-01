@@ -11,3 +11,13 @@ KEYWORD_EQUIVALENTS = [
     {"anorak", "parka"},
     {"fleece", "sweater"},
 ]
+
+# 关键词等价表（保持你现有的）
+KEYWORD_EQUIVALENTS = globals().get("KEYWORD_EQUIVALENTS", {})
+
+# ==== 集中维护停用词（高频无区分词） ====
+STOPWORDS = {
+    "barbour", "international", "jacket", "waterproof",
+    "coat", "coats", "overshirt",
+    "men", "mens", "women", "womens", "kids", "boys", "girls",
+}

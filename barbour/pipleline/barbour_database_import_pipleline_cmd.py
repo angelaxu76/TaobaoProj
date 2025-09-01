@@ -19,14 +19,14 @@ def barbour_database_import_pipleline():
     # barbour
     # barbour_get_links()
     # outdoorandcountry_fetch_and_save_links()
-    # allweathers_get_links()
+    # allweathers_get_links()5
     # houseoffraser_get_links()
 
     # Step 1: TODO 将txt中数据导入barbour product中
     # barbour_fetch_info()
     # outdoorandcountry_fetch_info(max_workers=10)
     # allweathers_fetch_info(7)
-    # houseoffraser_fetch_info()
+    houseoffraser_fetch_info(max_workers=5, headless=False)
 
     # Step 2: TODO 将txt中数据导入barbour product中
     #batch_import_txt_to_barbour_product("barbour")
@@ -39,25 +39,25 @@ def barbour_database_import_pipleline():
     #import_txt_for_supplier("allweathers")
 
 
-    # res = run_missing_offers_import(
-    # brand="barbour",
-    # suppliers=["houseoffraser"],  # 或 None / ["all"]
-    # debug=True,
-    # rf_threshold=80,
-    # rf_margin=3,
-    # topk=5,
-    # )
-    # print(res)
+    res = run_missing_offers_import(
+    brand="barbour",
+    suppliers=["houseoffraser"],  # 或 None / ["all"]
+    debug=True,
+    rf_threshold=80,
+    rf_margin=3,
+    topk=5,
+    )
+    print(res)
 
     # Step 4: TODO 将鲸芽已经发布的产品先填充到barbour inventory表，库存补0，后续在靠真实库存来填充
-    insert_missing_products_with_zero_stock("barbour")
-    insert_jingyaid_to_db("barbour")
+    # insert_missing_products_with_zero_stock("barbour")
+    # insert_jingyaid_to_db("barbour")
 
     # Step 6: TODO 根据发布文件填充barbour 鲸芽的map表
     #fill_supplier_map()
 
     # Step 5: TODO 将barbour product和offers中的价格库存和商品信息回填到barbour inventory表
-    backfill_barbour_inventory_mapped_only()
+   # backfill_barbour_inventory_mapped_only()
 
 if __name__ == "__main__":
     barbour_database_import_pipleline()

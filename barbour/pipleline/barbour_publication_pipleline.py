@@ -16,7 +16,7 @@ def pipeline_barbour():
     # 步骤 1：将产品的编码放到D:\TB\Products\barbour\repulibcation\codes.txt
     # 步骤 2：生成发布产品的excel
     print("\n🌐 步骤 1：抓取商品链接")
-    #generate_publication_excel()
+    generate_publication_excel()
 
     print("\n步骤 2：生成透明图+背景图")
     fg_dir=Path(r"D:\TB\Products\barbour\images\透明图")
@@ -41,8 +41,8 @@ def pipeline_barbour():
     #insert_jingyaid_to_db("barbour")
 
     print("\n步骤 6：生成更新数据库的SQL String给UIPath使用，去更新库存")
-    result = generate_select_sql_from_excel(r"D:\TB\Products\barbour\document\publication\barbour_publication_20250830_043619.xlsx")
-    print(result["preview"])
+    #result = generate_select_sql_from_excel(r"D:\TB\Products\barbour\document\publication\barbour_publication_20250830_043619.xlsx")
+    #print(result["preview"])
 
 
 if __name__ == "__main__":

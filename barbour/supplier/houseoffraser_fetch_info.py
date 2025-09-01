@@ -1,282 +1,345 @@
 # -*- coding: utf-8 -*-
 """
-House of Fraser | Barbour 商品抓取（统一 TXT 模板版）
-- 与其它站点保持一致：零参数、从 config 读取路径与链接
-- 爬取技术：Selenium + BeautifulSoup（与现有 allweathers/outdoorandcountry 一致）
-- 写入：common_taobao.txt_writer.format_txt（与现有站点一致）
-
-输出字段补齐：
-- Product Description：meta[property="og:description"]
-- Feature：#DisplayAttributes li → "key: value; ..."
-- Product Material：Feature 中 Fabric/Material/Shell 的值（无则 No Data）
-- Product Size：从 #sizeDdl > option 解析（greyOut=无货）→ "6:无货;8:有货;..."
-- Product Size Detail：与上对应，"size:1/0:0000000000000"（有货=1，无货=0）
-- Product Price：优先 DOM 提取的现价；若未取到保留 "No Data"
-- Adjusted Price：留空，由下游 price_utils 计算
-- Style Category：基于标题关键字的简单推断（jacket / quilted jacket / wax jacket）
-- Product Code：HOF 页面无，固定 "No Data"
+House of Fraser | Barbour 商品抓取（精简版）
+- 解析商品：标题、颜色、价格、尺码
+- 用第三方相似度（RapidFuzz）在数据库 barbour_products 上做“标题+颜色”匹配，拿到 product_code
+- TXT 文件名 = product_code.txt；如果未命中，则用安全标题命名
 """
 
-import re
-import time
-from pathlib import Path
-from typing import Optional, List, Tuple
+from __future__ import annotations
 
+import re
+import os
+import json
+import time
+import tempfile
+import threading
+from pathlib import Path
+from typing import Optional, Tuple, List, Dict, Any
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# ===== 第三方与解析 =====
 import undetected_chromedriver as uc
 from bs4 import BeautifulSoup
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
-from config import BARBOUR
-from common_taobao.txt_writer import format_txt  # 统一写入模板（与你现有站点一致）
+# ===== DB 与项目配置 =====
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Connection
+from config import BARBOUR, BRAND_CONFIG
 from barbour.core.site_utils import assert_site_or_raise as canon
+from barbour.core.sim_matcher import match_product, choose_best, explain_results
 
-# ========== 站点级常量 ==========
+# ================== 站点与目录 ==================
 SITE_NAME = canon("houseoffraser")
-EAN_PLACEHOLDER = "0000000000000"
-
-LINKS_FILE = BARBOUR["LINKS_FILES"]["houseoffraser"]
+LINKS_FILE: str = BARBOUR["LINKS_FILES"]["houseoffraser"]
 TXT_DIR: Path = BARBOUR["TXT_DIRS"]["houseoffraser"]
-TXT_DIR.mkdir(parents=True, exist_ok=True)  # 确保目录存在
+TXT_DIR.mkdir(parents=True, exist_ok=True)
 
+PRODUCTS_TABLE: str = BRAND_CONFIG.get("barbour", {}).get("PRODUCTS_TABLE", "barbour_products")
+PG = BRAND_CONFIG["barbour"]["PGSQL_CONFIG"]
 
-# ========== Selenium 驱动（与现有风格一致） ==========
-def get_driver():
-    options = uc.ChromeOptions()
-    # 如需无头：options.add_argument("--headless=new")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--start-maximized")
-    driver = uc.Chrome(options=options)
-    return driver
+# ================== 可调参数 ==================
+WAIT_PRICE_SECONDS = 8           # 等价面价模块的最长等待（秒）
+DEFAULT_DELAY = 2.0              # 打开页面后的缓冲等待（秒）
+MAX_WORKERS_DEFAULT = 4          # 并发数
+MIN_SCORE = 0.72                 # 相似度阈值
+MIN_LEAD = 0.04                  # 领先幅度阈值（Top1 与 Top2 差值）
+NAME_WEIGHT = 0.75               # 名称权重
+COLOR_WEIGHT = 0.25              # 颜色权重
 
+# ================== 并发去重 + 原子写 ==================
+_WRITTEN: set[str] = set()
+_WRITTEN_LOCK = threading.Lock()
 
-# ========== 工具函数 ==========
-def _extract_gender(title: str, soup: BeautifulSoup) -> str:
-    """
-    从标题/meta/breadcrumb 推断性别
-    """
-    t = (title or "").lower()
-    if "women" in t:
-        return "女款"
-    if "men" in t:
-        return "男款"
-    if "kids" in t or "girls" in t or "boys" in t:
-        return "童款"
-    # 兜底：从 meta og:title 判断
-    m = soup.find("meta", attrs={"property": "og:title"})
-    if m and "women" in m.get("content", "").lower():
-        return "女款"
-    return "No Data"
+def _atomic_write_bytes(data: bytes, dst: Path, retries: int = 3) -> bool:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    tmp: Optional[Path] = None
+    for i in range(retries):
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, dir=str(dst.parent)) as tf:
+                tmp = Path(tf.name)
+                tf.write(data)
+                tf.flush()
+                os.fsync(tf.fileno())
+            tmp.replace(dst)  # Windows 下足够原子
+            return True
+        except (PermissionError, FileExistsError):
+            if dst.exists():
+                return True
+            time.sleep(0.2 * (i + 1))
+        except Exception:
+            try:
+                if tmp and tmp.exists():
+                    tmp.unlink(missing_ok=True)
+            except Exception:
+                pass
+            time.sleep(0.2 * (i + 1))
+    return dst.exists()
 
+def _kv_txt_bytes(info: Dict[str, Any]) -> bytes:
+    fields = [
+        "Product Code","Product Name","Product Description","Product Gender",
+        "Product Color","Product Price","Adjusted Price","Product Material",
+        "Style Category","Feature","Product Size","Product Size Detail",
+        "Source URL","Site Name"
+    ]
+    lines = [f"{k}: {info.get(k, 'No Data')}" for k in fields]
+    return ("\n".join(lines) + "\n").encode("utf-8", errors="ignore")
+
+def _safe_name(s: str) -> str:
+    return re.sub(r"[\\/:*?\"<>|'\s]+", "_", s or "NoName")
+
+def get_dbapi_connection(conn_or_engine):
+    """把 SQLAlchemy Engine/Connection 剥成 DBAPI（有 .cursor()）供 sim_matcher 使用"""
+    if hasattr(conn_or_engine, "cursor"):
+        return conn_or_engine
+    if hasattr(conn_or_engine, "raw_connection"):
+        return conn_or_engine.raw_connection()
+    c = getattr(conn_or_engine, "connection", None)
+    if c is not None:
+        dbapi = getattr(c, "dbapi_connection", None)
+        if dbapi is not None and hasattr(dbapi, "cursor"):
+            return dbapi
+        inner = getattr(c, "connection", None)
+        if inner is not None and hasattr(inner, "cursor"):
+            return inner
+        if hasattr(c, "cursor"):
+            return c
+    return conn_or_engine
+
+# ================== 解析函数（够用且稳） ==================
+def _clean(s: Optional[str]) -> str:
+    return re.sub(r"\s+", " ", (s or "").strip())
+
+def _extract_title(soup: BeautifulSoup) -> str:
+    t = _clean(soup.title.get_text()) if soup.title else "No Data"
+    # 去掉站名后缀
+    t = re.sub(r"\s*\|\s*House of Fraser\s*$", "", t, flags=re.I)
+    return t or "No Data"
+
+def _extract_desc(soup: BeautifulSoup) -> str:
+    m = soup.find("meta", attrs={"property": "og:description"})
+    return _clean(m["content"]) if (m and m.get("content")) else "No Data"
 
 def _extract_color(soup: BeautifulSoup) -> str:
-    """
-    从颜色选择器中提取当前颜色
-    """
+    c = soup.select_one("#colourName")
+    if c:
+        name = _clean(c.get_text())
+        if name:
+            return name
     ul = soup.find("ul", id="ulColourImages")
     if ul:
         li = ul.find("li", attrs={"aria-checked": "true"})
         if li:
-            # data-text 属性优先
-            txt = li.get("data-text") or ""
-            if txt.strip():
-                return _clean_text(txt)
-            # 再尝试 <img alt>
+            txt = (li.get("data-text") or "").strip()
+            if txt:
+                return _clean(txt)
             img = li.find("img")
             if img and img.get("alt"):
-                return _clean_text(img["alt"])
+                return _clean(img["alt"])
     return "No Data"
 
+def _extract_gender(title: str, soup: BeautifulSoup) -> str:
+    t = (title or "").lower()
+    if "women" in t: return "女款"
+    if "men" in t:   return "男款"
+    if any(k in t for k in ["kids","girls","boys"]): return "童款"
+    return "No Data"
 
-def _clean_text(s: Optional[str]) -> str:
-    return re.sub(r"\s+", " ", (s or "").strip())
-
-def _price_from_text_block(text: str) -> Tuple[Optional[float], Optional[float]]:
-    """
-    从一段并排价格字符串里提取 (current, original)
-    例如 "£95.00 £189.00" → (95.00, 189.00)
-    经验策略：第一个视为现价；最大值视为原价（若比现价大）
-    """
-    vals = re.findall(r"£?\s*([0-9]+(?:\.[0-9]{1,2})?)", text or "")
-    nums = [float(v) for v in vals]
-    if not nums:
-        return (None, None)
-    curr = nums[0]
-    orig = None
-    if len(nums) >= 2:
-        mx = max(nums)
-        if mx > curr:
-            orig = mx
-        else:
-            orig = nums[-1]
-    return (curr, orig)
-
-def _extract_title(soup: BeautifulSoup) -> str:
-    # 取 <title>，去掉站点后缀
-    t = _clean_text(soup.title.get_text()) if soup.title else "No Data"
-    t = re.sub(r"\s*\|\s*House of Fraser\s*$", "", t, flags=re.I)
-    return t or "No Data"
-
-def _extract_og_description(soup: BeautifulSoup) -> str:
-    m = soup.find("meta", attrs={"property": "og:description"})
-    return _clean_text(m["content"]) if (m and m.get("content")) else "No Data"
-
-def _extract_features_and_material(soup: BeautifulSoup) -> Tuple[str, str]:
-    """
-    从 #DisplayAttributes li 拿特征列表，并从中抽取 Fabric/Material/Shell 等作为 Product Material
-    """
-    ul = soup.find("ul", id="DisplayAttributes")
-    features = []
-    material = ""
-    if ul:
-        for li in ul.find_all("li"):
-            k = li.find("span", class_="feature-name")
-            v = li.find("span", class_="feature-value")
-            key = _clean_text(k.get_text() if k else "")
-            val = _clean_text(v.get_text() if v else "")
-            if key and val:
-                features.append(f"{key}: {val}")
-                if not material and key.lower() in {"fabric", "material", "shell", "outer"}:
-                    material = val
-    feat_str = "; ".join(features) if features else "No Data"
-    return feat_str, (material or "No Data")
+def _to_num(s: Optional[str]) -> Optional[float]:
+    if not s: return None
+    m = re.search(r"([0-9]+(?:\.[0-9]{1,2})?)", s.replace(",", ""))
+    return float(m.group(1)) if m else None
 
 def _extract_prices(soup: BeautifulSoup) -> Tuple[Optional[float], Optional[float]]:
-    """
-    从多个常见节点里凑一段价格文本，然后调用 _price_from_text_block
-    """
-    blocks = []
-    # 常见类名/ID（HOF 主题可能变化，尽量多路收集）
-    for sel in [
-        {"id": "lblSellingPrice"},
-        {"class_": re.compile(r"(product-price|price-now|now-price|current|selling)", re.I)},
-        {"class_": re.compile(r"(prices?|productPrices?)", re.I)},
-    ]:
-        node = soup.find(attrs=sel)
-        if node:
-            blocks.append(node.get_text(" ", strip=True))
-    # WAS/Was 节点
-    was_nodes = soup.find_all(string=re.compile(r"\bwas\b", re.I))
-    for n in was_nodes:
-        blocks.append(str(n))
-        if getattr(n, "parent", None):
-            blocks.append(n.parent.get_text(" ", strip=True))
-    merged = " | ".join({b for b in blocks if b})
-    return _price_from_text_block(merged)
+    # 现价 / 票面价
+    sp = soup.select_one("#lblSellingPrice")
+    tp = soup.select_one("#lblTicketPrice")
+    if sp:
+        curr = _to_num(sp.get_text(" ", strip=True))
+        orig = _to_num(tp.get_text(" ", strip=True)) if tp else None
+        if curr is not None:
+            return curr, (orig if orig is not None else curr)
+    # 结构化数据兜底
+    ld = soup.select_one("#structuredDataLdJson")
+    if ld:
+        try:
+            data = json.loads(ld.get_text())
+            if isinstance(data, list) and data:
+                offers = (data[0] or {}).get("offers") or []
+                if offers:
+                    curr = _to_num(str(offers[0].get("price")))
+                    if curr is not None:
+                        return curr, curr
+        except Exception:
+            pass
+    return (None, None)
 
-def _extract_size_offers(soup: BeautifulSoup) -> List[Tuple[str, str]]:
-    """
-    解析 #sizeDdl > option
-    返回 [(norm_size, stock_status)]；greyOut 或 title 含 'out of stock' → 无货，否则 有货
-    """
+def _extract_size_pairs(soup: BeautifulSoup) -> List[Tuple[str, str]]:
     sel = soup.find("select", id="sizeDdl")
     results: List[Tuple[str, str]] = []
-    if not sel:
-        return results
+    if not sel: return results
     for opt in sel.find_all("option"):
-        txt = _clean_text(opt.get_text())
-        if not txt or txt.lower().startswith("select"):
-            continue
+        txt = _clean(opt.get_text())
+        if not txt or txt.lower().startswith("select"): continue
         cls = opt.get("class") or []
-        title = _clean_text(opt.get("title") or "")
+        title = _clean(opt.get("title") or "")
         oos = ("greyOut" in cls) or ("out of stock" in title.lower())
         status = "无货" if oos else "有货"
-        # 归一：把 "8 (XS)" → "8"
         norm = re.sub(r"\s*\(.*?\)\s*", "", txt).strip()
         norm = re.sub(r"^(UK|EU|US)\s+", "", norm, flags=re.I)
         results.append((norm, status))
     return results
 
 def _build_size_lines(pairs: List[Tuple[str, str]]) -> Tuple[str, str]:
-    """
-    - Product Size: "8:有货;10:有货;..."
-    - Product Size Detail: "8:1:000...;10:1:000...;..."（有货=1，无货=0）
-    对同尺码多次出现：有货优先覆盖
-    """
-    bucket = {}
-    for size, status in pairs or []:
-        prev = bucket.get(size)
+    by_size: Dict[str, str] = {}
+    for size, status in pairs:
+        prev = by_size.get(size)
         if prev is None or (prev == "无货" and status == "有货"):
-            bucket[size] = status
-    # 排序：女款优先用 6,8,10,12... 的自然次序；否则按数字优先、再字母
+            by_size[size] = status
     def _key(k: str):
         m = re.fullmatch(r"\d{1,3}", k)
         return (0, int(k)) if m else (1, k)
-    ordered = sorted(bucket.keys(), key=_key)
-    ps = ";".join(f"{k}:{bucket[k]}" for k in ordered)
-    psd = ";".join(f"{k}:{3 if bucket[k]=='有货' else 0}:{EAN_PLACEHOLDER}" for k in ordered)
-    return ps or "No Data", psd or "No Data"
+    ordered = sorted(by_size.keys(), key=_key)
+    ps = ";".join(f"{k}:{by_size[k]}" for k in ordered) or "No Data"
+    EAN = "0000000000000"
+    psd = ";".join(f"{k}:{3 if by_size[k]=='有货' else 0}:{EAN}" for k in ordered) or "No Data"
+    return ps, psd
 
-def _infer_style_category(name: str) -> str:
-    n = (name or "").lower()
-    if "jacket" in n and "quilt" in n:
-        return "quilted jacket"
-    if "jacket" in n and "wax" in n:
-        return "wax jacket"
-    if "jacket" in n:
-        return "jacket"
-    return "casual wear"
-
-
-# ========== 解析与写盘 ==========
-def parse_and_build_info(html: str, url: str) -> dict:
+def parse_info(html: str, url: str) -> Dict[str, Any]:
     soup = BeautifulSoup(html, "html.parser")
 
     title = _extract_title(soup)
-    description = _extract_og_description(soup)
-    features, material = _extract_features_and_material(soup)
-    curr_price, orig_price = _extract_prices(soup)
-    pairs = _extract_size_offers(soup)
-    product_size, product_size_detail = _build_size_lines(pairs)
+    desc  = _extract_desc(soup)
+    color = _extract_color(soup)
+    gender = _extract_gender(title, soup)
+    curr, orig = _extract_prices(soup)
+    if curr is None and orig is not None: curr = orig
+    if orig is None and curr is not None: orig = curr
+
+    size_pairs = _extract_size_pairs(soup)
+    product_size, product_size_detail = _build_size_lines(size_pairs)
 
     info = {
-        "Product Code": "No Data",               # HOF 无编码
-        "Product Name": title,
-        "Product Description": description or "No Data",
-        "Product Gender": _extract_gender(title, soup),
-        "Product Color": _extract_color(soup),
-        "Product Price": f"{curr_price:.2f}" if curr_price is not None else "No Data",
-        "Adjusted Price": "",                    # 由下游计算
-        "Product Material": material or "No Data",
-        "Style Category": _infer_style_category(title),
-        "Feature": features or "No Data",
+        "Product Code": "No Data",
+        "Product Name": title or "No Data",
+        "Product Description": desc or "No Data",
+        "Product Gender": gender,
+        "Product Color": color or "No Data",
+        "Product Price": f"{orig:.2f}" if orig else "No Data",
+        "Adjusted Price": f"{curr:.2f}" if curr else "No Data",
+        "Product Material": "No Data",
+        "Style Category": "casual wear",
+        "Feature": "No Data",
         "Product Size": product_size,
         "Product Size Detail": product_size_detail,
         "Source URL": url,
         "Site Name": SITE_NAME,
     }
-
-    # 若原价存在，把它附加到 Feature 末尾，不增字段名（与你其它站点的写法一致）
-    if orig_price is not None:
-        extra = f"Original Price: {orig_price:.2f}"
-        info["Feature"] = (info["Feature"] + "; " + extra) if info["Feature"] != "No Data" else extra
-
     return info
 
+# ================== Selenium & 抓取流程 ==================
+def get_driver(headless: bool = False):
+    options = uc.ChromeOptions()
+    if headless:
+        options.add_argument("--headless=new")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--start-maximized")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    return uc.Chrome(options=options)
 
-def process_url(url: str):
+def process_url(url: str, conn: Connection, delay: float = DEFAULT_DELAY, headless: bool = False) -> Path:
     print(f"\n🌐 正在抓取: {url}")
-    driver = get_driver()
+    driver = get_driver(headless=headless)
     try:
         driver.get(url)
-        time.sleep(2.5)  # 轻等待，视页面复杂度可适当增加
+        if WAIT_PRICE_SECONDS > 0:
+            try:
+                WebDriverWait(driver, WAIT_PRICE_SECONDS).until(
+                    EC.presence_of_element_located((By.ID, "lblSellingPrice"))
+                )
+            except Exception:
+                pass
+        if delay > 0:
+            time.sleep(delay)
         html = driver.page_source
     finally:
-        try:
-            driver.quit()
-        except Exception:
-            pass
+        try: driver.quit()
+        except Exception: pass
 
-    info = parse_and_build_info(html, url)
+    info = parse_info(html, url)
 
-    # 文件名：HOF 无编码 → 用标题安全化
-    safe_name = re.sub(r"[\\/:*?\"<>|'\s]+", "_", info.get("Product Name") or "NoName")
-    out_path = TXT_DIR / f"{safe_name}.txt"
-    format_txt(info, out_path, brand="Barbour")  # 与 barbour_fetch_info 等保持一致
-    print(f"✅ 写入: {out_path.name}")
+    # ============= 第三方相似度匹配（不依赖 keyword 字段） =============
+    raw_conn = get_dbapi_connection(conn)
+    title = info.get("Product Name") or ""
+    color = info.get("Product Color") or ""
+
+    results = match_product(
+        raw_conn,
+        scraped_title=title,
+        scraped_color=color,
+        table=PRODUCTS_TABLE,
+        name_weight=0.72,
+        color_weight=0.18,
+        type_weight=0.10,  # ★
+        topk=5,
+        recall_limit=2000,
+    )
+    code = choose_best(results, min_score=MIN_SCORE, min_lead=MIN_LEAD)
+    if not code and results:
+        st = results[0].get("type_scraped")
+        if st:
+            for r in results:
+                if r.get("type_db") == st:
+                    code = r["product_code"]
+                    print(f"🎯 tie-break by type → {code}")
+                    break
+
+    print("🔎 match debug")
+    print(f"  raw_title: {title}")
+    print(f"  raw_color: {color}")
+    if results:
+        print(f"  cleaned : {results[0]['title_clean']}  | color_norm: {results[0].get('style_clean','') and results[0]['title_clean'].split(' ')[-1] if False else (results[0]['color_score']>=0)}")
+    txt, why = explain_results(results, min_score=MIN_SCORE, min_lead=MIN_LEAD)
+    print(txt)
+    if code:
+        print(f"  ⇒ ✅ choose_best = {code}")
+    else:
+        print(f"  ⇒ ❌ no match ({why})")
+
+    if not code and results:
+        # 记录一下前三，方便你在控制台观察；无需任何调试文件
+        print("🧪 top:", " | ".join(f"{r['product_code']}[{r['score']:.3f}]" for r in results[:3]))
+
+    # 命名：优先用编码
+    if code:
+        info["Product Code"] = code
+        out_name = f"{code}.txt"
+    else:
+        out_name = f"{_safe_name(title)}.txt"
+    out_path = TXT_DIR / out_name
+
+    # 并发去重
+    with _WRITTEN_LOCK:
+        if out_name in _WRITTEN:
+            print(f"↩️  跳过重复写入：{out_name}")
+            return out_path
+        _WRITTEN.add(out_name)
+
+    # 原子写入
+    payload = _kv_txt_bytes(info)
+    ok = _atomic_write_bytes(payload, out_path)
+    if ok:
+        print(f"✅ 写入: {out_path.name} (code={info.get('Product Code')})")
+    else:
+        print(f"❗ 放弃写入: {out_path.name}")
     return out_path
 
-
-# ========== 主入口：零参数，读取 config 链接文件 ==========
-def houseoffraser_fetch_info():
+def houseoffraser_fetch_info(max_workers: int = MAX_WORKERS_DEFAULT, delay: float = DEFAULT_DELAY, headless: bool = False):
     links_file = Path(LINKS_FILE)
     if not links_file.exists():
         print(f"⚠ 找不到链接文件：{links_file}")
@@ -284,15 +347,39 @@ def houseoffraser_fetch_info():
 
     urls = [line.strip() for line in links_file.read_text(encoding="utf-8", errors="ignore").splitlines()
             if line.strip() and not line.strip().startswith("#")]
-    print(f"📄 共 {len(urls)} 个商品页面待解析...")
+    total = len(urls)
+    print(f"📄 共 {total} 个商品页面待解析...（并发 {max_workers}）")
+    if total == 0:
+        return
 
-    for idx, url in enumerate(urls, 1):
+    engine_url = f"postgresql+psycopg2://{PG['user']}:{PG['password']}@{PG['host']}:{PG['port']}/{PG['dbname']}"
+    engine = create_engine(engine_url)
+
+    indexed = list(enumerate(urls, start=1))
+
+    def _worker(idx_url):
+        idx, u = idx_url
+        print(f"[启动] [{idx}/{total}] {u}")
         try:
-            print(f"[{idx}/{len(urls)}] 处理中...")
-            process_url(url)
+            with engine.begin() as conn:
+                path = process_url(u, conn=conn, delay=delay, headless=headless)
+            return (idx, u, str(path), None)
         except Exception as e:
-            print(f"❌ 处理失败: {url}\n    {e}")
+            return (idx, u, None, e)
 
+    ok, fail = 0, 0
+    with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="hof") as ex:
+        futures = [ex.submit(_worker, iu) for iu in indexed]
+        for fut in as_completed(futures):
+            idx, u, path, err = fut.result()
+            if err is None:
+                ok += 1
+                print(f"[完成] [{idx}/{total}] ✅ {u} -> {path}")
+            else:
+                fail += 1
+                print(f"[失败] [{idx}/{total}] ❌ {u}\n    {repr(err)}")
+
+    print(f"\n📦 任务结束：成功 {ok}，失败 {fail}，总计 {total}")
 
 if __name__ == "__main__":
     houseoffraser_fetch_info()

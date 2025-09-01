@@ -22,10 +22,10 @@ def main():
     process_images(
         input_dir=r"C:\Users\martin\Downloads",
         output_dir=r"D:\TB\Products\barbour\images",
-        product_code="MWX2341BK11",
+        product_code="MQU1842GN54",
     )
 
-
+ 
     # process_images(
     #     input_dir=r"C:\Users\martin\Downloads",
     #     output_dir=r"D:\TB\Products\barbour\images",
