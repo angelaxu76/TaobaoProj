@@ -222,9 +222,9 @@ WHERE size ~ '^(8|10|12|14|16|18)$'
 
 select * from barbour_inventory where channel_item_id = '969817808097'
 
-select * from barbour_inventory where  product_code = 'MWX2381BK71'
+select * from barbour_inventory where  product_code = 'LQS0058GN91'
 
-select * from barbour_offers where product_code = 'MWX2381BK71'
+select * from barbour_offers where product_code = 'LQS0058GN91'
 
 
 select distinct product_code from clarks_jingya_inventory where gender ILIKE '%女%'
@@ -365,3 +365,10 @@ WHERE bo.is_active = TRUE
 
 
 
+SELECT DISTINCT product_code FROM barbour_inventory 
+WHERE size ~ '^(XS|S|M|L|XL|XXL|3XL|4XL)$' 
+AND product_code NOT IN  ('MWX0700OL51', 'MWX0700RU71', 'MWX0700NY51', 'MQU0240OL71', 
+'MQU0240BK11', 'MQU0240NY92', 'MWX0339OL71', 'MWX0339NY92', 'MWX0339BK72');
+
+
+"SELECT DISTINCT product_code FROM barbour_inventory WHERE size ~ '^(XS|S|M|L|XL|XXL|3XL|4XL)$' AND product_code NOT IN  ('MWX0700OL51', 'MWX0700RU71', 'MWX0700NY51', 'MQU0240OL71', 'MQU0240BK11', 'MQU0240NY92', 'MWX0339OL71', 'MWX0339NY92', 'MWX0339BK72');

@@ -139,7 +139,7 @@ CREATE INDEX IF NOT EXISTS idx_bo_last_checked  ON barbour_offers(last_checked);
 -- Barbour 发布表（与 clarks_jingya_inventory 对齐）
 -- 仅新增 3 个选源字段：source_site / source_offer_url / source_price_gbp
 -- =========================
-
+DROP TABLE IF EXISTS barbour_inventory;
 
 CREATE TABLE barbour_inventory (
     id SERIAL PRIMARY KEY,
@@ -168,7 +168,7 @@ CREATE TABLE barbour_inventory (
     original_price_gbp   NUMERIC(10, 2),
     discount_price_gbp   NUMERIC(10, 2),
     jingya_price_rmb     NUMERIC(12,2),
-    taobao_price_rmb     NUMERIC(12,2);
+    taobao_price_rmb     NUMERIC(12,2),
 
     -- 状态控制（沿用）
     last_checked TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

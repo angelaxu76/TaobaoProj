@@ -3,14 +3,15 @@ from config import BARBOUR
 from barbour.jingya.insert_jingyaid_to_db_barbour import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
 from barbour.common.export_barbour_discounts import export_barbour_discounts_excel
 from barbour.common.generate_barbour_publication_excel import generate_publication_excel
+from barbour.common.generate_sql_for_pulication import generate_select_sql_from_excel
 
 
 def pipeline_barbour():
     print("\n🚀 启动 Barbour - House of Fraser 全流程抓取")
 
     # 步骤 1：导出打折的商品可以发布的商品列表到excel
-    excel_path = export_barbour_discounts_excel(19, 3, "MQU")
-    print(excel_path)
+    #excel_path = export_barbour_discounts_excel(19, 3, "MQU")
+   #print(excel_path)
 
     # 步骤 1：将产品的编码放到D:\TB\Products\barbour\repulibcation\codes.txt
     # 步骤 2：生成发布产品的excel
@@ -39,6 +40,9 @@ def pipeline_barbour():
     #insert_missing_products_with_zero_stock("barbour")
     #insert_jingyaid_to_db("barbour")
 
+    print("\n步骤 6：生成更新数据库的SQL String给UIPath使用，去更新库存")
+    result = generate_select_sql_from_excel(r"D:\TB\Products\barbour\document\publication\barbour_publication_20250830_043619.xlsx")
+    print(result["preview"])
 
 
 if __name__ == "__main__":

@@ -1,26 +1,32 @@
 # -*- coding: utf-8 -*-
 """
-Barbour 回填（映射版）：
+Barbour 回填（映射版，含价格计算）：
 - 仅按 barbour_supplier_map 指定的 supplier 进行价格/库存回填；
 - 尺码统一用 clean_size_for_barbour 归一化；
-- 命中 (code+size+supplier) → 回填；未命中 → 库存置 0（价格不改）；
+- 命中 (code+size+supplier) → 回填；未命中 → 库存置 0（并清空售价）；
 - Step1 保持：从 barbour_products 回填基础信息（title/desc/gender/category）。
+- 新增：为命中的 inventory 行计算并写入 jingya_price_rmb / taobao_price_rmb（基于折后价或原价的较小值）。
 """
 
 from __future__ import annotations
-from typing import List, Tuple
+from typing import List, Tuple, Iterable
 from datetime import datetime
+import csv
+from pathlib import Path
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Connection
 
 # 项目配置
-from config import BRAND_CONFIG
+from config import BRAND_CONFIG, BARBOUR  # BARBOUR 仅用于 DEBUG 导出目录
+
+# 价格工具（你现有的模块）
+from common_taobao.core.price_utils import calculate_jingya_prices
 
 # 尺码归一化：优先用你项目里的函数，找不到就降级为轻量实现
 try:
     from barbour.core.sizes import clean_size_for_barbour as _clean_size
-except Exception:
+except Exception:  # 兜底：轻量归一
     import re
     def _clean_size(s: str) -> str:
         """轻量降级：去‘UK ’、去空格/点/斜杠，小写；兼容 2xl/xxl 等常见写法"""
@@ -31,10 +37,98 @@ except Exception:
         x = x.replace("2xl", "xxl").replace("3xl", "xxxl")
         return x or "unknown"
 
-# 可下单时给的“库存数字占位”（如果你更想用 offers 的 stock_count，把它改成 COALESCE(b.stock_count,0) 即可）
+# 有货时写入的“占位库存”（避免把供应商真实小库存带到前台；如需完全真实，可改逻辑）
 STOCK_WHEN_AVAILABLE = 5
 
-# ---------- SQL 片段 ----------
+DEBUG_EXPORT = Path(BARBOUR["PUBLICATION_DIR"]) / "supplier_map_unmatched_debug.csv"
+
+
+# ============ 价格计算相关 ============
+
+def compute_rmb_price(min_gbp: float, exchange_rate: float):
+    """按你的给定逻辑：基价 = max(orig, disc)，再走 calculate_jingya_prices"""
+    try:
+        orig = float(min_gbp) if min_gbp is not None else 0.0
+        disc = orig
+        base_price = max(orig, disc)
+        untaxed, retail = calculate_jingya_prices(
+            base_price=base_price,
+            delivery_cost=7,
+            exchange_rate=exchange_rate
+        )
+        return untaxed, retail
+    except Exception:
+        return "", ""
+
+
+def _get_exchange_rate() -> float:
+    """从 BRAND_CONFIG 读取汇率；缺省 9.7"""
+    try:
+        barbour_cfg = BRAND_CONFIG.get("barbour", {}) or BRAND_CONFIG.get("BARBOUR", {})
+        er = barbour_cfg.get("EXCHANGE_RATE") or barbour_cfg.get("exchange_rate") or 9.7
+        return float(er)
+    except Exception:
+        return 9.7
+
+
+def _ensure_price_columns(conn: Connection):
+    """自动建列（幂等），避免手工迁移。"""
+    conn.execute(text("""
+    ALTER TABLE barbour_inventory
+      ADD COLUMN IF NOT EXISTS jingya_price_rmb   NUMERIC(12,2),
+      ADD COLUMN IF NOT EXISTS taobao_price_rmb   NUMERIC(12,2),
+      ADD COLUMN IF NOT EXISTS base_price_gbp     NUMERIC(10,2),
+      ADD COLUMN IF NOT EXISTS exchange_rate_used NUMERIC(8,4);
+    """))
+
+
+def _num_or_null(v):
+    try:
+        return float(v)
+    except Exception:
+        return None
+
+
+def _update_prices_for_bi_ids(conn: Connection, bi_ids: Iterable[int]):
+    """对本轮命中的 bi.id 计算并写入 rmb 价格"""
+    ids = list(bi_ids)
+    if not ids:
+        return
+
+    exchange_rate = _get_exchange_rate()
+    rows = list(conn.execute(text("""
+        SELECT id,
+               COALESCE(discount_price_gbp, source_price_gbp) AS min_gbp
+        FROM barbour_inventory
+        WHERE id = ANY(:ids)
+    """), {"ids": ids}).mappings())
+
+    payload = []
+    for r in rows:
+        bi_id = r["id"]
+        min_gbp = r["min_gbp"]
+        jingya, taobao = compute_rmb_price(min_gbp, exchange_rate)
+        payload.append({
+            "base_price_gbp":    _num_or_null(min_gbp),
+            "exchange_rate_used": float(exchange_rate),
+            "jingya_price_rmb":  _num_or_null(jingya),
+            "taobao_price_rmb":  _num_or_null(taobao),
+            "bi_id":             bi_id
+        })
+
+    if payload:
+        conn.execute(text("""
+            UPDATE barbour_inventory
+            SET base_price_gbp     = :base_price_gbp,
+                exchange_rate_used = :exchange_rate_used,
+                jingya_price_rmb   = :jingya_price_rmb,
+                taobao_price_rmb   = :taobao_price_rmb
+            WHERE id = :bi_id
+        """), payload)
+
+
+# ============ SQL 片段 ============
+
 SQL_CREATE_TMP = [
     # inventory 临时表：只挑“有映射的商品编码”的行，并做 size_norm
     text("""
@@ -113,6 +207,7 @@ SQL_INDEX_TMP = [
 ]
 
 # 2A) 命中（映射站点 & 同尺码）：有货优先 → 低价 → 最新
+#     同时 RETURNING bi.id 以便后续只对“本轮命中行”计算价格
 SQL_BACKFILL_MATCHED = text(f"""
 WITH avail AS (
   SELECT
@@ -138,16 +233,20 @@ SET
   source_offer_url   = b.offer_url,
   source_price_gbp   = b.price_gbp,
   discount_price_gbp = b.discount_price_gbp,
-  stock_count        = COALESCE(b.stock_count, 0),                       -- 可下单用占位库存
+  stock_count        = CASE WHEN COALESCE(b.stock_count,0) > 0
+                            THEN {STOCK_WHEN_AVAILABLE}
+                            ELSE 0
+                       END,
   last_checked       = NOW()
 FROM tmp_bi tbi
 JOIN best b
   ON b.color_code = tbi.product_code
  AND b.size_norm  = tbi.size_norm
 WHERE bi.id = tbi.bi_id
+RETURNING bi.id
 """)
 
-# 2B) 未命中（映射站点下没有同尺码报价）：只把库存置 0，价格不变
+# 2B) 未命中（映射站点下没有同尺码报价）：库存置 0；并清空价格，避免残留
 SQL_BACKFILL_UNMATCHED_ZERO = text("""
 WITH miss AS (
   SELECT tbi.bi_id
@@ -159,20 +258,22 @@ WITH miss AS (
 )
 UPDATE barbour_inventory AS bi
 SET
-  stock_count  = 0,
-  last_checked = NOW()
+  source_site        = NULL,
+  source_offer_url   = NULL,
+  source_price_gbp   = NULL,
+  discount_price_gbp = NULL,
+  stock_count        = 0,
+  jingya_price_rmb   = NULL,
+  taobao_price_rmb   = NULL,
+  base_price_gbp     = NULL,
+  exchange_rate_used = NULL,
+  last_checked       = NOW()
 FROM miss
 WHERE bi.id = miss.bi_id
 """)
 
 
-import csv
-from pathlib import Path
-from config import BARBOUR  # 只为拿 PUBLICATION_DIR
-
-DEBUG_EXPORT = Path(BARBOUR["PUBLICATION_DIR"]) / "supplier_map_unmatched_debug.csv"
-
-def _dbg(conn):
+def _dbg(conn: Connection):
     # 1) 统计 tmp 表规模 & unknown 比例
     bi_counts = conn.execute(text("""
         SELECT COUNT(*) AS n, SUM(CASE WHEN size_norm='unknown' THEN 1 ELSE 0 END) AS n_unk
@@ -242,12 +343,15 @@ def backfill_barbour_inventory_mapped_only():
     )
 
     with engine.begin() as conn:  # type: Connection
+        # 自动确保价格相关列存在
+        _ensure_price_columns(conn)
+
         # Step 0: 创建临时表
         for sql in SQL_CREATE_TMP:
             conn.execute(sql)
 
         # Step 1: 基础信息回填（title/desc/gender/category）
-        conn.execute(SQL_STEP1_FILL_PRODUCT_INFO)  # 基于 products 的最新记录回填。:contentReference[oaicite:2]{index=2}
+        conn.execute(SQL_STEP1_FILL_PRODUCT_INFO)
 
         # Step 2: 组装 tmp_bi（用 clean_size_for_barbour 归一化）
         inv_rows = conn.execute(SQL_BUILD_INV_ROWS).fetchall()
@@ -258,23 +362,27 @@ def backfill_barbour_inventory_mapped_only():
                 inv_values.append((bi_id, (code or "").strip(), size_n))
 
         if inv_values:
-            conn.exec_driver_sql("INSERT INTO tmp_bi(bi_id, product_code, size_norm) VALUES (%s,%s,%s)", inv_values)
+            conn.exec_driver_sql(
+                "INSERT INTO tmp_bi(bi_id, product_code, size_norm) VALUES (%s,%s,%s)",
+                inv_values
+            )
         # 索引
         conn.execute(SQL_INDEX_TMP[0])
 
-        # Step 3: 组装 tmp_o（映射站点 + clean_size_for_barbour + 有效价）
+        # Step 3: 组装 tmp_o（映射站点 + clean_size_for_barbour + 有效价=折扣/原价的 COALESCE）
         off_rows = conn.execute(SQL_BUILD_OFFER_ROWS).fetchall()
         off_values: List[Tuple] = []
         for code, site, size, url, price, sale_price, stock, ts in off_rows:
             size_n = _clean_size(size)
             if size_n and size_n != "unknown":
+                eff_price = sale_price if sale_price is not None else price
                 off_values.append((
                     (code or "").strip(),
                     (size_n or "").strip(),
                     (site or "").strip(),
                     url, price,
-                    sale_price,                 # 作为 discount_price_gbp 使用
-                    sale_price,                 # eff_price = sale_price_gbp（已是 COALESCE 结果）
+                    sale_price,
+                    eff_price,
                     stock, ts
                 ))
         if off_values:
@@ -286,18 +394,23 @@ def backfill_barbour_inventory_mapped_only():
         # 索引
         conn.execute(SQL_INDEX_TMP[1])
 
-        if True:  # 临时打开
-          _dbg(conn)
+        # 调试输出（可关闭）
+        _dbg(conn)
 
-        # Step 4A: 命中 (code + size + supplier) → 完整回填
-        r1 = conn.execute(SQL_BACKFILL_MATCHED)
-        n1 = r1.rowcount if hasattr(r1, "rowcount") else None
+        # Step 4A: 命中 (code + size + supplier) → 完整回填，并取出命中 id 列表
+        matched_rs = conn.execute(SQL_BACKFILL_MATCHED)
+        try:
+            matched_ids = [r[0] for r in matched_rs.fetchall()]
+        except Exception:
+            matched_ids = []
 
-        # Step 4B: 未命中 → 库存置 0（价格不变）
-        r2 = conn.execute(SQL_BACKFILL_UNMATCHED_ZERO)
-        n2 = r2.rowcount if hasattr(r2, "rowcount") else None
+        # Step 4B: 未命中 → 库存置 0（并清空售价，避免脏值）
+        conn.execute(SQL_BACKFILL_UNMATCHED_ZERO)
 
-    print(f"✅ 映射回填完成：命中 {n1 if n1 is not None else '?'} 行；未命中置零 {n2 if n2 is not None else '?'} 行。")
+        # Step 4C: 对命中行计算并回写“鲸芽/淘宝”价格
+        _update_prices_for_bi_ids(conn, matched_ids)
+
+    print(f"✅ 映射回填完成：命中 {len(matched_ids)} 行；未命中已置零并清空售价。")
 
 
 if __name__ == "__main__":
