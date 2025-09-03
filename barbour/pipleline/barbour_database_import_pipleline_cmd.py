@@ -26,7 +26,7 @@ def barbour_database_import_pipleline():
     # barbour_fetch_info()
     # outdoorandcountry_fetch_info(max_workers=10)
     # allweathers_fetch_info(7)
-    houseoffraser_fetch_info(max_workers=5, headless=False)
+    houseoffraser_fetch_info(max_workers=2, headless=False)
 
     # Step 2: TODO 将txt中数据导入barbour product中
     #batch_import_txt_to_barbour_product("barbour")

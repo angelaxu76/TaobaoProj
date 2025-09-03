@@ -88,21 +88,24 @@ BARBOUR = {
     "LINKS_FILE": BARBOUR_BASE / "publication" / "barbour" / "product_links.txt",
     "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     # === 新增 houseoffraser 配置 ===
+# === 新增 very 配置 ===
     "LINKS_FILES": {
         "outdoorandcountry": BARBOUR_BASE / "publication" / "outdoorandcountry" / "product_links.txt",
         "allweathers": BARBOUR_BASE / "publication" / "allweathers" / "product_links.txt",
         "barbour": BARBOUR_BASE / "publication" / "barbour" / "product_links.txt",
         "houseoffraser": BARBOUR_BASE / "publication" / "houseoffraser" / "product_links.txt",  # ✅ 新增
         "philipmorris": BARBOUR_BASE / "publication" / "philipmorris" / "product_links.txt",  # ✅ 新增
+        "very": BARBOUR_BASE / "publication" / "very" / "product_links.txt",  # ✅ 新增
     },
 
     "TXT_DIRS": {
         "all": BARBOUR_BASE / "publication" / "TXT",  # ✅ 新增
         "outdoorandcountry": BARBOUR_BASE / "publication" / "outdoorandcountry" / "TXT",
-        "allweathers": BARBOUR_BASE / "publication" / "allweathers" / "TXT",  # 👈 之前写错了路径，修复！
-        "barbour": BARBOUR_BASE / "publication" / "barbour" / "TXT",  # 👈 同上
+        "allweathers": BARBOUR_BASE / "publication" / "allweathers" / "TXT",  # 👈 修复
+        "barbour": BARBOUR_BASE / "publication" / "barbour" / "TXT",          # 👈 修复
         "houseoffraser": BARBOUR_BASE / "publication" / "houseoffraser" / "TXT",  # ✅ 新增
-        "philipmorris": BARBOUR_BASE / "publication" / "philipmorris" / "TXT",  # ✅ 新增
+        "philipmorris": BARBOUR_BASE / "publication" / "philipmorris" / "TXT",    # ✅ 新增
+        "very": BARBOUR_BASE / "publication" / "very" / "TXT",  # ✅ 新增
     },
 
     "FIELDS": {

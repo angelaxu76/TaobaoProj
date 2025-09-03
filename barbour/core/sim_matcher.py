@@ -172,7 +172,15 @@ def fetch_candidates(conn, table: str, raw_title: str, color_norm: Optional[str]
 def match_product(conn, scraped_title: str, scraped_color: str, *,
                   table="barbour_products",
                   name_weight=0.72, color_weight=0.20, type_weight=0.08,
-                  topk=5, recall_limit=1500):
+                  topk=5, recall_limit=1500,
+                  # === 新增：可调硬门槛与行为 ===
+                  min_name: float | None = None,     # 例：0.95；None 表示不启用阈值
+                  min_color: float | None = None,    # 例：0.95；None 表示不启用阈值
+                  require_color_exact: bool = False, # True 时要求 color_sim==1.0（等值/同义）
+                  require_type: bool = False,        # True 时要求 type_sim==1.0（类型必须一致）
+                  series_bonus: float = 0.02,        # 系列词加成（原先写死 0.02）
+                  dedupe_by_code: bool = True        # 是否按 product_code 取最高分去重（保持原逻辑）
+                  ):
     c_norm=_norm_color(scraped_color)
     t_clean=clean_title(scraped_title, c_norm)
     t_type = type_token(scraped_title)           # 从原始标题提类型（不会受停用词影响）
@@ -190,11 +198,22 @@ def match_product(conn, scraped_title: str, scraped_color: str, *,
         cs=color_sim(c_norm, _norm_color(r["color"]))
         db_type = type_token(r["style_name"])
         ts=type_sim(t_type, db_type)
+
+        # === 新增：单项硬门槛过滤 ===
+        if min_name is not None and ns < min_name:
+            continue
+        if require_color_exact and cs < 1.0:
+            continue
+        if min_color is not None and cs < min_color:
+            continue
+        if require_type and ts < 1.0:
+            continue
+
         # 归一化（权重和=1.0）
         score = name_weight*ns + color_weight*cs + type_weight*ts
-        # 系列词轻微加成
+        # 系列词轻微加成（可调）
         if series_in(t_clean) & series_in(name_db):
-            score += 0.02
+            score += series_bonus
 
         res.append({
             **r,
@@ -208,15 +227,20 @@ def match_product(conn, scraped_title: str, scraped_color: str, *,
             "type_db": db_type,
         })
 
-    # 同一 product_code 仅保留最高分
-    best_by_code: Dict[str, Dict[str,Any]] = {}
-    for r in res:
-        code=r["product_code"]
-        if code not in best_by_code or r["score"]>best_by_code[code]["score"]:
-            best_by_code[code]=r
-    uniq=list(best_by_code.values())
+    # 同一 product_code 仅保留最高分（可选）
+    if dedupe_by_code:
+        best_by_code: Dict[str, Dict[str,Any]] = {}
+        for r in res:
+            code=r["product_code"]
+            if code not in best_by_code or r["score"]>best_by_code[code]["score"]:
+                best_by_code[code]=r
+        uniq=list(best_by_code.values())
+    else:
+        uniq=res
+
     uniq.sort(key=lambda x: x["score"], reverse=True)
     return uniq[:topk]
+
 
 def choose_best(results, min_score=0.72, min_lead=0.04) -> Optional[str]:
     if not results: return None

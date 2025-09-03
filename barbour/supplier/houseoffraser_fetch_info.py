@@ -54,30 +54,53 @@ COLOR_WEIGHT = 0.25              # 颜色权重
 _WRITTEN: set[str] = set()
 _WRITTEN_LOCK = threading.Lock()
 
-def _atomic_write_bytes(data: bytes, dst: Path, retries: int = 3) -> bool:
+def _atomic_write_bytes(data: bytes, dst: Path, retries: int = 6, backoff: float = 0.25) -> bool:
+    """
+    更强健的原子写：为并发与 Windows 句柄占用做容错。
+    - 唯一 tmp 文件名，避免跨线程冲突
+    - PermissionError/FileExistsError 退避重试
+    - 若重试后目标已存在（多线程已写入），按成功处理
+    """
     dst.parent.mkdir(parents=True, exist_ok=True)
-    tmp: Optional[Path] = None
     for i in range(retries):
+        tmp = None
         try:
-            with tempfile.NamedTemporaryFile(delete=False, dir=str(dst.parent)) as tf:
+            # 唯一 tmp：放在同目录，降低跨盘 replace 风险
+            with tempfile.NamedTemporaryFile(
+                delete=False, dir=str(dst.parent), prefix=".tmp_", suffix=f".{os.getpid()}.{threading.get_ident()}"
+            ) as tf:
                 tmp = Path(tf.name)
                 tf.write(data)
                 tf.flush()
                 os.fsync(tf.fileno())
-            tmp.replace(dst)  # Windows 下足够原子
+            try:
+                # 若目标已存在且被占用，可能抛 PermissionError；退避重试
+                os.replace(tmp, dst)  # 原子替换
+            finally:
+                if tmp and tmp.exists():
+                    try:
+                        tmp.unlink(missing_ok=True)
+                    except Exception:
+                        pass
             return True
-        except (PermissionError, FileExistsError):
+        except (PermissionError, FileExistsError, OSError) as e:
+            # 若目标已经存在（可能其他线程先完成），当作成功
             if dst.exists():
                 return True
-            time.sleep(0.2 * (i + 1))
-        except Exception:
+            # 退避后重试
+            time.sleep(backoff * (i + 1))
+            # 最后一轮前，尝试清理残留 tmp
             try:
                 if tmp and tmp.exists():
                     tmp.unlink(missing_ok=True)
             except Exception:
                 pass
-            time.sleep(0.2 * (i + 1))
+        except Exception:
+            # 其他异常也做退避
+            time.sleep(backoff * (i + 1))
+    # 到此仍失败，但若目标已存在（并发已成功），也算成功
     return dst.exists()
+
 
 def _kv_txt_bytes(info: Dict[str, Any]) -> bytes:
     fields = [
@@ -285,9 +308,16 @@ def process_url(url: str, conn: Connection, delay: float = DEFAULT_DELAY, headle
         table=PRODUCTS_TABLE,
         name_weight=0.72,
         color_weight=0.18,
-        type_weight=0.10,  # ★
+        type_weight=0.10,
         topk=5,
         recall_limit=2000,
+        # ↓ 新增：名称/颜色硬门槛（严格）
+        min_name=0.92,
+        min_color=0.85,
+        # 选配：只接受颜色“等值/同义”
+        require_color_exact=False,   # 设 True 更严
+        # 选配：要求类型一致（jacket/gilet/coat 等）
+        require_type=False,
     )
     code = choose_best(results, min_score=MIN_SCORE, min_lead=MIN_LEAD)
     if not code and results:
@@ -320,9 +350,12 @@ def process_url(url: str, conn: Connection, delay: float = DEFAULT_DELAY, headle
         info["Product Code"] = code
         out_name = f"{code}.txt"
     else:
-        out_name = f"{_safe_name(title)}.txt"
-    out_path = TXT_DIR / out_name
+        # 为避免不同页面同标题造成同名（并发写冲突），追加 URL 短哈希
+        short = f"{abs(hash(url)) & 0xFFFF:04x}"
+        out_name = f"{_safe_name(title)}_{short}.txt"
 
+    out_path = TXT_DIR / out_name
+    
     # 并发去重
     with _WRITTEN_LOCK:
         if out_name in _WRITTEN:
