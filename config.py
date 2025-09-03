@@ -96,6 +96,7 @@ BARBOUR = {
         "houseoffraser": BARBOUR_BASE / "publication" / "houseoffraser" / "product_links.txt",  # ✅ 新增
         "philipmorris": BARBOUR_BASE / "publication" / "philipmorris" / "product_links.txt",  # ✅ 新增
         "very": BARBOUR_BASE / "publication" / "very" / "product_links.txt",  # ✅ 新增
+        "terraces": BARBOUR_BASE / "publication" / "terraces" / "product_links.txt",
     },
 
     "TXT_DIRS": {
@@ -106,6 +107,7 @@ BARBOUR = {
         "houseoffraser": BARBOUR_BASE / "publication" / "houseoffraser" / "TXT",  # ✅ 新增
         "philipmorris": BARBOUR_BASE / "publication" / "philipmorris" / "TXT",    # ✅ 新增
         "very": BARBOUR_BASE / "publication" / "very" / "TXT",  # ✅ 新增
+        "terraces": BARBOUR_BASE / "publication" / "terraces" / "TXT",
     },
 
     "FIELDS": {

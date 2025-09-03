@@ -10,7 +10,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 # ========= 参数配置 =========
 LINKS_FILE = TERRACES["LINKS_FILE"]
-BASE_URL = "https://www.terracesmenswear.co.uk/barbour&page={}"
+BASE_URL = "https://www.terracesmenswear.co.uk/mens-outlet?filter=3,4&page={}"
 BASE_DOMAIN = "https://www.terracesmenswear.co.uk"
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"

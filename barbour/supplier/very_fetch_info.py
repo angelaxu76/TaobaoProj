@@ -278,6 +278,14 @@ def parse_info(html: str, url: str) -> Dict[str, Any]:
     title = _extract_title(soup, initial)
     desc  = _extract_desc(soup, productData)
     color = _extract_color(initial)
+
+    # —— 用 title 兜底颜色 & 去掉标题中的颜色尾巴
+    t2, color_from_title = _split_title_color(title)
+    if not color or color.lower() == "no data":
+        color = color_from_title or "No Data"
+    title = t2
+
+
     gender = _extract_gender(title, soup, productData)
     curr, orig = _extract_prices(initial, soup)
     if curr is None and orig is not None: curr = orig
@@ -307,19 +315,125 @@ def parse_info(html: str, url: str) -> Dict[str, Any]:
     return info
 
 # ================== Selenium & 抓取流程 ==================
-def get_driver(headless: bool = False):
-    options = uc.ChromeOptions()
-    if headless:
-        options.add_argument("--headless=new")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--start-maximized")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    return uc.Chrome(options=options)
+import re, subprocess, shutil, sys
+try:
+    import winreg  # Windows 才有
+except Exception:
+    winreg = None
 
-def process_url(url: str, conn: Connection, delay: float = DEFAULT_DELAY, headless: bool = False) -> Path:
+def _get_chrome_major_version() -> int | None:
+    """Windows 上获取已安装 Chrome 主版本；失败返回 None。"""
+    # 1) 注册表：HKCU/HKLM\SOFTWARE\Google\Chrome\BLBeacon\version
+    if winreg is not None and sys.platform.startswith("win"):
+        reg_paths = [
+            (winreg.HKEY_CURRENT_USER,  r"SOFTWARE\Google\Chrome\BLBeacon"),
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Google\Chrome\BLBeacon"),
+            # 兼容 32/64 位重定向
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Google\Chrome\BLBeacon"),
+        ]
+        for hive, path in reg_paths:
+            try:
+                with winreg.OpenKey(hive, path) as k:
+                    ver, _ = winreg.QueryValueEx(k, "version")
+                    m = re.search(r"^(\d+)\.", ver)
+                    if m:
+                        return int(m.group(1))
+            except OSError:
+                pass
+
+    # 2) 命令行：chrome.exe --version
+    candidates = [
+        "chrome",  # PATH 里有的话
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+    ]
+    for exe in candidates:
+        path = shutil.which(exe) or exe
+        try:
+            out = subprocess.check_output([path, "--version"], stderr=subprocess.STDOUT, text=True, timeout=3)
+            # 形如 "Google Chrome 129.0.6668.59"
+            m = re.search(r"(\d+)\.\d+\.\d+\.\d+", out)
+            if m:
+                return int(m.group(1))
+        except Exception:
+            continue
+    return None
+
+def get_driver(headless: bool = False, retries: int = 2):
+    """
+    更稳的 UC 启动：
+    - 每次尝试都创建全新的 ChromeOptions（避免复用报错）
+    - 若默认启动失败，读取本机 Chrome 主版本，带 version_main 重试
+    - use_subprocess=True 提升兼容性
+    """
+    import undetected_chromedriver as uc
+
+    def make_options():
+        opts = uc.ChromeOptions()
+        if headless:
+            opts.add_argument("--headless=new")
+        opts.add_argument("--disable-blink-features=AutomationControlled")
+        opts.add_argument("--start-maximized")
+        opts.add_argument("--disable-gpu")
+        opts.add_argument("--no-sandbox")
+        return opts
+
+    last_err = None
+    for attempt in range(1, retries + 1):
+        # 尝试 1：默认启动（新的 options 实例）
+        try:
+            drv = uc.Chrome(options=make_options(), headless=headless, use_subprocess=True)
+            print(f"[uc] started (attempt {attempt})")
+            return drv
+        except Exception as e:
+            last_err = e
+            print(f"[uc] default start failed (attempt {attempt}): {e}")
+
+        # 尝试 2：携带 version_main（再次使用“新的” options 实例）
+        try:
+            vm = _get_chrome_major_version()
+            if vm:
+                print(f"[uc] retry with version_main={vm} (attempt {attempt})")
+                drv = uc.Chrome(
+                    options=make_options(),
+                    headless=headless,
+                    use_subprocess=True,
+                    version_main=vm
+                )
+                print(f"[uc] started with version_main={vm}")
+                return drv
+            else:
+                print("[uc] cannot detect local Chrome version; skip version_main retry")
+        except Exception as e2:
+            last_err = e2
+            print(f"[uc] version_main retry failed: {e2}")
+
+    # 若仍失败，抛出最后一次错误
+    raise last_err
+
+
+def _split_title_color(title: str) -> tuple[str, str | None]:
+    t = (title or "").strip()
+    if not t:
+        return "No Data", None
+    # 以 “ - ” 拆分；拿最后一段做颜色，其余拼回作为净化后的标题
+    parts = [p.strip() for p in re.split(r"\s*-\s*", t) if p.strip()]
+    if len(parts) >= 2:
+        raw_color = parts[-1]
+        # 多词颜色取第一个主要词；去掉连接符/标点
+        color = re.split(r"[\/&]", re.sub(r"[^\w\s/&-]", "", raw_color))[0].strip()
+        color = color.title() if color else None
+        clean_title = " - ".join(parts[:-1])  # 去掉颜色尾巴
+        return (clean_title or t, color or None)
+    return t, None
+
+def process_url(url: str, conn: Connection, delay: float = DEFAULT_DELAY, headless: bool = False, driver=None) -> Path:
     print(f"\n🌐 正在抓取: {url}")
-    driver = get_driver(headless=headless)
+    if driver is None:
+        driver = get_driver(headless=headless)  # 兜底
+        owns = True
+    else:
+        owns = False
     try:
         driver.get(url)
         if WAIT_PRICE_SECONDS > 0:
@@ -334,8 +448,9 @@ def process_url(url: str, conn: Connection, delay: float = DEFAULT_DELAY, headle
             time.sleep(delay)
         html = driver.page_source
     finally:
-        try: driver.quit()
-        except Exception: pass
+        if owns:   # 只有自己新建的才负责关闭
+            try: driver.quit()
+            except Exception: pass
 
     info = parse_info(html, url)
 
@@ -343,6 +458,9 @@ def process_url(url: str, conn: Connection, delay: float = DEFAULT_DELAY, headle
     raw_conn = get_dbapi_connection(conn)
     title = info.get("Product Name") or ""
     color = info.get("Product Color") or ""
+
+    print("title:::::::::::::" + title)
+    print("color:::::::::::::" + color)
 
     results = match_product(
         raw_conn,
@@ -352,10 +470,10 @@ def process_url(url: str, conn: Connection, delay: float = DEFAULT_DELAY, headle
         name_weight=0.72,
         color_weight=0.18,
         type_weight=0.10,
-        topk=5,
-        recall_limit=2000,
-        min_name=0.92,
-        min_color=0.85,
+        topk=20,              # 调大，查看更多候选
+        recall_limit=5000,    # 适当调大召回
+        min_name=None,        # 关闭名称硬阈值（调试）
+        min_color=None,       # 关闭颜色硬阈值（调试）
         require_color_exact=False,
         require_type=False,
     )
@@ -425,27 +543,39 @@ def very_fetch_info(max_workers: int = MAX_WORKERS_DEFAULT, delay: float = DEFAU
 
     indexed = list(enumerate(urls, start=1))
 
-    def _worker(idx_url):
-        idx, u = idx_url
-        print(f"[启动] [{idx}/{total}] {u}")
+    def _worker(idx_url_chunk):
+        # 每个线程一个 driver
+        driver = get_driver(headless=headless)
         try:
-            with engine.begin() as conn:
-                path = process_url(u, conn=conn, delay=delay, headless=headless)
-            return (idx, u, str(path), None)
-        except Exception as e:
-            return (idx, u, None, e)
+            res = []
+            for idx, u in idx_url_chunk:
+                print(f"[启动] [{idx}/{total}] {u}")
+                try:
+                    with engine.begin() as conn:
+                        path = process_url(u, conn=conn, delay=delay, headless=headless, driver=driver)
+                    res.append((idx, u, str(path), None))
+                except Exception as e:
+                    res.append((idx, u, None, e))
+            return res
+        finally:
+            try: driver.quit()
+            except Exception: pass
+
+    # 把 urls 拆成 N 份，每个 worker 处理一份
+    CHUNK = max(1, (len(indexed) + max_workers - 1) // max_workers)
+    chunks = [indexed[i:i+CHUNK] for i in range(0, len(indexed), CHUNK)]
 
     ok, fail = 0, 0
     with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="very") as ex:
-        futures = [ex.submit(_worker, iu) for iu in indexed]
+        futures = [ex.submit(_worker, chunk) for chunk in chunks]
         for fut in as_completed(futures):
-            idx, u, path, err = fut.result()
-            if err is None:
-                ok += 1
-                print(f"[完成] [{idx}/{total}] ✅ {u} -> {path}")
-            else:
-                fail += 1
-                print(f"[失败] [{idx}/{total}] ❌ {u}\n    {repr(err)}")
+            for idx, u, path, err in fut.result():
+                if err is None:
+                    ok += 1
+                    print(f"[完成] [{idx}/{total}] ✅ {u} -> {path}")
+                else:
+                    fail += 1
+                    print(f"[失败] [{idx}/{total}] ❌ {u}\n    {repr(err)}")
 
     print(f"\n📦 任务结束：成功 {ok}，失败 {fail}，总计 {total}")
 
