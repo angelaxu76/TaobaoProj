@@ -7,7 +7,7 @@ from common_taobao.core.price_utils import calculate_jingya_prices  # ✅ 定价
 
 # ============ ✅ 品牌折扣配置 =============
 BRAND_DISCOUNT = {
-    "camper": 0.75,
+    "camper": 0.71,
     "geox": 0.85,
     "clarks_jingya": 1,
     # 默认：1.0（无折扣）

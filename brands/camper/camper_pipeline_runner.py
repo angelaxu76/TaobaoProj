@@ -52,7 +52,7 @@ def main():
     # export_skuid_stock_excel("camper")
 
     print("\n🟡 Step: 6️⃣ 输出低库存的商品，准备下架")
-    export_low_stock_for_brand("camper", threshold=5)
+    #export_low_stock_for_brand("camper", threshold=5)
 
     print("\n✅ CAMPER pipeline 完成")
 

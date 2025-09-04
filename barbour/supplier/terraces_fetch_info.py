@@ -14,6 +14,73 @@ import hashlib
 from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
+from barbour.core.site_utils import assert_site_or_raise as canon
+from barbour.core.sim_matcher import match_product, choose_best, explain_results
+from sqlalchemy import create_engine
+from config import BARBOUR, BRAND_CONFIG
+
+# ==== 浏览器兜底（与 very 同风格） ====
+import shutil, subprocess, sys
+import undetected_chromedriver as uc
+
+def _get_chrome_major_version() -> int | None:
+    try:
+        import winreg
+    except Exception:
+        winreg = None
+    if winreg is not None and sys.platform.startswith("win"):
+        reg_paths = [
+            (winreg.HKEY_CURRENT_USER,  r"SOFTWARE\Google\Chrome\BLBeacon"),
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Google\Chrome\BLBeacon"),
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Google\Chrome\BLBeacon"),
+        ]
+        for hive, path in reg_paths:
+            try:
+                with winreg.OpenKey(hive, path) as k:
+                    ver, _ = winreg.QueryValueEx(k, "version")
+                    m = re.search(r"^(\d+)\.", ver)
+                    if m:
+                        return int(m.group(1))
+            except OSError:
+                pass
+    for exe in ["chrome", r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"]:
+        path = shutil.which(exe) or exe
+        try:
+            out = subprocess.check_output([path, "--version"], stderr=subprocess.STDOUT, text=True, timeout=3)
+            m = re.search(r"(\d+)\.\d+\.\d+\.\d+", out)
+            if m:
+                return int(m.group(1))
+        except Exception:
+            continue
+    return None
+
+def _get_uc_driver(headless: bool = True):
+    def make_options():
+        opts = uc.ChromeOptions()
+        if headless: opts.add_argument("--headless=new")
+        opts.add_argument("--disable-blink-features=AutomationControlled")
+        opts.add_argument("--start-maximized")
+        opts.add_argument("--disable-gpu")
+        opts.add_argument("--no-sandbox")
+        return opts
+    last_err = None
+    try:
+        return uc.Chrome(options=make_options(), headless=headless, use_subprocess=True)
+    except Exception as e:
+        last_err = e
+    try:
+        vm = _get_chrome_major_version()
+        if vm:
+            return uc.Chrome(options=make_options(), headless=headless, use_subprocess=True, version_main=vm)
+    except Exception as e2:
+        last_err = e2
+    raise last_err
+
+
+PRODUCTS_TABLE: str = BRAND_CONFIG.get("barbour", {}).get("PRODUCTS_TABLE", "barbour_products")
+PG = BRAND_CONFIG["barbour"]["PGSQL_CONFIG"]  # ✅ 注意这里
+
 
 # 项目内的通用 TXT 写入（若存在则优先使用，字段/顺序将与全站一致）
 try:
@@ -24,7 +91,7 @@ except Exception:
 from config import BARBOUR  # 复用全局配置（含 LINKS_FILES / TXT_DIRS）
 
 SUPPLIER_KEY  = "terraces"
-SITE_NAME     = "Terraces Menswear"
+SITE_NAME     = canon(SUPPLIER_KEY)   # ✅ 按 config 标准化
 UA            = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                  "AppleWebKit/537.36 (KHTML, like Gecko) "
                  "Chrome/119.0.0.0 Safari/537.36")
@@ -47,6 +114,16 @@ UA_POOL = [
 ]
 BASE_HOME = "https://www.terracesmenswear.co.uk/"
 LISTING_REFERER = "https://www.terracesmenswear.co.uk/mens-outlet"
+
+engine_url = (
+    f"postgresql+psycopg2://{PG['user']}:{PG['password']}"
+    f"@{PG['host']}:{PG['port']}/{PG['dbname']}"
+)
+_ENGINE = create_engine(engine_url)
+
+def get_raw_connection():
+    return _ENGINE.raw_connection()
+
 
 # ==================== 工具函数 ====================
 def _safe_filename(s: str) -> str:
@@ -194,6 +271,69 @@ def _price_to_num(s: str) -> str:
     m = re.search(r"(\d+(?:\.\d+)?)", s)
     return m.group(1) if m else "No Data"
 
+def _sleep_jitter(base: float = 1.0):
+    time.sleep(base * random.uniform(0.6, 1.4))
+
+def _refresh_session(sess: requests.Session):
+    """预热首页，刷新 cookie / anti-bot token"""
+    try:
+        sess.get(BASE_HOME, timeout=20)
+    except Exception:
+        pass
+
+def fetch_product_html(sess: requests.Session, url: str, timeout: int = 25) -> str | None:
+    """
+    先 requests（带 Referer），失败/被挡再回退 UC 浏览器拿 page_source。
+    附带更多日志，便于定位：打印 HTTP 状态码及重试路径。
+    """
+    base_headers = {
+        "User-Agent": sess.headers.get("User-Agent", random.choice(UA_POOL)),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-GB,en;q=0.9",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+        "Referer": LISTING_REFERER,
+    }
+
+    # 1) requests 直连
+    try:
+        r = sess.get(url, headers=base_headers, timeout=timeout)
+        if r.status_code == 200 and r.text and ("<html" in r.text.lower()):
+            return r.text
+        print(f"  ↪ requests got status {r.status_code} for {url}")
+    except Exception as e:
+        print(f"  ↪ requests error: {e!r}")
+
+    # 2) requests 再试一次（补尾斜杠）
+    try:
+        u2 = url if url.endswith("/") else (url + "/")
+        r2 = sess.get(u2, headers=base_headers, timeout=timeout)
+        if r2.status_code == 200 and r2.text and ("<html" in r2.text.lower()):
+            return r2.text
+        print(f"  ↪ requests(/{''}) got status {r2.status_code} for {u2}")
+    except Exception as e2:
+        print(f"  ↪ requests(/{''}) error: {e2!r}")
+
+    # 3) —— 浏览器兜底（最稳，但较慢）——
+    try:
+        drv = _get_uc_driver(headless=True)
+        try:
+            drv.get(url)
+            time.sleep(random.uniform(1.2, 2.2))  # 轻微抖动
+            html = drv.page_source
+            if html and ("<html" in html.lower()):
+                print("  ↪ UC fallback succeeded")
+                return html
+        finally:
+            try: drv.quit()
+            except Exception: pass
+    except Exception as e3:
+        print(f"  ↪ UC fallback error: {e3!r}")
+
+    return None
+
+
+
 def _parse_page(html: str, url: str) -> dict:
     soup = BeautifulSoup(html, "lxml")
 
@@ -275,6 +415,33 @@ def _parse_page(html: str, url: str) -> dict:
     style_category = "No Data"   # 未提供类目
     feature_join   = "; ".join(features) if features else "No Data"
 
+        # ========== 商品编码匹配 ==========
+    product_code = "No Data"
+    try:
+        raw_conn = get_raw_connection() 
+        results = match_product(
+            raw_conn,
+            scraped_title=name,
+            scraped_color=color,
+            table=PRODUCTS_TABLE,   # 建议用统一配置表名
+            name_weight=0.72,
+            color_weight=0.18,
+            type_weight=0.10,
+            topk=5,
+            recall_limit=2000,
+            min_name=0.92,
+            min_color=0.85,
+            require_color_exact=False,
+            require_type=False,
+        )
+        product_code = choose_best(results)
+        print("🔎 match debug")
+        print(f"  raw_title: {name}")
+        print(f"  raw_color: {color}")
+        
+    except Exception as e:
+        print(f"❌ 匹配失败: {e}")
+
     # 返回与 HOF/Very 对齐的键名
     return {
         "Product Code":        product_code,
@@ -293,12 +460,34 @@ def _parse_page(html: str, url: str) -> dict:
         "Site Name":           SITE_NAME,
     }
 
+def _resolve_output_path(info: dict, out_dir: Path) -> Path:
+    """
+    有编码 → {code}.txt
+    无编码 → _UNMATCHED/<CleanTitle[_Color]>_<hash4>.txt
+    """
+    code = (info.get("Product Code") or "").strip()
+    if code and code.lower() != "no data":
+        return out_dir / f"{code}.txt"
+
+    # —— 没匹配上：放入 _UNMATCHED 子目录，避免与已匹配混在一起
+    subdir = out_dir / "_UNMATCHED"
+    subdir.mkdir(parents=True, exist_ok=True)
+
+    title = info.get("Product Name") or "No_Data"
+    color = info.get("Product Color") or ""
+    base  = _safe_filename(f"{title}" + (f"_{color}" if color and color != "No Data" else ""))
+    # 用 Source URL + 标题 生成短哈希，降低重名风险
+    suffix = _short_hash((info.get("Source URL") or "") + title)
+    return subdir / f"{base}_{suffix}.txt"
+
+
 # ==================== 写盘 ====================
 def _write_txt(info: dict, out_dir: Path) -> Path:
     title = info.get("Product Name") or "No_Data"
     color = info.get("Product Color") or ""
     base  = _safe_filename(f"{title}" + (f"_{color}" if color and color != "No Data" else ""))
-    path  = out_dir / f"{base}_{_short_hash(info.get('Source URL'))}.txt"
+    code = info.get("Product Code") or "NoData"
+    path = _resolve_output_path(info, out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if write_txt is not None:
@@ -335,22 +524,42 @@ def terraces_fetch_info(max_count: int | None = None, timeout: int = 30) -> None
     print(f"📄 共 {len(urls)} / {total} 个商品页面待解析...")
 
     sess = requests.Session()
-    sess.headers.update(HEADERS)
+    # 初始 UA + 预热首页拿 cookie
+    sess.headers.update({"User-Agent": random.choice(UA_POOL)})
+    _refresh_session(sess)
 
     ok = fail = 0
+    failed_links_path = out_dir.parent / "terraces_failed.txt"
+    failed = []
+
     for i, url in enumerate(urls, 1):
         try:
-            print(f"\n🌐 正在抓取: {url}")
-            resp = sess.get(url, timeout=timeout)
-            resp.raise_for_status()
-            info = _parse_page(resp.text, url)
+            # 每抓 40 个短暂停顿，降低触发率
+            if i % 40 == 0:
+                print("⏳ 节流中（短暂休息 8s）...")
+                time.sleep(8)
+
+            print(f"\n🌐 正在抓取: {url}  [{i}/{len(urls)}]")
+            html = fetch_product_html(sess, url, timeout=timeout)
+            if not html:
+                raise requests.HTTPError("fetch_product_html returned None")
+
+            info = _parse_page(html, url)
             _write_txt(info, out_dir)
             ok += 1
+
         except Exception as e:
             fail += 1
+            failed.append(url)
             print(f"[失败] [{i}/{len(urls)}] ❌ {url}\n    {repr(e)}")
 
+    if failed:
+        failed_links_path.parent.mkdir(parents=True, exist_ok=True)
+        failed_links_path.write_text("\n".join(failed), encoding="utf-8")
+        print(f"\n⚠️ 已将失败链接写入: {failed_links_path}")
+
     print(f"\n完成：成功 {ok}，失败 {fail}，输出目录：{out_dir}")
+
 
 if __name__ == "__main__":
     terraces_fetch_info()
