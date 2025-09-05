@@ -372,3 +372,11 @@ AND product_code NOT IN  ('MWX0700OL51', 'MWX0700RU71', 'MWX0700NY51', 'MQU0240O
 
 
 "SELECT DISTINCT product_code FROM barbour_inventory WHERE size ~ '^(XS|S|M|L|XL|XXL|3XL|4XL)$' AND product_code NOT IN  ('MWX0700OL51', 'MWX0700RU71', 'MWX0700NY51', 'MQU0240OL71', 'MQU0240BK11', 'MQU0240NY92', 'MWX0339OL71', 'MWX0339NY92', 'MWX0339BK72');
+
+
+
+
+SELECT * FROM barbour_inventory
+
+
+select * from barbour_supplier_map where product_code = 'LSP0220BL11'

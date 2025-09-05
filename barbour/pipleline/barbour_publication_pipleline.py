@@ -4,19 +4,20 @@ from barbour.jingya.insert_jingyaid_to_db_barbour import insert_jingyaid_to_db,i
 from barbour.common.export_barbour_discounts import export_barbour_discounts_excel
 from barbour.common.generate_barbour_publication_excel import generate_publication_excel
 from barbour.common.generate_sql_for_pulication import generate_select_sql_from_excel
+from barbour.common.generate_barbour_prices_from_avg import generate_price_for_jingya_publication
 
 
 def pipeline_barbour():
     print("\n🚀 启动 Barbour - House of Fraser 全流程抓取")
 
     # 步骤 1：导出打折的商品可以发布的商品列表到excel
-    excel_path = export_barbour_discounts_excel(19, 3, "LSP")
-    print(excel_path)
+    #excel_path = export_barbour_discounts_excel(19, 3, "LSP")
+    #print(excel_path)
 
     # 步骤 1：将产品的编码放到D:\TB\Products\barbour\repulibcation\codes.txt
     # 步骤 2：生成发布产品的excel
-    print("\n🌐 步骤 1：抓取商品链接")
-   # generate_publication_excel()
+    # print("\n🌐 步骤 1：抓取商品链接")
+    # generate_publication_excel()
 
     print("\n步骤 2：生成透明图+背景图")
     fg_dir=Path(r"D:\TB\Products\barbour\images\透明图")
@@ -34,7 +35,7 @@ def pipeline_barbour():
     print("\n步骤 4：生成价格表")
     DEFAULT_INFILE = BARBOUR["OUTPUT_DIR"] / "channel_products.xlsx"
     DEFAULT_OUTFILE = BARBOUR["OUTPUT_DIR"] / "barbour_price_quote.xlsx"
-    #generate_price_for_jingya_publication(DEFAULT_INFILE,DEFAULT_OUTFILE)
+    generate_price_for_jingya_publication(DEFAULT_OUTFILE)
 
     print("\n步骤 5：将鲸芽商品编码和尺码和相关ID插入数据库占位,库存初始化为0")
     #insert_missing_products_with_zero_stock("barbour")
