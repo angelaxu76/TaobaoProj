@@ -9,6 +9,11 @@ from barbour.supplier.allweathers_fetch_info import allweathers_fetch_info
 from barbour.supplier.allweathers_get_links import allweathers_get_links
 from barbour.supplier.houseoffraser_get_links import houseoffraser_get_links
 from barbour.supplier.houseoffraser_fetch_info import houseoffraser_fetch_info
+from barbour.supplier.very_fetch_info import very_fetch_info
+from barbour.supplier.very_get_links import very_get_links
+from barbour.supplier.terraces_fetch_info import terraces_fetch_info
+from barbour.supplier.terraces_get_links import collect_terraces_links
+
 from barbour.jingya.insert_jingyaid_to_db_barbour import insert_missing_products_with_zero_stock, insert_jingyaid_to_db
 from barbour.jingya.fill_offer_to_barbour_inventory import backfill_barbour_inventory_mapped_only
 from barbour.common.fill_supplier_jingya_map import fill_supplier_map
@@ -21,12 +26,17 @@ def barbour_database_import_pipleline():
     # outdoorandcountry_fetch_and_save_links()
     # allweathers_get_links()5
     # houseoffraser_get_links()
+    # very_get_links()
+    # collect_terraces_links()
 
     # Step 1: TODO 将txt中数据导入barbour product中
     # barbour_fetch_info()
     # outdoorandcountry_fetch_info(max_workers=10)
     # allweathers_fetch_info(7)
-    houseoffraser_fetch_info(max_workers=2, headless=False)
+    # houseoffraser_fetch_info(max_workers=2, headless=False)
+    # very_fetch_info()
+    # terraces_fetch_info()
+
 
     # Step 2: TODO 将txt中数据导入barbour product中
     #batch_import_txt_to_barbour_product("barbour")
@@ -37,17 +47,20 @@ def barbour_database_import_pipleline():
     #import_txt_for_supplier("barbour")
     #import_txt_for_supplier("outdoorandcountry")
     #import_txt_for_supplier("allweathers")
+    import_txt_for_supplier("houseoffraser")
+    import_txt_for_supplier("very")
+    import_txt_for_supplier("terraces")
 
 
-    res = run_missing_offers_import(
-    brand="barbour",
-    suppliers=["houseoffraser"],  # 或 None / ["all"]
-    debug=True,
-    rf_threshold=80,
-    rf_margin=3,
-    topk=5,
-    )
-    print(res)
+    # res = run_missing_offers_import(
+    # brand="barbour",
+    # suppliers=["houseoffraser"],  # 或 None / ["all"]
+    # debug=True,
+    # rf_threshold=80,
+    # rf_margin=3,
+    # topk=5,
+    # )
+    # print(res)
 
     # Step 4: TODO 将鲸芽已经发布的产品先填充到barbour inventory表，库存补0，后续在靠真实库存来填充
     # insert_missing_products_with_zero_stock("barbour")

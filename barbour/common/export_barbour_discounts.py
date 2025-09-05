@@ -14,24 +14,30 @@ import pandas as pd
 from config import BARBOUR, ensure_all_dirs  # 确保 ensure_all_dirs 存在
 
 SQL = """
+WITH p1 AS (
+  SELECT product_code, MIN(style_name) AS style_name
+  FROM barbour_products
+  WHERE product_code IS NOT NULL
+  GROUP BY product_code
+)
 SELECT
   o.product_code,
-  p.style_name AS product_style_name,
-  o.site_name,
-  o.offer_url,
+  MIN(p1.style_name) AS product_style_name,
+  STRING_AGG(DISTINCT o.site_name, ', ') AS site_names,
+  STRING_AGG(DISTINCT o.offer_url, ', ') AS offer_urls,
   MIN(o.price_gbp)::numeric(10,2)          AS price_gbp,
   MIN(o.original_price_gbp)::numeric(10,2) AS original_price,
   MAX(o.discount_pct)                      AS discount_pct,
   STRING_AGG(DISTINCT o.size, ',' ORDER BY o.size) AS sizes_in_stock,
   COUNT(DISTINCT o.size) FILTER (WHERE o.stock_count > 0) AS available_count
 FROM barbour_offers o
-LEFT JOIN barbour_products p
-  ON o.product_code = p.product_code
+LEFT JOIN p1
+  ON o.product_code = p1.product_code
 WHERE o.product_code IS NOT NULL
   AND o.stock_count > 0
   AND o.discount_pct > %s
   AND (%s IS NULL OR o.product_code ILIKE %s)
-GROUP BY o.product_code, p.style_name, o.site_name, o.offer_url
+GROUP BY o.product_code
 HAVING COUNT(DISTINCT o.size) > %s
 ORDER BY discount_pct DESC, price_gbp ASC, o.product_code;
 """
@@ -43,7 +49,7 @@ def export_barbour_discounts_excel(min_discount: float, min_sizes: int, code_lik
     """
     导出到 Excel 并返回文件路径
     """
-    out_dir: Path = BARBOUR["PUBLICATION_DIR"]
+    out_dir: Path = BARBOUR["OUTPUT_DIR"]
     ensure_all_dirs(out_dir)
 
     kw_like = f"%{code_like}%" if code_like else None
@@ -55,6 +61,9 @@ def export_barbour_discounts_excel(min_discount: float, min_sizes: int, code_lik
         rows = cur.fetchall()
 
     df = pd.DataFrame(rows, columns=cols)
+    df = df.sort_values(["discount_pct", "price_gbp", "product_code"], ascending=[False, True, True])\
+       .drop_duplicates(subset=["product_code"], keep="first")
+
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     kw_tag = _sanitize(code_like) if code_like else "ALL"
