@@ -376,7 +376,8 @@ AND product_code NOT IN  ('MWX0700OL51', 'MWX0700RU71', 'MWX0700NY51', 'MQU0240O
 
 
 
-SELECT * FROM barbour_inventory
+SELECT jingya_price_rmb, taobao_price_rmb 
+FROM barbour_inventory where product_code = 'MWX0700RU71'
 
 
-select * from barbour_supplier_map where product_code = 'LSP0220BL11'
+select * from barbour_supplier_map where product_code = 'MQU1829BK11'
