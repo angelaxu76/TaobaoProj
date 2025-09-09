@@ -80,9 +80,7 @@ def get_links_from_page(url):
     links = set()
 
     # 选择器 1：兼容当前网格卡片（你现有脚本使用的 class）
-    cards = soup.find_all("div", class_="ant-col grid-item overflow-hidden ant-col-xs-12 ant-col-md-8 ant-col-lg-6 ant-col-xl-6 ant-col-xxl-6")
-    for div in cards:
-        a_tag = div.find("a", class_="block")
+    for a_tag in soup.select("div.grid-item a.block[href]"):
         if a_tag and a_tag.get("href"):
             href = a_tag["href"].strip()
             if href.startswith("/"):
@@ -91,14 +89,16 @@ def get_links_from_page(url):
 
     # 选择器 2：兜底，抓取所有商品卡片上的 <a>（避免 UI 细微变动时丢失）
     if not links:
-        for a in soup.select("a[href*='/en_GB/']"):
-            href = a.get("href", "").strip()
+        for a in soup.select("a[href*='//www.camper.com/en_']"):
+            href = (a.get("href") or "").strip()
             if not href:
                 continue
-            if "/p/" in href or "/product/" in href:
-                if href.startswith("/"):
-                    href = LINK_PREFIX + href
-                links.add(href)
+            if ("/women/shoes/" in href or "/men/shoes/" in href or "/kids/shoes/" in href):
+                # 详情页层级更深，粗略过滤掉列表/筛选页
+                if href.count("/") >= 7:
+                    if href.startswith("/"):
+                        href = LINK_PREFIX + href
+                    links.add(href)
 
     return list(links)
 

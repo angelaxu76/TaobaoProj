@@ -69,6 +69,7 @@ def allweathers_get_links():
     driver.quit()
 
     # 写入文件
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)  # ✅ 确保目录存在
     OUTPUT_PATH.write_text("\n".join(sorted(all_links)), encoding="utf-8")
     print(f"\n🎯 共提取 {len(all_links)} 条商品链接，已保存至：{OUTPUT_PATH}")
 
