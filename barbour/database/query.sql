@@ -379,7 +379,10 @@ AND product_code NOT IN  ('MWX0700OL51', 'MWX0700RU71', 'MWX0700NY51', 'MQU0240O
 SELECT * 
 FROM barbour_inventory where product_code = 'LSP0242OL51'
 
-select * from barbour_offers where product_code = 'LSP0242OL51'
+select * from barbour_offers where product_code = 'LCA0353BK11'
 
 
-select * from barbour_supplier_map where product_code = 'MQU1829BK11'
+select * from barbour_supplier_map where product_code = 'LCA0353BK11'
+
+
+select * from barbour_products

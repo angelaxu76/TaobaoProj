@@ -200,3 +200,28 @@ CREATE TABLE IF NOT EXISTS barbour_supplier_map (
   product_code VARCHAR(50) PRIMARY KEY,
   site_name    VARCHAR(100) NOT NULL  -- 和 barbour_offers.site_name 对齐
 );
+
+
+CREATE TABLE IF NOT EXISTS barbour_product_candidates (
+  id           SERIAL PRIMARY KEY,
+  site_name    VARCHAR(100) NOT NULL,
+  source_url   TEXT NOT NULL,
+  style_name   VARCHAR(255) NOT NULL,
+  color        VARCHAR(100) NOT NULL,
+  size         VARCHAR(20) NOT NULL,
+  gender       VARCHAR(20),
+  category     VARCHAR(100),
+  title        VARCHAR(255),
+  product_description TEXT,
+  match_keywords TEXT[],
+  created_at   TIMESTAMP DEFAULT NOW(),
+  updated_at   TIMESTAMP DEFAULT NOW(),
+  UNIQUE (site_name, source_url, size)
+);
+
+
+CREATE OR REPLACE FUNCTION trg_bpc_touch() RETURNS TRIGGER AS $$
+BEGIN NEW.updated_at := NOW(); RETURN NEW; END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS bpc_touch ON barbour_product_candidates;
+CREATE TRIGGER bpc_touch BEFORE UPDATE ON barbour_product_candidates
+FOR EACH ROW EXECUTE FUNCTION trg_bpc_touch();

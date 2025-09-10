@@ -3,13 +3,13 @@ import shutil
 from math import ceil
 
 # 原始图片目录
-source_dir = r"D:\TB\Products\reiss\publication\image_cutter_reduceSize"
+source_dir = r"C:\Users\martin\Desktop\image_cutter"
 
 # 目标根目录（可以修改为其他路径）
-target_root_dir = r"D:\TB\Products\reiss\publication\image_cutter_reduceSize分组图片"
+target_root_dir = r"C:\Users\martin\Desktop\image_cutter分组图片"
 
 # 每组的图片数量
-group_size = 200
+group_size = 250
 
 # 支持的图片扩展名
 image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
