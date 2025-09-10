@@ -172,34 +172,76 @@ def accept_cookies(driver, timeout=8):
     except:
         print("⚠️ 未出现 Cookie 接受按钮，可能已接受或被跳过")
 
-def scroll_like_mouse_until_loaded(driver, step=SCROLL_STEP, pause=SCROLL_PAUSE, stable_threshold=STABLE_THRESHOLD):
-    print("⚡ 开始加速滚动直到商品全部加载...")
-    actions = ActionChains(driver)
+def scroll_like_mouse_until_loaded(
+    driver,
+    step=SCROLL_STEP,
+    pause=SCROLL_PAUSE,
+    stable_threshold=STABLE_THRESHOLD,
+    max_scrolls=200,            # ✅ 硬上限，防止无限循环
+    max_seconds=120             # ✅ 总时长上限（秒）
+):
+    """
+    连续滚动直到：
+      1) 可见链接数在 stable_threshold 次检查中不再增加；或
+      2) 页面滚动高度在 stable_threshold 次检查中不再增加；或
+      3) 已到页面底部并且等待若干次仍无新增；或
+      4) 触发硬上限（max_scrolls / max_seconds）
+    """
+    print("⚡ 开始滚动直到商品全部加载...")
+    start_ts = time.time()
 
-    last_count = 0
+    last_link_count = 0
+    last_scroll_height = 0
     stable_count = 0
     total_scrolls = 0
 
     while True:
-        actions.scroll_by_amount(0, step).perform()
+        # 1) 先模拟鼠标滚动一步
+        driver.execute_script("window.scrollBy(0, arguments[0]);", step)
         time.sleep(pause)
 
+        # 2) 解析当前页面的“唯一商品链接数”（更稳定）
         html = driver.page_source
-        soup = BeautifulSoup(html, "html.parser")
-        current_count = len(soup.select("a.image"))
-        print(f"🌀 滚动 {total_scrolls+1} 次后，商品数: {current_count}")
+        current_links = collect_links_from_html(html)
+        link_count = len(current_links)
 
-        if current_count == last_count:
+        # 3) 获取滚动高度（判断是否还在增长）
+        scroll_height = driver.execute_script("return document.body.scrollHeight;")
+        viewport_bottom = driver.execute_script("return window.scrollY + window.innerHeight;")
+        at_bottom = viewport_bottom >= scroll_height - 5  # 允许微小误差
+
+        print(f"🌀 滚动 {total_scrolls+1} 次 | 链接: {link_count} | 高度: {scroll_height} | at_bottom={at_bottom}")
+
+        # 4) 判断是否“稳定不变”
+        no_new_links = (link_count == last_link_count)
+        no_new_height = (scroll_height == last_scroll_height)
+
+        if no_new_links and (no_new_height or at_bottom):
             stable_count += 1
         else:
             stable_count = 0
-            last_count = current_count
+            last_link_count = link_count
+            last_scroll_height = scroll_height
 
+        # 5) 满足任何一种停止条件就退出
         if stable_count >= stable_threshold:
-            print(f"✅ 商品数量稳定（{current_count}），停止滚动")
+            print(f"✅ 已稳定 {stable_count} 次，停止滚动（链接 {link_count}）")
+            break
+
+        if total_scrolls >= max_scrolls:
+            print(f"⏹️ 达到最大滚动次数 {max_scrolls}，停止")
+            break
+
+        if time.time() - start_ts >= max_seconds:
+            print(f"⏹️ 达到最长等待 {max_seconds}s，停止")
             break
 
         total_scrolls += 1
+
+    # 最后，再尝试一次滚到底（有些站点需要）
+    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+    time.sleep(1.0)
+
 
 def collect_links_from_html(html):
     soup = BeautifulSoup(html, "html.parser")
