@@ -52,6 +52,10 @@ def main():
     trim_sides_batch(CAMPER["HTML_IMAGE_FIRST_PAGE"],CAMPER["HTML_CUTTER_FIRST_PAGE"])
 
     print("导出发布商品的价格")
+    code_file_path = r"D:\TB\Products\camper\repulibcation\publication_codes.txt"
+    code_missing_path = r"D:\TB\Products\camper\repulibcation\publication_codes_missing.txt"
+    
+
     # export_channel_price_excel_from_txt("camper",code_file_path)
     # code_missing_path = r"D:\TB\Products\camper\repulibcation\publication_codes_missing.txt"
     # export_channel_price_excel_from_channel_ids("camper",code_missing_path)

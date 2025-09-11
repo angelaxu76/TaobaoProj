@@ -2,7 +2,9 @@ import os
 import subprocess
 from config import CAMPER
 from common_taobao.jingya.import_channel_info_from_excel import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
-from common_taobao.jingya.export_channel_price_excel import export_channel_price_excel,export_all_sku_price_excel
+from common_taobao.jingya.export_channel_price_excel import export_channel_price_excel,export_all_sku_price_excel,export_channel_price_excel_from_txt
+from common_taobao.jingya.jingya_export_stockcount_to_excel import export_stock_excel
+from common_taobao.jingya.jiangya_export_channel_price_excel import export_jiangya_channel_prices
 from common_taobao.backup_and_clear import backup_and_clear_brand_dirs
 from common_taobao.jingya.jingya_import_txt_to_db import import_txt_to_db_supplier
 from common_taobao.jingya.disable_low_stock_product import disable_low_stock_products
@@ -41,12 +43,23 @@ def main():
     #export_gender_split_excel("camper")
 
     print("\\n🟡 Step: 6️⃣ 导出渠道价格 Excel（含零售价与商家编码），可以用于淘宝店铺去更新商品价格")
+    code_file_path = r"D:\TB\Products\camper\repulibcation\publication_codes.txt"
+    code_missing_path = r"D:\TB\Products\camper\repulibcation\publication_codes_missing.txt"
+    # export_channel_price_excel_from_txt("camper",code_file_path)
     # export_channel_price_excel("camper", r"D:\TB\Products\camper\repulibcation\exclude_codes.txt") # 导出价格明细（已发布）
     # export_all_sku_price_excel("camper")  # 导出商家编码价格表（所有商品）
 
+    print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
+    stock_dest_excel_folder = r"D:\TB\Products\camper\repulibcation"
+    export_stock_excel("camper",stock_dest_excel_folder)
+
+    price_dest_excel = r"D:\TB\Products\camper\repulibcation\publication_prices.xlsx"
+    export_jiangya_channel_prices("camper",price_dest_excel)
+
+
 
     print("\\n🟡 Step: 6️⃣生成发布产品的excel")
-    generate_publication_excels("camper")
+    # generate_publication_excels("camper")
 
     print("\n🟡 Step: 6️⃣ 导出库存 Excel")
     # export_skuid_stock_excel("camper")

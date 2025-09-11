@@ -106,6 +106,12 @@ def insert_jingyaid_to_db(brand: str):
         print("✅ 没有无法解析的记录")
 
 def insert_missing_products_with_zero_stock(brand: str):
+    """
+    从 GEI@sales_catalogue_export@*.xlsx 补齐数据库：
+    - 对缺失的 (product_code, size) 插入新行（stock_count=0），并写入 skuid / channel_product_id / channel_item_id / sku_name；
+    - 对已存在但 skuid 为空的行进行 UPDATE 补齐；
+    - 仅以 GEI 里实际出现过的尺码为准，不再根据标题猜尺码。
+    """
     brand = brand.lower()
     if brand not in BRAND_CONFIG:
         raise ValueError(f"❌ 不支持的品牌: {brand}")
@@ -114,7 +120,6 @@ def insert_missing_products_with_zero_stock(brand: str):
     document_dir = Path(config["BASE"]) / "document"
     output_dir = Path(config["OUTPUT_DIR"])
     output_dir.mkdir(parents=True, exist_ok=True)
-    missing_file = output_dir / "missing_product_codes.txt"
 
     db_config = config["PGSQL_CONFIG"]
     table_name = config["TABLE_NAME"]
@@ -122,74 +127,134 @@ def insert_missing_products_with_zero_stock(brand: str):
     gei_file = find_latest_gei_file(document_dir)
     df = pd.read_excel(gei_file)
 
-    # ✅ 创建映射表：product_code -> (title, channel_product_id, channel_item_id)
-    product_info_map = {}
+    # —— 1) 解析 GEI：构建 (product_code, size) → info 映射（含 skuid）
+    # GEI 列名示例：sku名称（形如 "K200155-025，40"），渠道产品id，货品id，skuID
+    sku_map = {}  # key: (code, size) -> dict(...)
+    unparsed_rows = []
+
     for _, row in df.iterrows():
-        sku_name_raw = str(row.get("sku名称", ""))
-        if "，" in sku_name_raw:
-            code = sku_name_raw.split("，")[0].strip()
-            product_info_map[code] = {
-                "title": str(row.get("渠道产品名称", "")),
-                "channel_product_id": str(row.get("渠道产品id", "")).strip(),
-                "channel_item_id": str(row.get("货品id", "")).strip()
-            }
+        sku_name_raw = str(row.get("sku名称", "")).strip()
+        if "，" not in sku_name_raw:
+            unparsed_rows.append({
+                "sku名称": sku_name_raw,
+                "渠道产品id": str(row.get("渠道产品id", "")),
+                "货品id": str(row.get("货品id", "")),
+                "skuID": str(row.get("skuID", "")),
+            })
+            continue
 
-    inserted = 0
+        parts = [p.strip() for p in sku_name_raw.split("，")]
+        if len(parts) != 2:
+            unparsed_rows.append({
+                "sku名称": sku_name_raw,
+                "渠道产品id": str(row.get("渠道产品id", "")),
+                "货品id": str(row.get("货品id", "")),
+                "skuID": str(row.get("skuID", "")),
+            })
+            continue
 
+        code, size = parts
+        skuid = str(row.get("skuID", "")).strip()
+        channel_product_id = str(row.get("渠道产品id", "")).strip()
+        channel_item_id = str(row.get("货品id", "")).strip()
+        # 你的 insert_jingyaid_to_db 里这样构造 sku_name：
+        sku_name = code.replace("-", "") + size
+
+        sku_map[(code, size)] = {
+            "product_code": code,
+            "size": size,
+            "skuid": skuid,
+            "channel_product_id": channel_product_id,
+            "channel_item_id": channel_item_id,
+            "sku_name": sku_name,
+        }
+
+    print(f"🧩 解析 GEI 完成：有效 (code,size) = {len(sku_map)}")
+
+    if unparsed_rows:
+        pd.DataFrame(unparsed_rows).to_excel(output_dir / "unparsed_sku_names.xlsx", index=False)
+        print(f"⚠️ 无法解析的 GEI 行已输出：{output_dir / 'unparsed_sku_names.xlsx'}")
+
+    # —— 2) 查询数据库已存在的 (product_code, size)
     conn = psycopg2.connect(**db_config)
+    existing_keys = set()
     with conn:
         with conn.cursor() as cur:
-            # 1. 从 Excel 提取所有 product_code
-            excel_product_codes = set(product_info_map.keys())
-
-            # 2. 查询数据库已有的 product_code
-            cur.execute(f"SELECT DISTINCT product_code FROM {table_name}")
-            db_product_codes = set([r[0] for r in cur.fetchall()])
-
-            # 3. 找出缺失的 product_code
-            missing_codes = excel_product_codes - db_product_codes
-            print(f"🔍 缺失商品编码数量: {len(missing_codes)}")
-
-            # 4. 输出缺失商品编码到 TXT 文件
-            with open(missing_file, "w", encoding="utf-8") as f:
-                for code in sorted(missing_codes):
-                    f.write(code + "\n")
-            print(f"✅ 缺失商品编码已写入文件：{missing_file}")
-
-            # 5. 插入缺失商品（带 channel_product_id 和 channel_item_id）
-            for code in missing_codes:
-                info = product_info_map.get(code, {})
-                title = info.get("title", "")
-                channel_product_id = info.get("channel_product_id", "")
-                channel_item_id = info.get("channel_item_id", "")
-
-                # 根据标题推断性别并设置尺码
-                if "男" in title:
-                    gender = "男款"
-                    sizes = ["39", "40", "41", "42", "43", "44", "45", "46"]
-                elif "女" in title:
-                    gender = "女款"
-                    sizes = ["35", "36", "37", "38", "39", "40", "41", "42"]
+            cur.execute(f"SELECT product_code, size, COALESCE(NULLIF(TRIM(skuid), ''), NULL) AS skuid FROM {table_name}")
+            rows = cur.fetchall()
+            # rows: list of tuples (code, size, skuid_or_none)
+            existing_with_skuid = set()
+            existing_without_skuid = set()
+            for code, size, sk in rows:
+                key = (str(code), str(size))
+                existing_keys.add(key)
+                if sk:
+                    existing_with_skuid.add(key)
                 else:
-                    gender = "男款"
-                    sizes = ["39", "40", "41", "42", "43", "44", "45", "46"]
+                    existing_without_skuid.add(key)
 
-                for size in sizes:
-                    insert_sql = f"""
-                        INSERT INTO {table_name} (
-                            product_code, product_url, size, gender,
-                            stock_count, channel_product_id, channel_item_id,
-                            is_published, last_checked
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, FALSE, CURRENT_TIMESTAMP)
-                    """
-                    cur.execute(insert_sql, (
-                        code, "", size, gender, 0,
-                        channel_product_id, channel_item_id
-                    ))
-                    inserted += 1
+    # —— 3) 需要插入的缺失键（只以 GEI 中有的数据为准）
+    to_insert = [k for k in sku_map.keys() if k not in existing_keys]
+    # —— 4) 需要更新 skuid 的键（库里有该行但 skuid 为空，且 GEI 有 skuid）
+    to_update = [k for k in existing_without_skuid if k in sku_map and sku_map[k]["skuid"]]
 
-    print(f"✅ 插入完成：新增 {inserted} 条（缺失商品共 {len(missing_codes)} 个）")
-    print(f"📂 TXT 文件位置: {missing_file}")
+    print(f"➕ 待插入: {len(to_insert)} 行；🛠 待补齐 skuid: {len(to_update)} 行")
+
+    inserted = 0
+    updated = 0
+
+    with conn:
+        with conn.cursor() as cur:
+            # 3) 插入缺失行（stock_count=0；带 skuid / channel_* / sku_name）
+            insert_sql = f"""
+                INSERT INTO {table_name} (
+                    product_code, product_url, size, gender,
+                    stock_count, channel_product_id, channel_item_id,
+                    skuid, sku_name,
+                    is_published, last_checked
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, FALSE, CURRENT_TIMESTAMP)
+            """
+            # 性别无法从 GEI 精准判断，这里不再猜；统一 None 或留空
+            for key in to_insert:
+                info = sku_map[key]
+                cur.execute(insert_sql, (
+                    info["product_code"],
+                    "",                  # product_url 占位
+                    info["size"],
+                    None,                # gender 不再猜
+                    0,                   # stock_count = 0
+                    info["channel_product_id"],
+                    info["channel_item_id"],
+                    info["skuid"],
+                    info["sku_name"],
+                ))
+                inserted += 1
+
+            # 4) 更新已有但 skuid 为空的行（同时补齐 sku_name 与 channel_*）
+            update_sql = f"""
+                UPDATE {table_name}
+                SET skuid = %s,
+                    sku_name = %s,
+                    channel_product_id = COALESCE(NULLIF(%s, ''), channel_product_id),
+                    channel_item_id = COALESCE(NULLIF(%s, ''), channel_item_id),
+                    last_checked = CURRENT_TIMESTAMP
+                WHERE product_code = %s AND size = %s AND (skuid IS NULL OR TRIM(skuid) = '')
+            """
+            for key in to_update:
+                info = sku_map[key]
+                cur.execute(update_sql, (
+                    info["skuid"],
+                    info["sku_name"],
+                    info["channel_product_id"],
+                    info["channel_item_id"],
+                    info["product_code"],
+                    info["size"],
+                ))
+                updated += cur.rowcount
+
+    conn.close()
+    print(f"✅ 插入完成：新增 {inserted} 行；✅ 补齐 skuid：更新 {updated} 行")
+
 
 
 

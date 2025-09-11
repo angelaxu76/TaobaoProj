@@ -47,6 +47,10 @@ def generate_channel_price_excel(
     # 读取排除清单
     excluded_codes = _load_excluded_codes(exclude_txt)
 
+    print(f"=== [DEBUG] groupby 前 df 行数: {len(df)} ===")
+    print("样例 product_code:", df["product_code"].head(5).tolist())
+    print("样例 channel_product_id:", df["channel_product_id"].head(5).tolist())
+
     # 先做分组
     df_grouped = df.groupby("channel_product_id").agg({
         "original_price_gbp": "first",
@@ -54,16 +58,39 @@ def generate_channel_price_excel(
         "product_code": "first"
     }).reset_index()
 
+    print(f"=== [DEBUG] groupby 后 df_grouped 行数: {len(df_grouped)} ===")
+    print("样例 product_code:", df_grouped["product_code"].head(5).tolist())
+    print("样例 channel_product_id:", df_grouped["channel_product_id"].head(5).tolist())
+    
     # 标准化商品编码后按排除表过滤
     df_grouped["product_code"] = df_grouped["product_code"].astype(str).str.strip().str.upper()
     if excluded_codes:
         df_grouped = df_grouped[~df_grouped["product_code"].isin(excluded_codes)]
 
+    print("df_grouped rows:", len(df_grouped))
+    print("df_grouped columns:", df_grouped.columns.tolist())
+    print(df_grouped.head(5))
     # 价格计算
     df_grouped["Base Price"] = df_grouped.apply(lambda row: get_brand_base_price(row, brand), axis=1)
-    df_grouped[["未税价格", "零售价"]] = df_grouped["Base Price"].apply(
-        lambda price: pd.Series(calculate_jingya_prices(price, delivery_cost=7, exchange_rate=9.7))
+    # 第一步：调用 calculate_jingya_prices
+    calc_results = df_grouped["Base Price"].apply(
+        lambda price: calculate_jingya_prices(price, delivery_cost=7, exchange_rate=9.7)
     )
+
+    print("=== DEBUG: 原始返回结果 ===")
+    print(calc_results.head(10))   # 看看每行返回的是什么类型/结构
+
+    # 第二步：把返回结果转换成 Series（展开成多列）
+    expanded = calc_results.apply(pd.Series)
+
+    print("=== DEBUG: 展开后的 DataFrame ===")
+    print(expanded.head(10))
+    print("expanded.shape:", expanded.shape)
+
+    # 第三步：给列起名字，再赋值到目标 df
+    expanded.columns = ["未税价格", "零售价"]
+    df_grouped[["未税价格", "零售价"]] = expanded
+
 
     # 导出
     df_prices = df_grouped[["channel_product_id", "product_code", "Base Price", "未税价格", "零售价"]]
@@ -130,10 +157,16 @@ def export_channel_price_excel_from_txt(brand: str, txt_path: str):
             WHERE product_code IS NOT NULL
         """
         df = pd.read_sql_query(query, conn)
+        print(f"=== SQL 读取后: {len(df)} 行 ===")
+
         df["product_code"] = df["product_code"].astype(str).str.strip().str.upper()
+        print(f"=== 标准化 product_code 后: {len(df)} 行，样例: {df['product_code'].head(5).tolist()} ===")
+
         df = df[df["product_code"].isin(codes)]
+        print(f"=== 按 TXT 里 {len(codes)} 个商品编码筛选后: {len(df)} 行 ===")
+
         out_path = out_dir / f"{brand.lower()}_channel_prices_by_codes.xlsx"
-        print(f"🔎 使用【商品编码】筛选，共 {len(codes)} 个编码")
+        print(f"🔎 使用【商品编码】筛选，共 {len(codes)} 个编码，匹配到 {len(df)} 行")
     finally:
         conn.close()
 

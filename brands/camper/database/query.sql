@@ -11,7 +11,7 @@ select DISTINCT product_code from camper_inventory where channel_item_id IS NOT 
 
 select * from camper
 
-select * from camper_inventory where product_code ='K400798-005'
+select * from camper_inventory where product_code ='80003-104'
 
 select * from camper_inventory where 
 
@@ -51,3 +51,19 @@ select size, stock_count from camper_inventory where product_code = 'K201803-001
 
 
 select DISTINCT product_code from camper_inventory where channel_item_id IS NOT null and gender = '女款' and product_code = 'K400758-006' ORDER BY product_code;
+
+
+
+SELECT product_code, channel_product_id, original_price_gbp, discount_price_gbp
+FROM camper_inventory
+WHERE product_code IN ('80003-104','K200631-009','K201659-009') LIMIT 50;
+
+
+select * from camper_inventory where channel_product_id = '968827262430'
+
+SELECT COUNT(*) AS with_channel_id_cnt
+FROM camper_inventory
+WHERE NULLIF(TRIM(channel_product_id), '') IS NOT NULL;
+
+SELECT COUNT(DISTINCT NULLIF(TRIM(channel_product_id), '')) AS distinct_channel_id_cnt
+FROM camper_inventory;
