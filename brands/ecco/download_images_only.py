@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # === 配置 ===
 PRODUCT_LINKS_FILE = ECCO["BASE"] / "publication" / "product_links.txt"
-IMAGE_DIR = ECCO["IMAGE_DIR"]
+IMAGE_DIR = ECCO["IMAGE_DIR_download"]
 CHROMEDRIVER_PATH = "D:/Software/chromedriver-win64/chromedriver.exe"
 WAIT = 0
 DELAY = 0
@@ -36,7 +36,10 @@ def download_images_from_soup(soup, formatted_code):
             continue
         img_url = img["src"].replace("DetailsMedium", "ProductDetailslarge3x")
         match = re.search(r'/([0-9A-Za-z-]+-(?:o|m|b|s|top_left_pair|front_pair))\.webp', img_url)
-        img_code = match.group(1) if match else formatted_code
+        if match:
+            img_code = _normalize_ecco_img_name(match.group(1))
+        else:
+            img_code = formatted_code  # 这里我们会把 formatted_code 传成 “款号色号”
         img_path = IMAGE_DIR / f"{img_code}.webp"
 
         if SKIP_EXISTING_IMAGE and img_path.exists():
@@ -50,6 +53,21 @@ def download_images_from_soup(soup, formatted_code):
             time.sleep(DELAY)
         except Exception as e:
             print(f"❌ 下载失败: {img_url} - {e}")
+
+
+def _normalize_ecco_img_name(raw: str) -> str:
+    """
+    把 '211703-61264-m' / '211703-61264-top_left_pair'
+    规范化为 '21170361264_m' / '21170361264_top_left_pair'
+    """
+    m = re.match(r'(?i)^(\d{6})-(\d{5})-(o|m|b|s|top_left_pair|front_pair)$', raw.strip())
+    if m:
+        style, color, view = m.groups()
+        return f"{style}{color}_{view.lower()}"
+    # 回退：把中横线都替换成下划线
+    return raw.replace("-", "_")
+
+
 
 def process_image_url(url):
     driver = None
@@ -66,9 +84,8 @@ def process_image_url(url):
 
         product_code = code_info.text.strip().split()[2]
         code, color = product_code[:6], product_code[6:]
-        formatted_code = f"{code}-{color}"
-
-        download_images_from_soup(soup, product_code)
+        formatted_code = f"{code}{color}"   # 作为正则失败时的后备主干名
+        download_images_from_soup(soup, formatted_code)
 
     except Exception as e:
         print(f"❌ 商品处理失败: {url} - {e}")

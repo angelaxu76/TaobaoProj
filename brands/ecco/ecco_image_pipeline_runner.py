@@ -5,6 +5,7 @@ from common_taobao.generate_html import generate_html_from_codes_files
 from common_taobao.generate_html_FristPage import generate_first_page_from_codes_files
 from helper.HTMLToPGNBatchMutipleThread import convert_html_to_images
 from helper.cutterAllsiderSpace import trim_sides_batch
+from brands.ecco.download_images_only import download_images_by_code_file
 from config import ECCO
 from pathlib import Path
 
@@ -13,18 +14,18 @@ def main():
     code_file_path = r"D:\TB\Products\ecco\repulibcation\publication_codes.txt"
 
     print("下载指定商品编码的的图片")
-    #download_images_by_code_file(r"D:\TB\Products\ecco\repulibcation\五小剑\missing_images.txt")
+    download_images_by_code_file(r"D:\TB\Products\ecco\repulibcation\五小剑\missing_images.txt")
 
     print("最大化裁剪，转JPG")
-    batch_convert_webp_to_jpg(ECCO["IMAGE_DIR_download"], r"D:\TB\Products\ECCO\document\processed_images")
-    process_images_in_folder(r"D:\TB\Products\ECCO\document\processed_images", r"D:\TB\Products\ECCO\document\square_images")
+    batch_convert_webp_to_jpg(ECCO["IMAGE_DIR_download"], ECCO["IMAGE_PROCESS"])
+    process_images_in_folder(ECCO["IMAGE_PROCESS"], ECCO["IMAGE_CUTTER"])
 
     print("图片抖动，水平翻转")
-    batch_process_images(Path("D:/TB/Products/ecco/document/square_images"),ECCO["IMAGE_DIR_defence"])
+    batch_process_images(ECCO["IMAGE_CUTTER"],ECCO["IMAGE_DIR"])
 
 
     print("将图片merge到一张图片中")
-    batch_merge_images(ECCO["IMAGE_CUTTER"],ECCO["MERGED_DIR"], width=750)
+    batch_merge_images(ECCO["IMAGE_DIR"],ECCO["MERGED_DIR"], width=750)
 
     print("生成产品详情卡HTML")
     generate_html_from_codes_files("ecco",code_file_path)
