@@ -68,7 +68,7 @@ def process_image_url(url):
         code, color = product_code[:6], product_code[6:]
         formatted_code = f"{code}-{color}"
 
-        download_images_from_soup(soup, formatted_code)
+        download_images_from_soup(soup, product_code)
 
     except Exception as e:
         print(f"❌ 商品处理失败: {url} - {e}")
