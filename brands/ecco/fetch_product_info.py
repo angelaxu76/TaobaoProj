@@ -44,6 +44,42 @@ def size_to_eu(uk_size):
     }
     return uk_to_eu.get(uk_size)
 
+# ===== 在文件顶部现有 import 下方补充 =====
+from html import unescape
+import re
+import json
+
+def extract_description_from_soup(soup):
+    """优先用 JSON-LD 的 description（更完整、少换行），否则退回页面可见描述。"""
+    # JSON-LD：<script type="application/ld+json" data-schemaorgproducts="true"> [...]
+    for script in soup.find_all("script", {"type": "application/ld+json"}):
+        try:
+            data = json.loads(script.string or "[]")
+            if isinstance(data, list) and data:
+                desc_html = data[0].get("description", "")
+                if desc_html:
+                    # 去 HTML 标签与实体
+                    text = re.sub(r"<[^>]+>", " ", desc_html)
+                    text = re.sub(r"\s+", " ", unescape(text)).strip()
+                    if text:
+                        return text
+        except Exception:
+            pass
+    # 退回可见描述
+    node = soup.select_one("div.product-description")
+    return node.get_text(strip=True) if node else ""
+
+def extract_features_from_soup(soup):
+    """抓 Features & Benefits 列表，拼接成一句；抓不到返回空字符串。"""
+    items = []
+    for li in soup.select("div.about-this-product__container div.product-description-list ul li"):
+        txt = li.get_text(strip=True)
+        if txt:
+            items.append(txt)
+    # 统一用中文竖线或分号拼接，便于入库后再拆分
+    return " | ".join(items)
+
+
 def extract_sizes_and_stock_status(html):
     soup = BeautifulSoup(html, "html.parser")
     size_div = soup.find("div", class_="size-picker__rows")
@@ -111,6 +147,8 @@ def process_product(url, idx, total):
         elif any(s for s in eu_sizes if s in ("35", "36")):
             gender = "women"
 
+        description = extract_description_from_soup(soup)
+        feature = extract_features_from_soup(soup)
         info = {
             "Product Code": product_code,
             "Product Name": product_name,
@@ -121,6 +159,7 @@ def process_product(url, idx, total):
             "Adjusted Price": adjusted_price,
             "Product Material": material,
             "Product Size": ";".join(sizes),
+            "Feature": feature,             # ★ 新增：写入要点
             "Source URL": url
         }
 
