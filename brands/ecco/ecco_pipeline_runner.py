@@ -14,13 +14,13 @@ from common_taobao.mark_offline_products_from_store_excels import mark_offline_p
 
 def main():
     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    # backup_and_clear_brand_dirs(ECCO)  # ✅ 使用共享方法
+    backup_and_clear_brand_dirs(ECCO)  # ✅ 使用共享方法
 
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    # ecco_get_links()
+    ecco_get_links()
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    # ecco_fetch_info()
+    ecco_fetch_info()
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
     import_txt_to_db("ecco")

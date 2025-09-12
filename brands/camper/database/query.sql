@@ -67,3 +67,6 @@ WHERE NULLIF(TRIM(channel_product_id), '') IS NOT NULL;
 
 SELECT COUNT(DISTINCT NULLIF(TRIM(channel_product_id), '')) AS distinct_channel_id_cnt
 FROM camper_inventory;
+
+
+update camper_inventory set stock_count = 10 where stock_count >= 10000

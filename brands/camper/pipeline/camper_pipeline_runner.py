@@ -28,13 +28,13 @@ def main():
     # camper_fetch_product_info()
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
-    import_txt_to_db_supplier("camper")  # ✅ 新逻辑
+    # import_txt_to_db_supplier("camper")  # ✅ 新逻辑
 
     print("\n🟡 Step: 5️⃣ 绑定渠道 SKU 信息（淘经销 Excel）将鲸芽那边的货品ID等输入到数据库")
-    insert_jingyaid_to_db("camper")
+    # insert_jingyaid_to_db("camper")
 
     print("\n🟡 Step: 5️⃣ 将最新TXT中没有的产品，说明刚商品已经下架，但鲸芽这边没办法删除，全部补库存为0")
-    insert_missing_products_with_zero_stock("camper")
+    # insert_missing_products_with_zero_stock("camper")
 
     print("\n🟡 Step: 5️⃣ 找出尺码很少的商品ID，将它所有的尺码都设置成0，并将状态变成未发布，为下一步该库存做准备")
     #disable_low_stock_products("camper")
@@ -42,15 +42,9 @@ def main():
     print("\\n🟡 Step: 6️⃣ 导出男鞋商品列表，女鞋商品列表，用于更新尺码库存数据库版")
     #export_gender_split_excel("camper")
 
-    print("\\n🟡 Step: 6️⃣ 导出渠道价格 Excel（含零售价与商家编码），可以用于淘宝店铺去更新商品价格")
-    code_file_path = r"D:\TB\Products\camper\repulibcation\publication_codes.txt"
-    code_missing_path = r"D:\TB\Products\camper\repulibcation\publication_codes_missing.txt"
-    # export_channel_price_excel_from_txt("camper",code_file_path)
-    # export_channel_price_excel("camper", r"D:\TB\Products\camper\repulibcation\exclude_codes.txt") # 导出价格明细（已发布）
-    # export_all_sku_price_excel("camper")  # 导出商家编码价格表（所有商品）
 
     print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
-    stock_dest_excel_folder = r"D:\TB\Products\camper\repulibcation"
+    stock_dest_excel_folder = r"D:\TB\Products\camper\repulibcation\stock"
     export_stock_excel("camper",stock_dest_excel_folder)
 
     price_dest_excel = r"D:\TB\Products\camper\repulibcation\publication_prices.xlsx"
@@ -66,6 +60,14 @@ def main():
 
     print("\n🟡 Step: 6️⃣ 输出低库存的商品，准备下架")
     #export_low_stock_for_brand("camper", threshold=5)
+
+    print("\\n🟡 Step: 6️⃣ 导出渠道价格 Excel（含零售价与商家编码），可以用于淘宝店铺去更新商品价格")
+    # code_file_path = r"D:\TB\Products\camper\repulibcation\publication_codes.txt"
+    # code_missing_path = r"D:\TB\Products\camper\repulibcation\publication_codes_missing.txt"
+    # export_channel_price_excel_from_txt("camper",code_file_path)
+    # export_channel_price_excel("camper", r"D:\TB\Products\camper\repulibcation\exclude_codes.txt") # 导出价格明细（已发布）
+    # export_all_sku_price_excel("camper")  # 导出商家编码价格表（所有商品）
+
 
     print("\n✅ CAMPER pipeline 完成")
 
