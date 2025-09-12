@@ -453,8 +453,8 @@ ECCO_BASE = BASE_DIR / "ecco"
 ECCO = {
     "BRAND": "ecco",
     "BASE": ECCO_BASE,
-    "IMAGE_FIRST_PRIORITY": ["F", "C", "L", "T"],
-    "IMAGE_DES_PRIORITY": ["C", "F", "L", "T"],
+    "IMAGE_FIRST_PRIORITY": ["m", "o", "L", "T"],
+    "IMAGE_DES_PRIORITY": ["top_left_pair", "o", "m", "T"],
     "TXT_DIR": ECCO_BASE / "publication" / "TXT",
     "OUTPUT_DIR": ECCO_BASE / "repulibcation",
     "STORE_DIR": ECCO_BASE / "document" / "store",
