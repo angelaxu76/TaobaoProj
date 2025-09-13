@@ -386,3 +386,42 @@ select * from barbour_supplier_map where product_code = 'LCA0353BK11'
 
 
 select * from barbour_products
+
+
+
+
+SELECT site_name, offer_url, size, product_code, last_seen, last_checked
+FROM barbour_offers
+WHERE site_name = 'outdoorandcountry'
+  AND is_active = FALSE
+  AND last_checked >= NOW() - INTERVAL '10 minutes';
+
+
+select * from barbour_offers WHERE site_name = 'outdoorandcountry' 
+AND is_active = FALSE
+
+
+select * from barbour_offers WHERE is_active = FALSE
+
+select * from barbour_offers 
+WHERE offer_url ILIKE '%https://www.terracesmenswear.co.uk/products/25120%'
+
+
+SELECT sm.product_code, sm.site_name, 
+       COUNT(*) FILTER (WHERE o.stock_count > 0) AS sizes_in_stock
+FROM barbour_supplier_map sm
+JOIN barbour_offers o
+  ON LOWER(o.product_code)=LOWER(sm.product_code)
+ AND LOWER(o.site_name)=LOWER(sm.site_name)
+WHERE o.is_active=TRUE
+GROUP BY sm.product_code, sm.site_name
+HAVING COUNT(*) FILTER (WHERE o.stock_count > 0) < 3
+
+
+select * from barbour_supplier_map where product_code = 'LCA0353BK11'
+
+
+select * from barbour_offers where product_code = 'LCA0353BK11' 
+and site_name = 'outdoorandcountry'
+
+

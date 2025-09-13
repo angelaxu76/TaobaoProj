@@ -41,18 +41,25 @@ SQL_LOWEST_SITE = text("""
 WITH agg AS (
   SELECT
     site_name,
-    MIN(COALESCE(price_gbp, original_price_gbp)) AS min_price,
+    -- 有货尺码数
     SUM(CASE WHEN COALESCE(stock_count,0) > 0 THEN 1 ELSE 0 END) AS sizes_in_stock,
-    MAX(last_checked) AS latest
+    -- 仅在有货尺码中取最低价
+    MIN(COALESCE(NULLIF(price_gbp,0), original_price_gbp))
+      FILTER (WHERE COALESCE(stock_count,0) > 0)                 AS min_price,
+    MAX(last_checked)                                            AS latest
   FROM barbour_offers
   WHERE product_code = :code
+    AND is_active = TRUE
   GROUP BY site_name
+),
+eligible AS (
+  SELECT * FROM agg WHERE sizes_in_stock >= 3
 )
 SELECT site_name
-FROM agg
+FROM eligible
 ORDER BY
-  sizes_in_stock DESC,
   min_price ASC NULLS LAST,
+  sizes_in_stock DESC,
   latest DESC
 LIMIT 1
 """)  # offers 字段参考：site_name/price_gbp/original_price_gbp/stock_count/last_checked。:contentReference[oaicite:1]{index=1}
@@ -86,8 +93,8 @@ def _load_publication_mappings(pub_dir: Path) -> Dict[str, str]:
             if not col_code or not col_site:
                 continue
             for i in range(2, ws.max_row + 1):
-                code = (ws.cell(i, col_code).value or "").strip()
-                site_raw = (ws.cell(i, col_site).value or "").strip()
+                code = str(ws.cell(i, col_code).value or "").strip()
+                site_raw = str(ws.cell(i, col_site).value or "").strip()
                 if not code or not site_raw:
                     continue
                 site = canonical_site(site_raw)

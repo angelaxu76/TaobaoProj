@@ -5,6 +5,7 @@ import csv
 import re
 import unicodedata
 import psycopg2
+import argparse
 from datetime import datetime
 from pathlib import Path
 from config import BARBOUR
@@ -290,7 +291,7 @@ def insert_offer(info, conn, missing_log: list) -> int:
         conn.rollback()
     return inserted
 
-def import_txt_for_supplier(supplier: str):
+def import_txt_for_supplier(supplier: str, dryrun: bool = False):
     supplier = canonical_site(supplier) or supplier
     if supplier not in BARBOUR["TXT_DIRS"]:
         print(f"❌ 未找到 supplier: {supplier}")
@@ -340,7 +341,6 @@ def import_txt_for_supplier(supplier: str):
             except Exception as e:
                 print(f"❌ 导入失败: {fname}，错误: {e}")
 
-        # ✅ 精准软删（仅对本轮触达的 URL，且站点需有成功写入）
         try:
             with conn.cursor() as cur:
                 for site, cnt in written_by_site.items():
@@ -349,15 +349,37 @@ def import_txt_for_supplier(supplier: str):
                     url_list = list(urls_by_site.get(site, set()))
                     if not url_list:
                         continue
+
                     print(f"🧹 软删除站点内本轮未出现的旧记录（按 URL 作用域）：{site} | URL数={len(url_list)}")
-                    cur.execute("""
-                        UPDATE barbour_offers
-                           SET is_active = FALSE
-                         WHERE site_name = %s
-                           AND offer_url = ANY(%s)
-                           AND last_seen < %s
-                    """, (site, url_list, run_start_ts))
+
+                    if dryrun:
+                        cur.execute("""
+                            SELECT site_name, offer_url, size, last_seen
+                            FROM barbour_offers
+                            WHERE site_name = %s
+                              AND offer_url = ANY(%s)
+                              AND last_seen < %s
+                        """, (site, url_list, run_start_ts))
+                        rows = cur.fetchall()
+                        print(f"[DryRun] {len(rows)} rows would be soft-deleted:")
+                        for r in rows[:20]:
+                            print(r)
+                        if len(rows) > 20:
+                            print(f"...共 {len(rows)} 行，已省略 {len(rows)-20} 行")
+                    else:
+                        cur.execute("""
+                            UPDATE barbour_offers
+                               SET is_active   = FALSE,
+                                   stock_count = 0,
+                                   last_checked = NOW()
+                             WHERE site_name = %s
+                               AND offer_url = ANY(%s)
+                               AND last_seen  < %s
+                        """, (site, url_list, run_start_ts))
+                        print(f"   → 受影响行数: {cur.rowcount}")
+
             conn.commit()
+
         except Exception as e:
             conn.rollback()
             print(f"⚠️ 软删除出现异常：{e}")
@@ -380,7 +402,11 @@ def import_txt_for_supplier(supplier: str):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("用法: python import_supplier_to_db_offers.py [supplier]")
-    else:
-        import_txt_for_supplier(sys.argv[1])
+    parser = argparse.ArgumentParser()
+    parser.add_argument("supplier", help="supplier name (e.g., very, houseoffraser)")
+    parser.add_argument("--dryrun", action="store_true", help="only print affected rows, do not update")
+    args = parser.parse_args()
+
+    # 把 dryrun 传给主函数
+    import_txt_for_supplier(args.supplier, dryrun=args.dryrun)
+
