@@ -33,7 +33,7 @@ import pandas as pd
 # === 复用你项目里的配置 & 工具 ===
 from config import PGSQL_CONFIG, BARBOUR
 # 直接复用你现有的解析/清洗方法，避免两份逻辑漂移
-from barbour_import_to_barbour_products import (
+from barbour.common.barbour_import_to_barbour_products import (
     _extract_field, _extract_multiline_field,
     _parse_sizes_from_size_detail_line,
     extract_match_keywords, enrich_record_optional

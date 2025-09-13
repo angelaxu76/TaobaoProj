@@ -33,7 +33,7 @@ def barbour_database_import_pipleline():
     # barbour_fetch_info()
     # outdoorandcountry_fetch_info(max_workers=10)
     # allweathers_fetch_info(7)
-    houseoffraser_fetch_info(max_workers=2, headless=False)
+    houseoffraser_fetch_info(max_workers=5, headless=False)
     # very_fetch_info()
     # terraces_fetch_info()
 
@@ -67,7 +67,7 @@ def barbour_database_import_pipleline():
     # insert_jingyaid_to_db("barbour")
 
     # Step 6: TODO 根据发布文件填充barbour 鲸芽的map表
-    fill_supplier_map()
+    # fill_supplier_map()
 
     # Step 5: TODO 将barbour product和offers中的价格库存和商品信息回填到barbour inventory表
     # backfill_barbour_inventory_mapped_only()
