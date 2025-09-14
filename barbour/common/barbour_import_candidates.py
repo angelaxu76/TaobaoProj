@@ -23,6 +23,7 @@ barbour_import_candidates.py
 """
 from __future__ import annotations
 import argparse
+from logging import info
 import re
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -159,18 +160,19 @@ def import_from_txt(supplier: str = "all") -> None:
                 }
                 base = enrich_record_optional(base)
 
-                if info.get("product_code"):
-                    # 有编码 → 直接进 products
+                code = (info.get("product_code") or "").strip().upper()
+                has_valid_code = bool(RE_CODE.match(code))
+                if has_valid_code:
                     for sz in sizes:
                         cur.execute(sql_prod, (
-                            info["product_code"], base["style_name"], base["color"], sz,
+                            code, base["style_name"], base["color"], sz,
                             kws, base.get("title"), base.get("product_description"),
                             base.get("gender"), base.get("category"),
                             info["source_site"], info["source_url"]
                         ))
                         total_ok += 1
                 else:
-                    # 无编码 → 进候选池
+                    # 当作“无编码”，进候选池
                     for sz in sizes:
                         cur.execute(sql_cand, (
                             info["source_site"], info["source_url"], base["style_name"], base["color"], sz,
@@ -179,30 +181,67 @@ def import_from_txt(supplier: str = "all") -> None:
                         ))
                         total_cand += 1
 
+
         print(f"✔ 导入完成：products 写入 {total_ok} 条；candidates 写入 {total_cand} 条。")
     finally:
         conn.close()
 
-# ========== 导出候选池为 Excel ==========
-def export_candidates_excel(out_path: str) -> None:
-    out = Path(out_path)
-    out.parent.mkdir(parents=True, exist_ok=True)
+# ========== 导出候选池为 Excel =========
+SQL_BASE = r"""
+SELECT
+  site_name                              AS "Site Name",
+  source_url                             AS "Source URL",
+  style_name                              AS "Product Name",
+  color                                   AS "Product Color",
+  title                                   AS "Title",
+  product_description                     AS "Product Description",
+  gender                                  AS "Gender",
+  category                                AS "Style Category",
+  size                                    AS "Sample Size",
+  match_keywords                          AS "Match Keywords",
+  created_at                              AS "Created At",
+  updated_at                              AS "Updated At"
+FROM barbour_product_candidates
+ORDER BY "Site Name", "Source URL", "Updated At" DESC;
+"""
 
-    conn = get_conn()
-    try:
-        sql = """
-        SELECT site_name, source_url, style_name, color, size,
-               gender, category, title, product_description
-          FROM barbour_product_candidates
-         ORDER BY site_name, style_name, color, size;
-        """
-        df = pd.read_sql(sql, conn)
-        # 在首列插入空 product_code 供人工填写
-        df.insert(0, "product_code", "")
-        df.to_excel(out, index=False)
-        print(f"✔ 导出完成：{out}")
-    finally:
-        conn.close()
+from datetime import datetime
+
+def export_candidates_excel(output_path: str, with_timestamp: bool = True):
+    # 取数
+    with psycopg2.connect(**PGSQL_CONFIG) as conn:
+        df = pd.read_sql(SQL_BASE, conn)
+
+    df_dedup = df.drop_duplicates(subset=["Source URL"], keep="first").copy()
+
+    codes_df = pd.DataFrame({
+        "Product Code": ["" for _ in range(len(df_dedup))],
+        "Site Name": df_dedup["Site Name"].values,
+        "Source URL": df_dedup["Source URL"].values,
+    })
+
+    reference_cols = [
+        "Site Name","Source URL","Product Name","Product Color","Title",
+        "Product Description","Gender","Style Category","Sample Size",
+        "Match Keywords","Created At","Updated At"
+    ]
+    reference_df = df_dedup.reindex(columns=reference_cols)
+
+    out_path = Path(output_path)
+    if with_timestamp:
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        out_path = out_path.with_name(f"{out_path.stem}_{ts}{out_path.suffix}")
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with pd.ExcelWriter(out_path, engine="xlsxwriter") as writer:
+        codes_df.to_excel(writer, index=False, sheet_name="codes")
+        reference_df.to_excel(writer, index=False, sheet_name="reference")
+
+    print(f"✅ 导出完成：{out_path}")
+    return out_path
+
+
+
 
 # ========== 从 Excel 回填编码到 products（rank=2），并删除候选 ==========
 def import_codes_from_excel(in_path: str) -> None:
@@ -211,35 +250,37 @@ def import_codes_from_excel(in_path: str) -> None:
         print(f"❌ 找不到 Excel：{src}")
         return
 
-    df = pd.read_excel(src).fillna("")
-    rows: List[Tuple] = []
-    bad_codes: List[str] = []
+    # 读取 sheet：优先 codes，没有就默认第一个
+    xls = pd.ExcelFile(src)
+    sheet_name = "codes" if "codes" in [s.lower() for s in xls.sheet_names] else xls.sheet_names[0]
+    df = pd.read_excel(xls, sheet_name=sheet_name).fillna("")
 
-    for _, r in df.iterrows():
-        code = str(r.get("product_code", "")).strip().upper()
-        if not code:
-            continue
-        if not RE_CODE.match(code):
-            bad_codes.append(code)
-            continue
-        rows.append((
-            code, r.get("style_name",""), r.get("color",""), r.get("size",""),
-            (r.get("gender") or None), (r.get("category") or None),
-            (r.get("title") or None), (r.get("product_description") or None),
-            r.get("site_name",""), r.get("source_url","")
-        ))
+    # 表头标准化：去空格、转小写、把空格换成下划线
+    def norm(s: str) -> str:
+        return str(s).strip().lower().replace(" ", "_")
+    df.columns = [norm(c) for c in df.columns]
 
-    if bad_codes:
-        print("⚠ 下列编码格式不合法，已跳过：", bad_codes)
+    # 支持多种写法映射
+    alias = {
+        "product_code": {"product_code", "code", "编码"},
+        "site_name": {"site_name", "site", "站点", "site_name:"},
+        "source_url": {"source_url", "url", "链接", "source_link"},
+    }
+    def pick(row, key):
+        for k in alias[key]:
+            if k in row:
+                return str(row[k]).strip()
+        return ""
 
-    if not rows:
-        print("ⓘ 没有可回填的行。")
-        return
+    # 统计
+    total_rows = len(df)
+    bad_codes, no_mapping, upserted, cleared = [], 0, 0, 0
 
     conn = get_conn()
     try:
         with conn, conn.cursor() as cur:
-            upsert = """
+            # 预编译语句
+            upsert_sql = """
             INSERT INTO barbour_products
               (product_code, style_name, color, size, match_keywords,
                title, product_description, gender, category,
@@ -256,24 +297,59 @@ def import_codes_from_excel(in_path: str) -> None:
                source_url          = CASE WHEN EXCLUDED.source_rank <= barbour_products.source_rank THEN EXCLUDED.source_url  ELSE barbour_products.source_url  END,
                source_rank         = LEAST(barbour_products.source_rank, EXCLUDED.source_rank);
             """
-            delete_cand = """
+            del_sql = """
             DELETE FROM barbour_product_candidates
              WHERE site_name=%s AND source_url=%s AND size=%s;
             """
-            n = 0
-            for (code, name, color, size, gender, cat, title, desc, site, url) in rows:
-                if not all([code, name, color, size]):
+            # 按 (site,url) 抓取候选池完整记录（含所有尺码行）
+            fetch_cand_sql = """
+            SELECT style_name, color, size, gender, category, title, product_description
+              FROM barbour_product_candidates
+             WHERE lower(site_name)=lower(%s) AND source_url=%s
+             ORDER BY size;
+            """
+
+            for _, row in df.iterrows():
+                code = pick(row, "product_code").upper()
+                site = pick(row, "site_name")
+                url  = pick(row, "source_url")
+
+                if not code:
                     continue
-                cur.execute(upsert, (
-                    code, name, color, size,
-                    title, desc, gender, cat, site, url
-                ))
-                # 清候选
-                cur.execute(delete_cand, (site, url, size))
-                n += 1
-        print(f"✔ 已回填编码到 barbour_products，并清理候选 {n} 行。")
+                if not RE_CODE.match(code):
+                    bad_codes.append(code)
+                    continue
+                if not site or not url:
+                    no_mapping += 1
+                    continue
+
+                # 用 (site,url) 从候选池取出所有尺码行
+                cur.execute(fetch_cand_sql, (site, url))
+                cands = cur.fetchall()
+                if not cands:
+                    # 可能已不在候选池；这里也可以选择跳过或打印提示
+                    no_mapping += 1
+                    continue
+
+                for (name, color, size, gender, cat, title, desc) in cands:
+                    if not size:
+                        continue
+                    cur.execute(upsert_sql, (
+                        code, name or "", color or "", size,
+                        title, desc, gender, cat, site, url
+                    ))
+                    upserted += 1
+                    cur.execute(del_sql, (site, url, size))
+                    cleared += cur.rowcount
+
+        print(f"✔ Excel 导入完成。总行数 {total_rows}；成功写入 products {upserted} 条；清理候选 {cleared} 条。")
+        if bad_codes:
+            print(f"⚠ 下列编码格式不合法，已跳过：{bad_codes}")
+        if no_mapping:
+            print(f"⚠ 有 {no_mapping} 行缺少 Site/URL 匹配到候选池（或候选已被清空）。")
     finally:
         conn.close()
+
 
 # ========== 抓取侧可复用的小工具（very/hof 在写 TXT 前先查一把） ==========
 def find_code_by_site_url(conn_or_cursor, site_name: str, source_url: str) -> Optional[str]:
@@ -292,10 +368,11 @@ def find_code_by_site_url(conn_or_cursor, site_name: str, source_url: str) -> Op
     try:
         cur.execute("""
             SELECT DISTINCT product_code
-              FROM barbour_products
-             WHERE lower(source_site)=lower(%s)
-               AND source_url=%s
-             LIMIT 1
+            FROM barbour_products
+            WHERE lower(source_site)=lower(%s)
+            AND source_url=%s
+            AND product_code ~ '^[A-Z]{3}[0-9]{3,4}[A-Z]{2,3}[0-9]{2,3}$'  -- 只要合法Barbour编码
+            LIMIT 1;
         """, (site_name, source_url))
         row = cur.fetchone()
         return row[0] if row else None

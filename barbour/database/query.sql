@@ -425,3 +425,16 @@ select * from barbour_offers where product_code = 'LCA0353BK11'
 and site_name = 'outdoorandcountry'
 
 
+select * from barbour_products where style_name ILIKE '%Amber%'
+select * from barbour_products where product_code ILIKE '%MWX0339%'
+
+select count(*) from barbour_products
+
+
+select * from barbour_products where product_code ILIKE '%LWX1262NY92%' 
+and source_site = 'houseoffraser'
+
+
+DELETE FROM barbour_products
+WHERE source_site IN ('houseoffraser','very')
+  AND product_code !~ '^[A-Z]{3}[0-9]{3,4}[A-Z]{2,3}[0-9]{2,3}$';
