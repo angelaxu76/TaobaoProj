@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Barbour 回填（映射版，含价格计算）：
-- 仅按 barbour_supplier_map 指定的 supplier 进行价格/库存回填；
-- 尺码统一用 clean_size_for_barbour 归一化；
-- 命中 (code+size+supplier) → 回填；未命中 → 库存置 0（并清空售价）；
-- Step1 保持：从 barbour_products 回填基础信息（title/desc/gender/category）。
-- 新增：为命中的 inventory 行计算并写入 jingya_price_rmb / taobao_price_rmb（基于折后价或原价的较小值）。
+Barbour 回填（映射版，含价格计算，修复版 2025-09-14）
+- 入口函数：backfill_barbour_inventory_mapped_only()（未改名、未改参）。
+- 修复 original_price_gbp 串联、URL/Title 回填、价格计算（参考 generate_barbour_prices_from_avg 的 price_utils 用法）。
 """
 
 from __future__ import annotations
 from typing import List, Tuple, Iterable
-from datetime import datetime
 import csv
 from pathlib import Path
 
@@ -20,16 +16,16 @@ from sqlalchemy.engine import Connection
 # 项目配置
 from config import BRAND_CONFIG, BARBOUR  # BARBOUR 仅用于 DEBUG 导出目录
 
-# 价格工具（你现有的模块）
+# 价格工具（与 generate_barbour_prices_from_avg 一致）
 from common_taobao.core.price_utils import calculate_jingya_prices
 
 # 尺码归一化：优先用你项目里的函数，找不到就降级为轻量实现
 try:
-    from barbour.core.sizes import clean_size_for_barbour as _clean_size
-except Exception:  # 兜底：轻量归一
+    from common_taobao.size_utils import clean_size_for_barbour as _clean_size
+except Exception:
     import re
     def _clean_size(s: str) -> str:
-        """轻量降级：去‘UK ’、去空格/点/斜杠，小写；兼容 2xl/xxl 等常见写法"""
+        """轻量降级：去 'UK '、去空格/点/斜杠、小写；兼容 2xl/xxl 等写法"""
         x = (s or "").strip()
         x = re.sub(r"(?i)^uk\s*", "", x)
         x = re.sub(r"[\s./-]+", "", x)
@@ -37,7 +33,7 @@ except Exception:  # 兜底：轻量归一
         x = x.replace("2xl", "xxl").replace("3xl", "xxxl")
         return x or "unknown"
 
-# 有货时写入的“占位库存”（避免把供应商真实小库存带到前台；如需完全真实，可改逻辑）
+# 有货时写入的“占位库存”
 STOCK_WHEN_AVAILABLE = 5
 
 DEBUG_EXPORT = Path(BARBOUR["PUBLICATION_DIR"]) / "supplier_map_unmatched_debug.csv"
@@ -45,60 +41,45 @@ DEBUG_EXPORT = Path(BARBOUR["PUBLICATION_DIR"]) / "supplier_map_unmatched_debug.
 
 # ============ 价格计算相关 ============
 
-def compute_rmb_price(min_gbp: float, exchange_rate: float):
-    """按你的给定逻辑：基价 = max(orig, disc)，再走 calculate_jingya_prices"""
+def compute_rmb_price(base_gbp: float):
+    """参考 generate_barbour_prices_from_avg：传入 GBP 基价，返回 (鲸芽未税, 淘宝零售) RMB。"""
     try:
-        orig = float(min_gbp) if min_gbp is not None else 0.0
-        disc = orig
-        base_price = max(orig, disc)
-        untaxed, retail = calculate_jingya_prices(
-            base_price=base_price,
-            delivery_cost=7,
-            exchange_rate=exchange_rate
-        )
-        return untaxed, retail
+        if base_gbp is None:
+            return None, None
+        untaxed, retail = calculate_jingya_prices(float(base_gbp))
+        return (float(untaxed) if untaxed is not None else None,
+                float(retail) if retail is not None else None)
     except Exception:
-        return "", ""
-
-
-def _get_exchange_rate() -> float:
-    """从 BRAND_CONFIG 读取汇率；缺省 9.7"""
-    try:
-        barbour_cfg = BRAND_CONFIG.get("barbour", {}) or BRAND_CONFIG.get("BARBOUR", {})
-        er = barbour_cfg.get("EXCHANGE_RATE") or barbour_cfg.get("exchange_rate") or 9.7
-        return float(er)
-    except Exception:
-        return 9.7
+        return None, None
 
 
 def _ensure_price_columns(conn: Connection):
-    """自动建列（幂等），避免手工迁移。"""
+    """自动建列（幂等）。"""
     conn.execute(text("""
-    ALTER TABLE barbour_inventory
-      ADD COLUMN IF NOT EXISTS jingya_price_rmb   NUMERIC(12,2),
-      ADD COLUMN IF NOT EXISTS taobao_price_rmb   NUMERIC(12,2),
-      ADD COLUMN IF NOT EXISTS base_price_gbp     NUMERIC(10,2),
-      ADD COLUMN IF NOT EXISTS exchange_rate_used NUMERIC(8,4);
+        ALTER TABLE barbour_inventory
+          ADD COLUMN IF NOT EXISTS jingya_price_rmb   NUMERIC(12,2),
+          ADD COLUMN IF NOT EXISTS taobao_price_rmb   NUMERIC(12,2),
+          ADD COLUMN IF NOT EXISTS base_price_gbp     NUMERIC(10,2),
+          ADD COLUMN IF NOT EXISTS exchange_rate_used NUMERIC(8,4);
     """))
 
 
 def _num_or_null(v):
     try:
-        return float(v)
+        return float(v) if v is not None else None
     except Exception:
         return None
 
 
 def _update_prices_for_bi_ids(conn: Connection, bi_ids: Iterable[int]):
-    """对本轮命中的 bi.id 计算并写入 rmb 价格"""
+    """对本轮命中的 bi.id 计算并写入 RMB 价格。"""
     ids = list(bi_ids)
     if not ids:
         return
 
-    exchange_rate = _get_exchange_rate()
     rows = list(conn.execute(text("""
         SELECT id,
-               COALESCE(discount_price_gbp, source_price_gbp) AS min_gbp
+               COALESCE(discount_price_gbp, source_price_gbp) AS base_gbp
         FROM barbour_inventory
         WHERE id = ANY(:ids)
     """), {"ids": ids}).mappings())
@@ -106,13 +87,13 @@ def _update_prices_for_bi_ids(conn: Connection, bi_ids: Iterable[int]):
     payload = []
     for r in rows:
         bi_id = r["id"]
-        min_gbp = r["min_gbp"]
-        jingya, taobao = compute_rmb_price(min_gbp, exchange_rate)
+        base_gbp = r["base_gbp"]
+        jy, tb = compute_rmb_price(base_gbp)
         payload.append({
-            "base_price_gbp":    _num_or_null(min_gbp),
-            "exchange_rate_used": float(exchange_rate),
-            "jingya_price_rmb":  _num_or_null(jingya),
-            "taobao_price_rmb":  _num_or_null(taobao),
+            "base_price_gbp":    _num_or_null(base_gbp),
+            "exchange_rate_used": None,  # 交给 price_utils 内部策略
+            "jingya_price_rmb":  _num_or_null(jy),
+            "taobao_price_rmb":  _num_or_null(tb),
             "bi_id":             bi_id
         })
 
@@ -130,75 +111,73 @@ def _update_prices_for_bi_ids(conn: Connection, bi_ids: Iterable[int]):
 # ============ SQL 片段 ============
 
 SQL_CREATE_TMP = [
-    # inventory 临时表：只挑“有映射的商品编码”的行，并做 size_norm
     text("""
-    DROP TABLE IF EXISTS tmp_bi;
-    CREATE TEMP TABLE tmp_bi(
-        bi_id        INT,
-        product_code VARCHAR(50),
-        size_norm    VARCHAR(50)
-    );
+        DROP TABLE IF EXISTS tmp_bi;
+        CREATE TEMP TABLE tmp_bi(
+            bi_id        INT,
+            product_code VARCHAR(50),
+            size_norm    VARCHAR(50)
+        );
     """),
-
-    # offers 临时表：只挑“(code, 映射站点)”的报价，做 size_norm，取有效价
     text("""
-    DROP TABLE IF EXISTS tmp_o;
-    CREATE TEMP TABLE tmp_o(
-        o_id         INT GENERATED BY DEFAULT AS IDENTITY,
-        color_code   VARCHAR(50),
-        size_norm    VARCHAR(50),
-        site_name    VARCHAR(100),
-        offer_url    TEXT,
-        price_gbp    NUMERIC(10,2),
-        discount_price_gbp NUMERIC(10,2),
-        eff_price    NUMERIC(10,2),
-        stock_count  INT,
-        last_checked TIMESTAMP
-    );
+        DROP TABLE IF EXISTS tmp_o;
+        CREATE TEMP TABLE tmp_o(
+            o_id         INT GENERATED BY DEFAULT AS IDENTITY,
+            color_code   VARCHAR(50),
+            size_norm    VARCHAR(50),
+            site_name    VARCHAR(100),
+            offer_url    TEXT,
+            price_gbp    NUMERIC(10,2),
+            original_price_gbp NUMERIC(10,2),
+            discount_price_gbp NUMERIC(10,2),
+            eff_price    NUMERIC(10,2),
+            stock_count  INT,
+            last_checked TIMESTAMP
+        );
     """),
 ]
 
 SQL_STEP1_FILL_PRODUCT_INFO = text("""
-/* 用 products 的“最近一条”基础信息回填到 inventory */
-WITH bp AS (
-  SELECT DISTINCT ON (product_code)
-         product_code, title, product_description, gender, category, updated_at
-  FROM barbour_products
-  ORDER BY product_code, updated_at DESC NULLS LAST
-)
-UPDATE barbour_inventory AS bi
-SET
-  product_title       = COALESCE(bp.title, bi.product_title),
-  product_description = COALESCE(bp.product_description, bi.product_description),
-  gender              = COALESCE(bi.gender, bp.gender),
-  style_category      = COALESCE(bi.style_category, bp.category)
-FROM bp
-WHERE LOWER(bp.product_code) = LOWER(bi.product_code);
+    WITH bp AS (
+      SELECT DISTINCT ON (product_code)
+             product_code, title, product_description, gender, category, updated_at
+      FROM barbour_products
+      ORDER BY product_code, updated_at DESC NULLS LAST
+    )
+    UPDATE barbour_inventory AS bi
+    SET
+      product_title       = COALESCE(bi.product_title, bp.title),
+      product_description = COALESCE(bp.product_description, bi.product_description),
+      gender              = COALESCE(bi.gender, bp.gender),
+      style_category      = COALESCE(bi.style_category, bp.category)
+    FROM bp
+    WHERE LOWER(bp.product_code) = LOWER(bi.product_code);
 """)
 
 SQL_BUILD_INV_ROWS = text("""
-SELECT bi.id, bi.product_code, bi.size
-FROM barbour_inventory bi
-JOIN barbour_supplier_map sm
-  ON LOWER(sm.product_code) = LOWER(bi.product_code)
+    SELECT bi.id, bi.product_code, bi.size
+    FROM barbour_inventory bi
+    JOIN barbour_supplier_map sm
+      ON LOWER(sm.product_code) = LOWER(bi.product_code)
 """)
 
 SQL_BUILD_OFFER_ROWS = text("""
-SELECT
-  bo.product_code,
-  bo.site_name,
-  bo.size,
-  bo.offer_url,
-  bo.price_gbp,
-  bo.sale_price_gbp,
-  bo.stock_count,
-  bo.last_checked
-FROM barbour_offers bo
-JOIN barbour_supplier_map sm
-  ON LOWER(sm.product_code) = LOWER(bo.product_code)
- AND LOWER(sm.site_name)    = LOWER(bo.site_name)
-WHERE bo.is_active = TRUE
-  AND bo.product_code IS NOT NULL
+    SELECT
+      bo.product_code,
+      bo.site_name,
+      bo.size,
+      bo.offer_url,
+      bo.price_gbp,
+      bo.original_price_gbp,
+      bo.sale_price_gbp,
+      bo.stock_count,
+      bo.last_checked
+    FROM barbour_offers bo
+    JOIN barbour_supplier_map sm
+      ON LOWER(sm.product_code) = LOWER(bo.product_code)
+     AND LOWER(sm.site_name)    = LOWER(bo.site_name)
+    WHERE bo.is_active = TRUE
+      AND bo.product_code IS NOT NULL
 """)
 
 SQL_INDEX_TMP = [
@@ -206,134 +185,71 @@ SQL_INDEX_TMP = [
     text("CREATE INDEX ON tmp_o(color_code, size_norm)"),
 ]
 
-# 2A) 命中（映射站点 & 同尺码）：有货优先 → 低价 → 最新
-#     同时 RETURNING bi.id 以便后续只对“本轮命中行”计算价格
 SQL_BACKFILL_MATCHED = text(f"""
-WITH avail AS (
-  SELECT
-    tpo.color_code, tpo.size_norm, tpo.site_name, tpo.offer_url,
-    tpo.price_gbp, tpo.discount_price_gbp,
-    COALESCE(tpo.discount_price_gbp, tpo.price_gbp) AS eff_price,
-    tpo.stock_count, tpo.last_checked
-  FROM tmp_o tpo
-),
-best AS (
-  SELECT DISTINCT ON (color_code, size_norm)
-         color_code, size_norm, site_name, offer_url,
-         price_gbp, discount_price_gbp, eff_price, stock_count, last_checked
-  FROM avail
-  ORDER BY color_code, size_norm,
-           CASE WHEN COALESCE(stock_count,0) > 0 THEN 0 ELSE 1 END,  -- 先有货
-           eff_price ASC NULLS LAST,                                  -- 再低价
-           last_checked DESC                                          -- 再新
-)
-UPDATE barbour_inventory AS bi
-SET
-  source_site        = b.site_name,
-  source_offer_url   = b.offer_url,
-  source_price_gbp   = b.price_gbp,
-  discount_price_gbp = b.discount_price_gbp,
-  stock_count        = CASE WHEN COALESCE(b.stock_count,0) > 0
-                            THEN {STOCK_WHEN_AVAILABLE}
-                            ELSE 0
-                       END,
-  last_checked       = NOW()
-FROM tmp_bi tbi
-JOIN best b
-  ON b.color_code = tbi.product_code
- AND b.size_norm  = tbi.size_norm
-WHERE bi.id = tbi.bi_id
-RETURNING bi.id
+    WITH avail AS (
+      SELECT
+        tpo.color_code, tpo.size_norm, tpo.site_name, tpo.offer_url,
+        tpo.price_gbp, tpo.original_price_gbp, tpo.discount_price_gbp,
+        COALESCE(tpo.discount_price_gbp, tpo.price_gbp) AS eff_price,
+        tpo.stock_count, tpo.last_checked
+      FROM tmp_o tpo
+    ),
+    best AS (
+      SELECT DISTINCT ON (color_code, size_norm)
+             color_code, size_norm, site_name, offer_url,
+             price_gbp, original_price_gbp, discount_price_gbp, eff_price, stock_count, last_checked
+      FROM avail
+      ORDER BY color_code, size_norm,
+               CASE WHEN COALESCE(stock_count,0) > 0 THEN 0 ELSE 1 END,
+               eff_price ASC NULLS LAST,
+               last_checked DESC
+    )
+    UPDATE barbour_inventory AS bi
+    SET
+      source_site          = b.site_name,
+      source_offer_url     = b.offer_url,
+      source_price_gbp     = b.price_gbp,
+      original_price_gbp   = b.original_price_gbp,
+      discount_price_gbp   = b.discount_price_gbp,
+      stock_count          = CASE WHEN COALESCE(b.stock_count,0) > 0
+                                  THEN {STOCK_WHEN_AVAILABLE}
+                                  ELSE 0
+                             END,
+      product_url          = COALESCE(bi.product_url, b.offer_url),
+      last_checked         = NOW()
+    FROM tmp_bi tbi
+    JOIN best b
+      ON b.color_code = tbi.product_code
+     AND b.size_norm  = tbi.size_norm
+    WHERE bi.id = tbi.bi_id
+    RETURNING bi.id;
 """)
 
-# 2B) 未命中（映射站点下没有同尺码报价）：库存置 0；并清空价格，避免残留
 SQL_BACKFILL_UNMATCHED_ZERO = text("""
-WITH miss AS (
-  SELECT tbi.bi_id
-  FROM tmp_bi tbi
-  LEFT JOIN tmp_o tpo
-    ON tpo.color_code = tbi.product_code
-   AND tpo.size_norm  = tbi.size_norm
-  WHERE tpo.o_id IS NULL
-)
-UPDATE barbour_inventory AS bi
-SET
-  source_site        = NULL,
-  source_offer_url   = NULL,
-  source_price_gbp   = NULL,
-  discount_price_gbp = NULL,
-  stock_count        = 0,
-  jingya_price_rmb   = NULL,
-  taobao_price_rmb   = NULL,
-  base_price_gbp     = NULL,
-  exchange_rate_used = NULL,
-  last_checked       = NOW()
-FROM miss
-WHERE bi.id = miss.bi_id
+    WITH miss AS (
+      SELECT tbi.bi_id
+      FROM tmp_bi tbi
+      LEFT JOIN tmp_o tpo
+        ON tpo.color_code = tbi.product_code
+       AND tpo.size_norm  = tbi.size_norm
+      WHERE tpo.o_id IS NULL
+    )
+    UPDATE barbour_inventory AS bi
+    SET
+      source_site        = NULL,
+      source_offer_url   = NULL,
+      source_price_gbp   = NULL,
+      discount_price_gbp = NULL,
+      original_price_gbp = NULL,
+      stock_count        = 0,
+      jingya_price_rmb   = NULL,
+      taobao_price_rmb   = NULL,
+      base_price_gbp     = NULL,
+      exchange_rate_used = NULL,
+      last_checked       = NOW()
+    FROM miss
+    WHERE bi.id = miss.bi_id;
 """)
-
-
-def _dbg(conn: Connection):
-    # 1) 统计 tmp 表规模 & unknown 比例
-    bi_counts = conn.execute(text("""
-        SELECT COUNT(*) AS n, SUM(CASE WHEN size_norm='unknown' THEN 1 ELSE 0 END) AS n_unk
-        FROM tmp_bi
-    """)).fetchone()
-    o_counts = conn.execute(text("""
-        SELECT COUNT(*) AS n, SUM(CASE WHEN size_norm='unknown' THEN 1 ELSE 0 END) AS n_unk
-        FROM tmp_o
-    """)).fetchone()
-    print(f"[DBG] tmp_bi 行数={bi_counts[0]} | unknown={bi_counts[1]}")
-    print(f"[DBG] tmp_o  行数={o_counts[0]} | unknown={o_counts[1]}")
-
-    # 2) 统计“尺码完全无交集”的编码（映射站点内）
-    rows = conn.execute(text("""
-        WITH inv AS (
-          SELECT product_code, size_norm FROM tmp_bi
-        ),
-        off AS (
-          SELECT color_code AS product_code, size_norm, site_name FROM tmp_o
-        ),
-        m AS (
-          SELECT DISTINCT LOWER(sm.product_code) AS code, LOWER(sm.site_name) AS site
-          FROM barbour_supplier_map sm
-        ),
-        inv_g AS (
-          SELECT i.product_code, array_agg(DISTINCT i.size_norm) AS inv_sizes
-          FROM inv i GROUP BY i.product_code
-        ),
-        off_g AS (
-          SELECT o.product_code, o.site_name, array_agg(DISTINCT o.size_norm) AS off_sizes
-          FROM off o GROUP BY o.product_code, o.site_name
-        )
-        SELECT ig.product_code, mg.site,
-               ig.inv_sizes,
-               COALESCE(og.off_sizes, ARRAY[]::varchar[]) AS off_sizes
-        FROM m mg
-        JOIN inv_g ig ON ig.product_code = mg.code
-        LEFT JOIN off_g og ON og.product_code = mg.code AND og.site_name = mg.site
-        WHERE (og.off_sizes IS NULL) 
-           OR (NOT EXISTS (
-                 SELECT 1 FROM unnest(ig.inv_sizes) s1
-                 INTERSECT
-                 SELECT 1 FROM unnest(COALESCE(og.off_sizes, ARRAY[]::varchar[])) s2
-               ))
-        LIMIT 100
-    """)).fetchall()
-
-    print(f"[DBG] 尺码完全无交集的编码数（样例最多100）：{len(rows)}")
-    if rows[:1]:
-        c0, s0, inv_set, off_set = rows[0]
-        print(f"  示例 code={c0} site={s0}\n    inv_sizes={inv_set}\n    off_sizes={off_set}")
-
-    # 3) 导出 CSV 便于排查
-    if rows:
-        with DEBUG_EXPORT.open("w", newline="", encoding="utf-8-sig") as f:
-            w = csv.writer(f)
-            w.writerow(["product_code", "site", "inv_sizes", "off_sizes"])
-            for c, s, inv_set, off_set in rows:
-                w.writerow([c, s, " ".join(sorted(set(inv_set or []))), " ".join(sorted(set(off_set or [])))])
-        print(f"[DBG] 已导出未命中明细：{DEBUG_EXPORT}")
 
 
 def backfill_barbour_inventory_mapped_only():
@@ -343,71 +259,73 @@ def backfill_barbour_inventory_mapped_only():
     )
 
     with engine.begin() as conn:  # type: Connection
-        # 自动确保价格相关列存在
         _ensure_price_columns(conn)
 
-        # Step 0: 创建临时表
         for sql in SQL_CREATE_TMP:
             conn.execute(sql)
 
-        # Step 1: 基础信息回填（title/desc/gender/category）
         conn.execute(SQL_STEP1_FILL_PRODUCT_INFO)
 
-        # Step 2: 组装 tmp_bi（用 clean_size_for_barbour 归一化）
+        conn.execute(text("""
+            UPDATE barbour_inventory AS bi
+            SET product_url = bp.source_url
+            FROM (
+              SELECT DISTINCT ON (product_code)
+                     product_code, source_url, updated_at
+              FROM barbour_products
+              ORDER BY product_code, updated_at DESC NULLS LAST
+            ) AS bp
+            WHERE LOWER(bp.product_code) = LOWER(bi.product_code)
+              AND (bi.product_url IS NULL OR bi.product_url = '');
+        """))
+
         inv_rows = conn.execute(SQL_BUILD_INV_ROWS).fetchall()
         inv_values: List[Tuple] = []
         for bi_id, code, size in inv_rows:
             size_n = _clean_size(size)
             if size_n and size_n != "unknown":
                 inv_values.append((bi_id, (code or "").strip(), size_n))
-
         if inv_values:
             conn.exec_driver_sql(
                 "INSERT INTO tmp_bi(bi_id, product_code, size_norm) VALUES (%s,%s,%s)",
                 inv_values
             )
-        # 索引
         conn.execute(SQL_INDEX_TMP[0])
 
-        # Step 3: 组装 tmp_o（映射站点 + clean_size_for_barbour + 有效价=折扣/原价的 COALESCE）
         off_rows = conn.execute(SQL_BUILD_OFFER_ROWS).fetchall()
         off_values: List[Tuple] = []
-        for code, site, size, url, price, sale_price, stock, ts in off_rows:
+        for code, site, size, url, price, orig_price, sale_price, stock, ts in off_rows:
             size_n = _clean_size(size)
             if size_n and size_n != "unknown":
                 eff_price = sale_price if sale_price is not None else price
                 off_values.append((
-                    (code or "").strip(),
-                    (size_n or "").strip(),
-                    (site or "").strip(),
-                    url, price,
+                    code.strip(),
+                    size_n.strip(),
+                    site.strip(),
+                    url,
+                    price,
+                    orig_price,
                     sale_price,
                     eff_price,
                     stock, ts
                 ))
         if off_values:
-            conn.exec_driver_sql("""
-                INSERT INTO tmp_o(color_code, size_norm, site_name, offer_url,
-                                   price_gbp, discount_price_gbp, eff_price, stock_count, last_checked)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            """, off_values)
-        # 索引
+            conn.exec_driver_sql(
+                """INSERT INTO tmp_o(color_code, size_norm, site_name, offer_url,
+                                      price_gbp, original_price_gbp, discount_price_gbp, eff_price, stock_count, last_checked)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                off_values
+            )
         conn.execute(SQL_INDEX_TMP[1])
 
-        # 调试输出（可关闭）
-        _dbg(conn)
-
-        # Step 4A: 命中 (code + size + supplier) → 完整回填，并取出命中 id 列表
         matched_rs = conn.execute(SQL_BACKFILL_MATCHED)
         try:
             matched_ids = [r[0] for r in matched_rs.fetchall()]
         except Exception:
             matched_ids = []
 
-        # Step 4B: 未命中 → 库存置 0（并清空售价，避免脏值）
         conn.execute(SQL_BACKFILL_UNMATCHED_ZERO)
 
-        # Step 4C: 对命中行计算并回写“鲸芽/淘宝”价格
         _update_prices_for_bi_ids(conn, matched_ids)
 
     print(f"✅ 映射回填完成：命中 {len(matched_ids)} 行；未命中已置零并清空售价。")

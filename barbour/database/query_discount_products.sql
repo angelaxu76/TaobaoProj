@@ -19,3 +19,19 @@ GROUP BY o.product_code, p.style_name, o.site_name, o.offer_url
 HAVING COUNT(DISTINCT o.size) > 3
 ORDER BY discount_pct DESC, price_gbp ASC, o.product_code;
 
+
+
+select * from barbour_offers  where product_code='LCA0352CR51' 
+and site_name='barbour'
+order by size;
+
+select * from barbour_inventory 
+where product_code='MCA1050OL11' ;
+
+select * from barbour_offers  where site_name='outdoorandcountry' and product_code='MSP0145ST12' ;
+
+select count(*) from barbour_offers  where original_price_gbp is null； 
+   
+
+
+

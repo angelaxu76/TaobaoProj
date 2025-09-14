@@ -360,7 +360,6 @@ WHERE bo.is_active = TRUE
   AND bo.product_code IS NOT NULL
 
 
-  ===NO DATA
 
 
 

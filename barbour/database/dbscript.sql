@@ -4,7 +4,7 @@ DROP TABLE IF EXISTS barbour_products;
 DROP TABLE IF EXISTS barbour_inventory;
 DROP TABLE IF EXISTS barbour_supplier_map;
 
--- ========== 创建新表 ==========
+-- ========== barbour 产品信息表 ==========
 CREATE TABLE barbour_products (
     id SERIAL PRIMARY KEY,
 
@@ -54,6 +54,11 @@ FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 -- Barbour Offers 表（A 方案：生成列）
 -- ================================
 
+
+
+
+
+================================================================
 -- 1) 先删旧表（注意：CASCADE 会同时删掉依赖的索引/触发器/外键）
 DROP TABLE IF EXISTS barbour_offers CASCADE;
 
