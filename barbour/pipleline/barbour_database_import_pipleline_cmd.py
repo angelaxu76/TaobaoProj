@@ -33,7 +33,7 @@ def barbour_database_import_pipleline():
     # barbour_fetch_info()
     # outdoorandcountry_fetch_info(max_workers=10)
     # allweathers_fetch_info(7)
-    houseoffraser_fetch_info(max_workers=5, headless=False)
+    # houseoffraser_fetch_info(max_workers=5, headless=False)
     # very_fetch_info()
     # terraces_fetch_info()
 
@@ -42,6 +42,7 @@ def barbour_database_import_pipleline():
     #batch_import_txt_to_barbour_product("barbour")
     #batch_import_txt_to_barbour_product("outdoorandcountry")
     #batch_import_txt_to_barbour_product("allweathers")
+    # batch_import_txt_to_barbour_product("houseoffraser")
 
     # Step 3: TODO 将各个供货商的库存价格等从txt中数据导入数据库offers
     # import_txt_for_supplier("barbour",False)

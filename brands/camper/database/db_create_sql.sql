@@ -26,6 +26,8 @@ CREATE TABLE camper_inventory (
     stock_count INTEGER DEFAULT 0,                    -- 实际库存数量
     original_price_gbp NUMERIC(10, 2),                -- 原价（单位 GBP）
     discount_price_gbp NUMERIC(10, 2),                -- 折扣价（单位 GBP）
+    jingya_untaxed_price NUMERIC(10, 2),              -- 鲸芽经销商未税价格（CNY）
+    taobao_store_price NUMERIC(10, 2),                -- 淘宝店铺销售价格（CNY）
 
     -- 状态控制
     last_checked TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- 最后检查时间
