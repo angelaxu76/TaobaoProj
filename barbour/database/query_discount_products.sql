@@ -21,7 +21,7 @@ ORDER BY discount_pct DESC, price_gbp ASC, o.product_code;
 
 
 
-select * from barbour_offers  where product_code='LCA0352CR51' 
+select * from barbour_offers  where product_code='MCA1050OL11' 
 and site_name='barbour'
 order by size;
 
@@ -32,6 +32,43 @@ select * from barbour_offers  where site_name='outdoorandcountry' and product_co
 
 select count(*) from barbour_offers  where original_price_gbp is null； 
    
+WITH inv AS (
+  SELECT
+    size AS inv_size,
+    lower(                                   -- 统一成小写
+      regexp_replace(
+        regexp_replace(size,
+                       '^uk[[:space:]]*',    -- 去掉前缀 UK + 后续空白
+                       '',
+                       'i'                   -- i: 不区分大小写
+        ),
+        '[[:space:]\./-]+',                  -- 去：空白、点、斜杠、连字符
+        '',
+        'g'                                  -- g: 全局
+      )
+    ) AS inv_norm
+  FROM barbour_inventory
+  WHERE lower(product_code) = lower('MCA1050OL11')
+)
+SELECT DISTINCT inv_size, inv_norm FROM inv;
 
 
-
+SELECT
+  site_name,
+  size AS offer_size,
+  lower(
+    regexp_replace(
+      regexp_replace(size, '^uk[[:space:]]*', '', 'i'),
+      '[[:space:]\./-]+', '', 'g'
+    )
+  ) AS offer_norm,
+  COALESCE(sale_price_gbp, price_gbp) AS eff_price,
+  stock_count,
+  last_checked
+FROM barbour_offers
+WHERE is_active = TRUE
+  AND lower(product_code) = lower('MCA1050OL11')
+ORDER BY
+  (CASE WHEN COALESCE(stock_count,0) > 0 THEN 0 ELSE 1 END),
+  eff_price ASC NULLS LAST,
+  last_checked DESC;

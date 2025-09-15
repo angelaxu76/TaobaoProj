@@ -53,8 +53,8 @@ def barbour_database_import_pipleline():
     # import_txt_for_supplier("terraces",False)
 
     # Step 4: TODO 将鲸芽已经发布的产品先填充到barbour inventory表，库存补0，后续在靠真实库存来填充
-    insert_missing_products_with_zero_stock("barbour")
-    insert_jingyaid_to_db("barbour")
+    # insert_missing_products_with_zero_stock("barbour")
+    # insert_jingyaid_to_db("barbour")
 
     #Step 6: TODO 根据发布文件填充barbour 鲸芽的map表
     # fill_supplier_map()
