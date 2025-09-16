@@ -42,8 +42,8 @@ def pipeline_barbour():
     #insert_jingyaid_to_db("barbour")
 
     print("\n步骤 6：生成更新数据库的SQL String给UIPath使用，去更新库存")
-    result = generate_select_sql_from_excel(r"D:\TB\Products\barbour\document\publication\barbour_publication_20250907_222647.xlsx")
-    print(result["preview"])
+    # result = generate_select_sql_from_excel(r"D:\TB\Products\barbour\document\publication\barbour_publication_20250907_222647.xlsx")
+    # print(result["preview"])
 
 
 if __name__ == "__main__":

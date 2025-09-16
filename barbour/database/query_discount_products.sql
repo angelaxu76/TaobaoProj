@@ -74,3 +74,6 @@ ORDER BY
   last_checked DESC;
 
   select * from barbour_inventory where channel_product_id='968302306804' ;
+
+
+  select  distinct product_code from barbour_products ORDER BY product_code;

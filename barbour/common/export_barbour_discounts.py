@@ -37,7 +37,11 @@ WHERE o.product_code IS NOT NULL
   AND o.stock_count > 0
   AND o.discount_pct > %s
   AND (%s IS NULL OR o.product_code ILIKE %s)
-  AND o.product_code NOT IN (SELECT product_code FROM barbour_supplier_map)   -- ★ 新增过滤
+  AND o.product_code NOT IN (
+    SELECT DISTINCT product_code
+    FROM barbour_inventory
+    WHERE is_published = TRUE
+)
 GROUP BY o.product_code
 HAVING COUNT(DISTINCT o.size) > %s
 ORDER BY discount_pct DESC, price_gbp ASC, o.product_code;
