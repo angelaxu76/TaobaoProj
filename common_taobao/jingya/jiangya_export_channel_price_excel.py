@@ -210,6 +210,195 @@ def export_jiangya_channel_prices(brand: str, output_dir: Optional[str] = None) 
     # 返回第一个文件路径（保持签名/返回类型不变）
     return str(created_files[0])
 
+from pathlib import Path
+from typing import Optional, List, Tuple
+import pandas as pd
+import openpyxl
+import psycopg2
+
+from config import BRAND_CONFIG, BASE_DIR  # 新增: BASE_DIR 用来拼默认路径
+try:
+    from config import PGSQL_CONFIG  # 兜底
+except Exception:
+    PGSQL_CONFIG = {}
+
+SHEET_NAME_PRICE = "sheet1"
+HEADERS_PRICE = ["渠道产品ID(必填)", "skuID", "渠道价格(未税)(元)(必填)", "最低建议零售价(元)", "最高建议零售价(元)"]
+
+def _write_simple_excel(df: pd.DataFrame, file_path: Path):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = SHEET_NAME_PRICE
+    # 表头
+    for c, h in enumerate(HEADERS_PRICE, start=1):
+        ws.cell(row=1, column=c, value=h)
+    # 数据
+    for r_idx, row in enumerate(df.itertuples(index=False), start=2):
+        for c_idx, value in enumerate(row, start=1):
+            ws.cell(row=r_idx, column=c_idx, value=value)
+    wb.save(file_path)
+    wb.close()
+
+def _load_exclude_codes(file_path: Path) -> List[str]:
+    codes = []
+    if not file_path.exists():
+        print(f"[WARN] 排除清单未找到：{file_path}（将不做排除）")
+        return codes
+    for line in file_path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        codes.append(s.upper())
+    print(f"[INFO] 已加载排除编码 {len(codes)} 条。")
+    return codes
+
+def export_barbour_channel_price_by_sku(
+    brand: str = "barbour",
+    output_dir: Optional[str] = None,
+    filename: Optional[str] = None,
+    chunk_size: int = 490,
+    strict: bool = True,  # True：发现空字段直接报错；False：跳过空行并仅告警
+    exclude_codes_file: Optional[str] = None,  # 新增：排除清单路径
+) -> str:
+    """
+    逐个 SKU 导出价格（Barbour 专用，不做任何价格计算，直接用 inventory 里的结果）
+    导出列：渠道产品ID(必填), skuID, 渠道价格(未税)(元)(必填), 最低建议零售价(元), 最高建议零售价(元)
+
+    规则：
+    - channel_product_id 可重复；每个 skuid 必须存在
+    - 若发现以下任一字段为空：channel_product_id / skuid / jingya_price_rmb / taobao_price_rmb
+      则打印告警清单；strict=True 时抛错终止，strict=False 时跳过该行继续导出
+    - 支持排除清单：exclude_codes.txt 中列出的 product_code 全部过滤（对应所有 skuid 都不导出）
+    - 每个文件最多 chunk_size 条数据行（默认 490）
+    返回：第一个导出文件路径
+    """
+    brand_l = brand.lower().strip()
+    if brand_l not in BRAND_CONFIG:
+        raise ValueError(f"未知品牌：{brand}。可用：{', '.join(sorted(BRAND_CONFIG.keys()))}")
+
+    cfg = BRAND_CONFIG[brand_l]
+    table = cfg["TABLE_NAME"]  # barbour_inventory
+    pgcfg = cfg.get("PGSQL_CONFIG", PGSQL_CONFIG)
+    if not pgcfg:
+        raise RuntimeError("PGSQL 连接配置缺失，请在 config.py 中提供 PGSQL_CONFIG 或品牌级 PGSQL_CONFIG。")
+
+    # 默认排除清单路径（D:/TB/Products/barbour/document/exclude_codes.txt）
+    if exclude_codes_file is None:
+        # BASE_DIR/barbour/document/exclude_codes.txt
+        default_exclude = Path(BASE_DIR) / "barbour" / "document" / "exclude_codes.txt"
+    else:
+        default_exclude = Path(exclude_codes_file)
+
+    exclude_codes = set(_load_exclude_codes(default_exclude))
+
+    # 连接
+    conn = psycopg2.connect(
+        host=pgcfg["host"], port=pgcfg["port"],
+        user=pgcfg["user"], password=pgcfg["password"], dbname=pgcfg["dbname"],
+    )
+    # 注意：为实现“按 product_code 排除”，这里把 product_code 一并查出来
+    sql = f"""
+        SELECT
+            channel_product_id,
+            skuid,
+            product_code,
+            jingya_price_rmb,
+            taobao_price_rmb
+        FROM {table}
+        WHERE channel_product_id IS NOT NULL
+          AND TRIM(channel_product_id) <> ''
+    """
+    df = pd.read_sql(sql, conn)
+    conn.close()
+
+    # 空表处理
+    out_dir = Path(output_dir) if output_dir else Path(cfg["OUTPUT_DIR"])
+    out_dir.mkdir(parents=True, exist_ok=True)
+    base = Path(filename).stem if filename else f"{brand_l}_jiangya_channel_price_sku"
+
+    if df.empty:
+        out_file = out_dir / f"{base}_part1_of1.xlsx"
+        _write_simple_excel(pd.DataFrame(columns=HEADERS_PRICE), out_file)
+        print(f"[INFO] 无可导出的记录，生成空表：{out_file}")
+        return str(out_file)
+
+    # 规范化
+    for col in ("channel_product_id", "skuid", "product_code"):
+        df[col] = df[col].astype(str).str.strip()
+
+    # 按排除清单过滤（大小写不敏感：统一转大写比对）
+    if exclude_codes:
+        before = len(df)
+        df = df[~df["product_code"].str.upper().isin(exclude_codes)].reset_index(drop=True)
+        removed = before - len(df)
+        print(f"[INFO] 已按排除清单过滤 {removed} 行。")
+
+    # 转数字
+    def to_num(s):
+        try:
+            return float(s)
+        except Exception:
+            return None
+
+    df["jingya_price_rmb"] = df["jingya_price_rmb"].apply(to_num)
+    df["taobao_price_rmb"] = df["taobao_price_rmb"].apply(to_num)
+
+    # 关键字段校验
+    issues: List[Tuple[int, str]] = []
+    mask_missing = (
+        (df["channel_product_id"] == "") |
+        (df["skuid"] == "") |
+        (df["jingya_price_rmb"].isna()) |
+        (df["taobao_price_rmb"].isna())
+    )
+    if mask_missing.any():
+        bad = df[mask_missing].copy()
+        for idx, row in bad.iterrows():
+            issues.append((
+                idx,
+                f"缺失字段 -> code='{row.get('product_code', '')}', "
+                f"cpid='{row.get('channel_product_id', '')}', "
+                f"skuid='{row.get('skuid', '')}', "
+                f"jingya='{row.get('jingya_price_rmb', '')}', "
+                f"taobao='{row.get('taobao_price_rmb', '')}'"
+            ))
+        print("[WARN] 发现字段缺失的记录：")
+        for i in issues:
+            print("   - 行", i[0], i[1])
+        if strict:
+            raise ValueError(f"存在 {len(issues)} 条缺失关键字段的记录；已列出详情。请先修复后再导出。")
+        # 非严格模式：跳过有问题的行
+        df = df[~mask_missing].reset_index(drop=True)
+
+    # 组织导出列
+    out_df = pd.DataFrame({
+        "渠道产品ID(必填)": df["channel_product_id"],
+        "skuID": df["skuid"],
+        "渠道价格(未税)(元)(必填)": df["jingya_price_rmb"].round(2),
+        "最低建议零售价(元)": df["taobao_price_rmb"].round(2),
+        "最高建议零售价(元)": df["taobao_price_rmb"].round(2),
+    })[HEADERS_PRICE]
+
+    # 分包写出
+    n = len(out_df)
+    if n == 0:
+        out_file = out_dir / f"{base}_part1_of1.xlsx"
+        _write_simple_excel(out_df, out_file)
+        print(f"[INFO] 过滤后无有效记录，已生成空表：{out_file}")
+        return str(out_file)
+
+    num_parts = (n + chunk_size - 1) // chunk_size
+    created: List[Path] = []
+    for i in range(num_parts):
+        start, end = i * chunk_size, min((i + 1) * chunk_size, n)
+        chunk = out_df.iloc[start:end].reset_index(drop=True)
+        out_file = out_dir / (f"{base}.xlsx" if num_parts == 1 and filename else f"{base}_part{i+1}_of_{num_parts}.xlsx")
+        _write_simple_excel(chunk, out_file)
+        created.append(out_file)
+        print(f"[OK] 写出：{out_file}（行数：{len(chunk)}）")
+
+    return str(created[0])
+
 
 # CLI（可选）
 if __name__ == "__main__":

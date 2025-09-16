@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-House of Fraser | Barbour 商品抓取（双通道：旧版 + 新版）
-- 旧版解析：parse_info_legacy（保持你原有逻辑）
-- 新版解析：parse_info_new（针对 Next/GraphQL 页，静态解析 JSON-LD + 脚本中的价签原始值 + 新版尺码/颜色）
-- 对外接口不变：parse_info / process_url / houseoffraser_fetch_info
+House of Fraser | Barbour 商品抓取（支持新版/旧版）
+- 预加载 URL→ProductCode 缓存（仅启动时一次）
+- “猎取 legacy”模式：每次尝试新建 driver；若是 new/unknown 立刻放弃并重试，最多 10 次；没命中则记录 URL
+- 命中 legacy → 解析 → (缓存命中编码 or 模糊匹配) → 写 TXT
+- 所有调试/输出原子写，避免并发文件冲突
 """
 
 from __future__ import annotations
@@ -20,14 +21,13 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-# ====== 项目依赖（保持不变）======
+# ====== 项目依赖（按你的工程保持不变）======
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Connection
 from config import BARBOUR, BRAND_CONFIG
 from barbour.core.site_utils import assert_site_or_raise as canon
 from barbour.core.sim_matcher import match_product, choose_best, explain_results
 from common_taobao.size_utils import clean_size_for_barbour as _norm_size  # 统一尺码清洗
-
 
 # ================== 站点与目录 ==================
 SITE_NAME = canon("houseoffraser")
@@ -38,6 +38,7 @@ DEBUG_DIR: Path = TXT_DIR / "_debug"
 DEBUG_DIR.mkdir(parents=True, exist_ok=True)
 
 PRODUCTS_TABLE: str = BRAND_CONFIG.get("barbour", {}).get("PRODUCTS_TABLE", "barbour_products")
+OFFERS_TABLE: Optional[str] = BRAND_CONFIG.get("barbour", {}).get("OFFERS_TABLE")  # 允许不存在
 PG = BRAND_CONFIG["barbour"]["PGSQL_CONFIG"]
 
 # ================== 参数 ==================
@@ -53,49 +54,103 @@ COLOR_WEIGHT = 0.25
 _WRITTEN: set[str] = set()
 _WRITTEN_LOCK = threading.Lock()
 
-# ================== 小工具 ==================
+# ================== URL 规范化 & 预加载缓存 ==================
+from urllib.parse import urlparse, parse_qsl, urlunparse, urlencode
+from collections import OrderedDict
 
-import re
+URL_CODE_CACHE: Dict[str, str] = {}
+_URL_CODE_CACHE_READY = False
 
-# 去掉 option 文本中自带的 “- Out of stock / Out of stock”等噪音
-def _strip_oos_suffix(label: str) -> str:
-    s = (label or "").strip()
-    # 常见格式： "16- Out of stock" / "16 - Out Of Stock" / "16  Out of stock"
-    s = re.sub(r"\s*-\s*Out\s*of\s*stock\s*$", "", s, flags=re.IGNORECASE)
-    s = re.sub(r"\s*Out\s*of\s*stock\s*$", "", s, flags=re.IGNORECASE)
-    return s.strip(" -/")
+def _normalize_url(u: str) -> str:
+    """轻量规范化：strip、去 fragment、去常见跟踪参数。"""
+    if not u:
+        return ""
+    u = u.strip()
+    try:
+        p = urlparse(u)
+        fragless = p._replace(fragment="")
+        drop = {"utm_source","utm_medium","utm_campaign","utm_term","utm_content","gclid","fbclid"}
+        qs = [(k, v) for k, v in parse_qsl(fragless.query, keep_blank_values=True) if k not in drop]
+        fragless = fragless._replace(query=urlencode(qs))
+        return urlunparse(fragless)
+    except Exception:
+        return u
 
-def _build_size_lines_common(entries):
+def get_dbapi_connection(conn_or_engine):
+    # 取得 DBAPI 连接以便 cursor() 调用
+    if hasattr(conn_or_engine, "cursor"): return conn_or_engine
+    if hasattr(conn_or_engine, "raw_connection"): return conn_or_engine.raw_connection()
+    c = getattr(conn_or_engine, "connection", None)
+    if c is not None:
+        dbapi = getattr(c, "dbapi_connection", None)
+        if dbapi is not None and hasattr(dbapi, "cursor"): return dbapi
+        inner = getattr(c, "connection", None)
+        if inner is not None and hasattr(inner, "cursor"): return inner
+        if hasattr(c, "cursor"): return c
+    return conn_or_engine
+
+def _safe_sql_to_cache(raw_conn, sql: str, params=None) -> Dict[str, str]:
+    """执行 SQL 并将 (url, code) 写入 cache；发生错误自动 rollback，不抛出。"""
+    cache = OrderedDict()
+    try:
+        with raw_conn.cursor() as cur:
+            cur.execute(sql, params or {})
+            for url, code in cur.fetchall():
+                if url and code:
+                    cache[_normalize_url(str(url))] = str(code).strip()
+    except Exception:
+        try: raw_conn.rollback()
+        except Exception: pass
+    return cache
+
+def build_url_code_cache(raw_conn, products_table: str, offers_table: Optional[str], site_name: str):
     """
-    entries: [(size_norm, status)]，status ∈ {"有货","无货"}
-    输出：
-      Product Size:  size:状态;size:状态（保持你现有格式以兼容下游）
-      Product Size Detail: size:qty:EAN（有货=3，无货=0；EAN占位）
+    启动时构建一次 URL→ProductCode 映射缓存：
+      1) 优先从 offers 表读取 site_name=houseoffraser 的 URL+Code
+      2) 再从 products 表补充（历史人工回填）
     """
-    if not entries:
-        return "No Data", "No Data"
+    global URL_CODE_CACHE, _URL_CODE_CACHE_READY
+    if _URL_CODE_CACHE_READY:
+        return URL_CODE_CACHE
 
-    # 同尺码多条时，“有货”优先
-    by_size = {}
-    for size, status in entries:
-        prev = by_size.get(size)
-        if prev is None or (prev == "无货" and status == "有货"):
-            by_size[size] = status
+    cache = OrderedDict()
 
-    # 保持出现顺序
-    ordered = [s for s, _ in entries if s in by_size]
-    seen = set()
-    ordered = [s for s in ordered if not (s in seen or seen.add(s))]
+    # 1) offers 表（可选）：不同项目可能字段不同，这里尝试常见列组合
+    if offers_table:
+        candidates = [
+            ("offer_url",   "product_code"),
+            ("source_url",  "product_code"),
+            ("product_url", "product_code"),
+            ("offer_url",   "color_code"),
+            ("source_url",  "color_code"),
+            ("product_url", "color_code"),
+        ]
+        for url_col, code_col in candidates:
+            sql = f"""
+                SELECT {url_col}, {code_col}
+                  FROM {offers_table}
+                 WHERE site_name = %(site)s
+                   AND {url_col} IS NOT NULL
+                   AND {code_col} IS NOT NULL
+            """
+            cache.update(_safe_sql_to_cache(raw_conn, sql, {"site": site_name}))
 
-    EAN = "0000000000000"
-    product_size = ";".join(f"{s}:{by_size[s]}" for s in ordered) or "No Data"
-    product_size_detail = ";".join(
-        f"{s}:{3 if by_size[s]=='有货' else 0}:{EAN}" for s in ordered
-    ) or "No Data"
-    return product_size, product_size_detail
+    # 2) products 表（固定有 product_code）
+    for url_col in ("source_url", "offer_url", "product_url"):
+        sql = f"""
+            SELECT {url_col}, product_code
+              FROM {products_table}
+             WHERE {url_col} IS NOT NULL
+               AND product_code IS NOT NULL
+        """
+        cache.update(_safe_sql_to_cache(raw_conn, sql))
 
+    URL_CODE_CACHE = dict(cache)
+    _URL_CODE_CACHE_READY = True
+    print(f"🧠 URL→Code 缓存构建完成：{len(URL_CODE_CACHE)} 条")
+    return URL_CODE_CACHE
 
-
+# ================== 文件原子写 ==================
 def _atomic_write_bytes(data: bytes, dst: Path, retries: int = 6, backoff: float = 0.25) -> bool:
     dst.parent.mkdir(parents=True, exist_ok=True)
     for i in range(retries):
@@ -106,7 +161,7 @@ def _atomic_write_bytes(data: bytes, dst: Path, retries: int = 6, backoff: float
                 tmp = Path(tf.name)
                 tf.write(data); tf.flush(); os.fsync(tf.fileno())
             try:
-                os.replace(tmp, dst)
+                os.replace(tmp, dst)  # Windows 原子替换（同分区）
             finally:
                 if tmp and tmp.exists():
                     try: tmp.unlink(missing_ok=True)
@@ -141,18 +196,6 @@ def _dump_debug_html(html: str, url: str, tag: str = "debug1") -> Path:
     print(f"🧪 HTML dump → {out}")
     return out
 
-def get_dbapi_connection(conn_or_engine):
-    if hasattr(conn_or_engine, "cursor"): return conn_or_engine
-    if hasattr(conn_or_engine, "raw_connection"): return conn_or_engine.raw_connection()
-    c = getattr(conn_or_engine, "connection", None)
-    if c is not None:
-        dbapi = getattr(c, "dbapi_connection", None)
-        if dbapi is not None and hasattr(dbapi, "cursor"): return dbapi
-        inner = getattr(c, "connection", None)
-        if inner is not None and hasattr(inner, "cursor"): return inner
-        if hasattr(c, "cursor"): return c
-    return conn_or_engine
-
 def _clean(s: Optional[str]) -> str:
     return re.sub(r"\s+", " ", (s or "").strip())
 
@@ -161,48 +204,23 @@ def _to_num(s: Optional[str]) -> Optional[float]:
     m = re.search(r"([0-9]+(?:\.[0-9]{1,2})?)", s.replace(",", ""))
     return float(m.group(1)) if m else None
 
-# ================== 栈判定 & 抓取策略（保留） ==================
+# ================== 栈判定 ==================
 def _classify_stack_by_html_head(html: str) -> str:
-    """返回 'legacy' / 'new' / 'unknown'，仅看 <html> 头部与早期资源特征。"""
+    """返回 'legacy' / 'new' / 'unknown'，仅看首屏特征。"""
     head = html[:8192].lower()
-    if ('class="fraserspx"' in head) or ('data-recs-provider="graphql"' in head) or ('/_next/static/' in head):
+    # Next.js / 新栈特征
+    if ('id="__next' in head) or ('id="__next_data__"' in head) or ("__next" in head) or ("/_next/static/" in head) or ("next-data" in head):
         return "new"
-    if ('xmlns="http://www.w3.org/1999/xhtml"' in head) or ('/wstatic/dist/' in head) or ('var datalayerdata' in head):
+    if ('data-testid="product-price"' in head) or ('data-component="price"' in head):
+        return "new"
+    # 旧栈常见资源路径/变量
+    if ("/wstatic/dist/" in head) or ('xmlns="http://www.w3.org/1999/xhtml"' in head) or ('var datalayerdata' in head):
+        return "legacy"
+    if ("add-to-bag" in head and "house of fraser" in head):
         return "legacy"
     return "unknown"
 
-def _get_html_preferring_legacy(driver, url: str, tries: int = 3, wait_html: int = 8, dump_debug=False, debug_dir: str = None):
-    """
-    尝试优先拿 legacy；若连续命中新栈则返回最后一次 HTML。
-    """
-    last_html, last_ver = "", "unknown"
-    for i in range(tries):
-        if i > 0:
-            try:
-                driver.delete_all_cookies()
-                driver.execute_script("window.localStorage.clear(); window.sessionStorage.clear();")
-            except Exception:
-                pass
-        driver.get(url)
-        try:
-            WebDriverWait(driver, wait_html).until(EC.presence_of_element_located((By.TAG_NAME, "html")))
-        except Exception:
-            pass
-        html = driver.page_source
-        ver = _classify_stack_by_html_head(html)
-        if dump_debug and debug_dir:
-            short = f"{abs(hash(url)) & 0xFFFFFFFF:08x}"
-            p = Path(debug_dir) / f"stack_{ver}_attempt{i+1}_{short}.html"
-            p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(html, encoding="utf-8", errors="ignore")
-        if ver == "legacy":
-            return html, ver
-        last_html, last_ver = html, ver
-        if ver != "new":  # unknown 则不无限重试
-            break
-    return last_html, last_ver
-
-# ================== 旧版解析（保持你原有逻辑，只是函数名改为 parse_info_legacy） ==================
+# ================== 旧版解析（保持你当前逻辑） ==================
 def _extract_title_legacy(soup: BeautifulSoup) -> str:
     t = _clean(soup.title.get_text()) if soup.title else "No Data"
     t = re.sub(r"\s*\|\s*House of Fraser\s*$", "", t, flags=re.I)
@@ -311,21 +329,14 @@ def _extract_prices_legacy(soup: BeautifulSoup) -> Tuple[Optional[float], Option
     return curr, orig
 
 def _extract_size_pairs_legacy(soup: BeautifulSoup) -> List[Tuple[str, str]]:
-    """
-    旧版：select#sizeDdl > option
-    返回 [(规范化尺码, '有货'|'无货'), ...]
-    """
     sel = soup.find("select", id="sizeDdl")
     entries = []
     if not sel:
         return entries
-
     for opt in sel.find_all("option"):
         raw_label = (opt.get_text() or "").strip()
         if not raw_label or raw_label.lower().startswith("select"):
             continue
-
-        # 判定库存：disabled/class/title 或 文本包含 out of stock
         title = (opt.get("title") or "").lower()
         cls = " ".join(opt.get("class") or []).lower()
         raw_lc = raw_label.lower()
@@ -336,13 +347,10 @@ def _extract_size_pairs_legacy(soup: BeautifulSoup) -> List[Tuple[str, str]]:
             or opt.has_attr("disabled")
         )
         status = "无货" if oos else "有货"
-
-        # 清洗掉 “- Out of stock”等噪音，再做统一尺码清洗
-        clean_label = _strip_oos_suffix(raw_label)
+        clean_label = re.sub(r"\s*-\s*Out\s*of\s*stock\s*$", "", raw_label, flags=re.I).strip(" -/")
         size_norm = _norm_size(clean_label)
         if not size_norm:
             continue
-
         entries.append((size_norm, status))
     return entries
 
@@ -360,117 +368,94 @@ def _build_size_lines_legacy(pairs: List[Tuple[str, str]]) -> Tuple[str, str]:
     psd = ";".join(f"{k}:{3 if by_size[k]=='有货' else 0}:{EAN}" for k in ordered) or "No Data"
     return ps, psd
 
+# ================== 新版解析骨架（保持你现有实现/可按需细化） ==================
+def _clean_html_text(s: str) -> str:
+    s = re.sub(r"<[^>]+>", " ", s or "")
+    s = ihtml.unescape(s)
+    return re.sub(r"\s+", " ", s).strip()
 
-def _extract_color_new(soup: BeautifulSoup, url: Optional[str]) -> str:
-    """
-    新版颜色：优先用 URL/页面中的 #colcode 精确匹配 JSON-LD offers → itemOffered.color；
-    兜底：脚本文本正则匹配 sku→color；再退回图片 alt；最后退回 og:image:alt。
-    """
-    import re as _re, json as _json
-
-    html_text = soup.decode()
-
-    # 1) colcode 来源：URL → canonical → og:url
-    colcode = None
-    if url:
-        m = _re.search(r"colcode=(\d{6,})", url)
-        if m: colcode = m.group(1)
-    if not colcode:
-        cano = soup.find("link", attrs={"rel": "canonical"})
-        href = (cano.get("href") if cano else "") or ""
-        m = _re.search(r"colcode=(\d{6,})", href)
-        if m: colcode = m.group(1)
-    if not colcode:
-        ogu = soup.find("meta", attrs={"property": "og:url"})
-        href = (ogu.get("content") if ogu else "") or ""
-        m = _re.search(r"colcode=(\d{6,})", href)
-        if m: colcode = m.group(1)
-
-    # 没有 colcode 很难精准，直接退回 og:image:alt
-    def _fallback_og_alt() -> str:
-        m = soup.find("meta", attrs={"property": "og:image:alt"})
-        if m and m.get("content"):
-            return m["content"].split(" - ")[0].strip()
-        return "No Data"
-
-    if not colcode:
-        return _fallback_og_alt()
-
-    # 2) JSON-LD：按 sku/gtin* 精确匹配，取 itemOffered.color
-    try:
-        for sc in soup.find_all("script", {"type": "application/ld+json"}):
-            txt = sc.string or sc.get_text() or ""
-            if not txt.strip():
+def _from_jsonld_product_new(soup: BeautifulSoup) -> Dict[str, Any]:
+    out: Dict[str, Any] = {}
+    for sc in soup.find_all("script", {"type": "application/ld+json"}):
+        txt = sc.string or ""
+        try:
+            data = json.loads(txt)
+        except Exception:
+            continue
+        objs = data if isinstance(data, list) else [data]
+        for obj in objs:
+            if not isinstance(obj, dict):
                 continue
-            try:
-                data = _json.loads(txt)
-            except Exception:
+            if obj.get("@type") != "Product":
                 continue
+            out["name"] = obj.get("name")
+            out["description"] = _clean_html_text(obj.get("description", ""))
+            out["sku"] = obj.get("sku") or obj.get("gtin8")
+            return out
+    return out
 
-            nodes = data if isinstance(data, list) else [data]
-            for node in nodes:
-                if not isinstance(node, dict):
-                    continue
+def _extract_prices_new(soup: BeautifulSoup, html_text: str) -> Tuple[Optional[float], Optional[float]]:
+    # 保留原兜底逻辑；生产时尽量走 legacy，不依赖此分支
+    nums: List[float] = []
+    for tag in soup.find_all(attrs={"data-testvalue": True}):
+        v = tag.get("data-testvalue")
+        try:
+            n = float(v) / 100.0
+            nums.append(n)
+        except Exception:
+            pass
+    t = soup.find(attrs={"data-testid": "ticket-price"})
+    if t:
+        val = _to_num(t.get_text())
+        if val is not None:
+            nums.append(val)
+    if not nums:
+        m1 = re.search(r'"SellPriceRaw"\s*:\s*([0-9]+(?:\.[0-9]{1,2})?)', html_text)
+        if m1:
+            try: nums.append(float(m1.group(1)))
+            except: pass
+        m2 = re.search(r'"RefPriceRaw"\s*:\s*([0-9]+(?:\.[0-9]{1,2})?)', html_text)
+        if m2:
+            try: nums.append(float(m2.group(1)))
+            except: pass
+    nums = sorted(set(x for x in nums if x is not None))
+    if not nums:
+        return None, None
+    if len(nums) == 1:
+        return nums[0], nums[0]
+    return nums[0], nums[-1]
 
-                # 可能是直接 Product，也可能在 @graph 里
-                products = []
-                if node.get("@type") == "Product":
-                    products.append(node)
-                if isinstance(node.get("@graph"), list):
-                    products += [g for g in node["@graph"] if isinstance(g, dict) and g.get("@type") == "Product"]
-
-                for prod in products:
-                    offers = prod.get("offers")
-                    offer_items = []
-                    if isinstance(offers, dict):
-                        if isinstance(offers.get("offers"), list):
-                            offer_items += offers["offers"]
-                        else:
-                            offer_items.append(offers)
-                    elif isinstance(offers, list):
-                        offer_items += offers
-
-                    for off in offer_items:
-                        if not isinstance(off, dict):
-                            continue
-                        sku = str(off.get("sku") or "").strip()
-                        io  = off.get("itemOffered") or {}
-                        gtins = []
-                        if isinstance(io, dict):
-                            for k in ("gtin", "gtin8", "gtin12", "gtin13", "gtin14"):
-                                v = io.get(k)
-                                if v: gtins.append(str(v).strip())
-                        if colcode == sku or colcode in gtins:
-                            color = (io.get("color") if isinstance(io, dict) else None) or off.get("color")
-                            if isinstance(color, str) and color.strip():
-                                return color.strip()
-    except Exception:
-        pass
-
-    # 3) 兜底：脚本文本里按 "sku":"{colcode}" … "color":"XXX" 搜
-    try:
-        pat = _re.compile(
-            r'"sku"\s*:\s*"' + _re.escape(colcode) + r'"\s*,[^}]*?"color"\s*:\s*"([^"]+)"',
-            _re.S | _re.I
-        )
-        m = pat.search(html_text)
-        if m:
-            return m.group(1).strip()
-    except Exception:
-        pass
-
-    # 4) 再兜底：图片路径里含 colcode 的 img.alt
-    for img in soup.find_all("img"):
-        src = img.get("src") or img.get("data-src") or ""
-        if colcode in src:
-            alt = (img.get("alt") or "").strip()
-            if alt:
-                return alt.split(" - ")[0].strip()
-
-    # 5) 最后退回 og:image:alt
-    return _fallback_og_alt()
-
-
+def _extract_sizes_new(soup: BeautifulSoup) -> Tuple[str, str]:
+    entries = []
+    for opt in soup.find_all("option", attrs={"data-testid": "drop-down-option"}):
+        val = (opt.get("value") or "").strip()
+        if not val:
+            continue
+        raw_label = (opt.get_text() or "").strip()
+        clean_label = re.sub(r"\s*-\s*Out\s*of\s*stock\s*$", "", raw_label, flags=re.I).strip(" -/")
+        size_norm = _norm_size(clean_label)
+        if not size_norm:
+            continue
+        oos = opt.has_attr("disabled") or (opt.get("aria-disabled") == "true") or "out of stock" in raw_label.lower()
+        status = "无货" if oos else "有货"
+        entries.append((size_norm, status))
+    if not entries:
+        return "No Data", "No Data"
+    # 与 legacy 共用的生成器
+    by_size = {}
+    for size, status in entries:
+        prev = by_size.get(size)
+        if prev is None or (prev == "无货" and status == "有货"):
+            by_size[size] = status
+    ordered = []
+    seen = set()
+    for s, _ in entries:
+        if s in by_size and s not in seen:
+            ordered.append(s); seen.add(s)
+    EAN = "0000000000000"
+    product_size = ";".join(f"{s}:{by_size[s]}" for s in ordered) or "No Data"
+    product_size_detail = ";".join(f"{s}:{3 if by_size[s]=='有货' else 0}:{EAN}" for s in ordered) or "No Data"
+    return product_size, product_size_detail
 
 def parse_info_legacy(html: str, url: str) -> Dict[str, Any]:
     soup = BeautifulSoup(html, "html.parser")
@@ -501,142 +486,6 @@ def parse_info_legacy(html: str, url: str) -> Dict[str, Any]:
     }
     return info
 
-# ================== 新版解析（Next/GraphQL 页，静态解析） ==================
-def _clean_html_text(s: str) -> str:
-    s = re.sub(r"<[^>]+>", " ", s or "")
-    s = ihtml.unescape(s)
-    return re.sub(r"\s+", " ", s).strip()
-
-def _from_jsonld_product_new(soup: BeautifulSoup) -> Dict[str, Any]:
-    out: Dict[str, Any] = {}
-    for sc in soup.find_all("script", {"type": "application/ld+json"}):
-        txt = sc.string or ""
-        try:
-            data = json.loads(txt)
-        except Exception:
-            continue
-        objs = data if isinstance(data, list) else [data]
-        for obj in objs:
-            if not isinstance(obj, dict):
-                continue
-            if obj.get("@type") != "Product":
-                continue
-            out["name"] = obj.get("name")
-            out["description"] = _clean_html_text(obj.get("description", ""))
-            out["sku"] = obj.get("sku") or obj.get("gtin8")
-            colors: set[str] = set()
-            avail_map: Dict[str, str] = {}
-            curr_prices: List[float] = []
-
-            offers = obj.get("offers")
-            if isinstance(offers, dict):
-                nested = offers.get("offers") or []
-                for off in nested:
-                    p = off.get("price")
-                    if p:
-                        try: curr_prices.append(float(p))
-                        except: pass
-                    io = off.get("itemOffered") or {}
-                    col = io.get("color") if isinstance(io, dict) else None
-                    if col:
-                        colors.add(col)
-                        avail = off.get("availability") or ""
-                        avail_map[col] = "有货" if "InStock" in avail else ("无货" if avail else "No Data")
-                if not curr_prices and offers.get("lowPrice"):
-                    try: curr_prices.append(float(offers["lowPrice"]))
-                    except: pass
-
-            out["current_price_guess"] = (min(curr_prices) if curr_prices else None)
-            out["colors_all"] = sorted(colors)
-            out["availability_by_color"] = avail_map
-            return out
-    return out
-
-def _extract_selected_color_new(soup: BeautifulSoup) -> Optional[str]:
-    # og:image:alt 一般是 "Black - Brand - Product - 1"
-    for m in soup.find_all("meta", {"property": "og:image:alt"}):
-        cont = (m.get("content") or "").strip()
-        if not cont:
-            continue
-        first = cont.split("-")[0].strip()
-        if first and first.lower() not in ("house of fraser",):
-            return first
-    # 退回 title 里的括号
-    if soup.title:
-        mt = re.search(r"\(([^)]+)\)", soup.title.get_text())
-        if mt:
-            return mt.group(1).strip()
-    return None
-
-def _extract_prices_new(soup: BeautifulSoup, html_text: str) -> Tuple[Optional[float], Optional[float]]:
-    """
-    新版页面价格来源（无需跑JS）：
-    - DOM 属性 data-testvalue="17900"/"21900" → £179.00 / £219.00
-    - data-testid="ticket-price" → 原价（若存在）
-    - 兜底：脚本文本里的 RefPriceRaw / RefPrice
-    """
-    nums: List[float] = []
-
-    # data-testvalue
-    for tag in soup.find_all(attrs={"data-testvalue": True}):
-        v = tag.get("data-testvalue")
-        try:
-            n = float(v) / 100.0
-            nums.append(n)
-        except Exception:
-            pass
-
-    # ticket-price（原价）
-    t = soup.find(attrs={"data-testid": "ticket-price"})
-    if t:
-        val = _to_num(t.get_text())
-        if val is not None:
-            nums.append(val)
-
-    # 脚本文本兜底（RefPriceRaw / SellPriceRaw）
-    if not nums:
-        m1 = re.search(r'"SellPriceRaw"\s*:\s*([0-9]+(?:\.[0-9]{1,2})?)', html_text)
-        if m1:
-            try: nums.append(float(m1.group(1)))
-            except: pass
-        m2 = re.search(r'"RefPriceRaw"\s*:\s*([0-9]+(?:\.[0-9]{1,2})?)', html_text)
-        if m2:
-            try: nums.append(float(m2.group(1)))
-            except: pass
-
-    nums = sorted(set(x for x in nums if x is not None))
-    if not nums:
-        return None, None
-    if len(nums) == 1:
-        return nums[0], nums[0]
-    return nums[0], nums[-1]  # 最小当现价，最大当原价
-
-def _extract_sizes_new(soup: BeautifulSoup) -> Tuple[str, str]:
-    """
-    新版：<option data-testid="drop-down-option" value="...">8 (XS)</option>
-    disabled / aria-disabled='true' → 无货
-    """
-    entries = []
-    for opt in soup.find_all("option", attrs={"data-testid": "drop-down-option"}):
-        val = (opt.get("value") or "").strip()
-        if not val:  # "Select a size"
-            continue
-
-        raw_label = (opt.get_text() or "").strip()
-        clean_label = _strip_oos_suffix(raw_label)
-        size_norm = _norm_size(clean_label)
-        if not size_norm:
-            continue
-
-        oos = opt.has_attr("disabled") or (opt.get("aria-disabled") == "true") \
-              or "out of stock" in raw_label.lower()
-        status = "无货" if oos else "有货"
-        entries.append((size_norm, status))
-
-    if not entries:
-        return "No Data", "No Data"
-    return _build_size_lines_common(entries)
-
 def parse_info_new(html: str, url: str) -> Dict[str, Any]:
     soup = BeautifulSoup(html, "html.parser")
     jd = _from_jsonld_product_new(soup) or {}
@@ -647,15 +496,7 @@ def parse_info_new(html: str, url: str) -> Dict[str, Any]:
     if curr is None and orig is not None: curr = orig
     if orig is None and curr is not None: orig = curr
 
-
-    all_colors = (jd.get("colors_all") or []) if isinstance(jd, dict) else []
-    color = _extract_color_new(soup, url)  # 精确：用 #colcode 命中 JSON-LD offers → itemOffered.color
-    if not color or color == "No Data":
-        sel_color = _extract_selected_color_new(soup)  # 退回 og:image:alt 的前缀/或 title 中括号
-        color = sel_color or (";".join(all_colors) if all_colors else "No Data")
-
     product_size, product_size_detail = _extract_sizes_new(soup)
-
     gender = "women" if "/women" in url.lower() else ("men" if "/men" in url.lower() else "No Data")
 
     info = {
@@ -663,9 +504,9 @@ def parse_info_new(html: str, url: str) -> Dict[str, Any]:
         "Product Name": title or "No Data",
         "Product Description": desc or "No Data",
         "Product Gender": gender,
-        "Product Color": color,
-        "Product Price": f"{orig:.2f}" if isinstance(orig, (int, float)) else "No Data",      # 原价
-        "Adjusted Price": f"{curr:.2f}" if isinstance(curr, (int, float)) else "No Data",     # 现价
+        "Product Color": "No Data",
+        "Product Price": f"{orig:.2f}" if isinstance(orig, (int, float)) else "No Data",
+        "Adjusted Price": f"{curr:.2f}" if isinstance(curr, (int, float)) else "No Data",
         "Product Material": "No Data",
         "Style Category": "casual wear",
         "Feature": "No Data",
@@ -673,22 +514,17 @@ def parse_info_new(html: str, url: str) -> Dict[str, Any]:
         "Product Size Detail": product_size_detail,
         "Source URL": url,
         "Site Name": SITE_NAME,
-
-        # 调试辅助（可忽略）
-        "_debug_colors_all": all_colors,
-        "_debug_availability_by_color": jd.get("availability_by_color") or {},
     }
     return info
 
-# ================== 统一对外：parse_info（仅作为分发器；签名不变） ==================
+# ================== 统一对外：parse_info ==================
 def parse_info(html: str, url: str) -> Dict[str, Any]:
     ver = _classify_stack_by_html_head(html)
     if ver == "new":
         return parse_info_new(html, url)
-    # legacy 或 unknown 都走旧版逻辑（更兼容）
     return parse_info_legacy(html, url)
 
-# ================== Selenium & 抓取流程（函数名/入参保持不变） ==================
+# ================== Selenium 基础 ==================
 def get_driver(headless: bool = False):
     options = uc.ChromeOptions()
     if headless: options.add_argument("--headless=new")
@@ -698,89 +534,165 @@ def get_driver(headless: bool = False):
     options.add_argument("--no-sandbox")
     return uc.Chrome(options=options)
 
-def process_url(url: str, conn: Connection, delay: float = DEFAULT_DELAY, headless: bool = False) -> Path:
-    print(f"\n🌐 正在抓取: {url}")
+# —— 每次新建 driver 抓一次 & 判栈；总是会 quit，确保无残留 —— #
+def _fetch_once_with_fresh_driver(url: str, wait_html: int = WAIT_PRICE_SECONDS, headless: bool = False,
+                                  dump_debug: bool = True, debug_dir: str | None = None, attempt_idx: int | None = None):
     driver = get_driver(headless=headless)
     try:
-        # 取 HTML（保留“尽量拿旧版”的策略；即便是新版也能解析）
-        html, ver = _get_html_preferring_legacy(
-            driver, url,
-            tries=3,
-            wait_html=WAIT_PRICE_SECONDS,
-            dump_debug=True,
-            debug_dir=str(TXT_DIR / "_debug")
-        )
-        print(f"[stack] {ver}")
-        _dump_debug_html(html, url, tag="debug1")
+        driver.get(url)
+        try:
+            WebDriverWait(driver, wait_html).until(EC.presence_of_element_located((By.TAG_NAME, "html")))
+        except Exception:
+            pass
+        html = driver.page_source or ""
+        ver = _classify_stack_by_html_head(html)
+        if dump_debug and debug_dir:
+            short = f"{abs(hash(url)) & 0xFFFFFFFF:08x}"
+            fn = f"stack_{ver}_fresh_attempt{(attempt_idx or 0):02d}_{short}.html"
+            p = Path(debug_dir) / fn
+            _atomic_write_bytes(html.encode("utf-8", errors="ignore"), p)
+        return html, ver
     finally:
         try: driver.quit()
         except Exception: pass
 
-    # 解析 & 匹配（保持不变）
+# ================== 处理单个 URL ==================
+def process_url(url: str, conn: Connection, delay: float = DEFAULT_DELAY, headless: bool = False) -> Path | None:
+    print(f"\n🌐 正在抓取: {url}")
+
+    # === “猎取 legacy”策略：每次都用全新 driver，最多 10 次 ===
+    LEGACY_HUNT_MAX = 10
+    REJECT_LOG = DEBUG_DIR / "new_stack_reject_urls.txt"
+
+    html = ""
+    ver = "unknown"
+    got_legacy = False
+
+    for i in range(1, LEGACY_HUNT_MAX + 1):
+        html_try, ver_try = _fetch_once_with_fresh_driver(
+            url,
+            wait_html=WAIT_PRICE_SECONDS,
+            headless=headless,
+            dump_debug=True,
+            debug_dir=str(DEBUG_DIR),
+            attempt_idx=i
+        )
+        print(f"[hunt] attempt {i}/{LEGACY_HUNT_MAX} → stack = {ver_try}")
+        if ver_try == "legacy":
+            html, ver = html_try, ver_try
+            got_legacy = True
+            break
+        time.sleep(0.8)  # 轻微冷却，降低风控/AB 固化
+
+    if not got_legacy:
+        # 并发安全地追加一行
+        REJECT_LOG.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with open(REJECT_LOG, "a", encoding="utf-8", errors="ignore") as fp:
+                fp.write(_normalize_url(url) + "\n")
+        except Exception:
+            # 兜底：原子写（可能丢其他并发行）
+            old = ""
+            try:
+                old = REJECT_LOG.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                pass
+            _atomic_write_bytes((old + _normalize_url(url) + "\n").encode("utf-8"), REJECT_LOG)
+        print(f"🛑 连续 {LEGACY_HUNT_MAX} 次未命中 legacy，放弃：{url}\n    已记录 → {REJECT_LOG}")
+        return None
+
+    # dump 一份最终用于解析的 debug1
+    _dump_debug_html(html, url, tag="debug1")
+    print(f"[stack] {ver}")
+
+    # —— 解析 —— #
     info = parse_info(html, url)
 
-    raw_conn = get_dbapi_connection(conn)
-    title = info.get("Product Name") or ""
-    color = info.get("Product Color") or ""
-    results = match_product(
-        raw_conn,
-        scraped_title=title, scraped_color=color,
-        table=PRODUCTS_TABLE,
-        name_weight=0.72, color_weight=0.18, type_weight=0.10,
-        topk=5, recall_limit=2000, min_name=0.92, min_color=0.85,
-        require_color_exact=False, require_type=False,
-    )
-    code = choose_best(results, min_score=MIN_SCORE, min_lead=MIN_LEAD)
-    if not code and results:
-        st = results[0].get("type_scraped")
-        if st:
-            for r in results:
-                if r.get("type_db") == st:
-                    code = r["product_code"]; print(f"🎯 tie-break by type → {code}"); break
-
-    print("🔎 match debug")
-    print(f"  raw_title: {title}")
-    print(f"  raw_color: {color}")
-    if results: print(f"  cleaned : {results[0].get('title_clean')}")
-    txt, why = explain_results(results, min_score=MIN_SCORE, min_lead=MIN_LEAD)
-    print(txt)
-    if code: print(f"  ⇒ ✅ choose_best = {code}")
-    else:    print(f"  ⇒ ❌ no match ({why})")
-    if not code and results:
-        print("🧪 top:", " | ".join(f"{r['product_code']}[{r['score']:.3f}]" for r in results[:3]))
-
-    # 命名与写入（始终覆盖）
+    # —— 编码获取：先查缓存（URL→Code），命中则跳过模糊匹配 —— #
+    norm_url = _normalize_url(url)
+    code = URL_CODE_CACHE.get(norm_url)
     if code:
+        print(f"🔗 缓存命中 URL→{code}（跳过模糊匹配）")
         info["Product Code"] = code
-        out_name = f"{code}.txt"
+    else:
+        # 未命中 → 走模糊匹配（保持原阈值/日志）
+        raw_conn = get_dbapi_connection(conn)
+        title = info.get("Product Name") or ""
+        color = info.get("Product Color") or ""
+        results = match_product(
+            raw_conn,
+            scraped_title=title, scraped_color=color,
+            table=PRODUCTS_TABLE,
+            name_weight=NAME_WEIGHT, color_weight=COLOR_WEIGHT,
+            type_weight=(1.0 - NAME_WEIGHT - COLOR_WEIGHT),
+            topk=5, recall_limit=2000, min_name=0.92, min_color=0.85,
+            require_color_exact=False, require_type=False,
+        )
+        code = choose_best(results, min_score=MIN_SCORE, min_lead=MIN_LEAD)
+        print("🔎 match debug")
+        print(f"  raw_title: {title}")
+        print(f"  raw_color: {color}")
+        txt, why = explain_results(results, min_score=MIN_SCORE, min_lead=MIN_LEAD)
+        print(txt)
+        if code:
+            print(f"  ⇒ ✅ choose_best = {code}")
+            info["Product Code"] = code
+        else:
+            print(f"  ⇒ ❌ no match ({why})")
+            if results:
+                top3 = " | ".join(f"{r['product_code']}[{r['score']:.3f}]" for r in results[:3])
+                print("🧪 top:", top3)
+
+    # —— 生成文件名并写入 TXT —— #
+    if code:
+        out_path = TXT_DIR / f"{code}.txt"
     else:
         short = f"{abs(hash(url)) & 0xFFFFFFFF:08x}"
-        out_name = f"{_safe_name(title)}_{short}.txt"
+        safe_name = _safe_name(info.get("Product Name") or "BARBOUR")
+        out_path = TXT_DIR / f"{safe_name}_{short}.txt"
 
-    out_path = TXT_DIR / out_name
-    with _WRITTEN_LOCK:
-        _WRITTEN.add(out_name)
     payload = _kv_txt_bytes(info)
     ok = _atomic_write_bytes(payload, out_path)
     if ok:
         print(f"✅ 写入: {out_path} (code={info.get('Product Code')})")
     else:
         print(f"❗ 放弃写入: {out_path.name}")
+
+    if delay > 0:
+        time.sleep(delay)
+
     return out_path
 
+# ================== 主入口 ==================
 def houseoffraser_fetch_info(max_workers: int = MAX_WORKERS_DEFAULT, delay: float = DEFAULT_DELAY, headless: bool = False):
     links_file = Path(LINKS_FILE)
     if not links_file.exists():
         print(f"⚠ 找不到链接文件：{links_file}")
         return
-    urls = [line.strip() for line in links_file.read_text(encoding="utf-8", errors="ignore").splitlines()
-            if line.strip() and not line.strip().startswith("#")]
+    raw_urls = [line.strip() for line in links_file.read_text(encoding="utf-8", errors="ignore").splitlines()
+                if line.strip() and not line.strip().startswith("#")]
+
+    # 启动前：规范化 URL 去重（保序）
+    seen = set()
+    urls = []
+    for u in raw_urls:
+        nu = _normalize_url(u)
+        if nu in seen:
+            continue
+        seen.add(nu)
+        urls.append(u)
+
     total = len(urls)
     print(f"📄 共 {total} 个商品页面待解析...（并发 {max_workers}）")
     if total == 0: return
 
     engine_url = f"postgresql+psycopg2://{PG['user']}:{PG['password']}@{PG['host']}:{PG['port']}/{PG['dbname']}"
     engine = create_engine(engine_url)
+
+    # ★ 启动阶段仅构建一次缓存（offers + products）
+    with engine.begin() as conn:
+        raw = get_dbapi_connection(conn)
+        build_url_code_cache(raw, PRODUCTS_TABLE, OFFERS_TABLE, SITE_NAME)
 
     indexed = list(enumerate(urls, start=1))
 
@@ -790,6 +702,9 @@ def houseoffraser_fetch_info(max_workers: int = MAX_WORKERS_DEFAULT, delay: floa
         try:
             with engine.begin() as conn:
                 path = process_url(u, conn=conn, delay=delay, headless=headless)
+            if path is None:
+                # 未命中 legacy：视作失败
+                return (idx, u, None, RuntimeError("no legacy after retries"))
             return (idx, u, str(path), None)
         except Exception as e:
             return (idx, u, None, e)

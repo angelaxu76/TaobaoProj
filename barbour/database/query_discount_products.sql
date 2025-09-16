@@ -72,3 +72,5 @@ ORDER BY
   (CASE WHEN COALESCE(stock_count,0) > 0 THEN 0 ELSE 1 END),
   eff_price ASC NULLS LAST,
   last_checked DESC;
+
+  select * from barbour_inventory where channel_product_id='968302306804' ;
