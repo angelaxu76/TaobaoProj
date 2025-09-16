@@ -62,19 +62,8 @@ URL_CODE_CACHE: Dict[str, str] = {}
 _URL_CODE_CACHE_READY = False
 
 def _normalize_url(u: str) -> str:
-    """轻量规范化：strip、去 fragment、去常见跟踪参数。"""
-    if not u:
-        return ""
-    u = u.strip()
-    try:
-        p = urlparse(u)
-        fragless = p._replace(fragment="")
-        drop = {"utm_source","utm_medium","utm_campaign","utm_term","utm_content","gclid","fbclid"}
-        qs = [(k, v) for k, v in parse_qsl(fragless.query, keep_blank_values=True) if k not in drop]
-        fragless = fragless._replace(query=urlencode(qs))
-        return urlunparse(fragless)
-    except Exception:
-        return u
+    """保持原样，不做任何清理或去重"""
+    return u.strip() if u else ""
 
 def get_dbapi_connection(conn_or_engine):
     # 取得 DBAPI 连接以便 cursor() 调用

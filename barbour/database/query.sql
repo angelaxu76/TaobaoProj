@@ -364,4 +364,16 @@ WHERE bo.is_active = TRUE
 select distinct product_code from barbour_products 
 where source_site = 'houseoffraser'
 
+SELECT column_name
+FROM information_schema.columns
+WHERE table_name='barbour_products'
+  AND column_name IN ('source_url','offer_url','product_url')
+ORDER BY column_name;
+
+-- offers 表关键列是否齐全
+SELECT column_name
+FROM information_schema.columns
+WHERE table_name='barbour_offers'
+  AND column_name IN ('site_name','offer_url','size','product_code','price_gbp','original_price_gbp','stock_count')
+ORDER BY column_name;
 
