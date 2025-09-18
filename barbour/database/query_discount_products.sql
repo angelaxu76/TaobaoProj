@@ -25,8 +25,9 @@ select * from barbour_offers  where product_code='MCA1050OL11'
 and site_name='barbour'
 order by size;
 
-select * from barbour_inventory 
-where product_code='MCA1050OL11' ;
+select *
+from barbour_inventory
+where product_code = 'MSP0145ST12';
 
 select * from barbour_offers  where site_name='outdoorandcountry' and product_code='MSP0145ST12' ;
 
@@ -53,27 +54,13 @@ WITH inv AS (
 SELECT DISTINCT inv_size, inv_norm FROM inv;
 
 
-SELECT
-  site_name,
-  size AS offer_size,
-  lower(
-    regexp_replace(
-      regexp_replace(size, '^uk[[:space:]]*', '', 'i'),
-      '[[:space:]\./-]+', '', 'g'
-    )
-  ) AS offer_norm,
-  COALESCE(sale_price_gbp, price_gbp) AS eff_price,
-  stock_count,
-  last_checked
-FROM barbour_offers
-WHERE is_active = TRUE
-  AND lower(product_code) = lower('MCA1050OL11')
-ORDER BY
-  (CASE WHEN COALESCE(stock_count,0) > 0 THEN 0 ELSE 1 END),
-  eff_price ASC NULLS LAST,
+
   last_checked DESC;
 
-  select * from barbour_inventory where channel_product_id='968302306804' ;
+   
 
 
-  select  distinct product_code from barbour_products ORDER BY product_code;
+  select distinct product_code from barbour_inventory where product_code ilike '%LQU%' order by product_code;
+
+
+  select  distinct product_code from barbour_offers where product_code ilike '%LQU%' ORDER BY product_code;

@@ -11,9 +11,9 @@ import numpy as np
 from pathlib import Path
 
 # 输入文件路径
-discount_path = Path(r"D:\TB\Products\clarks_jingya\document\store\discount.xlsx")
-london_path = Path(r"D:\TB\Products\clarks_jingya\document\store\英国伦敦代购.xlsx")
-out_path = Path(r"D:\TB\Products\clarks_jingya\document\store\伦敦代购_折扣_编码到宝贝ID映射.txt")
+discount_path = Path(r"D:\TB\Products\camper\repulibcation\store\discount.xlsx")
+london_path = Path(r"D:\TB\Products\camper\repulibcation\store\五小剑.xlsx")
+out_path = Path(r"D:\TB\Products\camper\repulibcation\store\五小剑_折扣_编码到宝贝ID映射.txt")
 
 
 def normalize_colnames(df: pd.DataFrame) -> pd.DataFrame:

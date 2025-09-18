@@ -22,7 +22,7 @@ def main():
     process_images(
         input_dir=r"C:\Users\martin\Downloads",
         output_dir=r"D:\TB\Products\barbour\images",
-        product_code="MSP0147BE31",
+        product_code="LQU1867BK91",
     )
 
  

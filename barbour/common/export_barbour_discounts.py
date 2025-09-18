@@ -35,7 +35,7 @@ LEFT JOIN p1
   ON o.product_code = p1.product_code
 WHERE o.product_code IS NOT NULL
   AND o.stock_count > 0
-  AND o.discount_pct > %s
+  AND o.discount_pct >= %s
   AND (%s IS NULL OR o.product_code ILIKE %s)
   AND o.product_code NOT IN (
     SELECT DISTINCT product_code
@@ -55,7 +55,7 @@ def export_barbour_discounts_excel(min_discount: float, min_sizes: int, code_lik
     """
     导出到 Excel 并返回文件路径
     """
-    out_dir: Path = BARBOUR["OUTPUT_DIR"]
+    out_dir: Path = BARBOUR["OUTPUT_DIR"]/ "publication_candidates_excel"
     ensure_all_dirs(out_dir)
 
     kw_like = f"%{code_like}%" if code_like else None

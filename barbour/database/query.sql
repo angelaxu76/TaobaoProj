@@ -231,149 +231,39 @@ select distinct product_code from clarks_jingya_inventory where gender ILIKE '%�
 
 
 
-
-
-
-
-
-
-WITH params AS (
-  SELECT 3::int AS min_available_sizes, 20::numeric AS min_discount_pct
-),
-base AS (
-  SELECT
-    o.product_code,
-    o.site_name,
-    MIN(o.original_price_gbp)            AS rrp_gbp,
-    MIN(o.sale_price_gbp)                AS sale_gbp,      -- 生成列
-    MAX(o.discount_pct)                  AS discount_pct,  -- 生成列
-    STRING_AGG(DISTINCT o.size, ',' ORDER BY o.size)
-      FILTER (WHERE o.can_order)         AS sizes_available,
-    COUNT(DISTINCT o.size)
-      FILTER (WHERE o.can_order)         AS available_count
-  FROM barbour_offers o, params p
-  WHERE o.is_active
-    AND o.discount_pct >= p.min_discount_pct
-  GROUP BY o.product_code, o.site_name
+WITH size_count AS (
+  SELECT product_code, COUNT(DISTINCT size) AS size_cnt
+  FROM barbour_offers
+  WHERE stock_count > 0
+    AND product_code ILIKE 'LQU%'       -- 只查 LQU
+  GROUP BY product_code
 )
-SELECT
-  product_code,
-  site_name,
-  rrp_gbp::numeric(10,2)   AS original_price_gbp,
-  sale_gbp::numeric(10,2)  AS discount_price_gbp,
-  discount_pct,
-  sizes_available
-FROM base, params p
-WHERE available_count >= p.min_available_sizes
-ORDER BY discount_pct DESC, sale_gbp ASC, product_code ASC;
+SELECT COUNT(*) 
+FROM size_count sc
+WHERE sc.size_cnt >= 4                  -- 符合尺码条件
+  AND sc.product_code NOT IN (
+    SELECT product_code 
+    FROM barbour_inventory 
+    WHERE is_published = TRUE
+  );
 
 
-select * from barbour_offers where original_price_gbp IS NOT NULL
-
-
-
-
-select * from barbour_offers where discount_pct > 15
-
-
-
-WITH params AS (
-  SELECT 15::numeric AS min_discount_pct
-),
-base AS (
-  SELECT
-    o.product_code,
-    o.site_name,
-    MIN(o.original_price_gbp) AS rrp_gbp,
-    MIN(o.sale_price_gbp)     AS sale_gbp,
-    MAX(o.discount_pct)       AS discount_pct,
-    STRING_AGG(DISTINCT o.size, ',' ORDER BY o.size) AS all_sizes
-  FROM barbour_offers o, params p
-  WHERE o.is_active
-    AND o.discount_pct > p.min_discount_pct
-  GROUP BY o.product_code, o.site_name
+  WITH size_count AS (
+  SELECT product_code, COUNT(DISTINCT size) AS size_cnt
+  FROM barbour_offers
+  WHERE stock_count > 0
+    AND product_code ILIKE 'LQU%'       -- 只查 LQU
+  GROUP BY product_code
 )
-SELECT
-  product_code,
-  site_name,
-  rrp_gbp::numeric(10,2)  AS original_price_gbp,
-  sale_gbp::numeric(10,2) AS discount_price_gbp,
-  discount_pct,
-  all_sizes
-FROM base
-ORDER BY discount_pct DESC, sale_gbp ASC, product_code ASC;
+SELECT COUNT(*) 
+FROM size_count sc
+WHERE sc.size_cnt < 4                   -- 不符合尺码条件
+  AND sc.product_code NOT IN (
+    SELECT product_code 
+    FROM barbour_inventory 
+    WHERE is_published = TRUE
+  );
 
+select * from barbour_offers where site_name = 'houseoffraser';
 
-
-select * from barbour_supplier_map
-
-
-select * from barbour_inventory where product_code ='MWX2341BK11'
-
-
-
-SELECT 
-  COUNT(*)                        AS offers_total,
-  SUM(CASE WHEN product_code IS NOT NULL THEN 1 ELSE 0 END) AS offers_with_code,
-  SUM(CASE WHEN product_code IS NULL THEN 1 ELSE 0 END)     AS offers_without_code
-FROM barbour_offers
-WHERE is_active = TRUE;
-
-====10
-
-SELECT COUNT(*) AS offer_rows_mapped
-FROM barbour_offers bo
-JOIN barbour_supplier_map sm
-  ON lower(trim(sm.product_code)) = lower(trim(bo.product_code))
- AND lower(trim(sm.site_name))    = lower(trim(bo.site_name))
-WHERE bo.is_active = TRUE 
-  AND bo.product_code IS NOT NULL;
-
-===0
-
-
-SELECT bo.site_name,
-       SUM(CASE WHEN bo.product_code IS NOT NULL THEN 1 ELSE 0 END) AS with_code,
-       SUM(CASE WHEN bo.product_code IS NULL THEN 1 ELSE 0 END)     AS without_code
-FROM barbour_offers bo
-WHERE bo.is_active = TRUE
-GROUP BY bo.site_name
-ORDER BY without_code DESC;
-
-===10
-
-
-SELECT
-  bo.product_code,
-  bo.site_name,
-  bo.size,
-  bo.offer_url,
-  bo.price_gbp,
-  bo.sale_price_gbp,
-  bo.stock_count,
-  bo.last_checked
-FROM barbour_offers bo
-JOIN barbour_supplier_map sm
-  ON lower(trim(sm.product_code)) = lower(trim(bo.product_code))
- AND lower(trim(sm.site_name))    = lower(trim(bo.site_name))
-WHERE bo.is_active = TRUE
-  AND bo.product_code IS NOT NULL
-
-
-
-select distinct product_code from barbour_products 
-where source_site = 'houseoffraser'
-
-SELECT column_name
-FROM information_schema.columns
-WHERE table_name='barbour_products'
-  AND column_name IN ('source_url','offer_url','product_url')
-ORDER BY column_name;
-
--- offers 表关键列是否齐全
-SELECT column_name
-FROM information_schema.columns
-WHERE table_name='barbour_offers'
-  AND column_name IN ('site_name','offer_url','size','product_code','price_gbp','original_price_gbp','stock_count')
-ORDER BY column_name;
-
+delete from barbour_offers where site_name = 'houseoffraser';
