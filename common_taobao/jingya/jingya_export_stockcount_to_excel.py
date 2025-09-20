@@ -89,6 +89,9 @@ def export_stock_excel(brand: str, output_dir: Optional[str] = None, filename: O
         "库存(必填)": df["stock_count"],
     })[HEADERS]
 
+    # 👉 在这里加排序
+    out_df = out_df.sort_values(by=["渠道产品ID(必填)", "skuID"]).reset_index(drop=True)
+
     # 3) 分包写出：每文件最多 490 条数据行（不含表头）
     out_dir = Path(output_dir) if output_dir else Path(cfg["OUTPUT_DIR"])
     out_dir.mkdir(parents=True, exist_ok=True)

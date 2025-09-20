@@ -370,14 +370,50 @@ def export_barbour_channel_price_by_sku(
         # 非严格模式：跳过有问题的行
         df = df[~mask_missing].reset_index(drop=True)
 
+
+
+
+    # === 在此处插入：为每个渠道产品ID补一行 skuID=0 的“品价格”（取该商品价格中最高值） ===
+    # 1) 只保留导出所需列（避免带入 product_code）
+    df_use = df[["channel_product_id", "skuid", "jingya_price_rmb", "taobao_price_rmb"]].copy()
+
+    # 2) 统计每个渠道产品ID的最高价（jingya、taobao 各自取最高）
+    agg_max = (
+        df_use.groupby("channel_product_id", as_index=False)
+              .agg(max_j=("jingya_price_rmb", "max"),
+                   max_t=("taobao_price_rmb", "max"))
+    )
+
+    # 3) 生成 skuID=0 的“品价格”行
+    zero_rows = agg_max.assign(
+        skuid="0",
+        jingya_price_rmb=lambda x: x["max_j"],
+        taobao_price_rmb=lambda x: x["max_t"]
+    )[["channel_product_id", "skuid", "jingya_price_rmb", "taobao_price_rmb"]]
+
+    # 4) 原始明细去掉已存在的 skuID=0，避免重复
+    detail_rows = df_use[df_use["skuid"] != "0"]
+
+    # 5) 合并，并设置排序：同一渠道产品ID里，skuID=0 放最前，再按 skuid 升序
+    df_for_export = pd.concat([zero_rows, detail_rows], ignore_index=True)
+    df_for_export["zero_first"] = (df_for_export["skuid"] != "0").astype(int)
+    df_for_export = df_for_export.sort_values(
+        by=["channel_product_id", "zero_first", "skuid"]
+    ).drop(columns=["zero_first"]).reset_index(drop=True)
+
+
     # 组织导出列
     out_df = pd.DataFrame({
-        "渠道产品ID(必填)": df["channel_product_id"],
-        "skuID": df["skuid"],
-        "渠道价格(未税)(元)(必填)": df["jingya_price_rmb"].round(2),
-        "最低建议零售价(元)": df["taobao_price_rmb"].round(2),
-        "最高建议零售价(元)": df["taobao_price_rmb"].round(2),
+        "渠道产品ID(必填)": df_for_export["channel_product_id"],
+        "skuID": df_for_export["skuid"],
+        "渠道价格(未税)(元)(必填)": df_for_export["jingya_price_rmb"].round(2),
+        "最低建议零售价(元)": df_for_export["taobao_price_rmb"].round(2),
+        "最高建议零售价(元)": df_for_export["taobao_price_rmb"].round(2),
     })[HEADERS_PRICE]
+
+    # 👉 按渠道产品ID排序
+    out_df = out_df.sort_values(by=["渠道产品ID(必填)", "skuID"]).reset_index(drop=True)
+    
 
     # 分包写出
     n = len(out_df)

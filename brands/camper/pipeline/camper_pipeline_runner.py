@@ -43,20 +43,20 @@ def main():
     print("\\n🟡 Step: 6️⃣ 导出男鞋商品列表，女鞋商品列表，用于更新尺码库存数据库版")
     #export_gender_split_excel("camper")
 
-    print("\n🟡 Step: 6️⃣ 获取excel文件用来更新淘宝店铺价格")
-    generate_price_excel(
-        brand="camper",
-        input_dir=r"D:\TB\Products\camper\repulibcation\store_prices\input", 
-        output_path=r"D:\TB\Products\camper\repulibcation\store_prices\camper_channel_prices.xlsx",
-        drop_rows_without_price=False # 不丢行，查不到的价格留空
-    )
+    # print("\n🟡 Step: 6️⃣ 获取excel文件用来更新淘宝店铺价格")
+    # generate_price_excel(
+    #     brand="camper",
+    #     input_dir=r"D:\TB\Products\camper\repulibcation\store_prices\input", 
+    #     output_path=r"D:\TB\Products\camper\repulibcation\store_prices\camper_channel_prices.xlsx",
+    #     drop_rows_without_price=False # 不丢行，查不到的价格留空
+    # )
 
     print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
     # stock_dest_excel_folder = r"D:\TB\Products\camper\repulibcation\stock"
     # export_stock_excel("camper",stock_dest_excel_folder)
 
-    # price_dest_excel = r"D:\TB\Products\camper\repulibcation\publication_prices.xlsx"
-    # export_jiangya_channel_prices("camper",price_dest_excel)
+    price_dest_excel = r"D:\TB\Products\camper\repulibcation\publication_prices.xlsx"
+    export_jiangya_channel_prices("camper",price_dest_excel)
 
 
 
