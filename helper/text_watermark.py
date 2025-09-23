@@ -1,6 +1,7 @@
 # text_watermark.py —— 仅文字水印版本（斜纹 + 右下角）
 from PIL import Image, ImageDraw, ImageFont
 import math
+import os
 
 # ========= 全局配置（可按需修改） =========
 DIAGONAL_TEXT_ENABLE = True
@@ -115,3 +116,28 @@ def add_local_logo(img, text: str = None):
     draw.text((x, y), text, font=font, fill=(0, 0, 0, LOCAL_TEXT_ALPHA))
 
     return Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
+
+
+def pipeline_text_watermark(input_dir: str, output_dir: str) -> None:
+    """批量处理目录中的图片，加水印后保存到指定目录"""
+    os.makedirs(output_dir, exist_ok=True)
+    exts = {".jpg", ".jpeg", ".png"}
+
+    for fname in os.listdir(input_dir):
+        fpath = os.path.join(input_dir, fname)
+        if not os.path.isfile(fpath):
+            continue
+        ext = os.path.splitext(fname)[1].lower()
+        if ext not in exts:
+            continue
+
+        try:
+            img = Image.open(fpath).convert("RGB")
+            img = add_diagonal_text_watermark(img)
+            img = add_local_logo(img)
+
+            out_path = os.path.join(output_dir, fname)
+            img.save(out_path, quality=95)
+            print(f"✅ 处理完成: {fname} -> {out_path}")
+        except Exception as e:
+            print(f"❌ 处理失败: {fname}, 错误: {e}")

@@ -3,6 +3,9 @@ from pathlib import Path
 from helper.HtmlToPGNBatch import process_html_folder
 from helper.splite_image_by_size import split_image_by_size
 from helper.image_expand_square_add_product_code import process_images
+from helper.text_watermark import pipeline_text_watermark
+from helper.image.cut_square_white_watermark import batch_process
+
 
 def main():
     HTML_FOLDER = Path(r"D:/TB/HTMLToImage/input")
@@ -19,22 +22,26 @@ def main():
     print("将JPG按长度切分")
    #  split_image_by_size(CUTTER_FOLDER,SPLIT_FOLDER,1900)
 
-    process_images(
-        input_dir=r"C:\Users\martin\Downloads",
-        output_dir=r"D:\TB\Products\barbour\images",
-        product_code="LCA0355BL11",
-    )
-
- 
     # process_images(
     #     input_dir=r"C:\Users\martin\Downloads",
     #     output_dir=r"D:\TB\Products\barbour\images",
-    #     product_code="LQU1856GN91",
+    #     product_code="LWX1482SN91",
+    # )
+
+    batch_process(r"D:\TB\photoshopScripts\dest", r"D:\TB\photoshopScripts\dest_processeds")
+ 
+    # process_images(
+    #     input_dir=r"D:\TB\Products\barbour\5",
+    #     output_dir=r"D:\TB\Products\barbour\6",
+    #     product_code="barbour",
     #     defend=True,                 # 是否做扰动
     #     watermark=True,              # 是否加水印
     #     wm_text="英国哈梅尔百货",           # 斜纹文字水印
     #     wm_logo_text="英国哈梅尔百货"       # 右下角小文字水印
     # )
+
+    # pipeline_text_watermark(input_dir=r"D:\TB\Products\barbour\5", 
+    #                     output_dir=r"D:\TB\Products\barbour\6")
 
 
 if __name__ == "__main__":
