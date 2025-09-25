@@ -79,9 +79,9 @@ def main():
     # generate_publication_excels("clarks_jingya")
 
     # print("导出发布商品的价格")
-    # print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
-    # stock_dest_excel_folder = r"D:\TB\Products\clarks_jingya\repulibcation\stock"
-    # export_stock_excel("clarks_jingya",stock_dest_excel_folder)
+    print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
+    stock_dest_excel_folder = r"D:\TB\Products\clarks_jingya\repulibcation\stock"
+    export_stock_excel("clarks_jingya",stock_dest_excel_folder)
 
     price_dest_excel = r"D:\TB\Products\clarks_jingya\repulibcation\publication_prices.xlsx"
     export_jiangya_channel_prices("clarks_jingya",price_dest_excel)

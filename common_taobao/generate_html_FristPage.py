@@ -232,7 +232,7 @@ def _collect_codes_from_images(image_dir: Path) -> list[str]:
 
 def _get_image_dir(cfg: dict) -> Path:
     # 优先使用 IMAGE_DIR（document/images），没有就退回 IMAGE_PROCESS
-    return cfg.get("IMAGE_DIR") or cfg.get("IMAGE_PROCESS") or Path.cwd()
+    return cfg.get("IMAGE_PROCESS") or cfg.get("IMAGE_DIR") or Path.cwd()
 
 # === 修改：find_image_url 更鲁棒（加多后缀 & 最后兜底选任意匹配）===
 def find_image_url(code: str, image_dir: Path, priority: list[str]) -> str:

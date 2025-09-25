@@ -507,7 +507,7 @@ def generate_html_from_codes_files(brand: str, codes_file: str | Path, max_worke
         return
 
     cfg = BRAND_CONFIG[brand]
-    image_dir = cfg["IMAGE_DIR"]      # 读取图片目录
+    image_dir = cfg["IMAGE_PROCESS"]      # 读取图片目录
     txt_dir   = cfg["TXT_DIR"]        # TXT 目录
     html_dir  = cfg["HTML_DIR_DES"]   # 输出目录
     html_dir.mkdir(parents=True, exist_ok=True)

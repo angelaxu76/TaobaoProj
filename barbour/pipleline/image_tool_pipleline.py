@@ -28,11 +28,11 @@ def main():
     #     product_code="LWX1482SN91",
     # )
 
-    batch_process(r"D:\TB\photoshopScripts\dest", r"D:\TB\photoshopScripts\dest_processeds")
+    # batch_process(r"D:\TB\Products\barbour\3", r"D:\TB\photoshopScripts\dest_processeds", max_workers=3)
  
     # process_images(
-    #     input_dir=r"D:\TB\Products\barbour\5",
-    #     output_dir=r"D:\TB\Products\barbour\6",
+    #     input_dir=r"C:\Users\martin\Desktop\main",
+    #     output_dir=r"C:\Users\martin\Desktop\mainwater",
     #     product_code="barbour",
     #     defend=True,                 # 是否做扰动
     #     watermark=True,              # 是否加水印
@@ -40,8 +40,8 @@ def main():
     #     wm_logo_text="英国哈梅尔百货"       # 右下角小文字水印
     # )
 
-    # pipeline_text_watermark(input_dir=r"D:\TB\Products\barbour\5", 
-    #                     output_dir=r"D:\TB\Products\barbour\6")
+    pipeline_text_watermark(input_dir=r"C:\Users\martin\Desktop\main", 
+                        output_dir=r"C:\Users\martin\Desktop\mainwatered")
 
 
 if __name__ == "__main__":

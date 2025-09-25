@@ -274,8 +274,8 @@ def _parse_args():
 
 if __name__ == "__main__":
     # ===== 这里直接定义输入/输出目录 =====
-    DEFAULT_INPUT = Path(r"D:\Projects\TaobaoProj\images_input")   # 修改成你的输入目录
-    DEFAULT_OUTPUT = Path(r"D:\Projects\TaobaoProj\images_output") # 修改成你的输出目录
+    DEFAULT_INPUT = Path(r"D:\TEMP3\INPUT")   # 修改成你的输入目录
+    DEFAULT_OUTPUT = Path(r"D:\TEMP3\OUTPUT") # 修改成你的输出目录
 
     # 默认参数（可根据需要修改）
     opts = {

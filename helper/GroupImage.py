@@ -3,13 +3,13 @@ import shutil
 from math import ceil
 
 # 原始图片目录
-source_dir = r"D:\TB\photoshopScripts\INPUT"
+source_dir = r"D:\TB\photoshopScripts\dest_processeds"
 
 # 目标根目录（可以修改为其他路径）
-target_root_dir = r"D:\TB\photoshopScripts\INPUT分组图片"
+target_root_dir = r"D:\TB\photoshopScripts\dest_processeds分组图片"
 
 # 每组的图片数量
-group_size = 100
+group_size = 250
 
 # 支持的图片扩展名
 image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']

@@ -187,7 +187,7 @@ def export_jiangya_channel_prices(brand: str, output_dir: Optional[str] = None) 
     out_dir = Path(output_dir) if output_dir else Path(cfg["OUTPUT_DIR"])
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    chunk_size = 480
+    chunk_size = 200
     n = len(out_df)
     num_parts = (n + chunk_size - 1) // chunk_size if n > 0 else 1
     created_files: List[Path] = []

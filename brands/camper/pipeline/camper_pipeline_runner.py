@@ -55,13 +55,13 @@ def main():
     # stock_dest_excel_folder = r"D:\TB\Products\camper\repulibcation\stock"
     # export_stock_excel("camper",stock_dest_excel_folder)
 
-    price_dest_excel = r"D:\TB\Products\camper\repulibcation\publication_prices.xlsx"
-    export_jiangya_channel_prices("camper",price_dest_excel)
+    # price_dest_excel = r"D:\TB\Products\camper\repulibcation\publication_prices.xlsx"
+    # export_jiangya_channel_prices("camper",price_dest_excel)
 
 
 
     print("\\n🟡 Step: 6️⃣生成发布产品的excel")
-    # generate_publication_excels("camper")
+    generate_publication_excels("camper")
 
     print("\n🟡 Step: 6️⃣ 导出库存 Excel")
     # export_skuid_stock_excel("camper")

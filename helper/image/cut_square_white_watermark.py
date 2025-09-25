@@ -1,41 +1,36 @@
 # -*- coding: utf-8 -*-
 """
-cut_square_white_watermark.py
-批量处理图片：
-1) 自动裁掉透明边或白色空边
-2) 白底正方形居中
-3) 可选自动抠图（rembg）
-4) 加水印
-5) 导出高质量 JPG
+cut_square_white_watermark.py  —  透明保留到最后一步，再压白底转 JPG
+流程：
+  1) 必要时自动抠图（rembg，可关）
+  2) 按 alpha 或白边精裁
+  3) 正方形居中：有透明→RGBA透明画布；无透明→RGB白底
+  4) 水印：全程 RGBA 合成，不丢透明
+  5) 最终一次性压到白底 → 保存 JPG（可选同步保存透明 PNG）
 """
 
-import os
-import io
-import time
+import io, time
 from pathlib import Path
-from typing import Tuple
+from typing import Optional
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageChops
 
-# ================== 可配置参数 ==================
-INPUT_DIR  = r"D:\TB\Products\images_input"
-OUTPUT_DIR = r"D:\TB\Products\images_output"
+# ================== 配置 ==================
+INPUT_DIR  = r"D:\TEMP3\INPUT"
+OUTPUT_DIR = r"D:\TEMP3\OUTPUT"
 
-OUTPUT_JPEG_QUALITY = 95
 SUPPORTED_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
+TARGET_SIZE: Optional[int] = 1200      # 统一输出边长；None 不缩放
+CANVAS_COLOR = (255, 255, 255)         # 白底颜色
+OUTPUT_JPEG_QUALITY = 95
+SAVE_TRANSPARENT_PNG = False           # 需要同时导出透明 PNG 时 True
 
-# 输出统一尺寸 (像素)，设 None 则不缩放
-TARGET_SIZE = 1200
+# 自动抠图
+AUTO_CUTOUT = True                     # 关掉可快速验证非抠图流程
+MODEL_NAME = "u2net"
 
-# 白底颜色
-CANVAS_COLOR = (255, 255, 255)
-
-# 自动抠图设置
-AUTO_CUTOUT = True   # 是否启用 rembg
-MODEL_NAME = "u2net" # 可选：u2net / u2netp / u2net_human_seg 等
-
-# 水印设置
+# 斜纹整幅水印
 DIAGONAL_TEXT_ENABLE = True
 DIAGONAL_TEXT = "英国哈梅尔百货"
 DIAGONAL_ALPHA = 30
@@ -43,6 +38,7 @@ DIAGONAL_FONT_SIZE_RATIO = 0.02
 DIAGONAL_STEP_RATIO = 0.50
 DIAGONAL_ANGLE_DEG = -30
 
+# 右下角小字水印
 LOCAL_LOGO_ENABLE = True
 LOCAL_LOGO_TEXT = "英国哈梅尔百货"
 LOCAL_FONT_SIZE_RATIO = 0.04
@@ -70,11 +66,12 @@ def _has_alpha(img: Image.Image) -> bool:
     return img.mode in ("LA", "RGBA", "PA") or ("transparency" in img.info)
 
 def _autocrop_by_alpha(img: Image.Image, thr: int = 5) -> Image.Image:
+    """按 alpha 精裁透明边"""
     if not _has_alpha(img):
         return img
     rgba = img.convert("RGBA")
-    alpha = np.array(rgba.split()[-1])
-    mask = alpha > thr
+    a = np.array(rgba.split()[-1])
+    mask = a > thr
     if not mask.any():
         return rgba
     ys, xs = np.where(mask)
@@ -83,6 +80,7 @@ def _autocrop_by_alpha(img: Image.Image, thr: int = 5) -> Image.Image:
     return rgba.crop((x1, y1, x2, y2))
 
 def _autocrop_white_border(img: Image.Image, tol: int = 8) -> Image.Image:
+    """对无透明图，仅裁四周近白空边（保守）"""
     if _has_alpha(img):
         return img
     rgb = img.convert("RGB")
@@ -92,35 +90,43 @@ def _autocrop_white_border(img: Image.Image, tol: int = 8) -> Image.Image:
     bbox = diff.getbbox()
     return rgb.crop(bbox) if bbox else rgb
 
-def _pad_to_square_white(img: Image.Image, target_size: int = None) -> Image.Image:
-    img = img.convert("RGB")
+def _pad_to_square(img: Image.Image, target_size: Optional[int]) -> Image.Image:
+    """
+    正方形居中：有透明→RGBA透明画布；无透明→RGB白底。
+    注意：这里不把 RGBA 转成 RGB，保持透明到后续水印阶段。
+    """
+    has_alpha = _has_alpha(img)
+    mode = "RGBA" if has_alpha else "RGB"
+    bg   = (0, 0, 0, 0) if has_alpha else CANVAS_COLOR
+
+    img = img.convert(mode)
     w, h = img.size
     side = max(w, h)
-    if target_size is not None:
-        scale = target_size / float(side)
-        nw, nh = max(1, int(w * scale)), max(1, int(h * scale))
-        img = img.resize((nw, nh), Image.LANCZOS)
-        side = target_size
+
+    if target_size:
+        s = target_size / float(side)
+        img = img.resize((max(1, int(w*s)), max(1, int(h*s))), Image.LANCZOS)
         w, h = img.size
-    canvas = Image.new("RGB", (side, side), CANVAS_COLOR)
-    x = (side - w) // 2
-    y = (side - h) // 2
-    canvas.paste(img, (x, y))
+        side = target_size
+
+    canvas = Image.new(mode, (side, side), bg)
+    x, y = (side - w)//2, (side - h)//2
+    canvas.paste(img, (x, y), img if mode == "RGBA" else None)
     return canvas
 
-# ================== 自动抠图 (rembg) ==================
+# ================== 自动抠图（复用 session） ==================
 from rembg import remove, new_session
-
 _SESSION = None
-def get_session():
+def _get_session():
     global _SESSION
     if _SESSION is None and AUTO_CUTOUT:
-        print("⏳ 正在加载抠图模型（首次会下载 ~170MB，耐心等待一次即可）...")
+        print("⏳ 加载抠图模型（首次会下载 ~170MB）...")
         _SESSION = new_session(MODEL_NAME)
         print("✅ 模型就绪")
     return _SESSION
 
 def ensure_cutout(img: Image.Image) -> Image.Image:
+    """无透明→抠图；已有透明直接返回"""
     if not AUTO_CUTOUT:
         return img
     if img.mode != "RGBA":
@@ -128,113 +134,149 @@ def ensure_cutout(img: Image.Image) -> Image.Image:
     if "A" in img.getbands():
         amin, amax = img.split()[-1].getextrema()
         if amin < 255 and amax > 0:
-            return img
-    sess = get_session()
+            return img  # 已含透明
+    sess = _get_session()
     buf = io.BytesIO()
     img.convert("RGB").save(buf, format="PNG")
     cut = remove(buf.getvalue(), session=sess)
     return Image.open(io.BytesIO(cut)).convert("RGBA")
 
-# ================== 水印 ==================
+# ================== 水印（RGBA in/out） ==================
 def add_diagonal_text_watermark(img: Image.Image) -> Image.Image:
     if not DIAGONAL_TEXT_ENABLE or not DIAGONAL_TEXT:
         return img
-    img = img.convert("RGBA")
-    w, h = img.size
+    base = img.convert("RGBA")
+    w, h = base.size
     font = _get_font(max(16, int(w * DIAGONAL_FONT_SIZE_RATIO)))
+
     pad = int(max(w, h) * 0.25)
     tile_w, tile_h = w + pad * 2, h + pad * 2
     tile = Image.new("RGBA", (tile_w, tile_h), (0, 0, 0, 0))
-    tdraw = ImageDraw.Draw(tile)
-    text_w = tdraw.textlength(DIAGONAL_TEXT, font=font)
+    draw = ImageDraw.Draw(tile)
+
+    text_w = draw.textlength(DIAGONAL_TEXT, font=font)
     step = max(10, int(w * DIAGONAL_STEP_RATIO))
     for y in range(0, tile_h, step):
         x = -tile_w
         while x < tile_w * 2:
-            tdraw.text((x, y), DIAGONAL_TEXT, font=font, fill=(0, 0, 0, DIAGONAL_ALPHA))
+            draw.text((x, y), DIAGONAL_TEXT, font=font, fill=(0, 0, 0, DIAGONAL_ALPHA))
             x += int(text_w * 1.5)
+
     tile = tile.rotate(DIAGONAL_ANGLE_DEG, expand=1, resample=Image.BICUBIC)
+    # 裁回画面并叠加
     tw, th = tile.size
     cx, cy = tw // 2, th // 2
-    left, top = cx - w // 2, cy - h // 2
-    tile_cropped = tile.crop((left, top, left + w, top + h))
-    return Image.alpha_composite(img, tile_cropped).convert("RGB")
+    crop = tile.crop((cx - w // 2, cy - h // 2, cx - w // 2 + w, cy - h // 2 + h))
+    return Image.alpha_composite(base, crop)
 
 def add_local_logo(img: Image.Image, text: str = None) -> Image.Image:
     if not LOCAL_LOGO_ENABLE:
         return img
-    text = text or LOCAL_LOGO_TEXT or ""
-    if not text:
+    txt = text or LOCAL_LOGO_TEXT or ""
+    if not txt:
         return img
-    img = img.convert("RGBA")
-    w, h = img.size
+    base = img.convert("RGBA")
+    w, h = base.size
     font = _get_font(max(14, int(w * LOCAL_FONT_SIZE_RATIO)))
     overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
     try:
-        bbox = draw.textbbox((0, 0), text, font=font)
+        bbox = draw.textbbox((0, 0), txt, font=font)
         tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
     except Exception:
-        tw, th = draw.textlength(text, font=font), font.size
+        tw, th = draw.textlength(txt, font=font), font.size
     margin = int(w * LOCAL_MARGIN_RATIO)
     x, y = w - tw - margin, h - th - margin
+    # 半透明白底 + 文本
     draw.rectangle([x - margin // 2, y - margin // 4, x + tw + margin // 2, y + th + margin // 4],
                    fill=(255, 255, 255, LOCAL_BG_ALPHA))
-    draw.text((x, y), text, font=font, fill=(0, 0, 0, LOCAL_TEXT_ALPHA))
-    return Image.alpha_composite(img, overlay).convert("RGB")
+    draw.text((x, y), txt, font=font, fill=(0, 0, 0, LOCAL_TEXT_ALPHA))
+    return Image.alpha_composite(base, overlay)
 
 # ================== 主流程 ==================
 def process_one(path: Path, out_dir: Path):
     try:
+        print(f"  ▶ 载入：{path.name}")
         img = Image.open(str(path))
+
+        # 1) 必要时抠图
         img = ensure_cutout(img)
-        if _has_alpha(img):
-            img = _autocrop_by_alpha(img, thr=5)
-        else:
-            img = _autocrop_white_border(img, tol=8)
-        img = _pad_to_square_white(img, target_size=TARGET_SIZE)
+
+        # 2) 精裁
+        img = _autocrop_by_alpha(img, 5) if _has_alpha(img) else _autocrop_white_border(img, 8)
+
+        # 3) 正方形居中（保持 RGBA 时不丢透明）
+        img = _pad_to_square(img, TARGET_SIZE)
+
+        # 4) 水印（RGBA in/out）
         img = add_diagonal_text_watermark(img)
         img = add_local_logo(img, LOCAL_LOGO_TEXT)
-        out_dir.mkdir(parents=True, exist_ok=True)
-        out_name = path.stem + ".jpg"
-        img.save(str(out_dir / out_name),
-                 quality=OUTPUT_JPEG_QUALITY, subsampling=0, optimize=True)
-        print(f"✅ {path.name} -> {out_name}")
-    except Exception as e:
-        print(f"❌ 处理失败：{path.name}，错误：{e}")
 
-def batch_process(input_dir: str, output_dir: str):
-    in_dir = Path(input_dir); out_dir = Path(output_dir)
+        # 可选导出一份透明 PNG（方便后续复用）
+        out_dir.mkdir(parents=True, exist_ok=True)
+        stem = path.stem
+        if SAVE_TRANSPARENT_PNG and _has_alpha(img):
+            png_out = out_dir / f"{stem}.png"
+            img.save(str(png_out), optimize=True)
+            print(f"    ✓ 透明PNG：{png_out.name}")
+
+        # 5) 最终压到白底 → JPG
+        if _has_alpha(img):
+            white = Image.new("RGB", img.size, CANVAS_COLOR)
+            white.paste(img, (0, 0), img)
+            final = white
+        else:
+            final = img.convert("RGB")
+
+        jpg_out = out_dir / f"{stem}.jpg"
+        final.save(str(jpg_out), quality=OUTPUT_JPEG_QUALITY, subsampling=0, optimize=True)
+        print(f"    ✓ 输出JPG：{jpg_out.name}")
+    except Exception as e:
+        print(f"  ✗ 失败：{path.name} -> {e}")
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+def batch_process(input_dir: str, output_dir: str, max_workers: int = 4):
+    in_dir, out_dir = Path(input_dir), Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"🔍 正在扫描目录: {in_dir.resolve()}")
+    print(f"🔍 扫描目录：{in_dir.resolve()}")
     groups = {}
     for p in in_dir.iterdir():
-        if p.is_file():
-            print(f"  检查文件: {p.name}")
-            if p.suffix.lower() in SUPPORTED_EXTS:
-                print(f"    ✅ 命中文件: {p.name}")
-                groups.setdefault(p.stem.lower(), []).append(p)
-            else:
-                print(f"    ⏭️ 跳过（后缀不支持）: {p.suffix}")
+        if p.is_file() and p.suffix.lower() in SUPPORTED_EXTS:
+            groups.setdefault(p.stem.lower(), []).append(p)
 
-    # 按同名优先 PNG
+    # 同名优先 PNG
     files = []
-    for stem, lst in groups.items():
+    for _, lst in groups.items():
         lst.sort(key=lambda x: (x.suffix.lower() != ".png", x.name))
         files.append(lst[0])
 
     total = len(files)
-    print(f"📊 共找到 {total} 张待处理图片")
+    print(f"📊 待处理：{total} 张")
     if total == 0:
-        print("⚠️ 未发现可处理的图片。请确认目录和文件后缀。")
+        print("⚠️ 未发现可处理的图片。")
         return
 
     t0 = time.time()
-    for i, p in enumerate(files, 1):
-        print(f"[{i}/{total}] ▶ 开始处理 {p.name}")
-        process_one(p, out_dir)
-    print(f"🎉 全部完成！耗时 {time.time()-t0:.1f}s")
+    if AUTO_CUTOUT:
+        _get_session()  # 提前加载一次模型，避免每线程重复加载
 
+    # 多线程执行
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_file = {executor.submit(process_one, f, out_dir): f for f in files}
+        for i, future in enumerate(as_completed(future_to_file), 1):
+            f = future_to_file[future]
+            try:
+                future.result()
+            except Exception as e:
+                print(f"✗ 处理 {f.name} 出错：{e}")
+            else:
+                print(f"[{i}/{total}] {f.name} 完成")
+
+    print(f"🎉 全部完成！总耗时 {time.time()-t0:.1f}s")
+
+
+# ============== 直接运行 ==============
 if __name__ == "__main__":
     batch_process(INPUT_DIR, OUTPUT_DIR)
