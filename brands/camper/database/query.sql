@@ -72,4 +72,4 @@ FROM camper_inventory;
 update camper_inventory set stock_count = 10 where stock_count >= 10000
 
 
-select * from camper_inventory where product_code = 'K201848-002'
+select * from camper_inventory where product_code = 'K201759-010'

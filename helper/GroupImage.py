@@ -3,10 +3,10 @@ import shutil
 from math import ceil
 
 # 原始图片目录
-source_dir = r"D:\TB\photoshopScripts\dest_processeds"
+source_dir = r"D:\TB\Products\camper\publication\image_cutter"
 
 # 目标根目录（可以修改为其他路径）
-target_root_dir = r"D:\TB\photoshopScripts\dest_processeds分组图片"
+target_root_dir = r"D:\TB\Products\camper\publication\image_cutter分组图片"
 
 # 每组的图片数量
 group_size = 250
