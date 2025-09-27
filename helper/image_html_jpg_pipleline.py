@@ -1,6 +1,6 @@
 from helper.HtmlToPGNBatch import process_html_folder
 from helper.cutterAllsiderSpace import trim_sides_batch
-from text_watermark import text_watermark_batch
+
 
 
 
@@ -27,17 +27,17 @@ def main():
     )
 
     # 方案1：自动角标（推荐做主图）
-    text_watermark_batch(
-        input_dir=r"D:\TB\HTMLToImage\output",
-        output_dir=r"D:\TB\HTMLToImage\watermarked",
-        mode="auto-corner",
-        text="英国哈梅尔百货",
-        opacity=0.16,  # 0.12~0.20 比较温和
-        scale=0.16,  # 文本尺寸随图自适应
-        margin_ratio=0.03,
-        font_path=r"C:\Windows\Fonts\msyh.ttc",
-        overwrite=True,
-    )
+    # text_watermark_batch(
+    #     input_dir=r"D:\TB\HTMLToImage\output",
+    #     output_dir=r"D:\TB\HTMLToImage\watermarked",
+    #     mode="auto-corner",
+    #     text="英国哈梅尔百货",
+    #     opacity=0.16,  # 0.12~0.20 比较温和
+    #     scale=0.16,  # 文本尺寸随图自适应
+    #     margin_ratio=0.03,
+    #     font_path=r"C:\Windows\Fonts\msyh.ttc",
+    #     overwrite=True,
+    # )
 
 
 if __name__ == "__main__":

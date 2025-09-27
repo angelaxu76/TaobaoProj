@@ -22,11 +22,11 @@ def main():
     print("将JPG按长度切分")
    #  split_image_by_size(CUTTER_FOLDER,SPLIT_FOLDER,1900)
 
-    # process_images(
-    #     input_dir=r"C:\Users\martin\Downloads",
-    #     output_dir=r"D:\TB\Products\barbour\images",
-    #     product_code="LWX1482SN91",
-    # )
+    process_images(
+        input_dir=r"C:\Users\martin\Downloads",
+        output_dir=r"D:\TB\Products\barbour\images",
+        product_code="MQU1869TN14",
+    )
 
     # batch_process(r"D:\TB\Products\barbour\3", r"D:\TB\photoshopScripts\dest_processeds", max_workers=3)
  
@@ -40,8 +40,8 @@ def main():
     #     wm_logo_text="英国哈梅尔百货"       # 右下角小文字水印
     # )
 
-    pipeline_text_watermark(input_dir=r"C:\Users\martin\Desktop\main", 
-                        output_dir=r"C:\Users\martin\Desktop\mainwatered")
+    # pipeline_text_watermark(input_dir=r"C:\Users\martin\Desktop\main", 
+    #                     output_dir=r"C:\Users\martin\Desktop\mainwatered")
 
 
 if __name__ == "__main__":

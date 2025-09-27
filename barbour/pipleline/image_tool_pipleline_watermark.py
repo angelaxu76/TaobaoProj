@@ -27,10 +27,10 @@ def main():
 
 
     process_images(
-        input_dir=r"C:\Users\martin\Downloads",
-        output_dir=r"D:\TB\Products\barbour\images",
+        input_dir=r"D:\TEMP3\INPUT",
+        output_dir=r"D:\TEMP3\OUTPUT",
         product_code="LQU1856GN91",
-        defend=True,                 # 是否做扰动
+        defend=False,                 # 是否做扰动
         watermark=True,              # 是否加水印
         wm_text="英国哈梅尔百货",           # 斜纹文字水印
         wm_logo_text="英国哈梅尔百货"       # 右下角小文字水印

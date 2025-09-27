@@ -274,8 +274,8 @@ def _parse_args():
 
 if __name__ == "__main__":
     # ===== 这里直接定义输入/输出目录 =====
-    DEFAULT_INPUT = Path(r"D:\TEMP3\INPUT")   # 修改成你的输入目录
-    DEFAULT_OUTPUT = Path(r"D:\TEMP3\OUTPUT") # 修改成你的输出目录
+    DEFAULT_INPUT = Path(r"D:\TB\HTMLToImage\output")   # 修改成你的输入目录
+    DEFAULT_OUTPUT = Path(r"D:\TB\HTMLToImage\cutter") # 修改成你的输出目录
 
     # 默认参数（可根据需要修改）
     opts = {
