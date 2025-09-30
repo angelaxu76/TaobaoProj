@@ -51,7 +51,7 @@ def batch_merge_images(image_dir, merged_dir, width=750):
     groups = defaultdict(list)
     for filename in os.listdir(image_dir):
         if filename.lower().endswith(".jpg"):
-            code = filename.split('_')[0]
+            code = Path(filename).stem.split('_')[0]
             groups[code].append(os.path.join(image_dir, filename))
 
     for code, files in groups.items():

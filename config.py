@@ -456,11 +456,10 @@ ECCO = {
     "IMAGE_FIRST_PRIORITY": ["m", "o", "L", "T"],
     "IMAGE_DES_PRIORITY": ["top_left_pair", "o", "m", "T"],
     "TXT_DIR": ECCO_BASE / "publication" / "TXT",
-    "OUTPUT_DIR": ECCO_BASE / "repulibcation",
-    "STORE_DIR": ECCO_BASE / "document" / "store",
+    "ORG_IMAGE_DIR": ECCO_BASE / "document" / "orgin_images",
+    "DEF_IMAGE_DIR": ECCO_BASE / "document" / "DEF_images",
     "IMAGE_DIR": ECCO_BASE / "document" / "images",
-    "IMAGE_DIR_download": ECCO_BASE / "document" / "images_download",
-    "IMAGE_DIR_defence": ECCO_BASE / "document" / "image_defence",
+    "IMAGE_DOWNLOAD": ECCO_BASE / "publication" / "image_download",
     "IMAGE_PROCESS": ECCO_BASE / "publication" / "image_process",
     "IMAGE_CUTTER": ECCO_BASE / "publication" / "image_cutter",
     "MERGED_DIR": ECCO_BASE / "document" / "image_merged",
@@ -472,17 +471,19 @@ ECCO = {
     "HTML_IMAGE_FIRST_PAGE": ECCO_BASE / "publication" / "html_image"/"first_page",
     "HTML_CUTTER_DES": ECCO_BASE / "document" / "html_cutter"/ "description",
     "HTML_CUTTER_FIRST_PAGE": ECCO_BASE / "document" / "html_cutter"/ "first_page",
-    "TABLE_NAME": "ecco_inventory",
+    "STORE_DIR": ECCO_BASE / "document" / "store",
+    "OUTPUT_DIR": ECCO_BASE / "repulibcation",
+    "TABLE_NAME": "ECCO_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": ECCO_BASE / "publication" / "product_links.txt",
-    "CHROMEDRIVER_PATH": "D:/Software/chromedriver-win64/chromedriver.exe",
+    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
         "url": "product_url",
         "discount_price": "discount_price_gbp",
         "original_price": "original_price_gbp",
         "size": "size",
-        "stock": "stock_status",  # 若改为数值库存请统一成 stock_count
+        "stock": "stock_count",  # ✅ 实数库存
         "gender": "gender"
     }
 }

@@ -14,18 +14,19 @@ def main():
     code_file_path = r"D:\TB\Products\ecco\repulibcation\publication_codes.txt"
 
     print("下载指定商品编码的的图片")
-    download_images_by_code_file(r"D:\TB\Products\ecco\repulibcation\五小剑\missing_images.txt")
+    # download_images_by_code_file(code_file_path)
 
     print("最大化裁剪，转JPG")
-    batch_convert_webp_to_jpg(ECCO["IMAGE_DIR_download"], ECCO["IMAGE_PROCESS"])
-    process_images_in_folder(ECCO["IMAGE_PROCESS"], ECCO["IMAGE_CUTTER"])
+    process_images_in_folder(ECCO["IMAGE_DOWNLOAD"], ECCO["IMAGE_CUTTER"])
+
+        # batch_convert_webp_to_jpg(ECCO["IMAGE_DOWNLOAD"], ECCO["IMAGE_PROCESS"])
 
     print("图片抖动，水平翻转")
-    batch_process_images(ECCO["IMAGE_CUTTER"],ECCO["IMAGE_DIR"])
+    batch_process_images(ECCO["IMAGE_CUTTER"],ECCO["IMAGE_PROCESS"])
 
 
     print("将图片merge到一张图片中")
-    batch_merge_images(ECCO["IMAGE_DIR"],ECCO["MERGED_DIR"], width=750)
+    batch_merge_images(ECCO["IMAGE_PROCESS"],ECCO["MERGED_DIR"], width=750)
 
     print("生成产品详情卡HTML")
     generate_html_from_codes_files("ecco",code_file_path)

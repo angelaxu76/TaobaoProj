@@ -16,14 +16,14 @@ def main():
     # print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
     # backup_and_clear_brand_dirs(ECCO)  # ✅ 使用共享方法
 
-    # print("\n🟡 Step: 2️⃣ 抓取商品链接")
+    print("\n🟡 Step: 2️⃣ 抓取商品链接")
     # ecco_get_links()
 
-    print("\n🟡 Step: 3️⃣ 抓取商品信息")
+    # print("\n🟡 Step: 3️⃣ 抓取商品信息")
     ecco_fetch_info()
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
-    # import_txt_to_db("ecco")
+    import_txt_to_db("ecco")
 
     # print("\n🟡 Step: 6️⃣ 导出库存 Excel")
     # export_skuid_stock_excel("ecco")
