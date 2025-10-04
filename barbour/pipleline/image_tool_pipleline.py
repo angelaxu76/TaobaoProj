@@ -22,17 +22,17 @@ def main():
     print("将JPG按长度切分")
    #  split_image_by_size(CUTTER_FOLDER,SPLIT_FOLDER,1900)
 
-    process_images(
-        input_dir=r"C:\Users\martin\Downloads",
-        output_dir=r"D:\TB\Products\barbour\images",
-        product_code="MQU1869TN14",
-    )
+    # process_images(
+    #     input_dir=r"C:\Users\martin\Downloads",
+    #     output_dir=r"D:\TB\Products\barbour\images",
+    #     product_code="MGI0245GN71",
+    # )
 
-    # batch_process(r"D:\TB\Products\barbour\3", r"D:\TB\photoshopScripts\dest_processeds", max_workers=3)
+    batch_process(r"D:\TB\Products\barbour\3", r"D:\TB\Products\barbour\3_processed111", max_workers=3)
  
     # process_images(
-    #     input_dir=r"C:\Users\martin\Desktop\main",
-    #     output_dir=r"C:\Users\martin\Desktop\mainwater",
+    #     input_dir=r"D:\TB\Products\barbour\3",
+    #     output_dir=r"D:\TB\Products\barbour\3_processed",
     #     product_code="barbour",
     #     defend=True,                 # 是否做扰动
     #     watermark=True,              # 是否加水印

@@ -10,11 +10,18 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0"
 }
 
+# CATEGORY_URLS = {
+#     "mens-jackets": "https://www.barbour.com/gb/mens/jackets",
+#     "womens-jackets": "https://www.barbour.com/gb/womens/jackets",
+#     "mens-internaltion-jackets": "https://www.barbour.com/gb/barbour-international/mens",
+#     "womens-internaltion-jackets": "https://www.barbour.com/gb/barbour-international/womens"
+# }
+
 CATEGORY_URLS = {
-    "mens-jackets": "https://www.barbour.com/gb/mens/jackets",
-    "womens-jackets": "https://www.barbour.com/gb/womens/jackets",
-    "mens-internaltion-jackets": "https://www.barbour.com/gb/barbour-international/mens",
-    "womens-internaltion-jackets": "https://www.barbour.com/gb/barbour-international/womens"
+    "mens-jackets": "https://www.barbour.com/gb/all-collaborations/paul-smith-loves-barbour",
+    "womens-jackets": "https://www.barbour.com/gb/all-collaborations/barbour-for-margaret-howell",
+    "mens-internaltion-jackets": "https://www.barbour.com/gb/womens/collaborations/barbour-farm-rio",
+    "womens-internaltion-jackets": "https://www.barbour.com/gb/all-collaborations/barbour-x-kaptain-sunshine-"
 }
 
 OUTPUT_FILE = BARBOUR["LINKS_FILE"]
