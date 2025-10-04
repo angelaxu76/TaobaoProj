@@ -1,23 +1,39 @@
+# -*- coding: utf-8 -*-
+"""
+prepare_utils_extended.py  —— 发布用 Excel 生成器（已对接“最新标题&价格脚本”）
+- 标题：使用 generate_taobao_title.generate_taobao_title()
+- 价格：使用本地 price_utils.calculate_discount_price()
+- 其余：延续原有数据流、分组导出与图片拷贝逻辑
+"""
+
 import pandas as pd
 import shutil
 import psycopg2
+
+# ===== 你原有的公共函数（保留） =====
 from common_taobao.core.translate import safe_translate
-from common_taobao.core.price_utils import calculate_discount_price
 from common_taobao.core.txt_parser import extract_product_info
 from common_taobao.core.image_utils import copy_images_by_code
 
+# ===== 替换为你的“最新”脚本 =====
+from common_taobao.core.price_utils import calculate_discount_price            # 最新价格计算（本地文件）
+from common_taobao.generate_taobao_title import generate_taobao_title     # 最新淘宝标题（本地文件）
+
+
 def get_publishable_product_codes(config: dict, store_name: str) -> list:
+    """
+    从数据库筛选出该店铺未发布过、且 TXT 中 “:有货” 尺码数量 >=3 的商品编码
+    """
     conn = psycopg2.connect(**config["PGSQL_CONFIG"])
     table_name = config["TABLE_NAME"]
     txt_dir = config["TXT_DIR"]
 
-    # 只获取当前店铺 stock_name 下的未发布商品，且该店铺未发布过该编码的任何尺码
     query = f"""
         SELECT product_code
         FROM {table_name}
         WHERE stock_name = %s AND is_published = FALSE
         GROUP BY product_code
-        HAVING COUNT(*) = COUNT(*)  -- 强制启用 GROUP BY
+        HAVING COUNT(*) = COUNT(*)
             AND product_code NOT IN (
                 SELECT DISTINCT product_code FROM {table_name}
                 WHERE stock_name = %s AND is_published = TRUE
@@ -26,7 +42,6 @@ def get_publishable_product_codes(config: dict, store_name: str) -> list:
     df = pd.read_sql(query, conn, params=(store_name, store_name))
     candidate_codes = df["product_code"].unique().tolist()
 
-    # 检查 TXT 文件中是否存在 3 个以上 :有货 的尺码
     def has_3_or_more_instock(code):
         try:
             txt_path = txt_dir / f"{code}.txt"
@@ -35,7 +50,7 @@ def get_publishable_product_codes(config: dict, store_name: str) -> list:
             lines = txt_path.read_text(encoding="utf-8").splitlines()
             size_line = next((line for line in lines if line.startswith("Product Size:")), "")
             return size_line.count(":有货") >= 3
-        except:
+        except Exception:
             return False
 
     result = [code for code in candidate_codes if has_3_or_more_instock(code)]
@@ -44,7 +59,12 @@ def get_publishable_product_codes(config: dict, store_name: str) -> list:
 
 
 def generate_product_excels(config: dict, store_name: str):
+    """
+    为指定店铺输出多个 Excel（按 gender + category 分文件），
+    并将对应编码图片拷贝到店铺发布目录的 images/ 下。
+    """
     from openpyxl import Workbook
+
     txt_dir = config["TXT_DIR"]
     output_dir = config["OUTPUT_DIR"] / store_name
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -57,7 +77,7 @@ def generate_product_excels(config: dict, store_name: str):
         print("⚠️ 没有可发布商品")
         return
 
-    # 从数据库获取 gender + 正确价格字段
+    # 从数据库获取 gender + 英镑价格（原价/折扣价），写入 info 供价格函数计算
     conn = psycopg2.connect(**config["PGSQL_CONFIG"])
     table = config["TABLE_NAME"]
     query = f"""
@@ -65,26 +85,60 @@ def generate_product_excels(config: dict, store_name: str):
         FROM {table}
         WHERE stock_name = %s
     """
-    df = pd.read_sql(query, conn, params=(store_name,))
+    df_price = pd.read_sql(query, conn, params=(store_name,))
     price_map = {
         row["product_code"]: {
             "gender": row["gender"],
             "Price": row["original_price_gbp"],
             "AdjustedPrice": row["discount_price_gbp"]
         }
-        for _, row in df.iterrows()
+        for _, row in df_price.iterrows()
     }
+
+    brand_key = (config.get("BRAND") or config.get("brand") or table).lower()
 
     records = []
     for code in codes:
+        # 1) 汇集 TXT 信息 + DB 价格字段
         info = extract_product_info(txt_dir / f"{code}.txt")
         info.update(price_map.get(code, {}))
-        gender = info.get("gender", "unknown").lower()
+
+        gender = (info.get("gender") or "unknown").lower()
         eng_title = info.get("Product Name", "No Data")
-        cn_title = safe_translate(eng_title)
-        upper = info.get("Upper Material", "No Data")
-        price = calculate_discount_price(info)
-        category = classify_shoe(eng_title + " " + info.get("Product Description", ""))
+        desc = info.get("Product Description", "")
+        upper = (
+            info.get("Upper Material")
+            or info.get("Product Material")
+            or info.get("upper material")
+            or info.get("Material")
+            or "No Data"
+        )
+
+        color = info.get("Product Color", info.get("color", ""))
+
+        # 2) 计算价格（走你最新规则）
+        price = calculate_discount_price(info)  # 优先 AdjustedPrice，按你现行公式/档位+进位
+
+        # 3) 生成淘宝标题（走你最新规则）
+        #    按你的 title 解析方式，拼接 content 让其内部抽取字段
+        content_lines = []
+        for k in ["Product Name", "Product Description", "Product Material", "Product Color", "Product Gender"]:
+            v = (info.get(k) or "").strip()
+            if v:
+                content_lines.append(f"{k}: {v}")
+        content = "\n".join(content_lines) if content_lines else ""
+
+        title_dict = generate_taobao_title(product_code=code, content=content, brand_key=brand_key)
+        cn_title = title_dict.get("taobao_title") or title_dict.get("title_cn")
+
+        # 回退：若异常或空值，用机翻英文名兜底
+        if not cn_title:
+            cn_title = safe_translate(eng_title)
+
+        # 4) 分类（轻修：避免此前 "boots""chelsea" 拼接 bug）
+        category = classify_shoe(f"{eng_title} {desc}")
+
+        # 5) 累积记录 + 图片拷贝
         records.append({
             "gender": gender,
             "category": category,
@@ -96,6 +150,7 @@ def generate_product_excels(config: dict, store_name: str):
         })
         copy_images_by_code(code, image_dir, image_output_dir)
 
+    # 6) 导出多个 Excel（按 gender+category 分文件）
     df = pd.DataFrame(records)
     df = df[["商品名称", "商品编码", "价格", "upper material", "英文名称", "gender", "category"]]
 
@@ -104,7 +159,7 @@ def generate_product_excels(config: dict, store_name: str):
     for rec in records:
         group_map[(rec["gender"], rec["category"])].append(rec["商品编码"])
 
-    for (gender, category), code_list in group_map.items():
+    for (gen, cat), code_list in group_map.items():
         part = df[df["商品编码"].isin(code_list)].drop(columns=["gender", "category"])
         if not part.empty:
             wb = Workbook()
@@ -113,22 +168,22 @@ def generate_product_excels(config: dict, store_name: str):
             ws.append(part.columns.tolist())
             for row in part.itertuples(index=False):
                 ws.append(row)
-            save_path = output_dir / f"{gender}-{category}.xlsx"
+            save_path = output_dir / f"{gen}-{cat}.xlsx"
             wb.save(save_path)
             print(f"✅ 已导出: {save_path.name}")
 
+
 def classify_shoe(text: str):
-    text = text.lower()
-    if any(k in text for k in ["boot","boots" "chelsea", "ankle", "chukka"]):
+    """
+    简单鞋类分类：靴子 / 凉鞋 / 其他
+    """
+    text = (text or "").lower()
+    if any(k in text for k in ["boot", "boots", "chelsea", "ankle", "chukka"]):
         return "靴子"
-    elif any(k in text for k in ["sandal","sandals", "slide", "凉鞋", "open toe"]):
+    elif any(k in text for k in ["sandal", "sandals", "slide", "凉鞋", "open toe", "slipper", "mule"]):
         return "凉鞋"
     else:
         return "其他"
-
-
-
-
 
 
 def copy_images_for_store(config: dict, store_name: str, code_list: list):
@@ -161,5 +216,3 @@ def copy_images_for_store(config: dict, store_name: str, code_list: list):
         print(f"⚠️ 缺图商品编码已记录: {missing_file}（共 {len(missing_codes)} 条）")
 
     print(f"✅ 图片拷贝完成，共复制 {copied_count} 张图 → {dst_dir}")
-
-

@@ -11,7 +11,7 @@ select DISTINCT product_code from camper_inventory where channel_item_id IS NOT 
 
 select * from camper
 
-select * from camper_inventory where product_code ='80003-104'
+select * from camper_inventory where product_code ='K101023-002'
 
 select * from camper_inventory where 
 

@@ -12,7 +12,7 @@ from common_taobao.jingya.export_gender_split_excel import export_gender_split_e
 from common_taobao.generate_discount_price_excel import export_store_discount_price
 from common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
 from common_taobao.jingya.generate_publication_excel import generate_publication_excels
-from common_taobao.generate_taobao_store_price_for_import_excel import generate_price_excel
+from common_taobao.generate_taobao_store_price_for_import_excel import generate_price_excel,generate_price_excels_bulk
 from brands.camper.fetch_product_info import camper_fetch_product_info
 from brands.camper.unified_link_collector import camper_get_links
 from common_taobao.export_low_stock_products import export_low_stock_for_brand
@@ -43,21 +43,22 @@ def main():
     print("\\n🟡 Step: 6️⃣ 导出男鞋商品列表，女鞋商品列表，用于更新尺码库存数据库版")
     #export_gender_split_excel("camper")
 
-    # print("\n🟡 Step: 6️⃣ 获取excel文件用来更新淘宝店铺价格")
-    # generate_price_excel(
-    #     brand="camper",
-    #     input_dir=r"D:\TB\Products\camper\repulibcation\store_prices\input", 
-    #     output_path=r"D:\TB\Products\camper\repulibcation\store_prices\camper_channel_prices.xlsx",
-    #     drop_rows_without_price=False # 不丢行，查不到的价格留空
-    # )
+    print("\n🟡 Step: 6️⃣ 获取excel文件，用来更新各个淘宝店铺价格，输入文件夹可以是多个店铺的导出文件")
+    generate_price_excels_bulk(
+        brand="camper",
+        input_dir=r"D:\TB\Products\camper\repulibcation\store_prices\input",
+        output_dir=r"D:\TB\Products\camper\repulibcation\store_prices\output",
+        suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
+        drop_rows_without_price=False  # 不丢行，查不到的价格留空
+    )
 
     print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
-    stock_dest_excel_folder = r"D:\TB\Products\camper\repulibcation\stock"
-    export_stock_excel("camper",stock_dest_excel_folder)
+    # stock_dest_excel_folder = r"D:\TB\Products\camper\repulibcation\stock"
+    # export_stock_excel("camper",stock_dest_excel_folder)
 
-    print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
-    price_dest_excel = r"D:\TB\Products\camper\repulibcation\publication_prices.xlsx"
-    export_jiangya_channel_prices("camper",price_dest_excel)
+    # print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
+    # price_dest_excel = r"D:\TB\Products\camper\repulibcation\publication_prices.xlsx"
+    # export_jiangya_channel_prices("camper",price_dest_excel)
 
 
 

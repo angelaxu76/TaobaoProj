@@ -10,6 +10,7 @@ from common_taobao.backup_and_clear import backup_and_clear_brand_dirs  # ✅ �
 from brands.ecco.unified_link_collector import ecco_get_links
 from brands.ecco.fetch_product_info import ecco_fetch_info
 from common_taobao.mark_offline_products_from_store_excels import mark_offline_products_from_store_excels
+from common_taobao.generate_taobao_store_price_for_import_excel import generate_price_excel,generate_price_excels_bulk, generate_stock_excels_bulk
 #
 
 def main():
@@ -20,10 +21,10 @@ def main():
     # ecco_get_links()
 
     # print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    ecco_fetch_info()
+    # ecco_fetch_info()
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
-    import_txt_to_db("ecco")
+    # import_txt_to_db("ecco")
 
     # print("\n🟡 Step: 6️⃣ 导出库存 Excel")
     # export_skuid_stock_excel("ecco")
@@ -37,6 +38,27 @@ def main():
     #     generate_product_excels(ECCO, store)
     #     codes = get_publishable_product_codes(ECCO, store)
     #     copy_images_for_store(ECCO, store, codes)
+
+
+    print("\n🟡 Step: 6️⃣ 获取excel文件，用来更新各个淘宝店铺价格，输入文件夹可以是多个店铺的导出文件")
+    generate_price_excels_bulk(
+        brand="ecco",
+        input_dir=r"D:\TB\Products\ecco\repulibcation\store\input",
+        output_dir=r"D:\TB\Products\ecco\repulibcation\store\price_output",
+        suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
+        drop_rows_without_price=False  # 不丢行，查不到的价格留空
+    )
+    
+
+    print("\n🟡 Step: 6️⃣ 获取excel文件，用来更新各个淘宝店铺库存，输入文件夹可以是多个店铺的导出文件")
+    generate_stock_excels_bulk(
+        brand="ecco",
+        input_dir=r"D:\TB\Products\ecco\repulibcation\store\input",
+        output_dir=r"D:\TB\Products\ecco\repulibcation\store\stock_output",
+        suffix="_库存",
+        in_stock_qty=3,       # 有货时写入的库存数量
+        out_stock_qty=0       # 无货时写入的库存数量
+    )
 
     # mark_offline_products_from_store_excels(BRAND_CONFIG["ecco"])
     # print("\n✅ ECCO pipeline 完成")

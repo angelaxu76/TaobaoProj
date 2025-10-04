@@ -1,0 +1,1 @@
+select * from ecco_inventory where product_code = '82380450598'
