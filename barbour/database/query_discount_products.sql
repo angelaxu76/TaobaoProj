@@ -66,7 +66,7 @@ SELECT DISTINCT inv_size, inv_norm FROM inv;
   select  distinct product_code from barbour_offers where product_code ilike '%LQU%' ORDER BY product_code;
 
 
-  select * from barbour_inventory where product_code='LCA0365OL51';
+  select * from barbour_inventory where product_code='LQU1815SN11';
 
-  select * from barbour_inventory 
+  select * from barbour_offers where product_code='LQU1815SN11';
   where channel_product_id='977341087977'

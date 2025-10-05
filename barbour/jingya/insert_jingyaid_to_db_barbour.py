@@ -61,6 +61,22 @@ def split_sku_name(s: str):
         return None
     return parts[0], parts[1]
 
+def clear_barbour_inventory():
+    """清空 Barbour inventory 表（用于全量初始化）"""
+    import psycopg2
+    from config import BRAND_CONFIG
+    cfg = BRAND_CONFIG["barbour"]["PGSQL_CONFIG"]
+
+    sql = """
+    TRUNCATE TABLE barbour_inventory RESTART IDENTITY;
+    """
+    conn = psycopg2.connect(**cfg)
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(sql)
+    print("🧹 已清空 barbour_inventory 表。")
+
+
 def _load_excel_with_colmap(gei_path: Path):
     df = pd.read_excel(gei_path)
     colmap = {normalize_col(c): c for c in df.columns}

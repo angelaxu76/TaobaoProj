@@ -22,13 +22,13 @@ def main():
     print("将JPG按长度切分")
    #  split_image_by_size(CUTTER_FOLDER,SPLIT_FOLDER,1900)
 
-    # process_images(
-    #     input_dir=r"C:\Users\martin\Downloads",
-    #     output_dir=r"D:\TB\Products\barbour\images",
-    #     product_code="MGI0245GN71",
-    # )
+    process_images(
+        input_dir=r"C:\Users\martin\Downloads",
+        output_dir=r"D:\TB\Products\barbour\images",
+        product_code="UBA0761NY94",
+    )
 
-    batch_process(r"D:\TB\Products\barbour\3", r"D:\TB\Products\barbour\3_processed111", max_workers=3)
+    # batch_process(r"D:\TB\Products\barbour\3", r"D:\TB\Products\barbour\3_processed111", max_workers=3)
  
     # process_images(
     #     input_dir=r"D:\TB\Products\barbour\3",
