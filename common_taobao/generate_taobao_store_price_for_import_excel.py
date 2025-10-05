@@ -39,6 +39,8 @@ COL_ALIASES = {
 
 _SPLIT = re.compile(r"[,\uFF0C;；\s\r\n]+")
 
+
+
 def _canon(s: str) -> str:
     if s is None: return ""
     s = unicodedata.normalize("NFKC", str(s)).strip()
@@ -259,127 +261,117 @@ def generate_stock_excels_bulk(
     output_dir: str | Path,
     suffix: str = "_库存",
     in_stock_qty: int = 3,
-    out_stock_qty: int = 0
+    out_stock_qty: int = 0,
 ):
     """
-    批量处理 input_dir 下的所有 Excel，输出 SKU 级库存：
-    - 如果 Excel 无“规格/尺码”列：按 product_code 归并，只要该款任一尺码有货→该款所有 skuID 统一写 in_stock_qty，否则 0。
-    - 如果 Excel 有“sku规格/规格/尺码”列：按 (product_code, size) 精确匹配 DB 的 stock_status 输出库存。
+    批量根据 input_dir 下的店铺导出表生成“SKUID | 调整后库存”的 Excel。
+    规则与 generate_price_excels_bulk 保持一致：仅按 product_code 合并，全款同值。
+    - 数据来源：<TABLE_NAME> 中的 taobao_store_price 字段：
+        * '有货'  -> in_stock_qty（默认3）
+        * 其他/空 -> out_stock_qty（默认0）
+    - 输出：<输入文件名+suffix>.xlsx，只有两列：SKUID, 调整后库存
     """
+    import pandas as pd
+    import psycopg2
+    from pathlib import Path
+
+    def _to_text(v):
+        if v is None:
+            return ""
+        s = str(v).strip()
+        return s
+
+    def _list_excels(input_dir: Path):
+        return (list(input_dir.glob("*.xlsx")) + list(input_dir.glob("*.xls")))
+
+    def status_to_qty_from_price(val: str) -> int:
+        # 按你要求：如果 taobao_store_price 字段文本为“有货” => 3，否则 => 0
+        #（注意：如果该字段在某些品牌是“数字价格”，此映射会失真，需要改回 stock_status）
+        s = _to_text(val)
+        return in_stock_qty if s == "有货" else out_stock_qty
+
     brand = brand.lower().strip()
     if brand not in BRAND_CONFIG:
         raise ValueError(f"未知品牌：{brand}")
-    cfg = BRAND_CONFIG[brand]
+    cfg   = BRAND_CONFIG[brand]
     table = cfg["TABLE_NAME"]
     pg    = cfg["PGSQL_CONFIG"]
 
-    input_dir = Path(input_dir)
+    input_dir  = Path(input_dir)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # 1) 拉取“可售状态”并做映射（仅按 product_code）
+    conn = psycopg2.connect(**pg)
+    try:
+        df_flag = pd.read_sql(f'SELECT product_code, taobao_store_price FROM {table}', conn)
+    finally:
+        conn.close()
+
+    if "product_code" not in df_flag.columns:
+        raise RuntimeError(f"{table} 缺少 product_code 列")
+
+    df_flag["product_code"] = df_flag["product_code"].astype(str).str.strip()
+    # 统一映射为数量
+    df_flag["调整后库存"] = df_flag["taobao_store_price"].map(status_to_qty_from_price)
+    # 按款聚合（若同一款多行，取最大——等价“只要有一行有货则有货”）
+    qty_by_code = (
+        df_flag.groupby("product_code")["调整后库存"].max()
+               .reset_index()
+    )
+
+    # 2) 扫描输入目录
     files = _list_excels(input_dir)
     if not files:
         raise FileNotFoundError(f"目录没有找到 Excel：{input_dir}")
 
-    # 预取 DB 的库存明细：product_code,size,stock_status
-    import pandas as _pd
-    conn = psycopg2.connect(**pg)
-    try:
-        sql = f"SELECT product_code, size, stock_status FROM {table}"
-        db_stock = _pd.read_sql(sql, conn)
-    finally:
-        conn.close()
-
-    # 标准化
-    db_stock["product_code"] = db_stock["product_code"].astype(str).str.strip()
-    db_stock["size"] = db_stock["size"].astype(str).str.strip()
-    db_stock["stock_status"] = db_stock["stock_status"].astype(str).str.strip()
-
-    # 映射函数
-    def status_to_qty(s: str) -> int:
-        return in_stock_qty if str(s).strip() == "有货" else out_stock_qty
-
     results = []
-    for f in files:
+    for f in sorted(files, key=lambda p: p.stat().st_mtime, reverse=True):
         try:
+            df0 = pd.read_excel(f, dtype=object)
+
+            # 复用你现有的列名别名解析
+            col_item = _normalize_col(df0, "item_id")        # 宝贝id
+            col_code = _normalize_col(df0, "product_code")   # 商家编码
+            col_sku  = _normalize_col(df0, "skuid")          # skuID
+
+            # 展开 SKU 行（与价格导出一致：只按 product_code 合并，不看尺码）
+            rows = []
+            for _, r in df0.iterrows():
+                item_id = _to_text(r.get(col_item))
+                code    = _to_text(r.get(col_code))
+                skus    = _split_skuids(r.get(col_sku))
+                for sid in skus:
+                    sid = _to_text(sid)
+                    if sid:
+                        rows.append((item_id, code, sid))
+
+            if not rows:
+                raise ValueError(f"{f.name} 无有效 SKU 记录（检查宝贝ID/商家编码/skuID）。")
+
+            df_expanded = pd.DataFrame(rows, columns=["宝贝id", "product_code", "skuid"])
+            df_expanded["product_code"] = df_expanded["product_code"].astype(str).str.strip()
+
+            # 仅按 product_code 合并库存数量（与价格导出相同合并粒度）
+            df_tmp = df_expanded.merge(qty_by_code, on="product_code", how="left")
+            df_tmp["调整后库存"] = df_tmp["调整后库存"].fillna(out_stock_qty).astype(int)
+
+            # 输出两列
+            out_df = df_tmp[["skuid", "调整后库存"]]
             out_name = f.stem + (suffix or "")
             if not out_name.endswith(".xlsx"):
                 out_name += ".xlsx"
             out_path = output_dir / out_name
-            print(f"▶️ {f.name} -> {out_name}")
+            out_df.to_excel(out_path, index=False)
 
-            df0 = pd.read_excel(f, dtype=object)
-
-            col_item = _normalize_col(df0, "item_id")
-            col_code = _normalize_col(df0, "product_code")
-            col_sku  = _normalize_col(df0, "skuid")
-
-            # 额外尝试识别“规格/尺码”列（可选）
-            spec_candidates = ["sku规格","规格","尺码","SKUspec","sku_spec","属性","销售属性"]
-            col_spec = None
-            canon2raw = {_canon(c): c for c in df0.columns}
-            for cand in spec_candidates:
-                if _canon(cand) in canon2raw:
-                    col_spec = canon2raw[_canon(cand)]
-                    break
-
-            # 前向填充
-            def _prep_ffill(col: str):
-                s = df0[col].apply(lambda v: _to_text(v).strip())
-                s = s.replace("", pd.NA)
-                return s.ffill().fillna("")
-            df0[col_item] = _prep_ffill(col_item)
-            df0[col_code] = _prep_ffill(col_code)
-            if col_spec:
-                df0[col_spec] = _prep_ffill(col_spec)
-
-            # 展开 SKU 行
-            rows = []
-            for _, r in df0.iterrows():
-                item_id = _to_text(r.get(col_item)).strip()
-                code    = _to_text(r.get(col_code)).strip()
-                spec    = _to_text(r.get(col_spec)).strip() if col_spec else ""
-                skus    = _split_skuids(r.get(col_sku))
-                if not skus:
-                    continue
-                for sid in skus:
-                    sid = _to_text(sid).strip()
-                    if sid:
-                        rows.append((item_id, code, spec, sid))
-            if not rows:
-                raise ValueError("输入Excel无有效记录（检查宝贝ID/商家编码/skuID列与内容）。")
-
-            df_expanded = pd.DataFrame(rows, columns=["宝贝id","product_code","规格","skuid"])
-
-            # 计算库存
-            if col_spec:
-                # 尝试从规格中抽取尺码（如果规格就是尺码，直接使用；如果格式是 “编码,尺码” 之类，可据你现状做解析）
-                # 这里先直接拿整段规格与 DB 的 size 做“等值匹配”，必要时你可以加一个 normalize 映射
-                df_tmp = df_expanded.merge(
-                    db_stock.assign(调整后库存=db_stock["stock_status"].map(status_to_qty)),
-                    left_on=["product_code","规格"], right_on=["product_code","size"], how="left"
-                )
-                df_tmp["调整后库存"] = df_tmp["调整后库存"].fillna(out_stock_qty).astype(int)
-            else:
-                # 无规格：按款聚合，只要该款有任何尺码“有货”→整款给 in_stock_qty，否则 0
-                has_stock = (
-                    db_stock.assign(qty=db_stock["stock_status"].map(status_to_qty))
-                            .groupby("product_code")["qty"].max()
-                            .reset_index()
-                            .rename(columns={"qty":"调整后库存"})
-                )
-                df_tmp = df_expanded.merge(has_stock, on="product_code", how="left")
-                df_tmp["调整后库存"] = df_tmp["调整后库存"].fillna(out_stock_qty).astype(int)
-
-            # 导出两列（若要带宝贝id就把列换成 ["宝贝id","skuid","调整后库存"]）
-            df_out = df_tmp[["skuid","调整后库存"]]
-            df_out.to_excel(out_path, index=False)
-            print(f"✅ 已导出：{out_path} | 输出SKU行数: {len(df_out)}")
-            results.append((str(f), str(out_path), None))
+            print(f"✅ {f.name} -> {out_name} (rows={len(out_df)})")
+            results.append((str(f), str(out_path), len(out_df), None))
         except Exception as e:
             print(f"❌ 处理失败：{f} | 错误：{e}")
-            results.append((str(f), None, str(e)))
+            results.append((str(f), None, 0, str(e)))
+
     return results
+
 
 
 if __name__ == "__main__":

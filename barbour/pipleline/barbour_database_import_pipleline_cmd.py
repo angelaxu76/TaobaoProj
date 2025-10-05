@@ -13,15 +13,20 @@ from barbour.supplier.very_fetch_info import very_fetch_info
 from barbour.supplier.very_get_links import very_get_links
 from barbour.supplier.terraces_fetch_info import terraces_fetch_info
 from barbour.supplier.terraces_get_links import collect_terraces_links
-
+from common_taobao.backup_and_clear import backup_and_clear_brand_dirs
 from barbour.jingya.insert_jingyaid_to_db_barbour import insert_missing_products_with_zero_stock, insert_jingyaid_to_db
 from barbour.jingya.fill_offer_to_barbour_inventory import backfill_barbour_inventory_mapped_only
 from barbour.common.fill_supplier_jingya_map import fill_supplier_map
 from common_taobao.jingya.jingya_export_stockcount_to_excel import export_stock_excel
 from common_taobao.jingya.jiangya_export_channel_price_excel import export_barbour_channel_price_by_sku
+from config import BARBOUR
 
 
 def barbour_database_import_pipleline():
+    print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
+    backup_and_clear_brand_dirs(BARBOUR)
+
+
     print("\n🌐 步骤 1：抓取商品链接")
     # barbour
     # barbour_get_links()

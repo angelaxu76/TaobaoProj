@@ -19,22 +19,22 @@ def main():
     print("将JPG按长度切分")
    #  split_image_by_size(CUTTER_FOLDER,SPLIT_FOLDER,1900)
 
-    # process_images(
-    #     input_dir=r"C:\Users\martin\Downloads",
-    #     output_dir=r"D:\TB\Products\barbour\images",
-    #     product_code="LQU1856GN91",
-    # )
-
-
     process_images(
-        input_dir=r"D:\TEMP3\INPUT",
-        output_dir=r"D:\TEMP3\OUTPUT",
-        product_code="LQU1856GN91",
-        defend=False,                 # 是否做扰动
-        watermark=True,              # 是否加水印
-        wm_text="英国哈梅尔百货",           # 斜纹文字水印
-        wm_logo_text="英国哈梅尔百货"       # 右下角小文字水印
+        input_dir=r"C:\Users\martin\Downloads",
+        output_dir=r"D:\TB\Products\barbour\images",
+        product_code="MWX2518MI11",
     )
+
+
+    # process_images(
+    #     input_dir=r"D:\TEMP3\INPUT",
+    #     output_dir=r"D:\TEMP3\OUTPUT",
+    #     product_code="LQU1856GN91",
+    #     defend=False,                 # 是否做扰动
+    #     watermark=True,              # 是否加水印
+    #     wm_text="英国哈梅尔百货",           # 斜纹文字水印
+    #     wm_logo_text="英国哈梅尔百货"       # 右下角小文字水印
+    # )
 
 
 if __name__ == "__main__":

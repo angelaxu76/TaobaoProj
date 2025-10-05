@@ -11,6 +11,7 @@ from brands.ecco.unified_link_collector import ecco_get_links
 from brands.ecco.fetch_product_info import ecco_fetch_info
 from common_taobao.mark_offline_products_from_store_excels import mark_offline_products_from_store_excels
 from common_taobao.generate_taobao_store_price_for_import_excel import generate_price_excel,generate_price_excels_bulk, generate_stock_excels_bulk
+from common_taobao.export_taobao_sku_price_stock_excels import export_shop_sku_price_excels, export_shop_sku_stock_excels
 #
 
 def main():
@@ -23,8 +24,14 @@ def main():
     # print("\n🟡 Step: 3️⃣ 抓取商品信息")
     # ecco_fetch_info()
 
-    print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
+    print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，并且会解析店铺的淘宝导出的excel文件，并导入skuid")
     # import_txt_to_db("ecco")
+
+    # print("\n🟡 Step: 6️⃣ 导出SKU基本商品的价格到excel，用于更新淘宝店铺商品价格")
+    export_shop_sku_price_excels("ecco", r"D:\TB\Products\ecco\repulibcation\store\output_sku_price", include_all=False)
+
+    # print("\n🟡 Step: 6️⃣ 导出SKU基本商品的库存数量到excel，用于更新淘宝店铺商品库存")
+    export_shop_sku_stock_excels("ecco", r"D:\TB\Products\ecco\repulibcation\store\output_sku_stock", include_all=False)
 
     # print("\n🟡 Step: 6️⃣ 导出库存 Excel")
     # export_skuid_stock_excel("ecco")
@@ -41,24 +48,24 @@ def main():
 
 
     print("\n🟡 Step: 6️⃣ 获取excel文件，用来更新各个淘宝店铺价格，输入文件夹可以是多个店铺的导出文件")
-    generate_price_excels_bulk(
-        brand="ecco",
-        input_dir=r"D:\TB\Products\ecco\repulibcation\store\input",
-        output_dir=r"D:\TB\Products\ecco\repulibcation\store\price_output",
-        suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
-        drop_rows_without_price=False  # 不丢行，查不到的价格留空
-    )
+    # generate_price_excels_bulk(
+    #     brand="ecco",
+    #     input_dir=r"D:\TB\Products\ecco\repulibcation\store\input",
+    #     output_dir=r"D:\TB\Products\ecco\repulibcation\store\price_output",
+    #     suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
+    #     drop_rows_without_price=False  # 不丢行，查不到的价格留空
+    # )
     
 
-    print("\n🟡 Step: 6️⃣ 获取excel文件，用来更新各个淘宝店铺库存，输入文件夹可以是多个店铺的导出文件")
-    generate_stock_excels_bulk(
-        brand="ecco",
-        input_dir=r"D:\TB\Products\ecco\repulibcation\store\input",
-        output_dir=r"D:\TB\Products\ecco\repulibcation\store\stock_output",
-        suffix="_库存",
-        in_stock_qty=3,       # 有货时写入的库存数量
-        out_stock_qty=0       # 无货时写入的库存数量
-    )
+    # print("\n🟡 Step: 6️⃣ 获取excel文件，用来更新各个淘宝店铺库存，输入文件夹可以是多个店铺的导出文件")
+    # generate_stock_excels_bulk(
+    #     brand="ecco",
+    #     input_dir=r"D:\TB\Products\ecco\repulibcation\store\input",
+    #     output_dir=r"D:\TB\Products\ecco\repulibcation\store\stock_output",
+    #     suffix="_库存",
+    #     in_stock_qty=3,       # 有货时写入的库存数量
+    #     out_stock_qty=0       # 无货时写入的库存数量
+    # )
 
     # mark_offline_products_from_store_excels(BRAND_CONFIG["ecco"])
     # print("\n✅ ECCO pipeline 完成")
