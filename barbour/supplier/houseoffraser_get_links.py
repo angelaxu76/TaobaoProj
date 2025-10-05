@@ -42,6 +42,7 @@ def extract_links_from_html(html: str):
 
 def houseoffraser_get_links():
     print("🚀 开始抓取 House of Fraser 商品链接")
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)  # ✅ 移到这里，保证创建成功
     driver = get_driver()
     all_links = set()
     page = 1
