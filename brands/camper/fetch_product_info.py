@@ -4,7 +4,7 @@ import re
 import time
 import json
 import threading
-from selenium import webdriver
+
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -15,6 +15,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from config import CAMPER, SIZE_RANGE_CONFIG  # ✅ 引入标准尺码配置
 from common_taobao.txt_writer import format_txt
 from common_taobao.core.category_utils import infer_style_category
+from selenium import webdriver
+driver = webdriver.Chrome()
 
 CHROMEDRIVER_PATH = CAMPER["CHROMEDRIVER_PATH"]
 PRODUCT_URLS_FILE = CAMPER["LINKS_FILE"]
@@ -35,10 +37,7 @@ def infer_gender_from_url(url: str) -> str:
 
 def create_driver():
     from selenium import webdriver
-    from selenium.webdriver.chrome.service import Service
     from selenium.webdriver.chrome.options import Options
-    import chromedriver_autoinstaller
-    import os
 
     chrome_options = Options()
     chrome_options.add_argument("--headless=new")
@@ -59,23 +58,10 @@ def create_driver():
     chrome_options.add_argument("--disable-features=Translate,MediaRouter,AutofillServerCommunication")
     chrome_options.add_argument("--blink-settings=imagesEnabled=false")
 
-    # --- 自动匹配逻辑 ---
-    driver = None
-    if CHROMEDRIVER_PATH and os.path.exists(CHROMEDRIVER_PATH):
-        try:
-            driver = webdriver.Chrome(service=Service(CHROMEDRIVER_PATH), options=chrome_options)
-        except Exception as e:
-            print(f"⚠️ 固定路径的 ChromeDriver 启动失败（可能版本不匹配），自动切换：{e}")
+    # ✅ 不再手动指定路径，也不使用 chromedriver_autoinstaller
+    driver = webdriver.Chrome(options=chrome_options)
 
-    if driver is None:
-        try:
-            chromedriver_autoinstaller.install()
-            driver = webdriver.Chrome(options=chrome_options)
-        except Exception as e:
-            print(f"❌ 自动安装 ChromeDriver 失败: {e}")
-            raise
-
-    # --- 打印版本信息，确认匹配 ---
+    # 打印版本确认匹配
     try:
         caps = driver.capabilities
         print("Chrome:", caps.get("browserVersion"))
@@ -84,6 +70,7 @@ def create_driver():
         pass
 
     return driver
+
 
 
 # === 新增：全局记录 driver 并统一回收，避免多轮运行残留进程 ===
