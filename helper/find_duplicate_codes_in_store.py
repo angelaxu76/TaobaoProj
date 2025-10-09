@@ -49,6 +49,6 @@ def find_duplicate_product_codes_in_store(store_folder: Path):
 
 # ✅ 示例调用
 if __name__ == "__main__":
-    store_path = Path(r"D:\TB\Products\camper_global\document\store\五小剑")  # 替换为实际路径
+    store_path = Path(r"D:\TB\Products\ECCO\document\store\英国伦敦代购2015")  # 替换为实际路径
     #store_path = Path(r"D:\TB\Products\camper_global\document\store\英国伦敦代购2015")  # 替换为实际路径
     find_duplicate_product_codes_in_store(store_path)

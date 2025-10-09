@@ -22,23 +22,23 @@ def main():
     print("将JPG按长度切分")
    #  split_image_by_size(CUTTER_FOLDER,SPLIT_FOLDER,1900)
 
-    process_images(
-        input_dir=r"C:\Users\martin\Downloads",
-        output_dir=r"D:\TB\Products\barbour\images",
-        product_code="UBA0761NY94",
-    )
+    # process_images(
+    #     input_dir=r"C:\Users\martin\Downloads",
+    #     output_dir=r"D:\TB\Products\barbour\images",
+    #     product_code="UBA0761NY94",
+    # )
 
     # batch_process(r"D:\TB\Products\barbour\3", r"D:\TB\Products\barbour\3_processed111", max_workers=3)
  
-    # process_images(
-    #     input_dir=r"D:\TB\Products\barbour\3",
-    #     output_dir=r"D:\TB\Products\barbour\3_processed",
-    #     product_code="barbour",
-    #     defend=True,                 # 是否做扰动
-    #     watermark=True,              # 是否加水印
-    #     wm_text="英国哈梅尔百货",           # 斜纹文字水印
-    #     wm_logo_text="英国哈梅尔百货"       # 右下角小文字水印
-    # )
+    process_images(
+        input_dir=r"D:\TB\Products\barbour\3",
+        output_dir=r"D:\TB\Products\barbour\3_processed",
+        product_code="barbour",
+        defend=True,                 # 是否做扰动
+        watermark=True,              # 是否加水印
+        wm_text="英国哈梅尔百货",           # 斜纹文字水印
+        wm_logo_text="英国哈梅尔百货"       # 右下角小文字水印
+    )
 
     # pipeline_text_watermark(input_dir=r"C:\Users\martin\Desktop\main", 
     #                     output_dir=r"C:\Users\martin\Desktop\mainwatered")
