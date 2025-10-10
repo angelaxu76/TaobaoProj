@@ -3,6 +3,41 @@ import psycopg2
 import pandas as pd
 from pathlib import Path
 from config import CAMPER, CLARKS_JINGYA, ECCO, GEOX,BRAND_CONFIG
+# 顶部补充
+import re
+
+def _clean_id(x: object) -> str:
+    """
+    将 Excel 读出的 id 统一清洗成纯文本：
+    - 去掉尾部的 .0
+    - 处理科学计数法（如 6.083219438088E+12）
+    - 去除空白
+    """
+    if x is None:
+        return ""
+    s = str(x).strip()
+    # 去除常见的 .0 尾巴
+    if re.fullmatch(r"\d+\.0+", s):
+        return s.split(".", 1)[0]
+    # 科学计数法 -> 整数串
+    if re.fullmatch(r"\d+(?:\.\d+)?[eE][+-]?\d+", s):
+        try:
+            return str(int(float(s)))
+        except Exception:
+            return s
+    return s
+
+def _read_gei_as_str(gei_file: Path) -> pd.DataFrame:
+    # 强制把关键列按字符串读取，避免被当作浮点
+    df = pd.read_excel(
+        gei_file,
+        dtype={"sku名称": str, "渠道产品id": str, "货品id": str, "skuID": str}
+    )
+    # 统一清洗
+    for col in ("sku名称", "渠道产品id", "货品id", "skuID"):
+        if col in df.columns:
+            df[col] = df[col].map(_clean_id)
+    return df
 
 
 def find_latest_gei_file(document_dir: Path) -> Path:
@@ -26,7 +61,7 @@ def insert_jingyaid_to_db(brand: str):
     table_name = config["TABLE_NAME"]
 
     gei_file = find_latest_gei_file(document_dir)
-    df = pd.read_excel(gei_file)
+    df = _read_gei_as_str(gei_file)
 
     updated = 0
     skipped = 0
@@ -125,7 +160,7 @@ def insert_missing_products_with_zero_stock(brand: str):
     table_name = config["TABLE_NAME"]
 
     gei_file = find_latest_gei_file(document_dir)
-    df = pd.read_excel(gei_file)
+    df = _read_gei_as_str(gei_file)
 
     # —— 1) 解析 GEI：构建 (product_code, size) → info 映射（含 skuid）
     # GEI 列名示例：sku名称（形如 "K200155-025，40"），渠道产品id，货品id，skuID
@@ -154,9 +189,9 @@ def insert_missing_products_with_zero_stock(brand: str):
             continue
 
         code, size = parts
-        skuid = str(row.get("skuID", "")).strip()
-        channel_product_id = str(row.get("渠道产品id", "")).strip()
-        channel_item_id = str(row.get("货品id", "")).strip()
+        skuid              = _clean_id(row.get("skuID", ""))   # ← 关键
+        channel_product_id = _clean_id(row.get("渠道产品id", ""))
+        channel_item_id    = _clean_id(row.get("货品id", ""))
         # 你的 insert_jingyaid_to_db 里这样构造 sku_name：
         sku_name = code.replace("-", "") + size
 
