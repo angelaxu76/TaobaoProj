@@ -32,13 +32,41 @@ def supplement_geox_sizes(size_stock: dict, gender: str) -> dict:
     return size_stock
 
 def create_driver():
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    service = Service(CHROMEDRIVER_PATH)
-    return webdriver.Chrome(service=service, options=options)
+    from selenium import webdriver
+    from selenium.webdriver.chrome.options import Options
+
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--window-size=1920x1080")
+    chrome_options.add_argument("user-agent=Mozilla/5.0")
+    chrome_options.add_argument("--log-level=3")
+    chrome_options.add_argument("--disable-logging")
+    chrome_options.add_argument("--disable-notifications")
+    chrome_options.add_argument("--disable-background-networking")
+    chrome_options.add_argument("--disable-default-apps")
+    chrome_options.add_argument("--disable-sync")
+    chrome_options.add_argument("--no-first-run")
+    chrome_options.add_argument("--no-default-browser-check")
+    chrome_options.add_argument("--disable-gcm-driver")
+    chrome_options.add_argument("--disable-features=Translate,MediaRouter,AutofillServerCommunication")
+    chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+
+    # ✅ 不再手动指定路径，也不使用 chromedriver_autoinstaller
+    driver = webdriver.Chrome(options=chrome_options)
+
+    # 打印版本确认匹配
+    try:
+        caps = driver.capabilities
+        print("Chrome:", caps.get("browserVersion"))
+        print("ChromeDriver:", (caps.get("chrome") or {}).get("chromedriverVersion", ""))
+    except Exception:
+        pass
+
+    return driver
+
 
 def get_html(driver, url):
     driver.get(url)
@@ -145,7 +173,7 @@ def process_product(url):
     finally:
         driver.quit()
 
-def main():
+def fetch_all_product_info():
     if not PRODUCT_LINK_FILE.exists():
         print(f"❌ 缺少链接文件: {PRODUCT_LINK_FILE}")
         return
@@ -173,4 +201,4 @@ def main():
     print("\n✅ 所有商品处理完成。")
 
 if __name__ == "__main__":
-    main()
+    fetch_all_product_info()

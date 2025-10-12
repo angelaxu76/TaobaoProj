@@ -66,7 +66,7 @@ def fetch_product_links_for_category(category_name: str, category_url: str):
     return all_links, last_soup
 
 # 主函数
-def main():
+def collect_all_product_links():
     total_links = set()
     last_soup = None
 
@@ -87,4 +87,4 @@ def main():
         print(f"📄 最后页面 HTML 已保存至: {HTML_DEBUG_FILE}")
 
 if __name__ == "__main__":
-    main()
+    collect_all_product_links()
