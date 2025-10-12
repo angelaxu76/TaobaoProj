@@ -3,10 +3,10 @@ import shutil
 from math import ceil
 
 # 原始图片目录
-source_dir = r"D:\TB\Products\ECCO\publication\image_process"
+source_dir = r"C:\Users\martin\Desktop\image_cutter_reduceSize"
 
 # 目标根目录（可以修改为其他路径）
-target_root_dir = r"D:\TB\Products\ECCO\publication\image_process分组图片"
+target_root_dir = r"C:\Users\martin\Desktop\image_cutter_reduceSize分组图片"
 
 # 每组的图片数量
 group_size = 400
