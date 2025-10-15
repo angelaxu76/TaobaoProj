@@ -59,6 +59,10 @@ def generate_publication_excels(brand: str):
         MIN_TOTAL_STOCK = 11
     elif brand == "camper":
         MIN_TOTAL_STOCK = 20
+    elif brand == "geox":
+        MIN_TOTAL_STOCK = 11
+    else:
+        MIN_TOTAL_STOCK = 11  # 兜底默认值
 
     config = BRAND_CONFIG[brand]
     txt_folder = config["TXT_DIR"]

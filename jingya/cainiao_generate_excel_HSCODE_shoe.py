@@ -32,6 +32,7 @@ TEXTS_DIRS = {
 }
 
 # 4) 数据库表与字段映射（按你的现状；字段候选名会自动择优）
+#    ⭐ 新增 gender 映射，优先从库里读取性别
 BRAND_MAP = {
     "camper": {
         "table": "camper_inventory",
@@ -41,6 +42,7 @@ BRAND_MAP = {
             "size": ["size", "product_size"],
             "title_en": ["product_title", "title_en", "title"],
             "goods_name": ["goods_name", "product_name_cn", "name_cn"], # 用于兜底解析
+            "gender": ["gender", "sex"],                                # ← 新增
         },
         "name_like_cols": ["goods_name", "product_name"],
     },
@@ -52,6 +54,7 @@ BRAND_MAP = {
             "size": ["size", "product_size"],
             "title_en": ["product_title", "title_en", "title"],
             "goods_name": ["goods_name", "product_name_cn", "name_cn"],
+            "gender": ["gender", "sex"],                                # ← 新增
         },
         "name_like_cols": ["goods_name", "product_name"],
     },
@@ -78,7 +81,7 @@ CORRECT_COLUMNS = [
     '申报要素(枚举值详见:hscode列表)（要素内容由hscode决定）'
 ]
 
-# 6) 固定项
+# 6) 固定项（不改）
 HSCODE_FIXED = "6405200090"
 ORIGIN = "越南"
 SPEC = "1双"
@@ -86,7 +89,7 @@ BRAND_FIXED = {"camper": "camper", "clarks": "clarks"}
 PURPOSE = "衣着用品"
 UOM1 = "千克"; QTY1 = 1
 UOM2 = "双";   QTY2 = 1
-CATEGORY = "女鞋 / 低帮鞋 / 时尚休闲鞋"  # 如需按性别/类目动态，后续可接库字段
+CATEGORY_DEFAULT = "女鞋 / 低帮鞋 / 时尚休闲鞋"  # 仅作历史兼容的默认值
 
 # ======================= 连接数据库 =======================
 from config import PGSQL_CONFIG  # 兼容 host/port/user/password/dbname
@@ -104,8 +107,10 @@ def _pg_url(cfg: dict) -> str:
 ENGINE = create_engine(_pg_url(PGSQL_CONFIG), future=True)
 
 # ======================= 工具函数 =======================
-def first_existing_val(row: dict, candidates: list[str]) -> str | None:
-    for c in candidates or []:
+def first_existing_val(row: dict, candidates) -> str | None:
+    """在 row 中按候选列名优先级返回第一个非空值。"""
+    cand_list = candidates if isinstance(candidates, (list, tuple)) else [candidates]
+    for c in cand_list or []:
         if c in row and row[c] is not None and str(row[c]).strip():
             return str(row[c]).strip()
     return None
@@ -144,6 +149,35 @@ def fetch_price(_: str, __: str, ___: str) -> str:
     # 按需接入 offers/定价表，这里默认留空
     return ""
 
+# ----------------------- 性别判定（新增） -----------------------
+def _detect_gender(db_row: dict, fields_map: dict, title_en: str, goods_name: str) -> str:
+    """
+    返回 '男' / '女' / '通用'
+    优先库字段 gender/sex；其次标题/中文名兜底；都失败为通用。
+    """
+    # 1) 数据库字段优先
+    gender_val = first_existing_val(db_row, fields_map.get("gender"))
+    g = (str(gender_val).strip().lower()) if gender_val is not None else ""
+    if g in ("男", "男款", "male", "men", "m"): return "男"
+    if g in ("女", "女款", "female", "women", "w"): return "女"
+
+    # 2) 文本兜底（英文/中文关键词）
+    text = f"{title_en or ''} {goods_name or ''}".lower()
+    # 注意避免把 "women" 里包含 "men" 的误判，先匹配 women 后匹配 men
+    if any(x in text for x in ["women ", "women's", "womens", " 女", "女款", "女鞋"]): return "女"
+    if any(x in text for x in ["men ", "men's", "mens", " 男", "男款", "男鞋"]): return "男"
+
+    # 3) 实在判不出
+    return "通用"
+
+def _category_by_gender(gender_cn: str) -> str:
+    if gender_cn == "男":
+        return "男鞋 / 低帮鞋 / 时尚休闲鞋"
+    if gender_cn == "女":
+        return "女鞋 / 低帮鞋 / 时尚休闲鞋"
+    return "鞋靴 / 低帮鞋 / 时尚休闲鞋"
+
+# ----------------------- 主行构建 -----------------------
 def build_row(brand: str, goods_id: str) -> dict:
     db = fetch_db_row(brand, goods_id)
     fields = BRAND_MAP[brand]["fields"]
@@ -151,6 +185,7 @@ def build_row(brand: str, goods_id: str) -> dict:
     code = first_existing_val(db, fields.get("product_code"))
     size = first_existing_val(db, fields.get("size"))
     title_en = first_existing_val(db, fields.get("title_en"))
+    goods_name = first_existing_val(db, fields.get("goods_name"))
 
     if not (code and size):
         for col in BRAND_MAP[brand]["name_like_cols"]:
@@ -162,6 +197,10 @@ def build_row(brand: str, goods_id: str) -> dict:
 
     if not title_en and code:
         title_en = read_title_from_txt(brand, code)
+
+    # ⭐ 新增：性别判定 & 动态类目
+    gender_cn = _detect_gender(db, fields, title_en or "", goods_name or "")
+    category_val = _category_by_gender(gender_cn) if gender_cn else CATEGORY_DEFAULT
 
     price = fetch_price(brand, code or "", size or "")
 
@@ -186,7 +225,7 @@ def build_row(brand: str, goods_id: str) -> dict:
         '前端宝贝链接': '',
         '商品备案价（元）': price,
         'HSCODE(枚举值详见:hscode列表)（海关十位编码）': HSCODE_FIXED,
-        '商品类目': CATEGORY,
+        '商品类目': category_val,  # ← 仅此列改为动态
         '第一单位(枚举值详见:hscode列表)（第一单位由hscode决定）（填写文字或代码）': UOM1,
         '第一数量（请严格对应第一单位要求填写）': QTY1,
         '第二单位(枚举值详见:hscode列表)（第二单位由hscode决定）（填写文字或代码）': UOM2,

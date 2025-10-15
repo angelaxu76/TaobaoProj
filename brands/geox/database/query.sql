@@ -1,0 +1,1 @@
+select * from geox_inventory;

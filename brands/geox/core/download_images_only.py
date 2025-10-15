@@ -21,11 +21,27 @@ MAX_WORKERS = 5  # 建议 3~5 个线程并发
 ensure_all_dirs(IMAGE_OUTPUT_DIR)
 
 def create_driver():
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    return webdriver.Chrome(service=Service(CHROMEDRIVER_PATH), options=options)
+    from selenium.webdriver.chrome.options import Options
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--window-size=1920x1080")
+    chrome_options.add_argument("user-agent=Mozilla/5.0")
+    chrome_options.add_argument("--log-level=3")
+    chrome_options.add_argument("--disable-logging")
+    chrome_options.add_argument("--disable-notifications")
+    chrome_options.add_argument("--disable-background-networking")
+    chrome_options.add_argument("--disable-default-apps")
+    chrome_options.add_argument("--disable-sync")
+    chrome_options.add_argument("--no-first-run")
+    chrome_options.add_argument("--no-default-browser-check")
+    chrome_options.add_argument("--disable-gcm-driver")
+    chrome_options.add_argument("--disable-features=Translate,MediaRouter,AutofillServerCommunication")
+    chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+    driver = webdriver.Chrome(options=chrome_options)
+    return driver
 
 def download_image(url, path):
     try:
