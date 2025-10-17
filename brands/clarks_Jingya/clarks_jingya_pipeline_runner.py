@@ -13,7 +13,7 @@ from common_taobao.jingya.generate_publication_excel import generate_publication
 from common_taobao.jingya.export_gender_split_excel import export_gender_split_excel
 from common_taobao.jingya.jingya_export_stockcount_to_excel import export_stock_excel
 from common_taobao.jingya.jiangya_export_channel_price_excel import export_jiangya_channel_prices
-from common_taobao.generate_taobao_store_price_for_import_excel import generate_price_excel
+from common_taobao.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
 
 from pathlib import Path
 
@@ -56,27 +56,28 @@ def main():
     # print("\n🟡 Step: 3️⃣ 抓取商品信息")
     # clarks_fetch_info()
 
-    print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
-    import_txt_to_db_supplier("clarks_jingya")  # ✅ 新逻辑
+    # print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
+    # import_txt_to_db_supplier("clarks_jingya")  # ✅ 新逻辑
 
-    print("\n🟡 Step: 5️⃣ 绑定渠道 SKU 信息（淘经销 Excel）将鲸芽那边的货品ID等输入到数据库")
-    insert_jingyaid_to_db("clarks_jingya")
+    # print("\n🟡 Step: 5️⃣ 绑定渠道 SKU 信息（淘经销 Excel）将鲸芽那边的货品ID等输入到数据库")
+    # insert_jingyaid_to_db("clarks_jingya")
 
-    print("\n🟡 Step: 5️⃣ 将最新TXT中没有的产品，说明刚商品已经下架，但鲸芽这边没办法删除，全部补库存为0")
-    insert_missing_products_with_zero_stock("clarks_jingya")
+    # print("\n🟡 Step: 5️⃣ 将最新TXT中没有的产品，说明刚商品已经下架，但鲸芽这边没办法删除，全部补库存为0")
+    # insert_missing_products_with_zero_stock("clarks_jingya")
 
 
-    # print("\n🟡 Step: 6️⃣ 获取excel文件用来更新淘宝店铺价格")
-    # generate_price_excel(
-    #     brand="clarks_jingya",
-    #     input_dir=r"D:\TB\Products\clarks_jingya\repulibcation\store_prices\input", 
-    #     output_path=r"D:\TB\Products\clarks_jingya\repulibcation\store_prices\clarks_jingya_channel_prices.xlsx",
-    #     drop_rows_without_price=False # 不丢行，查不到的价格留空
-    # )
+    print("\n🟡 Step: 6️⃣ 获取excel文件用来更新淘宝店铺价格")
+    generate_price_excels_bulk(
+        brand="clarks_jingya",
+        input_dir=r"D:\TB\Products\clarks_jingya\repulibcation\store_prices\input",
+        output_dir=r"D:\TB\Products\clarks_jingya\repulibcation\store_prices\output",
+        suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
+        drop_rows_without_price=False  # 不丢行，查不到的价格留空
+    )
 
 
     print("\\n🟡 Step: 6️⃣生成发布产品的excel")
-    generate_publication_excels("clarks_jingya")
+    # generate_publication_excels("clarks_jingya")
 
     # print("导出发布商品的价格")
     # print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
