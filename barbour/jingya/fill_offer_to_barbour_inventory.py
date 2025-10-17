@@ -116,6 +116,115 @@ SQL_APPLY_BEST = text("""
     RETURNING bi.id
 """)
 
+def backfill_barbour_inventory_single_supplier():
+    """
+    方案1：单一主供货商回填
+    - 仅使用 barbour_supplier_map 中映射的站点(site_name)作为选源
+    - 其它流程（有货优先→最低有效价→最新、RMB 价计算）与方案2一致
+    """
+    print(">>> MODE: SINGLE_SUPPLIER (via barbour_supplier_map)", file=sys.stderr)
+    print(">>> LOADED FROM:", __file__, file=sys.stderr)
+
+    cfg = BRAND_CONFIG["barbour"]["PGSQL_CONFIG"]
+    engine = create_engine(
+        f"postgresql+psycopg2://{cfg['user']}:{cfg['password']}@{cfg['host']}:{cfg['port']}/{cfg['dbname']}"
+    )
+    with engine.begin() as conn:
+        _ensure_price_columns(conn)
+
+        # 1) 建临时表（与方案2一致）
+        for sql in SQL_CREATE_TMP:
+            conn.execute(sql)
+
+        # 2) 准备 tmp_bi_exact：只处理有尺码的行
+        inv_rows = list(conn.execute(text("""
+            SELECT id, product_code, size
+            FROM barbour_inventory
+            WHERE product_code IS NOT NULL AND product_code <> ''
+              AND size IS NOT NULL AND size <> ''
+        """)))
+        bi_values: List[Tuple] = []
+        for bi_id, code, size in inv_rows:
+            szn = _clean_size(size)
+            if szn and szn != "unknown":
+                bi_values.append((bi_id, (code or "").strip(), szn))
+        if bi_values:
+            conn.exec_driver_sql(
+                "INSERT INTO tmp_bi_exact(bi_id, product_code, size_norm) VALUES (%s,%s,%s)",
+                bi_values
+            )
+
+        # 3) 准备 tmp_offer_exact：只取“映射站点”的 offers
+        #    关键点：JOIN barbour_supplier_map 并按 site_name 精确限定
+        off_rows = list(conn.execute(text("""
+            SELECT o.product_code, o.size, o.site_name, o.offer_url,
+                   o.price_gbp, o.original_price_gbp, o.sale_price_gbp,
+                   o.stock_count, o.last_checked
+            FROM barbour_offers o
+            JOIN barbour_supplier_map m
+              ON m.product_code = o.product_code
+             AND lower(o.site_name) = lower(m.site_name)
+            WHERE o.is_active = TRUE
+              AND o.product_code IS NOT NULL AND o.product_code <> ''
+              AND o.size IS NOT NULL AND o.size <> ''
+        """)))
+        off_values: List[Tuple] = []
+        for code, size, site, url, price, original, sale, stock, ts in off_rows:
+            szn = _clean_size(size)
+            if not szn or szn == "unknown":
+                continue
+            eff = sale if sale is not None else price
+            if eff is None:
+                continue
+            off_values.append(((code or "").strip(), szn, (site or "").strip(),
+                               url, price, original, sale, eff, stock, ts))
+        if off_values:
+            conn.exec_driver_sql(
+                """INSERT INTO tmp_offer_exact(color_code, size_norm, site_name, offer_url,
+                                               price_gbp, original_price_gbp, discount_price_gbp,
+                                               eff_price, stock_count, last_checked)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                off_values
+            )
+
+        # 4) 索引（与方案2一致）
+        for sql in SQL_INDEX_TMP:
+            conn.execute(sql)
+
+        # 5) 精确匹配 & 写回（与方案2一致：有货优先→最低有效价→最新）
+        rs = conn.execute(SQL_APPLY_BEST)
+        hit_ids = [r[0] for r in (rs.fetchall() or [])]
+
+        # 6) 计算人民币价（与方案2一致）
+        if hit_ids:
+            base_rows = list(conn.execute(text("""
+                SELECT id, COALESCE(discount_price_gbp, source_price_gbp) AS base_gbp
+                FROM barbour_inventory WHERE id = ANY(:ids)
+            """), {"ids": hit_ids}).mappings())
+            payload = []
+            for r in base_rows:
+                base_gbp = r["base_gbp"]
+                jy, tb = _compute_rmb_prices(base_gbp)
+                payload.append({
+                    "bi_id": r["id"],
+                    "base_price_gbp": _num_or_none(base_gbp),
+                    "exchange_rate_used": None,
+                    "jingya_price_rmb": jy,
+                    "taobao_price_rmb": tb
+                })
+            if payload:
+                conn.execute(text("""
+                    UPDATE barbour_inventory
+                    SET base_price_gbp   = :base_price_gbp,
+                        exchange_rate_used = :exchange_rate_used,
+                        jingya_price_rmb = :jingya_price_rmb,
+                        taobao_price_rmb = :taobao_price_rmb
+                    WHERE id = :bi_id
+                """), payload)
+
+    print(f"✅ 单一主供应商回填完成：命中 {len(hit_ids)} 行。")
+
+
 def backfill_barbour_inventory_mapped_only():
     print(">>> MODE: EXACT_ONLY", file=sys.stderr)
     print(">>> LOADED FROM:", __file__, file=sys.stderr)

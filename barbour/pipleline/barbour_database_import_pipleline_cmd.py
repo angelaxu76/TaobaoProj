@@ -15,7 +15,7 @@ from barbour.supplier.terraces_fetch_info import terraces_fetch_info
 from barbour.supplier.terraces_get_links import collect_terraces_links
 from common_taobao.backup_and_clear import backup_and_clear_brand_dirs
 from barbour.jingya.insert_jingyaid_to_db_barbour import insert_missing_products_with_zero_stock, insert_jingyaid_to_db, clear_barbour_inventory
-from barbour.jingya.fill_offer_to_barbour_inventory import backfill_barbour_inventory_mapped_only
+from barbour.jingya.fill_offer_to_barbour_inventory import backfill_barbour_inventory_mapped_only,backfill_barbour_inventory_single_supplier
 from barbour.common.fill_supplier_jingya_map import fill_supplier_map
 from common_taobao.jingya.jingya_export_stockcount_to_excel import export_stock_excel
 from common_taobao.jingya.jiangya_export_channel_price_excel import export_barbour_channel_price_by_sku
@@ -69,7 +69,7 @@ def barbour_database_import_pipleline():
     # fill_supplier_map()
 
     # Step 5: TODO 将barbour product和offers中的价格库存和商品信息回填到barbour inventory表
-    backfill_barbour_inventory_mapped_only()
+    backfill_barbour_inventory_single_supplier()
 
 
     print("\\n🟡 Step: 6️⃣ 导出库存用于更新")

@@ -33,24 +33,23 @@ MATERIAL_MAP = {
 }
 
 # —— 新增：英文术语→中文通用词（材料/功能类） —— #
-TERM_MAP = {
-    "leather": "牛皮",
-    "genuine leather": "真皮",
-    "full grain": "头层牛皮",
-    "patent leather": "漆皮",
-    "nubuck": "磨砂皮",
-    "suede": "反毛皮",
-    "textile": "织物",
-    "mesh": "网布",
-    "canvas": "帆布",
-    "synthetic": "合成材质",
-    "waterproof": "防水",
-    "water resistant": "防泼水",
-    "breathable": "透气",
-    "gore-tex": "防水",
-    "gore tex": "防水",
-    "goretex": "防水",
-}
+# 先配“长词在前”的顺序，避免 water → waterproof 被截断
+TERM_MAP = [
+    (r"water\s*resistant", "防泼水"),
+    (r"waterproof",        "防水"),
+    (r"gore[-\s]*tex",     "防水"),
+    (r"full\s*[-\s]*grain", "头层牛皮"),
+    (r"genuine\s*leather", "真皮"),
+    (r"patent\s*leather",  "漆皮"),
+    (r"leather",           "牛皮"),
+    (r"nubuck",            "磨砂皮"),
+    (r"suede",             "反毛皮"),
+    (r"textile",           "织物"),
+    (r"mesh",              "网布"),
+    (r"canvas",            "帆布"),
+    (r"synthetic",         "合成材质"),
+]
+
 
 # =========================
 # 品牌短码提取规则（保持既有行为）
@@ -276,13 +275,29 @@ def _fix_english_spacing(s: str) -> str:
     return s
 
 # —— 新增：把材料/功能英文残留替换为中文（避免 Leather/Waterproof 出现在中文标题里） —— #
+
+
 def _replace_terms_to_cn(s: str) -> str:
-    low = s.lower()
-    for k, v in TERM_MAP.items():
-        if k in low:
-            # 大小写无关替换
-            s = re.sub(re.escape(k), v, s, flags=re.IGNORECASE)
+    """
+    用标准 re 实现大小写无关、完整词替换，
+    彻底清理 Leather / Suede / Waterproof 等英文残留。
+    """
+    if not s:
+        return s
+
+    # 先逐项替换（词边界 + 忽略大小写）
+    for pat, cn in TERM_MAP:
+        s = re.sub(rf"(?i)(?<![A-Za-z0-9]){pat}(?![A-Za-z0-9])", cn, s)
+
+    # 把 “系列 + 功能词” 重排成中文（Spherica Waterproof → Spherica 防水）
+    s = re.sub(r"(?i)([A-Za-z0-9\s\-]+)\s+防水", r"\1 防水", s)
+    s = re.sub(r"(?i)([A-Za-z0-9\s\-]+)\s+防泼水", r"\1 防泼水", s)
+
+    # 清理多余空格
+    s = re.sub(r"\s{2,}", " ", s).strip()
     return s
+
+
 
 # =========================
 # 主函数：签名保持不变
@@ -360,15 +375,25 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
         material_cn,
         features_str
     ]
+   # 组好 parts 后
     base_title = "".join([p for p in parts if p]).strip()
-    # 英文/数字可读性优化 + 英文术语中文化（Leather/Waterproof 等）
-    base_title = _replace_terms_to_cn(_fix_english_spacing(base_title))
+
+    # 1) 先做中英边界与字母/数字间空格
+    base_title = _fix_english_spacing(base_title)
+
+    # 2) 再把 Leather / Suede / Waterproof 等转中文（大小写无关 + 词边界）
+    base_title = _replace_terms_to_cn(base_title)
+
+    # 3) 清理脏值
     base_title = base_title.replace("No Data", "")
 
     # 加入商品短码
-    short_code = extract_short_code(product_code, brand_key=brand_key)
-    if short_code:
-        base_title = _fix_english_spacing(f"{base_title} {short_code}")
+    short_code = ""
+    if (brand_key or "").lower() in ["camper", "clarks_jingya"]:
+        short_code = extract_short_code(product_code, brand_key=brand_key)
+        if short_code:
+            base_title = f"{base_title} {short_code}"
+
 
     # 清理异常符号重复
     base_title = re.sub(r"[【】]{2,}", "", base_title)

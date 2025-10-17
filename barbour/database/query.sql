@@ -267,3 +267,5 @@ WHERE sc.size_cnt < 4                   -- 不符合尺码条件
 select * from barbour_offers where site_name = 'houseoffraser';
 
 delete from barbour_offers where site_name = 'houseoffraser';
+
+select * from barbour_offers where product_code ILIKE '%MWB0856%';
