@@ -2,6 +2,7 @@
 
 import re
 import time
+import random
 from pathlib import Path
 from bs4 import BeautifulSoup
 import undetected_chromedriver as uc
@@ -22,18 +23,23 @@ OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 # 商品详情链接的通用特征：结尾/片段中带 -123456 这类数字 ID（不少还带 #colcode=）
 PRODUCT_HREF_PATTERN = re.compile(r"-\d{5,}([/#?]|$)")
 
+# 分页链接中的 dcp=N
+DCP_IN_HREF = re.compile(r"[?&]dcp=(\d+)")
+
 
 def get_driver():
     options = uc.ChromeOptions()
-    # 如需静默运行可启用
+    # 如需静默运行可启用（不建议静默，容易触发风控）
     # options.add_argument("--headless=new")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument(
-        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36"
+        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
     )
+    options.add_argument("accept-language=en-GB,en-US;q=0.9,en;q=0.8")
     driver = uc.Chrome(options=options, use_subprocess=True)
     return driver
 
@@ -46,15 +52,31 @@ def _build_page_url(base_url: str, page: int) -> str:
     return f"{base_url}{sep}dcp={page}"
 
 
-def _wait_products(driver):
-    """等待商品元素出现"""
+def _soft_scroll(driver, steps=5, pause=0.5):
+    """多段滚动触发懒加载"""
+    for i in range(steps):
+        driver.execute_script(
+            "window.scrollBy(0, Math.floor(document.body.scrollHeight * 0.30));"
+        )
+        time.sleep(pause)
+    # 回到顶部，给 DOM 稳定时间
+    driver.execute_script("window.scrollTo(0, 0);")
+    time.sleep(0.4)
+
+
+def _wait_products(driver, timeout=15):
+    """
+    兼容等待策略：
+    - 优先等待 .ProductImageList
+    - 兜底等待可能的商品 a 元素
+    """
     wait_css = ", ".join([
         "a.ProductImageList",
         "a[data-testid*='product']",
         "a[href*='-'][href*='/']",
     ])
     try:
-        WebDriverWait(driver, 15).until(
+        WebDriverWait(driver, timeout).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, wait_css))
         )
         return True
@@ -62,11 +84,36 @@ def _wait_products(driver):
         return False
 
 
+def _discover_total_pages(html: str) -> int:
+    """
+    从第1页的分页区域抓取最大 dcp 值，作为总页数。
+    找不到则返回一个保守上限（200）。
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    max_page = 1
+    for a in soup.select("a[href]"):
+        href = a.get("href") or ""
+        m = DCP_IN_HREF.search(href)
+        if m:
+            try:
+                n = int(m.group(1))
+                if n > max_page:
+                    max_page = n
+            except ValueError:
+                pass
+    return max(max_page, 1)
+
+
 def extract_links_from_html(html: str):
-    """提取商品链接"""
+    """
+    提取逻辑（保持原选择器优先 + 兜底）：
+    1) 先走 a.ProductImageList（与你原逻辑一致）
+    2) 若为空，再对所有 a[href] 用正则筛选含 -数字(≥5位) 的详情链接
+    """
     soup = BeautifulSoup(html, "html.parser")
     links = set()
 
+    # 1) 原选择器
     for tag in soup.select("a.ProductImageList"):
         href = (tag.get("href") or "").strip()
         if not href:
@@ -79,7 +126,7 @@ def extract_links_from_html(html: str):
     if links:
         return links
 
-    # 兜底：包含 -数字(≥5位) 的链接
+    # 2) 兜底
     for tag in soup.select("a[href]"):
         href = (tag.get("href") or "").strip()
         if not href:
@@ -90,35 +137,69 @@ def extract_links_from_html(html: str):
             full = href
         else:
             continue
+
         if PRODUCT_HREF_PATTERN.search(href):
             links.add(full)
 
     return links
 
 
-def _crawl_category(driver, base_url: str, all_links: set, max_pages: int = 60):
-    """抓取单个分类"""
-    page = 1
-    while page <= max_pages:
+def _crawl_category(driver, base_url: str, all_links: set):
+    """
+    核心策略：
+    - 第1页：加载 -> 滚动 -> 等待 -> 提取链接 + 发现总页数
+    - 之后页：逐页爬，连着 3 页“无新增”才停止（防抖）
+    """
+    # 第 1 页
+    first_url = _build_page_url(base_url, 1)
+    print(f"🌐 抓取第 1 页: {first_url}")
+    driver.get(first_url)
+
+    # 页面挂载 & 懒加载
+    time.sleep(1.0)
+    _soft_scroll(driver, steps=6, pause=0.45)
+    _wait_products(driver, timeout=18)
+
+    html = driver.page_source
+    total_pages = _discover_total_pages(html)
+    print(f"🔎 解析到总页数（可能）：{total_pages}")
+
+    first_links = extract_links_from_html(html)
+    new_links = [u for u in first_links if u not in all_links]
+    print(f"✅ 第 1 页提取 {len(new_links)} 个新链接")
+    all_links.update(new_links)
+
+    # 后续页
+    consecutive_no_new = 0
+    for page in range(2, total_pages + 1):
         page_url = _build_page_url(base_url, page)
         print(f"🌐 抓取第 {page} 页: {page_url}")
         driver.get(page_url)
 
-        if not _wait_products(driver):
-            print(f"⚠️ 第 {page} 页未检测到商品元素，结束该分类")
-            break
+        # 给页面挂载时间 + 懒加载滚动
+        time.sleep(0.8 + random.random() * 0.6)
+        _soft_scroll(driver, steps=5, pause=0.4)
+        _wait_products(driver, timeout=15)
 
         html = driver.page_source
         links = extract_links_from_html(html)
-        new_links = [u for u in links if u not in all_links]
+        page_new = [u for u in links if u not in all_links]
 
-        if not new_links:
-            print(f"ℹ️ 第 {page} 页无新增链接，结束该分类")
+        if page_new:
+            print(f"✅ 第 {page} 页提取 {len(page_new)} 个新链接")
+            all_links.update(page_new)
+            consecutive_no_new = 0
+        else:
+            consecutive_no_new += 1
+            print(f"ℹ️ 第 {page} 页无新增链接（连续 {consecutive_no_new}/3）")
+
+        # 连续 3 页没新增 → 结束该分类（防止偶发某页判空就提前退出）
+        if consecutive_no_new >= 3:
+            print("🛑 连续 3 页无新增，结束该分类")
             break
 
-        print(f"✅ 第 {page} 页提取 {len(new_links)} 个新链接")
-        all_links.update(new_links)
-        page += 1
+        # 页间随机等待，降低风控
+        time.sleep(0.7 + random.random() * 0.8)
 
 
 def houseoffraser_get_links():
@@ -127,18 +208,22 @@ def houseoffraser_get_links():
 
     driver = get_driver()
 
-    # ✅ 只在首次加载第一个分类前停留 10 秒手动点击 Cookie
-    print("🕒 已打开浏览器，请在 10 秒内手动点击 Cookie 的 'Allow all' 按钮 ...")
+    # ✅ 只在首次加载第一个分类前停留 10 秒手动点击 Cookie（后续复用同一实例）
+    print("🕒 已打开浏览器，将打开首分类第1页。请在 10 秒内手动点击 Cookie 的 'Allow all' 按钮...")
     driver.get(BASE_URLS[0])
     time.sleep(10)
     print("✅ 已等待 10 秒，开始正式抓取")
 
     all_links = set()
 
-    # ✅ 复用同一个 browser instance 抓取两个分类
-    for base in BASE_URLS:
-        print(f"\n===== 🧭 当前分类：{base} =====")
-        _crawl_category(driver, base, all_links)
+    # 先抓第一个分类（当前已在它的第1页，_crawl_category 内会从头开始处理）
+    print(f"\n===== 🧭 当前分类：{BASE_URLS[0]} =====")
+    _crawl_category(driver, BASE_URLS[0], all_links)
+
+    # 切换第二个分类前，给 2 秒缓冲，避免刚导航就判空
+    print(f"\n===== 🧭 当前分类：{BASE_URLS[1]} =====")
+    time.sleep(2)
+    _crawl_category(driver, BASE_URLS[1], all_links)
 
     driver.quit()
 
