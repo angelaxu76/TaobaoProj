@@ -47,10 +47,24 @@ def _absolutize(url: str) -> str:
     return up.urljoin(BASE, url)
 
 def _write_text(path: Path, content: str):
-    path.write_text(content, encoding="utf-8", errors="ignore")
+    # 先确保父目录存在（兼容被清空/并发）
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        path.write_text(content, encoding="utf-8", errors="ignore")
+    except FileNotFoundError:
+        # 极端并发下再保底一次
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8", errors="ignore")
 
 def _write_json(path: Path, data: Any):
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    except FileNotFoundError:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 
 def _save_debug(page_index: int, html: str, links: List[str], method_used: str, note: str = ""):
     prefix = DEBUG_DIR / f"page-{page_index:02d}-{_ts()}"
