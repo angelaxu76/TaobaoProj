@@ -7,8 +7,7 @@ from barbour.supplier.outdoorandcountry_get_links import outdoorandcountry_fetch
 from barbour.supplier.outdoorandcountry_fetch_info import outdoorandcountry_fetch_info
 from barbour.supplier.allweathers_fetch_info import allweathers_fetch_info
 from barbour.supplier.allweathers_get_links import allweathers_get_links
-from barbour.supplier.houseoffraser_get_links import houseoffraser_get_links
-from barbour.supplier.houseoffraser_fetch_info import houseoffraser_fetch_info
+from barbour.supplier.houseoffraser_new_fetch_info import houseoffraser_fetch_info
 from barbour.supplier.very_fetch_info import very_fetch_info
 from barbour.supplier.very_get_links import very_get_links
 from barbour.supplier.terraces_fetch_info import terraces_fetch_info
@@ -31,8 +30,8 @@ def barbour_database_import_pipleline():
     # barbour
     # barbour_get_links()
     # outdoorandcountry_fetch_and_save_links()
-    # allweathers_get_links()5
-    houseoffraser_get_links()
+    # allweathers_get_links()
+    houseoffraser_fetch_info()
     # very_get_links()
     # collect_terraces_links()
 
