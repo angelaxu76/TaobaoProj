@@ -36,8 +36,8 @@ def main():
     # print("\n🟡 Step: 2️⃣ 抓取商品链接")
     # collect_all_product_links()
 
-    # print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    # fetch_all_product_info()
+    print("\n🟡 Step: 3️⃣ 抓取商品信息")
+    fetch_all_product_info()
 
     # print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
     # import_txt_to_db_supplier("geox")  # ✅ 新逻辑
@@ -52,13 +52,13 @@ def main():
     # print("\\n🟡 Step: 6️⃣生成发布产品的excel")
     # generate_publication_excels("geox")
 
-    print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
-    stock_dest_excel_folder = r"D:\TB\Products\geox\repulibcation\stock"
-    export_stock_excel("geox",stock_dest_excel_folder)
+    # print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
+    # stock_dest_excel_folder = r"D:\TB\Products\geox\repulibcation\stock"
+    # export_stock_excel("geox",stock_dest_excel_folder)
 
-    print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
-    price_dest_excel = r"D:\TB\Products\geox\repulibcation\publication_prices"
-    export_jiangya_channel_prices("geox",price_dest_excel)
+    # print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
+    # price_dest_excel = r"D:\TB\Products\geox\repulibcation\publication_prices"
+    # export_jiangya_channel_prices("geox",price_dest_excel)
 
 if __name__ == "__main__":
     main()

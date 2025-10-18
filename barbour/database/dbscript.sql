@@ -124,21 +124,6 @@ BEFORE UPDATE ON barbour_offers
 FOR EACH ROW
 EXECUTE FUNCTION barbour_offers_touch();
 
--- 实用索引
-CREATE INDEX IF NOT EXISTS idx_bo_product_code  ON barbour_offers(product_code);
-CREATE INDEX IF NOT EXISTS idx_bo_is_active     ON barbour_offers(is_active);
-CREATE INDEX IF NOT EXISTS idx_bo_site_discount ON barbour_offers(site_name, discount_pct DESC);
-CREATE INDEX IF NOT EXISTS idx_bo_discount_desc ON barbour_offers(discount_pct DESC);
-CREATE INDEX IF NOT EXISTS idx_bo_site_url      ON barbour_offers(site_name, offer_url);
-CREATE INDEX IF NOT EXISTS idx_bo_last_checked  ON barbour_offers(last_checked);
-
--- 5)（可选）对历史数据进行一次“触发”式更新以刷新 last_seen
--- UPDATE barbour_offers SET product_code = product_code;
-
-
--- 可选索引
-
-
 
 -- =========================
 -- Barbour 发布表（与 clarks_jingya_inventory 对齐）

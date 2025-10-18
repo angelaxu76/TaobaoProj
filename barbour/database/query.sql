@@ -264,7 +264,7 @@ WHERE sc.size_cnt < 4                   -- 不符合尺码条件
     WHERE is_published = TRUE
   );
 
-select * from barbour_offers where site_name = 'houseoffraser';
+select size from barbour_offers where site_name = 'houseoffraser' and size ILIKE '%(%';
 
 delete from barbour_offers where site_name = 'houseoffraser';
 

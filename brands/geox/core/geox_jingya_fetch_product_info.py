@@ -1,4 +1,3 @@
-
 import os
 import re
 import time
@@ -17,40 +16,87 @@ from config import SIZE_RANGE_CONFIG, GEOX
 from common_taobao.txt_writer import format_txt
 from common_taobao.core.category_utils import infer_style_category
 
-
 # ===================== 基本配置 =====================
 PRODUCT_LINK_FILE = GEOX["BASE"] / "publication" / "product_links.txt"
 TXT_OUTPUT_DIR = GEOX["TXT_DIR"]
 BRAND = "geox"
-MAX_THREADS = 4  # 建议 3~5，过高易触发风控
-LOGIN_WAIT_SECONDS = 40  # 手动登录等待时间
+MAX_THREADS = 1              # 先单线程，把登录态/折扣跑稳后再调高
+LOGIN_WAIT_SECONDS = 40      # 手动登录等待时间（可按需调整）
 
 TXT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+# ===================== WebDriver 创建（固定使用已存在的 Chrome Profile） =====================
+from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import SessionNotCreatedException
+import shutil
 
-# ===================== WebDriver 创建 =====================
-def create_driver(headless: bool = True) -> webdriver.Chrome:
-    from selenium.webdriver.chrome.options import Options
+# ⚠️ 重要：把 PROFILE_ROOT 指向 “非默认目录” 的根（避免 DevToolsActivePort 报错）
+# 建议先把你已登录的 Profile 复制到这个目录下（见文档步骤）
+PROFILE_ROOT = r"D:\ChromeProfiles\AutoProfile_GEOX"   # 非默认目录根
+PROFILE_NAME = "Profile 2"                              # 子目录名：Profile 1/2/3/4/Default 等
+FIXED_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36")
+
+def _build_options(headless: bool = False, user_data_dir: str = PROFILE_ROOT, profile_name: str = PROFILE_NAME) -> Options:
     chrome_options = Options()
+
+    # 调试期建议先不开无头，确认可见窗口能登录/显示折扣后再开启
     if headless:
         chrome_options.add_argument("--headless=new")
-    # 稳定性/性能参数
+
+    # （可选）指定二进制路径；如果你的 Chrome 不在标准路径，改成实际路径
+    chrome_options.binary_location = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+
+    # ✅ 复用已存在的 Profile（关键）
+    chrome_options.add_argument(f"--user-data-dir={user_data_dir}")
+    chrome_options.add_argument(f"--profile-directory={profile_name}")
+
+    # 稳定参数
+    chrome_options.add_argument("--start-maximized")
+    chrome_options.add_argument("--no-first-run")
+    chrome_options.add_argument("--no-default-browser-check")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--window-size=1920x1080")
-    chrome_options.add_argument("user-agent=Mozilla/5.0")
-    chrome_options.add_argument("--log-level=3")
-    chrome_options.add_argument("--disable-logging")
-    chrome_options.add_argument("--disable-notifications")
-    # 如遇登录依赖图片校验，可注释下一行
-    chrome_options.add_argument("--blink-settings=imagesEnabled=false")
-    # 切勿并发复用同一个 user-data-dir（会被加锁）
-    driver = webdriver.Chrome(options=chrome_options)
-    return driver
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    chrome_options.add_experimental_option("useAutomationExtension", False)
+    chrome_options.add_argument(f"user-agent={FIXED_UA}")
 
+    # ⛔ 先不要 remote-debugging-port，避免 “非默认目录” 的限制触发
+    # chrome_options.add_argument("--remote-debugging-port=9222")
 
-# ===================== 会话导出/导入 =====================
+    return chrome_options
+
+def _kill_chrome():
+    os.system('taskkill /F /IM chrome.exe /T')
+    os.system('taskkill /F /IM chromedriver.exe /T')
+
+def create_driver(headless: bool = False) -> webdriver.Chrome:
+    # 打印关键参数，便于你在控制台确认
+    print("Using user-data-dir =", PROFILE_ROOT)
+    print("Using profile-directory =", PROFILE_NAME)
+    try:
+        opts = _build_options(headless=headless)
+        driver = webdriver.Chrome(options=opts)
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined});")
+        print("Chrome =", driver.capabilities.get("browserVersion"),
+              "| Chromedriver =", driver.capabilities.get("chrome", {}).get("chromedriverVersion"))
+        return driver
+    except SessionNotCreatedException:
+        # 典型是目录被占用/锁住：杀进程后重试
+        _kill_chrome()
+        time.sleep(1.0)
+        opts = _build_options(headless=headless)
+        driver = webdriver.Chrome(options=opts)
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined});")
+        print("Chrome =", driver.capabilities.get("browserVersion"),
+              "| Chromedriver =", driver.capabilities.get("chrome", {}).get("chromedriverVersion"))
+        return driver
+
+# ===================== 会话导出/导入（可选，用于并发线程注入） =====================
 def export_session(driver: webdriver.Chrome) -> Dict:
     """导出 cookies + localStorage，供并发线程复用登录态。"""
     cookies = driver.get_cookies()
@@ -65,7 +111,6 @@ def export_session(driver: webdriver.Chrome) -> Dict:
         """
     )
     return {"cookies": cookies, "localStorage": ls_items}
-
 
 def import_session(driver: webdriver.Chrome, session: Dict, base_url: str = "https://www.geox.com/") -> None:
     """将 cookies + localStorage 注入到新 driver。必须先打开同域页面。"""
@@ -94,22 +139,77 @@ def import_session(driver: webdriver.Chrome, session: Dict, base_url: str = "htt
     for k, v in session.get("localStorage", {}).items():
         driver.execute_script("localStorage.setItem(arguments[0], arguments[1]);", k, v)
 
-
-# ===================== 页面抓取/解析 =====================
+# ===================== 页面抓取（等待主价格/折扣/按钮注入） =====================
 def get_html(driver: webdriver.Chrome, url: str) -> Optional[str]:
+    def _accept_cookies():
+        for sel in [
+            "button#onetrust-accept-btn-handler",
+            "button.cookie-accept", "button.js-accept-all"
+        ]:
+            try:
+                btn = WebDriverWait(driver, 2).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, sel))
+                )
+                btn.click()
+                time.sleep(0.5)
+                return
+            except Exception:
+                continue
+
+    def _scroll_warmup():
+        driver.execute_script("window.scrollTo(0, 400);"); time.sleep(0.4)
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight - 400);"); time.sleep(0.4)
+        driver.execute_script("window.scrollTo(0, 0);"); time.sleep(0.4)
+
     driver.get(url)
+    _accept_cookies()
+
     try:
-        # 以商品编号元素为加载完成标记
         WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "span.product-id"))
+            EC.presence_of_element_located((By.CSS_SELECTOR,
+                "div.product-info div.price, div.right-side div.price, div.price-mobile div.price, div.price"))
         )
-        time.sleep(1)
-        return driver.page_source
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "button.add-to-cart"))
+        )
     except Exception:
-        print(f"⚠️ 页面加载失败: {url}")
-        return None
+        pass
 
+    _scroll_warmup()
 
+    try:
+        WebDriverWait(driver, 8).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR,
+                "span.product-price span.sales span.value[content]"))
+        )
+        try:
+            WebDriverWait(driver, 4).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR,
+                    "span.product-price span.sales.discount span.value[content]"))
+            )
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+    try:
+        WebDriverWait(driver, 6).until(
+            lambda d: (
+                d.execute_script("""
+                    const btn = document.querySelector('button.add-to-cart');
+                    if(!btn) return false;
+                    try { return typeof JSON.parse(btn.getAttribute('data-gtmdata')||'{}').item_promo === 'string'; }
+                    catch(e){ return false; }
+                """) is True
+            )
+        )
+    except Exception:
+        pass
+
+    time.sleep(0.5)
+    return driver.page_source
+
+# ===================== 业务解析 =====================
 def supplement_geox_sizes(size_stock: Dict[str, str], gender: str) -> Dict[str, str]:
     standard_sizes = SIZE_RANGE_CONFIG.get("geox", {}).get(gender, [])
     for size in standard_sizes:
@@ -117,19 +217,14 @@ def supplement_geox_sizes(size_stock: Dict[str, str], gender: str) -> Dict[str, 
             size_stock[size] = "0"  # 无货
     return size_stock
 
-
 def detect_gender_by_code(code: str) -> str:
     if not code:
         return "未知"
     code = code.strip().upper()
-    if code.startswith("D"):
-        return "女款"
-    if code.startswith("U"):
-        return "男款"
-    if code.startswith("J"):
-        return "童款"
+    if code.startswith("D"): return "女款"
+    if code.startswith("U"): return "男款"
+    if code.startswith("J"): return "童款"
     return "未知"
-
 
 def parse_product(html: str, url: str) -> Dict:
     soup = BeautifulSoup(html, "html.parser")
@@ -141,13 +236,16 @@ def parse_product(html: str, url: str) -> Dict:
     name_tag = soup.select_one("div.sticky-image img")
     name = name_tag["alt"].strip() if name_tag and name_tag.has_attr("alt") else "No Data"
 
-    # 价格（取最大值处理区间价格）
-    price_tag = soup.select_one("span.product-price span.value")
-    discount_tag = soup.select_one("span.sales.discount span.value")
+    # 价格（仅限 PDP 主区域；排除推荐/轮播；区间价取最大）
+    def _safe_select_value(_soup, selector: str):
+        for node in _soup.select(selector):
+            if node.find_parent(class_="product-tile") or node.find_parent(class_="product-carousel-tile"):
+                continue
+            return node
+        return None
 
     def extract_max_price(val):
-        if not val:
-            return "No Data"
+        if not val: return "No Data"
         s = str(val).strip()
         if "-" in s:
             try:
@@ -157,11 +255,23 @@ def parse_product(html: str, url: str) -> Dict:
                 return s
         return s
 
-    full_price_raw = price_tag["content"].strip() if price_tag and price_tag.has_attr("content") else ""
-    discount_price_raw = discount_tag["content"].strip() if discount_tag and discount_tag.has_attr("content") else full_price_raw
+    price_tag = _safe_select_value(soup, "span.product-price span.value")
+    discount_tag = _safe_select_value(soup, "span.sales.discount span.value")
+
+    full_price_raw = (price_tag.get("content") or price_tag.get_text(strip=True).replace("£","")).strip() if price_tag else ""
+    discount_price_raw = (discount_tag.get("content") or discount_tag.get_text(strip=True).replace("£","")).strip() if discount_tag else ""
 
     original_price = extract_max_price(full_price_raw) or "No Data"
-    discount_price = extract_max_price(discount_price_raw) or original_price
+
+    # 折扣价校验：无折扣/异常值，回退原价
+    discount_price = extract_max_price(discount_price_raw) if discount_price_raw else ""
+    try:
+        op = float(original_price) if original_price not in ("", "No Data") else None
+        dp = float(discount_price) if discount_price not in ("", "No Data") else None
+        if dp is None or op is None or dp >= op or dp < op * 0.3:
+            discount_price = original_price
+    except Exception:
+        discount_price = original_price
 
     # 颜色 / 材质 / 描述
     color_block = soup.select_one("div.sticky-color")
@@ -215,8 +325,24 @@ def parse_product(html: str, url: str) -> Dict:
     }
     return info
 
+from urllib.parse import urlparse, unquote
 
-# ===================== 主流程（一次登录→多线程复用） =====================
+def derive_code_from_url(url: str) -> str:
+    """从 URL 末尾提取商品编码（“-<code>.html”）。"""
+    try:
+        path = urlparse(url).path
+        name = Path(path).name
+        base = name.split('?', 1)[0]
+        token = base.rsplit('-', 1)[-1]
+        code = token.split('.', 1)[0].upper()
+        if len(code) < 6 or not any(ch.isdigit() for ch in code):
+            m = re.search(r"([A-Za-z0-9]{6,})\.html$", base)
+            if m: code = m.group(1).upper()
+        return code
+    except Exception:
+        return Path(urlparse(url).path).stem.upper()
+
+# ===================== 主流程（登录一次→批量抓取） =====================
 def fetch_all_product_info():
     if not PRODUCT_LINK_FILE.exists():
         print(f"❌ 缺少链接文件: {PRODUCT_LINK_FILE}")
@@ -229,24 +355,50 @@ def fetch_all_product_info():
         print("⚠️ 链接列表为空")
         return
 
-    # 1) 打开可见浏览器，手动登录一次
+    # 1) 打开可见浏览器，手动登录一次（使用固定 Profile，一般会直接是已登录状态）
     login_driver = create_driver(headless=False)
     login_driver.get(urls[0])
-    print(f"⏳ 请在新窗口手动登录 GEOX（等待 {LOGIN_WAIT_SECONDS} 秒）")
+    print(f"⏳ 如需登录，请在新窗口手动登录 GEOX（等待 {LOGIN_WAIT_SECONDS} 秒）")
     time.sleep(LOGIN_WAIT_SECONDS)
 
-    # 2) 导出当前登录会话
+    # 2) 导出当前登录会话（可选：用于 headless/并发线程注入）
     session = export_session(login_driver)
     login_driver.quit()
 
-    # 3) 多线程：每个线程自行创建 driver → 注入会话 → 抓取
+    # 3) 逐个抓取
     def worker(url: str):
-        driver = create_driver(headless=True)  # 线程内可用 headless 提速
+        driver = create_driver(headless=True)  # 折扣确认无误后可 headless，提高效率
         try:
             import_session(driver, session, base_url="https://www.geox.com/")
             html = get_html(driver, url)
             if not html:
                 return
+
+            # === 保存 debug 页面 + 解析快照 ===
+            debug_dir = GEOX["BASE"] / "publication" / "debug"
+            debug_dir.mkdir(parents=True, exist_ok=True)
+
+            code = derive_code_from_url(url)
+            debug_html = debug_dir / f"{code}.html"
+            debug_html.write_text(html, encoding="utf-8", errors="ignore")
+
+            soup = BeautifulSoup(html, "html.parser")
+            price_tag = soup.select_one("span.product-price span.value")
+            discount_tag = soup.select_one("span.sales.discount span.value")
+
+            snapshot = {
+                "url": url,
+                "code": code,
+                "raw_price_content": price_tag.get("content") if price_tag else None,
+                "raw_discount_content": discount_tag.get("content") if discount_tag else None,
+                "raw_price_text": price_tag.get_text(strip=True) if price_tag else None,
+                "raw_discount_text": discount_tag.get_text(strip=True) if discount_tag else None,
+            }
+            (debug_dir / f"{code}.json").write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            print(f"🧩 已保存调试页面: {debug_html.name} 和价格快照: {code}.json")
+
+            # === 解析并输出 ===
             info = parse_product(html, url)
             if not info:
                 return
@@ -269,7 +421,6 @@ def fetch_all_product_info():
                 print(f"[{i}] ❌ 异常: {url} → {e}")
 
     print("\n✅ 所有商品处理完成。")
-
 
 if __name__ == "__main__":
     fetch_all_product_info()
