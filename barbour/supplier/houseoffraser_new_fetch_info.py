@@ -82,20 +82,26 @@ def _extract_color_from_og_alt(soup: BeautifulSoup) -> str:
 
 def _extract_all_sizes(html: str):
     """
-    返回 list[str]，来自 sizes.allSizes[].size。
+    返回 list[str]，来自 sizes.allSizes[].size。会对 size 做 _norm_size 清洗并去重保序。
     """
     sizes = []
     ms = re.search(r'"sizes"\s*:\s*\{\s*"allSizes"\s*:\s*(\[[^\]]*\])', html, re.S | re.I)
     if ms:
         try:
             arr = json.loads(ms.group(1))
+            seen = set()
             for it in arr:
-                s = (it.get("size") or "").strip()
-                if s:
-                    sizes.append(s)
+                raw = (it.get("size") or "").strip()
+                if not raw:
+                    continue
+                size = _norm_size(raw) or raw   # ← 清洗
+                if size not in seen:
+                    seen.add(size)
+                    sizes.append(size)
         except Exception:
             pass
     return sizes
+
 
 
 def _extract_sizes_dom_fallback(soup: BeautifulSoup):
@@ -103,30 +109,40 @@ def _extract_sizes_dom_fallback(soup: BeautifulSoup):
     从渲染后的尺寸按钮容器抓取：
     - data-testid="swatch-button-enabled" => 有货
     - data-testid="swatch-button-disabled" => 无货
-    - 有些站不渲染 disabled 按钮，此时只拿到 enabled 的那部分
+    会对 size 做 _norm_size 清洗并去重。
     """
-    enabled = set()
-    disabled = set()
+    enabled = []
+    disabled = []
 
-    # 启用按钮
     for btn in soup.select('[data-testid="swatch-button-enabled"]'):
-        val = (btn.get("value") or btn.get_text() or "").strip()
-        if val:
-            enabled.add(re.sub(r"\s+", " ", val))
+        raw = (btn.get("value") or btn.get_text() or "").strip()
+        if not raw: 
+            continue
+        size = _norm_size(raw) or raw  # ← 清洗
+        enabled.append(size)
 
-    # 禁用按钮（如果渲染）
     for btn in soup.select('[data-testid="swatch-button-disabled"], button[disabled][data-testid*="swatch"]'):
-        val = (btn.get("value") or btn.get_text() or "").strip()
-        if val:
-            disabled.add(re.sub(r"\s+", " ", val))
+        raw = (btn.get("value") or btn.get_text() or "").strip()
+        if not raw:
+            continue
+        size = _norm_size(raw) or raw  # ← 清洗
+        disabled.append(size)
 
     if not enabled and not disabled:
         return []
 
-    # 如果禁用没渲染出来，就只返回 enabled，其他交给 allSizes 合并逻辑补无货
-    entries = [(s, "有货") for s in sorted(enabled, key=lambda x: (len(x), x))]
-    entries += [(s, "无货") for s in sorted(disabled, key=lambda x: (len(x), x))]
+    # 去重保序；有货优先
+    seen = set()
+    entries = []
+    for s in enabled:
+        if s not in seen:
+            seen.add(s); entries.append((s, "有货"))
+    for s in disabled:
+        if s not in seen:
+            seen.add(s); entries.append((s, "无货"))
+
     return entries
+
 
 
 
@@ -251,8 +267,6 @@ def _extract_sizes_from_variants(html: str):
     return entries
 
 
-
-
 def _extract_sizes_from_allSizes(html: str):
     # 兜底：没有 isOnStock，就认为页面在售 → 记为有货
     entries = []
@@ -271,61 +285,46 @@ def _extract_sizes_from_allSizes(html: str):
 def _extract_sizes_new(soup: BeautifulSoup, html: str):
     """
     统一出口：
-    1) allSizes = 全量尺码
-    2) 有货集合 = variants(isOnStock=true) ∪ DOM-enabled
+    1) allSizes = 全量尺码（已清洗）
+    2) 有货集合 = variants(isOnStock=true) ∪ DOM-enabled（已清洗）
     3) 不在有货集合但在 allSizes 的 => 无货
-    4) 如果 allSizes 为空：仅用 DOM（有则有，无则 No Data）
+    4) 如果 allSizes 为空：仅用 DOM/variants（已清洗）
     """
     all_sizes = _extract_all_sizes(html)
-    var_entries = _extract_sizes_from_variants(html)  # 只含出现在 variants 的尺码
+    var_entries = _extract_sizes_from_variants(html)
     dom_entries = _extract_sizes_dom_fallback(soup)
 
     instock_from_variants = {s for s, st in var_entries if st == "有货"}
     instock_from_dom = {s for s, st in dom_entries if st == "有货"}
-    oos_from_dom = {s for s, st in dom_entries if st == "无货"}
 
-    # 1) 有全量尺码时：按集合标记
+    # 1) 有全量尺码：按集合标记
     if all_sizes:
-        in_stock = set()
-        in_stock |= instock_from_variants
-        in_stock |= instock_from_dom
-
-        # 按页面显示的自然顺序输出（不强行排序）
-        by_size = {}
-        ordered = []
-        for s in all_sizes:
-            s_norm = re.sub(r"\s+", " ", s).strip()
-            if not s_norm:
-                continue
-            status = "有货" if s_norm in in_stock else "无货"
-            by_size[s_norm] = status
-            ordered.append(s_norm)
-
+        in_stock = instock_from_variants | instock_from_dom
+        by_size, ordered = {}, []
+        for s in all_sizes:          # all_sizes 已清洗并保序
+            status = "有货" if s in in_stock else "无货"
+            by_size[s] = status
+            ordered.append(s)
         EAN = "0000000000000"
         product_size        = ";".join(f"{s}:{by_size[s]}" for s in ordered) or "No Data"
         product_size_detail = ";".join(f"{s}:{3 if by_size[s]=='有货' else 0}:{EAN}" for s in ordered) or "No Data"
         return product_size, product_size_detail
 
-    # 2) 没有 allSizes：退回 DOM/variants 的并集
+    # 2) 无全量尺码：合并 var+dom（都已清洗）
     if var_entries or dom_entries:
-        merged = {}
-        order = []
+        merged, order = {}, []
         for s, st in (var_entries + dom_entries):
-            s_norm = re.sub(r"\s+", " ", s).strip()
-            if not s_norm:
-                continue
-            # 有货优先覆盖无货
-            if (s_norm not in merged) or (merged[s_norm] == "无货" and st == "有货"):
-                merged[s_norm] = st
-                if s_norm not in order:
-                    order.append(s_norm)
-
+            if (s not in merged) or (merged[s] == "无货" and st == "有货"):
+                merged[s] = st
+                if s not in order:
+                    order.append(s)
         EAN = "0000000000000"
         product_size        = ";".join(f"{s}:{merged[s]}" for s in order) or "No Data"
         product_size_detail = ";".join(f"{s}:{3 if merged[s]=='有货' else 0}:{EAN}" for s in order) or "No Data"
         return product_size, product_size_detail
 
     return "No Data", "No Data"
+
 
 
 
