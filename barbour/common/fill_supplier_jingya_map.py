@@ -112,7 +112,7 @@ def _pick_lowest_site(conn: Connection, code: str) -> Optional[str]:
     return canonical_site(row[0]) or row[0]
 
 
-def fill_supplier_map() -> None:
+def fill_supplier_map(force_refresh: bool = False) -> None:
     cfg = BRAND_CONFIG["barbour"]["PGSQL_CONFIG"]
     engine = create_engine(
         f"postgresql+psycopg2://{cfg['user']}:{cfg['password']}@{cfg['host']}:{cfg['port']}/{cfg['dbname']}"
@@ -121,6 +121,10 @@ def fill_supplier_map() -> None:
     with engine.begin() as conn:
         # 0) 确保表存在（NOT NULL 约束保持）
         conn.execute(SQL_CREATE)
+
+        if force_refresh:
+            conn.execute(text(f"TRUNCATE TABLE {TABLE};"))
+            print(f"⚠️ 已清空 {TABLE} 表。")       
 
         # 1) 取“已发布”的编码集合（不插入任何 NULL）
         published: Set[str] = {r[0] for r in conn.execute(SQL_PUBLISHED_CODES).fetchall()}

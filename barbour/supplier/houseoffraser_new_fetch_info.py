@@ -238,17 +238,18 @@ def _extract_gender_new(soup: BeautifulSoup, html: str, url: str) -> str:
 def _extract_sizes_from_variants(html: str):
     """
     返回 list[(size, status)]，仅包含 variants 里出现的尺码；
-    status = "有货"/"无货"（以 isOnStock 为准）。
+    status = "有货"/"无货"（以 isOnStock 为准）。会对 size 做 _norm_size 清洗。
     """
     entries = []
-    # 放宽匹配范围，确保 "size" 和 "isOnStock" 不同层也能命中
     patt = r'"size"\s*:\s*"([^"]+?)".{0,4000}?"isOnStock"\s*:\s*(true|false)'
     for m in re.finditer(patt, html, re.S | re.I):
-        size = m.group(1).strip()
+        raw = m.group(1).strip()
+        size = _norm_size(raw) or raw  # ← 清洗
         avail = (m.group(2).lower() == "true")
         if size:
             entries.append((size, "有货" if avail else "无货"))
     return entries
+
 
 
 
@@ -848,7 +849,7 @@ def process_url_with_driver(driver, url: str, conn: Connection, delay: float = D
 
     info["Product Gender"] = _gender_to_cn(info.get("Product Gender"))
 
-    
+
     payload = _kv_txt_bytes(info)
     ok = _atomic_write_bytes(payload, out_path)
     if ok:
