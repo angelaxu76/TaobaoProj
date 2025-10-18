@@ -13,8 +13,8 @@ import pandas as pd
 from pathlib import Path
 
 # ======================== 默认参数（可修改） ========================
-DEFAULT_INPUT = r"C:\Users\martin\Downloads\GEI@sales_catalogue_export@251014052715@8029.xlsx"
-DEFAULT_OUTPUT = r"C:\Users\martin\Downloads\duplicate_skus.txt"
+DEFAULT_INPUT = r"D:\TB\Products\geox\document\GEI@sales_catalogue_export@251018200006@7186.xlsx"
+DEFAULT_OUTPUT = r"D:\TB\Products\geox\document\duplicate_skus.txt"
 SKU_COLUMN = "sku名称"   # Excel 中的列名
 # ================================================================
 
