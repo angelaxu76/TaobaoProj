@@ -157,8 +157,8 @@ CREATE TABLE barbour_inventory (
     stock_count          INTEGER DEFAULT 0,
     original_price_gbp   NUMERIC(10, 2),
     discount_price_gbp   NUMERIC(10, 2),
-    jingya_price_rmb     NUMERIC(12,2),
-    taobao_price_rmb     NUMERIC(12,2),
+    jingya_untaxed_price     NUMERIC(12,2),
+    taobao_store_price     NUMERIC(12,2),
 
     -- 状态控制（沿用）
     last_checked TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

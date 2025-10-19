@@ -28,8 +28,8 @@ def _clean_size(s: str) -> str:
 def _ensure_price_columns(conn: Connection):
     conn.execute(text("""
         ALTER TABLE barbour_inventory
-          ADD COLUMN IF NOT EXISTS jingya_price_rmb   NUMERIC(12,2),
-          ADD COLUMN IF NOT EXISTS taobao_price_rmb   NUMERIC(12,2),
+          ADD COLUMN IF NOT EXISTS jingya_untaxed_price   NUMERIC(12,2),
+          ADD COLUMN IF NOT EXISTS taobao_store_price   NUMERIC(12,2),
           ADD COLUMN IF NOT EXISTS base_price_gbp     NUMERIC(10,2),
           ADD COLUMN IF NOT EXISTS exchange_rate_used NUMERIC(8,4)
     """))
@@ -197,16 +197,16 @@ def backfill_barbour_inventory_mapped_only():
                     "bi_id": r["id"],
                     "base_price_gbp": _num_or_none(base_gbp),
                     "exchange_rate_used": None,
-                    "jingya_price_rmb": jy,
-                    "taobao_price_rmb": tb
+                    "jingya_untaxed_price": jy,
+                    "taobao_store_price": tb
                 })
             if payload:
                 conn.execute(text("""
                     UPDATE barbour_inventory
                     SET base_price_gbp   = :base_price_gbp,
                         exchange_rate_used = :exchange_rate_used,
-                        jingya_price_rmb = :jingya_price_rmb,
-                        taobao_price_rmb = :taobao_price_rmb
+                        jingya_untaxed_price = :jingya_untaxed_price,
+                        taobao_store_price = :taobao_store_price
                     WHERE id = :bi_id
                 """), payload)
 

@@ -297,7 +297,7 @@ def export_barbour_channel_price_by_sku(
 
     规则：
     - channel_product_id 可重复；每个 skuid 必须存在
-    - 若发现以下任一字段为空：channel_product_id / skuid / jingya_price_rmb / taobao_price_rmb
+    - 若发现以下任一字段为空：channel_product_id / skuid / jingya_untaxed_price / taobao_store_price
       则打印告警清单；strict=True 时抛错终止，strict=False 时跳过该行继续导出
     - 支持排除清单：exclude_codes.txt 中列出的 product_code 全部过滤（对应所有 skuid 都不导出）
     - 每个文件最多 chunk_size 条数据行（默认 490）
@@ -333,8 +333,8 @@ def export_barbour_channel_price_by_sku(
             channel_product_id,
             skuid,
             product_code,
-            jingya_price_rmb,
-            taobao_price_rmb
+            jingya_untaxed_price,
+            taobao_store_price
         FROM {table}
         WHERE channel_product_id IS NOT NULL
           AND TRIM(channel_product_id) <> ''
@@ -371,16 +371,16 @@ def export_barbour_channel_price_by_sku(
         except Exception:
             return None
 
-    df["jingya_price_rmb"] = df["jingya_price_rmb"].apply(to_num)
-    df["taobao_price_rmb"] = df["taobao_price_rmb"].apply(to_num)
+    df["jingya_untaxed_price"] = df["jingya_untaxed_price"].apply(to_num)
+    df["taobao_store_price"] = df["taobao_store_price"].apply(to_num)
 
     # 关键字段校验
     issues: List[Tuple[int, str]] = []
     mask_missing = (
         (df["channel_product_id"] == "") |
         (df["skuid"] == "") |
-        (df["jingya_price_rmb"].isna()) |
-        (df["taobao_price_rmb"].isna())
+        (df["jingya_untaxed_price"].isna()) |
+        (df["taobao_store_price"].isna())
     )
     if mask_missing.any():
         bad = df[mask_missing].copy()
@@ -390,8 +390,8 @@ def export_barbour_channel_price_by_sku(
                 f"缺失字段 -> code='{row.get('product_code', '')}', "
                 f"cpid='{row.get('channel_product_id', '')}', "
                 f"skuid='{row.get('skuid', '')}', "
-                f"jingya='{row.get('jingya_price_rmb', '')}', "
-                f"taobao='{row.get('taobao_price_rmb', '')}'"
+                f"jingya='{row.get('jingya_untaxed_price', '')}', "
+                f"taobao='{row.get('taobao_store_price', '')}'"
             ))
         print("[WARN] 发现字段缺失的记录：")
         for i in issues:
@@ -406,21 +406,21 @@ def export_barbour_channel_price_by_sku(
 
     # === 在此处插入：为每个渠道产品ID补一行 skuID=0 的“品价格”（取该商品价格中最高值） ===
     # 1) 只保留导出所需列（避免带入 product_code）
-    df_use = df[["channel_product_id", "skuid", "jingya_price_rmb", "taobao_price_rmb"]].copy()
+    df_use = df[["channel_product_id", "skuid", "jingya_untaxed_price", "taobao_store_price"]].copy()
 
     # 2) 统计每个渠道产品ID的最高价（jingya、taobao 各自取最高）
     agg_max = (
         df_use.groupby("channel_product_id", as_index=False)
-              .agg(max_j=("jingya_price_rmb", "max"),
-                   max_t=("taobao_price_rmb", "max"))
+              .agg(max_j=("jingya_untaxed_price", "max"),
+                   max_t=("taobao_store_price", "max"))
     )
 
     # 3) 生成 skuID=0 的“品价格”行
     zero_rows = agg_max.assign(
         skuid="0",
-        jingya_price_rmb=lambda x: x["max_j"],
-        taobao_price_rmb=lambda x: x["max_t"]
-    )[["channel_product_id", "skuid", "jingya_price_rmb", "taobao_price_rmb"]]
+        jingya_untaxed_price=lambda x: x["max_j"],
+        taobao_store_price=lambda x: x["max_t"]
+    )[["channel_product_id", "skuid", "jingya_untaxed_price", "taobao_store_price"]]
 
     # 4) 原始明细去掉已存在的 skuID=0，避免重复
     detail_rows = df_use[df_use["skuid"] != "0"]
@@ -437,9 +437,9 @@ def export_barbour_channel_price_by_sku(
     out_df = pd.DataFrame({
         "渠道产品ID(必填)": df_for_export["channel_product_id"],
         "skuID": df_for_export["skuid"],
-        "渠道价格(未税)(元)(必填)": df_for_export["jingya_price_rmb"].round(2),
-        "最低建议零售价(元)": df_for_export["taobao_price_rmb"].round(2),
-        "最高建议零售价(元)": df_for_export["taobao_price_rmb"].round(2),
+        "渠道价格(未税)(元)(必填)": df_for_export["jingya_untaxed_price"].round(2),
+        "最低建议零售价(元)": df_for_export["taobao_store_price"].round(2),
+        "最高建议零售价(元)": df_for_export["taobao_store_price"].round(2),
     })[HEADERS_PRICE]
 
     # 👉 按渠道产品ID排序
