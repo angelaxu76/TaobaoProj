@@ -15,7 +15,7 @@ except Exception:
 
 BRAND_DISCOUNT = {
     "camper": 0.71,
-    "geox": 0.85,
+    "geox": 0.98,
     "clarks_jingya": 1.0,
     # 其它品牌默认 1.0
 }

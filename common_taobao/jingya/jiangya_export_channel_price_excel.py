@@ -29,7 +29,7 @@ except Exception:
 
 # 价格工具
 try:
-    from price_utils import calculate_jingya_prices
+    from common_taobao.core.price_utils import calculate_jingya_prices
 except Exception:
     # 若你的工程里在其它路径，可替换为实际导入
     from common_taobao.core.price_utils import calculate_jingya_prices  # type: ignore
@@ -47,7 +47,7 @@ HEADERS = [
 # 品牌默认折扣
 BRAND_DISCOUNT = {
     "camper": 0.71,
-    "geox": 0.85,
+    "geox": 0.98,
     "clarks_jingya": 1.0,
     # 其它品牌默认 1.0
 }
@@ -98,8 +98,13 @@ def _write_one_excel(df_chunk: pd.DataFrame, file_path: Path):
 
 def export_jiangya_channel_prices(brand: str, output_dir: Optional[str] = None) -> str:
     """
-    Pipeline 入口（签名保持不变）。
-    返回第一个生成的文件路径；控制台会打印所有分包文件路径与行数。
+    规则（更新后）：
+    1) 先用库里的人民币价： jingya_untaxed_price, taobao_store_price
+    2) 如果任一缺失/<=0，则 fallback：
+       base = min(original_price_gbp, discount_price_gbp) * BRAND_DISCOUNT[brand]
+       然后 price_utils.calculate_jingya_prices(base, delivery_cost=7, exchange_rate=9.7)
+    3) 仍按渠道聚合：一个 channel_product_id 一行，SKU ID 固定写 0
+    4) 其他行为（过滤、分包、表头）不变
     """
     brand_l = brand.lower().strip()
     if brand_l not in BRAND_CONFIG:
@@ -111,70 +116,101 @@ def export_jiangya_channel_prices(brand: str, output_dir: Optional[str] = None) 
     if not pgcfg:
         raise RuntimeError("PGSQL 连接配置缺失，请在 config.py 中提供 PGSQL_CONFIG 或品牌级 PGSQL_CONFIG。")
 
-    # 1) 取数：仅 channel_product_id 非空/非空串
+    # === 1) 取数：把库里的人民币价格也取出来 ===
     conn = psycopg2.connect(
         host=pgcfg["host"], port=pgcfg["port"],
         user=pgcfg["user"], password=pgcfg["password"], dbname=pgcfg["dbname"],
     )
     sql = f"""
-        SELECT channel_product_id,
-               product_code,
-               original_price_gbp,
-               discount_price_gbp
+        SELECT
+            channel_product_id,
+            product_code,
+            original_price_gbp,
+            discount_price_gbp,
+            jingya_untaxed_price,
+            taobao_store_price
         FROM {table}
-        WHERE channel_product_id IS NOT NULL AND TRIM(channel_product_id) <> ''
+        WHERE channel_product_id IS NOT NULL
+          AND TRIM(channel_product_id) <> ''
     """
     df = pd.read_sql(sql, conn)
     conn.close()
 
+    out_dir = Path(output_dir) if output_dir else Path(cfg["OUTPUT_DIR"])
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     if df.empty:
-        # 没有数据直接写出空表（仅表头）
-        out_dir = Path(output_dir) if output_dir else Path(cfg["OUTPUT_DIR"])
-        out_dir.mkdir(parents=True, exist_ok=True)
         out_file = out_dir / f"{brand_l}_jiangya_price_update_part1_of1.xlsx"
-        empty_df = pd.DataFrame(columns=HEADERS)
-        _write_one_excel(empty_df, out_file)
+        _write_one_excel(pd.DataFrame(columns=HEADERS), out_file)
         print(f"[INFO] 无可导出的记录，生成空表：{out_file}")
         return str(out_file)
 
-    # 2) 聚合：一行一个渠道商品
+    # === 2) 聚合到渠道级（一行一个渠道商品） ===
     df_grp = df.groupby("channel_product_id", dropna=False).agg({
         "product_code": "first",
         "original_price_gbp": "first",
         "discount_price_gbp": "first",
+        "jingya_untaxed_price": "first",
+        "taobao_store_price": "first",
     }).reset_index()
 
-    # 3) Base Price & 过滤无效（下架/无价）
-    df_grp["Base Price"] = df_grp.apply(lambda r: _compute_base_price(r, brand_l), axis=1)
-    before = len(df_grp)
-    df_grp = df_grp[df_grp["Base Price"].apply(_is_valid_price)].copy()
-    skipped = before - len(df_grp)
-    if skipped > 0:
-        print(f"[INFO] 跳过无效/下架商品 {skipped} 行（Base Price 非法）。")
-
-    if df_grp.empty:
-        out_dir = Path(output_dir) if output_dir else Path(cfg["OUTPUT_DIR"])
-        out_dir.mkdir(parents=True, exist_ok=True)
-        out_file = out_dir / f"{brand_l}_jiangya_price_update_part1_of1.xlsx"
-        empty_df = pd.DataFrame(columns=HEADERS)
-        _write_one_excel(empty_df, out_file)
-        print(f"[INFO] 过滤后无数据，生成空表：{out_file}")
-        return str(out_file)
-
-    # 4) 定价（untaxed, retail）
-    def _safe_calc(p):
-        p = _to_float_safe(p)
+    # 工具函数
+    def _valid_num(x) -> bool:
         try:
-            return calculate_jingya_prices(p, delivery_cost=7, exchange_rate=9.7)
-        except Exception as e:
-            print(f"❌ calculate_jingya_prices 错误: base_price={p}, 错误: {e}")
-            return (0, 0)
+            v = float(x)
+            return (not math.isnan(v)) and (not math.isinf(v)) and (v > 0)
+        except Exception:
+            return False
 
-    prices = df_grp["Base Price"].apply(_safe_calc)
+    def _pick_prices(row: pd.Series) -> Tuple[float, float]:
+        """
+        优先使用库里的人民币价格；若任一无效则按 GBP 计算。
+        返回 (untaxed, retail)
+        """
+        db_untaxed = row.get("jingya_untaxed_price")
+        db_retail  = row.get("taobao_store_price")
+
+        if _valid_num(db_untaxed) and _valid_num(db_retail):
+            return float(db_untaxed), float(db_retail)
+
+        # 回退：用 GBP 重新计算
+        o = _to_float_safe(row.get("original_price_gbp"))
+        d = _to_float_safe(row.get("discount_price_gbp"))
+        if o > 0 and d > 0:
+            base_raw = min(o, d)
+        else:
+            base_raw = d if d > 0 else o
+        base = base_raw * _brand_discount(brand_l)
+
+        if not _is_valid_price(base):
+            return 0.0, 0.0
+
+        try:
+            return calculate_jingya_prices(base, delivery_cost=7, exchange_rate=9.7)
+        except Exception as e:
+            print(f"❌ calculate_jingya_prices 错误: base_price={base}, 错误: {e}")
+            return 0.0, 0.0
+
+    # === 3) 生成导出的人民币价 ===
+    prices = df_grp.apply(_pick_prices, axis=1)
     expanded = prices.apply(pd.Series).fillna(0)
     expanded.columns = ["untaxed", "retail"]
 
-    # 5) 组装导出数据（严格按列名顺序）
+    # 过滤：两者都无效的行跳过
+    mask_valid = expanded.apply(lambda r: _valid_num(r["untaxed"]) and _valid_num(r["retail"]), axis=1)
+    skipped = (~mask_valid).sum()
+    if skipped > 0:
+        print(f"[INFO] 跳过 {skipped} 行（库价缺失且回退计算无效）。")
+    df_grp = df_grp[mask_valid].reset_index(drop=True)
+    expanded = expanded[mask_valid].reset_index(drop=True)
+
+    if df_grp.empty:
+        out_file = out_dir / f"{brand_l}_jiangya_price_update_part1_of1.xlsx"
+        _write_one_excel(pd.DataFrame(columns=HEADERS), out_file)
+        print(f"[INFO] 过滤后无数据，生成空表：{out_file}")
+        return str(out_file)
+
+    # === 4) 组装导出表（与原脚本一致：SKU 固定 0，零售价写两列） ===
     out_df = pd.DataFrame({
         "渠道产品ID": df_grp["channel_product_id"].astype(str),
         "SKU ID(不存在或者设置品价格时,sku填写0)": 0,
@@ -183,32 +219,27 @@ def export_jiangya_channel_prices(brand: str, output_dir: Optional[str] = None) 
         "最高建议零售价(元)": expanded["retail"].astype(int),
     })[HEADERS]
 
-    # 6) 分包写出：每个文件最多 480 条数据行（不含表头）
-    out_dir = Path(output_dir) if output_dir else Path(cfg["OUTPUT_DIR"])
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    chunk_size = 200
+    # === 5) 分包写出（与原脚本一致，默认 chunk_size=200） ===
     n = len(out_df)
-    num_parts = (n + chunk_size - 1) // chunk_size if n > 0 else 1
-    created_files: List[Path] = []
-
     if n == 0:
         out_file = out_dir / f"{brand_l}_jiangya_price_update_part1_of1.xlsx"
         _write_one_excel(out_df, out_file)
         print(f"[INFO] 无有效记录，已生成空表：{out_file}")
         return str(out_file)
 
+    chunk_size = 200
+    num_parts = (n + chunk_size - 1) // chunk_size
+    created_files: List[Path] = []
     for i in range(num_parts):
-        start = i * chunk_size
-        end = min(start + chunk_size, n)
+        start, end = i * chunk_size, min((i + 1) * chunk_size, n)
         df_chunk = out_df.iloc[start:end].reset_index(drop=True)
         out_file = out_dir / f"{brand_l}_jiangya_price_update_part{i+1}_of_{num_parts}.xlsx"
         _write_one_excel(df_chunk, out_file)
         created_files.append(out_file)
         print(f"[OK] 写出：{out_file}（行数：{len(df_chunk)}）")
 
-    # 返回第一个文件路径（保持签名/返回类型不变）
     return str(created_files[0])
+
 
 from pathlib import Path
 from typing import Optional, List, Tuple

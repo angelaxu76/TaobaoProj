@@ -18,6 +18,7 @@ from barbour.jingya.fill_offer_to_barbour_inventory import backfill_barbour_inve
 from barbour.common.fill_supplier_jingya_map import fill_supplier_map
 from common_taobao.jingya.jingya_export_stockcount_to_excel import export_stock_excel
 from common_taobao.jingya.jiangya_export_channel_price_excel import export_barbour_channel_price_by_sku
+from common_taobao.jingya.jiangya_export_channel_price_excel import export_jiangya_channel_prices
 from config import BARBOUR
 
 
@@ -31,7 +32,7 @@ def barbour_database_import_pipleline():
     # barbour_get_links()
     # outdoorandcountry_fetch_and_save_links()
     # allweathers_get_links()
-    houseoffraser_fetch_info()
+    # houseoffraser_fetch_info()
     # very_get_links()
     # collect_terraces_links()
 
@@ -72,8 +73,12 @@ def barbour_database_import_pipleline():
 
 
     print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
-    # stock_dest_excel_folder = r"D:\TB\Products\barbour\repulibcation\stock"
-    # export_stock_excel("barbour",stock_dest_excel_folder)
+    stock_dest_excel_folder = r"D:\TB\Products\barbour\repulibcation\stock"
+    export_stock_excel("barbour",stock_dest_excel_folder)
+
+    print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
+    price_dest_excel = r"D:\TB\Products\barbour\repulibcation\publication_prices.xlsx"
+    export_jiangya_channel_prices("barbour",price_dest_excel)
 
 
     print("\\n🟡 Step: 6️⃣ 导出barbour sku基本价格用于更新鲸芽价格")

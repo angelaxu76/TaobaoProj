@@ -21,7 +21,7 @@ PRODUCT_LINK_FILE = GEOX["BASE"] / "publication" / "product_links.txt"
 TXT_OUTPUT_DIR = GEOX["TXT_DIR"]
 BRAND = "geox"
 MAX_THREADS = 1              # 先单线程，把登录态/折扣跑稳后再调高
-LOGIN_WAIT_SECONDS = 40      # 手动登录等待时间（可按需调整）
+LOGIN_WAIT_SECONDS = 20      # 手动登录等待时间（可按需调整）
 
 TXT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -88,13 +88,37 @@ def create_driver(headless: bool = False) -> webdriver.Chrome:
     except SessionNotCreatedException:
         # 典型是目录被占用/锁住：杀进程后重试
         _kill_chrome()
-        time.sleep(1.0)
+        time.sleep(0.5)
         opts = _build_options(headless=headless)
         driver = webdriver.Chrome(options=opts)
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined});")
         print("Chrome =", driver.capabilities.get("browserVersion"),
               "| Chromedriver =", driver.capabilities.get("chrome", {}).get("chromedriverVersion"))
         return driver
+
+
+def create_worker_driver() -> webdriver.Chrome:
+    # 这个 driver 用来长时间复用；不动你原有的 create_driver 逻辑
+    from selenium.webdriver.chrome.options import Options
+    o = Options()
+    o.add_argument("--headless=new")                 # 无头，提速
+    o.add_argument("--disable-gpu")
+    o.add_argument("--no-sandbox")
+    o.add_argument("--disable-dev-shm-usage")
+    o.add_argument("--window-size=1920,1080")
+    o.add_argument("--disable-blink-features=AutomationControlled")
+    o.add_experimental_option("excludeSwitches", ["enable-automation"])
+    o.add_experimental_option("useAutomationExtension", False)
+    o.add_argument("--blink-settings=imagesEnabled=false")  # 禁图进一步提速
+    o.add_argument(
+        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    )
+    # DOMContentLoaded 即返回，减少等待
+    o.set_capability("pageLoadStrategy", "eager")
+    d = webdriver.Chrome(options=o)
+    d.execute_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined});")
+    return d
 
 # ===================== 会话导出/导入（可选，用于并发线程注入） =====================
 def export_session(driver: webdriver.Chrome) -> Dict:
@@ -147,29 +171,29 @@ def get_html(driver: webdriver.Chrome, url: str) -> Optional[str]:
             "button.cookie-accept", "button.js-accept-all"
         ]:
             try:
-                btn = WebDriverWait(driver, 2).until(
+                btn = WebDriverWait(driver, 0.1).until(
                     EC.element_to_be_clickable((By.CSS_SELECTOR, sel))
                 )
                 btn.click()
-                time.sleep(0.5)
+                time.sleep(0)   # ← 立即继续
                 return
             except Exception:
                 continue
 
     def _scroll_warmup():
-        driver.execute_script("window.scrollTo(0, 400);"); time.sleep(0.4)
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight - 400);"); time.sleep(0.4)
-        driver.execute_script("window.scrollTo(0, 0);"); time.sleep(0.4)
+        driver.execute_script("window.scrollTo(0, 400);"); time.sleep(0)
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight - 400);"); time.sleep(0)
+        driver.execute_script("window.scrollTo(0, 0);"); time.sleep(0)
 
     driver.get(url)
     _accept_cookies()
 
     try:
-        WebDriverWait(driver, 15).until(
+        WebDriverWait(driver, 0.1).until(
             EC.presence_of_element_located((By.CSS_SELECTOR,
                 "div.product-info div.price, div.right-side div.price, div.price-mobile div.price, div.price"))
         )
-        WebDriverWait(driver, 15).until(
+        WebDriverWait(driver, 0.1).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "button.add-to-cart"))
         )
     except Exception:
@@ -178,12 +202,12 @@ def get_html(driver: webdriver.Chrome, url: str) -> Optional[str]:
     _scroll_warmup()
 
     try:
-        WebDriverWait(driver, 8).until(
+        WebDriverWait(driver, 0.1).until(
             EC.presence_of_element_located((By.CSS_SELECTOR,
                 "span.product-price span.sales span.value[content]"))
         )
         try:
-            WebDriverWait(driver, 4).until(
+            WebDriverWait(driver, 1).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR,
                     "span.product-price span.sales.discount span.value[content]"))
             )
@@ -193,7 +217,7 @@ def get_html(driver: webdriver.Chrome, url: str) -> Optional[str]:
         pass
 
     try:
-        WebDriverWait(driver, 6).until(
+        WebDriverWait(driver, 0.1).until(
             lambda d: (
                 d.execute_script("""
                     const btn = document.querySelector('button.add-to-cart');
@@ -206,8 +230,9 @@ def get_html(driver: webdriver.Chrome, url: str) -> Optional[str]:
     except Exception:
         pass
 
-    time.sleep(0.5)
+    time.sleep(0)
     return driver.page_source
+
 
 # ===================== 业务解析 =====================
 def supplement_geox_sizes(size_stock: Dict[str, str], gender: str) -> Dict[str, str]:
@@ -350,77 +375,68 @@ def fetch_all_product_info():
 
     with open(PRODUCT_LINK_FILE, "r", encoding="utf-8") as f:
         urls = [line.strip() for line in f if line.strip()]
-
     if not urls:
         print("⚠️ 链接列表为空")
         return
 
-    # 1) 打开可见浏览器，手动登录一次（使用固定 Profile，一般会直接是已登录状态）
-    login_driver = create_driver(headless=False)
+    # 1) 用你的定制 Chrome/固定 Profile 打开“可见”窗口登录一次（保留你原有逻辑）
+    login_driver = create_driver(headless=False)   # ← 不改
     login_driver.get(urls[0])
     print(f"⏳ 如需登录，请在新窗口手动登录 GEOX（等待 {LOGIN_WAIT_SECONDS} 秒）")
-    time.sleep(LOGIN_WAIT_SECONDS)
-
-    # 2) 导出当前登录会话（可选：用于 headless/并发线程注入）
+    time.sleep(LOGIN_WAIT_SECONDS)                 # 如已登录可设为 0
     session = export_session(login_driver)
     login_driver.quit()
 
-    # 3) 逐个抓取
-    def worker(url: str):
-        driver = create_driver(headless=True)  # 折扣确认无误后可 headless，提高效率
-        try:
-            import_session(driver, session, base_url="https://www.geox.com/")
-            html = get_html(driver, url)
-            if not html:
-                return
+    # 2) 创建一个“长期复用”的工作用 driver（不带 profile，轻量、禁图、eager）
+# 改为带界面的 driver
+    driver = create_driver(headless=False)
+    try:
+        import_session(driver, session, base_url="https://www.geox.com/")
 
-            # === 保存 debug 页面 + 解析快照 ===
-            debug_dir = GEOX["BASE"] / "publication" / "debug"
-            debug_dir.mkdir(parents=True, exist_ok=True)
-
-            code = derive_code_from_url(url)
-            debug_html = debug_dir / f"{code}.html"
-            debug_html.write_text(html, encoding="utf-8", errors="ignore")
-
-            soup = BeautifulSoup(html, "html.parser")
-            price_tag = soup.select_one("span.product-price span.value")
-            discount_tag = soup.select_one("span.sales.discount span.value")
-
-            snapshot = {
-                "url": url,
-                "code": code,
-                "raw_price_content": price_tag.get("content") if price_tag else None,
-                "raw_discount_content": discount_tag.get("content") if discount_tag else None,
-                "raw_price_text": price_tag.get_text(strip=True) if price_tag else None,
-                "raw_discount_text": discount_tag.get_text(strip=True) if discount_tag else None,
-            }
-            (debug_dir / f"{code}.json").write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
-
-            print(f"🧩 已保存调试页面: {debug_html.name} 和价格快照: {code}.json")
-
-            # === 解析并输出 ===
-            info = parse_product(html, url)
-            if not info:
-                return
-            txt_path = TXT_OUTPUT_DIR / f"{info['Product Code']}.txt"
-            txt_path.parent.mkdir(parents=True, exist_ok=True)
-            format_txt(info, txt_path, brand=BRAND)
-            print(f"✅ 写入成功: {txt_path.name}")
-        except Exception as e:
-            print(f"❌ 处理失败 {url} → {e}")
-        finally:
-            driver.quit()
-
-    with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
-        future_to_url = {executor.submit(worker, url): url for url in urls}
-        for i, future in enumerate(as_completed(future_to_url), 1):
-            url = future_to_url[future]
+        for idx, url in enumerate(urls, 1):
             try:
-                future.result()
-            except Exception as e:
-                print(f"[{i}] ❌ 异常: {url} → {e}")
+                print(f"[{idx}] 🪟 正在打开商品页面：{url}")
+                driver.get(url)
+                time.sleep(5)  # 👈 等 5 秒观察页面折扣价是否显示
+                html = driver.page_source
 
-    print("\n✅ 所有商品处理完成。")
+
+
+
+
+                if not html:
+                    print(f"[{idx}] ⚠️ 空页面: {url}")
+                    continue
+
+                info = parse_product(html, url)
+                if not info:
+                    print(f"[{idx}] ⚠️ 解析失败: {url}")
+                    continue
+
+                txt_path = TXT_OUTPUT_DIR / f"{info['Product Code']}.txt"
+                txt_path.parent.mkdir(parents=True, exist_ok=True)
+                format_txt(info, txt_path, brand=BRAND)
+                print(f"[{idx}] ✅ 写入成功: {txt_path.name}")
+
+
+                time.sleep(1)
+                # 可选：每处理若干个商品，轻刷首页，防止长跑内存/会话抖动
+                # if idx % 50 == 0:
+                #     driver.get("https://www.geox.com/")
+                #     time.sleep(0)
+
+            except Exception as e:
+                print(f"[{idx}] ❌ 处理失败 {url} → {e}")
+                # 可选：出错时尝试重注入一次会话（不重启浏览器）
+                # try:
+                #     import_session(driver, session, base_url="https://www.geox.com/")
+                # except Exception:
+                #     pass
+    finally:
+        driver.quit()
+
+    print("\n✅ 全部处理完成。")
+
 
 if __name__ == "__main__":
     fetch_all_product_info()
