@@ -102,20 +102,29 @@ def process_html_folder(html_folder: Path, output_folder: Path, geckodriver_path
         html_to_full_screenshot(html_path, output_image, geckodriver_path)
 
 
-def main():
+def html_to_image(input_dir: Optional[str] = None, output_dir: Optional[str] = None):
     """
-    直接运行：
-      python html2img_firefox.py
-    或覆盖输入输出目录：
-      python html2img_firefox.py D:/TB/HTMLToImage/input D:/TB/HTMLToImage/output
-    """
-    html_dir = HTML_FOLDER
-    out_dir = OUTPUT_FOLDER
+    批量将 HTML 转为截图 PNG。
+    可直接在 pipeline 调用：
+        html_to_image("D:/TB/HTMLToImage/input", "D:/TB/HTMLToImage/output")
 
-    if len(sys.argv) >= 2:
+    若未传入参数，则使用默认路径或命令行参数。
+    """
+
+    # 优先使用函数参数，其次使用命令行参数，最后使用默认配置
+    if input_dir:
+        html_dir = Path(input_dir)
+    elif len(sys.argv) >= 2:
         html_dir = Path(sys.argv[1])
-    if len(sys.argv) >= 3:
+    else:
+        html_dir = HTML_FOLDER
+
+    if output_dir:
+        out_dir = Path(output_dir)
+    elif len(sys.argv) >= 3:
         out_dir = Path(sys.argv[2])
+    else:
+        out_dir = OUTPUT_FOLDER
 
     print(f"[conf] HTML_FOLDER={html_dir}")
     print(f"[conf] OUTPUT_FOLDER={out_dir}")
@@ -124,5 +133,6 @@ def main():
     process_html_folder(html_dir, out_dir, GECKODRIVER_PATH)
 
 
+
 if __name__ == "__main__":
-    main()
+    html_to_image()

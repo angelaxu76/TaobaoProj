@@ -271,6 +271,35 @@ def _parse_args():
     p.add_argument("--workers", type=int, default=0)
     return p.parse_args()
 
+from pathlib import Path
+import os
+
+def run_cutter_pipeline(input_dir: str, output_dir: str):
+    """
+    一键执行图片边缘裁剪的 Pipeline 封装。
+
+    参数:
+        input_dir  : 输入图片文件夹路径
+        output_dir : 裁剪后图片输出路径
+    """
+    input_path = Path(input_dir)
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    options = {
+        "pattern": "*.jpg;*.jpeg;*.png;*.webp;*.bmp",
+        "tolerance": 5,
+        "recursive": False,
+        "overwrite": True,
+        "dry_run": False,
+        "workers": max(1, (os.cpu_count() or 4) - 1),
+    }
+
+    print(f"[Cutter] 正在处理图片：{input_path} -> {output_path}")
+    result = trim_sides_batch(input_path, output_path, options)
+    print(f"[Cutter] 完成，结果: {result}")
+    return result
+
 
 if __name__ == "__main__":
     # ===== 这里直接定义输入/输出目录 =====
@@ -290,3 +319,5 @@ if __name__ == "__main__":
     print(f"▶ 默认运行: {DEFAULT_INPUT} → {DEFAULT_OUTPUT}")
     res = trim_sides_batch(DEFAULT_INPUT, DEFAULT_OUTPUT, opts)
     print(res)
+
+

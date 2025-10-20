@@ -204,7 +204,14 @@ def backfill_barbour_inventory_single_supplier():
             payload = []
             for r in base_rows:
                 base_gbp = r["base_gbp"]
+
+                discount = BRAND_CONFIG["barbour"].get("TAOBAO_STORE_DISCOUNT", 1.0)
+
                 jy, tb = _compute_rmb_prices(base_gbp)
+                if tb is not None:
+                    tb = round(tb * discount, 2)   # 👈 淘宝店铺价按配置折扣
+                
+                
                 payload.append({
                     "bi_id": r["id"],
                     "base_price_gbp": _num_or_none(base_gbp),
@@ -212,6 +219,8 @@ def backfill_barbour_inventory_single_supplier():
                     "jingya_untaxed_price": jy,
                     "taobao_store_price": tb
                 })
+
+
             if payload:
                 conn.execute(text("""
                     UPDATE barbour_inventory
@@ -301,7 +310,13 @@ def backfill_barbour_inventory_mapped_only():
             payload = []
             for r in base_rows:
                 base_gbp = r["base_gbp"]
+
+
+                discount = BRAND_CONFIG["barbour"].get("TAOBAO_STORE_DISCOUNT", 1.0)
                 jy, tb = _compute_rmb_prices(base_gbp)
+
+                if tb is not None:
+                    tb = round(tb * discount, 2)   # 👈 淘宝店铺价按配置折扣
                 payload.append({
                     "bi_id": r["id"],
                     "base_price_gbp": _num_or_none(base_gbp),
