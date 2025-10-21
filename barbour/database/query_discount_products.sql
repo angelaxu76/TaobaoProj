@@ -68,5 +68,12 @@ SELECT DISTINCT inv_size, inv_norm FROM inv;
 
   select * from barbour_inventory where product_code='LQU0471NY91' and size='10';
 
-  select * from barbour_offers where product_code='MQU1638NY71';
+  select * from barbour_offers where product_code='LCA0366OL54';
+
+  select * from barbour_inventory where product_code='LCA0366OL54'
+
+  
+
+
+
   where channel_product_id='977341087977'

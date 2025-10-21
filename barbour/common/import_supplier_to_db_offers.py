@@ -13,10 +13,66 @@ from barbour.core.keyword_mapping import KEYWORD_EQUIVALENTS
 from common_taobao.size_utils import clean_size_for_barbour  # 旧名保留
 from barbour.core.site_utils import canonical_site, assert_site_or_raise
 from collections import defaultdict
+from config import BARBOUR  # 已有导入就不要重复
 
 # ---------- 小工具 ----------
 _PRICE_NUM = re.compile(r"([0-9]+(?:\.[0-9]+)?)")
 RE_CODE = re.compile(r'[A-Z]{3}\d{3,4}[A-Z]{2,3}\d{2,3}')
+
+# ==================== 仅新增：供货商“全价才打折”策略 ====================
+
+
+SUPPLIER_DISCOUNT_RULES = BARBOUR.get("SUPPLIER_DISCOUNT_RULES", {
+    "__default__": {"type": "none"}
+})
+
+def _is_full_price(op, dp, tol=0.01):
+    """
+    认为是“全价”的条件：
+    - 没有页面折扣价（dp is None），或
+    - 折扣价与原价几乎相等（abs(dp - op) <= tol）
+    """
+    try:
+        if op is None:
+            return False
+        if dp is None:
+            return True
+        return abs(float(dp) - float(op)) <= float(tol)
+    except Exception:
+        return False
+
+def _apply_supplier_policy(site_canon: str, op, dp):
+    """
+    计算入库用的英镑价（仅对“全价”按比例打折；markdown 不叠加）
+    返回：effective_price_gbp, original_price_gbp
+    """
+    def _to_f(v):
+        try:
+            return None if v is None else float(v)
+        except Exception:
+            return None
+
+    site = (site_canon or "").lower()
+    rule = SUPPLIER_DISCOUNT_RULES.get(site, SUPPLIER_DISCOUNT_RULES.get("__default__", {"type": "none"}))
+    rtype = (rule.get("type") or "none").lower()
+    ratio = float(rule.get("ratio", 1.0))
+
+    op_f = _to_f(op)
+    dp_f = _to_f(dp)
+    fallback = dp_f if dp_f is not None else op_f
+
+    if rtype == "coupon_fullprice_only":
+        if _is_full_price(op_f, dp_f) and (op_f is not None) and (op_f > 0):
+            # 仅在“全价”时对原价按 ratio 打折
+            eff = round(op_f * ratio, 2)
+            return eff, op_f
+        # markdown 不叠加：直接用页面已有折扣价（或回退原价）
+        return (fallback if fallback is not None else 0.0), (op_f if op_f is not None else fallback)
+
+    # 默认：不处理，按页面价入库
+    return (fallback if fallback is not None else 0.0), (op_f if op_f is not None else fallback)
+# ==================== 新增结束 ====================
+
 
 def _parse_price(text):
     if not text:
@@ -247,8 +303,20 @@ def insert_offer(info, conn, missing_log: list) -> int:
         print("⚠️ 没有可导入的 offers（TXT 未包含 Offer List，且 Size/Detail 也未解析到）")
         return 0
 
-    op = _parse_price(info.get("price_line"))
-    dp = _parse_price(info.get("adjusted_price_line"))
+    # === 仅替换开始：按供货商策略计算入库英镑价 ===
+    op = _parse_price(info.get("price_line"))              # 原价（Product Price）
+    dp = _parse_price(info.get("adjusted_price_line"))     # 页面折后价（Adjusted/Now Price）
+
+    # site 为你的供货商标识变量（已有，不要改名）；如果变量名不同，请用当前作用域里的站点名变量替换
+    effective_price_gbp, original_price_gbp_final = _apply_supplier_policy(site, op, dp)
+
+    # 入库用 price_gbp（用于后续汇率换算/回填）
+    price_gbp = effective_price_gbp
+
+    # original_price_gbp 建议保留抓到的原价（无则回退）
+    original_price_gbp = (original_price_gbp_final if original_price_gbp_final is not None else op)
+    # === 仅替换结束 ===
+
 
     inserted = 0
     with conn.cursor() as cur:
@@ -259,8 +327,7 @@ def insert_offer(info, conn, missing_log: list) -> int:
                 print(f"⚠️ 无法清洗尺码: {raw_size}，跳过")
                 continue
 
-            price_gbp = (dp if dp is not None else op) if (dp is not None or op is not None) else float(offer.get("price", 0.0))
-            original_price_gbp = op if op is not None else price_gbp
+
             stock_count = int(offer.get("stock_count") or 0)
 
             # 仅写 stock_count，不写 stock_status/can_order

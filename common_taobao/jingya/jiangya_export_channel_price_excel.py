@@ -186,7 +186,7 @@ def export_jiangya_channel_prices(brand: str, output_dir: Optional[str] = None) 
             return 0.0, 0.0
 
         try:
-            return calculate_jingya_prices(base, delivery_cost=7, exchange_rate=9.7)
+            return calculate_jingya_prices(base, delivery_cost=7, exchange_rate=9.6)
         except Exception as e:
             print(f"❌ calculate_jingya_prices 错误: base_price={base}, 错误: {e}")
             return 0.0, 0.0

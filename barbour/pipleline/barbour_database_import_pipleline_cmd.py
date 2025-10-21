@@ -15,9 +15,10 @@ from barbour.supplier.terraces_get_links import collect_terraces_links
 from common_taobao.backup_and_clear import backup_and_clear_brand_dirs
 from barbour.jingya.insert_jingyaid_to_db_barbour import insert_missing_products_with_zero_stock, insert_jingyaid_to_db, clear_barbour_inventory
 from barbour.jingya.fill_offer_to_barbour_inventory import backfill_barbour_inventory_mapped_only,backfill_barbour_inventory_single_supplier
-from barbour.common.fill_supplier_jingya_map import fill_supplier_map
+from barbour.common.fill_supplier_jingya_map import fill_supplier_map,export_supplier_stock_price_report,reassign_low_stock_suppliers
 from common_taobao.jingya.jingya_export_stockcount_to_excel import export_stock_excel
 from common_taobao.jingya.jiangya_export_channel_price_excel import export_barbour_channel_price_by_sku,export_jiangya_channel_prices
+from common_taobao.generate_taobao_store_price_for_import_excel import generate_price_excel,generate_price_excels_bulk
 from config import BARBOUR
 
 
@@ -67,20 +68,44 @@ def barbour_database_import_pipleline():
     #Step 6: TODO 根据发布文件填充barbour 鲸芽的map表
     # fill_supplier_map()
 
+    # 2.2 可选：导出“各站点库存与价格”诊断报表（便于检查当前映射与最佳站点差异）
+    # report_path = export_supplier_stock_price_report(
+    #     output_path=r"D:\TB\Products\barbour\publication\barbour_supplier_report.xlsx"
+    # )
+    # print("诊断报表：", report_path) 
+
+
+    # 2.3 可选：根据尺码阈值（默认3）自动建议/切换到“有货尺码≥3且最低价”的站点
+    # 先 dry-run 看建议
+    # suggestions = reassign_low_stock_suppliers(size_threshold=3, dry_run=True)
+
+    #suggestions = reassign_low_stock_suppliers(size_threshold=3, dry_run=False)
+
+
+
     # Step 5: TODO 将barbour product和offers中的价格库存和商品信息回填到barbour inventory表
     # backfill_barbour_inventory_single_supplier()
 
 
-    print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
-    stock_dest_excel_folder = r"D:\TB\Products\barbour\repulibcation\stock"
-    export_stock_excel("barbour",stock_dest_excel_folder)
+    # print("\\n🟡 Step: 6️⃣鲸芽 导出库存用于更新")
+    # stock_dest_excel_folder = r"D:\TB\Products\barbour\repulibcation\stock"
+    # export_stock_excel("barbour",stock_dest_excel_folder)
 
-    print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
-    price_dest_excel = r"D:\TB\Products\barbour\repulibcation\publication_prices.xlsx"
-    export_jiangya_channel_prices("barbour",price_dest_excel)
+    # print("\\n🟡 Step: 6️⃣鲸芽 导出价格用于更新")
+    # price_dest_excel = r"D:\TB\Products\barbour\repulibcation\publication_prices"
+    # export_jiangya_channel_prices("barbour",price_dest_excel)
+
+    print("\n🟡 Step: 6️⃣ 获取excel文件，用来更新各个淘宝店铺价格，输入文件夹可以是多个店铺的导出文件")
+    generate_price_excels_bulk(
+        brand="barbour",
+        input_dir=r"D:\TB\Products\barbour\repulibcation\store_prices\input",
+        output_dir=r"D:\TB\Products\barbour\repulibcation\store_prices\output",
+        suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
+        drop_rows_without_price=False  # 不丢行，查不到的价格留空
+    )
 
 
-    print("\\n🟡 Step: 6️⃣ 导出barbour sku基本价格用于更新鲸芽价格")
+    # print("\\n🟡 Step: 6️⃣ 导出barbour sku基本价格用于更新鲸芽价格")
     # export_barbour_channel_price_by_sku(
     # brand="barbour",
     # output_dir=r"D:\TB\Products\barbour\repulibcation\price",

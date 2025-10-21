@@ -89,6 +89,7 @@ BARBOUR = {
     "LINKS_FILE": BARBOUR_BASE / "publication" / "barbour" / "product_links.txt",
     "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     # === 新增 houseoffraser 配置 ===
+    
 # === 新增 very 配置 ===
     "LINKS_FILES": {
         "outdoorandcountry": BARBOUR_BASE / "publication" / "outdoorandcountry" / "product_links.txt",
@@ -98,6 +99,13 @@ BARBOUR = {
         "philipmorris": BARBOUR_BASE / "publication" / "philipmorris" / "product_links.txt",  # ✅ 新增
         "very": BARBOUR_BASE / "publication" / "very" / "product_links.txt",  # ✅ 新增
         "terraces": BARBOUR_BASE / "publication" / "terraces" / "product_links.txt",
+    },
+
+
+    "SUPPLIER_DISCOUNT_RULES": {
+        "allweathers": {"type": "coupon_fullprice_only", "ratio": 0.90},
+        "outdoorandcountry":          {"type": "coupon_fullprice_only", "ratio": 0.90},
+        "__default__":   {"type": "none"}
     },
 
     "TXT_DIRS": {
