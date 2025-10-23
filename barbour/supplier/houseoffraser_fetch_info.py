@@ -61,6 +61,23 @@ from collections import OrderedDict
 URL_CODE_CACHE: Dict[str, str] = {}
 _URL_CODE_CACHE_READY = False
 
+
+
+# ====== 标准尺码表（用于补齐未出现尺码=0） ======
+WOMEN_ORDER = ["4","6","8","10","12","14","16","18","20"]
+MEN_ALPHA_ORDER = ["2XS","XS","S","M","L","XL","2XL","3XL"]
+MEN_NUM_ORDER = [str(n) for n in range(30, 52, 2)]  # 30..50（不含 52）
+
+def _full_order_for_gender(gender: str) -> list[str]:
+    """根据性别返回完整尺码顺序；未知/童款默认按男款处理。"""
+    g = (gender or "").lower()
+    if "女" in g or "women" in g or "lady" in g or "ladies" in g:
+        return WOMEN_ORDER
+    # 默认按男款；童款/未知也先按男款处理（若后续要定制，再细化）
+    return MEN_ALPHA_ORDER + MEN_NUM_ORDER
+
+
+
 def _normalize_url(u: str) -> str:
     """保持原样，不做任何清理或去重"""
     return u.strip() if u else ""
@@ -343,19 +360,33 @@ def _extract_size_pairs_legacy(soup: BeautifulSoup) -> List[Tuple[str, str]]:
         entries.append((size_norm, status))
     return entries
 
-def _build_size_lines_legacy(pairs: List[Tuple[str, str]]) -> Tuple[str, str]:
+def _build_size_lines_legacy(pairs: List[Tuple[str, str]], gender: str) -> Tuple[str, str]:
+    """
+    在 legacy 栈中，将出现的尺码按“有货优先”合并，并补齐未出现的尺码为 无货/0。
+    - Product Size:  34:有货;36:无货;...
+    - Product Size Detail: 34:3:000...;36:0:000...;...
+    """
     by_size: Dict[str, str] = {}
+
+    # 1) 先记录页面“出现的尺码”，同尺码多次时“有货优先”
     for size, status in pairs:
         prev = by_size.get(size)
-        if prev is None or (prev == "无货" and status == "有货"): by_size[size] = status
-    def _key(k: str):
-        m = re.fullmatch(r"\d{1,3}", k)
-        return (0, int(k)) if m else (1, k)
-    ordered = sorted(by_size.keys(), key=_key)
-    ps = ";".join(f"{k}:{by_size[k]}" for k in ordered) or "No Data"
+        if prev is None or (prev == "无货" and status == "有货"):
+            by_size[size] = status
+
+    # 2) 取得完整尺码表，并补齐“未出现”的尺码为 无货/0
+    full_order = _full_order_for_gender(gender)
+    for s in full_order:
+        if s not in by_size:
+            by_size[s] = "无货"
+
+    # 3) 按完整表顺序输出
     EAN = "0000000000000"
+    ordered = list(full_order)
+    ps  = ";".join(f"{k}:{by_size[k]}" for k in ordered) or "No Data"
     psd = ";".join(f"{k}:{3 if by_size[k]=='有货' else 0}:{EAN}" for k in ordered) or "No Data"
     return ps, psd
+
 
 # ================== 新版解析骨架（保持你现有实现/可按需细化） ==================
 def _clean_html_text(s: str) -> str:
@@ -414,7 +445,10 @@ def _extract_prices_new(soup: BeautifulSoup, html_text: str) -> Tuple[Optional[f
         return nums[0], nums[0]
     return nums[0], nums[-1]
 
-def _extract_sizes_new(soup: BeautifulSoup) -> Tuple[str, str]:
+def _extract_sizes_new(soup: BeautifulSoup, gender: str) -> Tuple[str, str]:
+    """
+    从新栈 DOM 下拉中提取尺码→状态，补齐未出现尺码为 无货/0。
+    """
     entries = []
     for opt in soup.find_all("option", attrs={"data-testid": "drop-down-option"}):
         val = (opt.get("value") or "").strip()
@@ -428,23 +462,30 @@ def _extract_sizes_new(soup: BeautifulSoup) -> Tuple[str, str]:
         oos = opt.has_attr("disabled") or (opt.get("aria-disabled") == "true") or "out of stock" in raw_label.lower()
         status = "无货" if oos else "有货"
         entries.append((size_norm, status))
+
     if not entries:
         return "No Data", "No Data"
-    # 与 legacy 共用的生成器
-    by_size = {}
+
+    # 1) 将出现的尺码按“有货优先”汇总
+    by_size: Dict[str, str] = {}
     for size, status in entries:
         prev = by_size.get(size)
         if prev is None or (prev == "无货" and status == "有货"):
             by_size[size] = status
-    ordered = []
-    seen = set()
-    for s, _ in entries:
-        if s in by_size and s not in seen:
-            ordered.append(s); seen.add(s)
+
+    # 2) 补齐完整尺码表为 无货/0
+    full_order = _full_order_for_gender(gender)
+    for s in full_order:
+        if s not in by_size:
+            by_size[s] = "无货"
+
+    # 3) 输出（按完整表顺序）
     EAN = "0000000000000"
+    ordered = list(full_order)
     product_size = ";".join(f"{s}:{by_size[s]}" for s in ordered) or "No Data"
     product_size_detail = ";".join(f"{s}:{3 if by_size[s]=='有货' else 0}:{EAN}" for s in ordered) or "No Data"
     return product_size, product_size_detail
+
 
 def parse_info_legacy(html: str, url: str) -> Dict[str, Any]:
     soup = BeautifulSoup(html, "html.parser")
@@ -456,7 +497,8 @@ def parse_info_legacy(html: str, url: str) -> Dict[str, Any]:
     if curr is None and orig is not None: curr = orig
     if orig is None and curr is not None: orig = curr
     size_pairs = _extract_size_pairs_legacy(soup)
-    product_size, product_size_detail = _build_size_lines_legacy(size_pairs)
+    product_size, product_size_detail = _build_size_lines_legacy(size_pairs, gender)
+
     info = {
         "Product Code": "No Data",
         "Product Name": title or "No Data",
@@ -485,8 +527,10 @@ def parse_info_new(html: str, url: str) -> Dict[str, Any]:
     if curr is None and orig is not None: curr = orig
     if orig is None and curr is not None: orig = curr
 
-    product_size, product_size_detail = _extract_sizes_new(soup)
+    # ✅ 先确定 gender
     gender = "women" if "/women" in url.lower() else ("men" if "/men" in url.lower() else "No Data")
+    # ✅ 再调用提尺码，并补齐 0
+    product_size, product_size_detail = _extract_sizes_new(soup, gender)
 
     info = {
         "Product Code": jd.get("sku") or "No Data",

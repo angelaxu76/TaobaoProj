@@ -363,30 +363,45 @@ def _sort_sizes(keys: list[str], gender: str) -> list[str]:
 def _build_size_lines_from_sizedetail(size_detail: dict, gender: str) -> tuple[str, str]:
     """
     输入 SizeDetail(dict) → 输出：
-      Product Size（形如 34:有货;...）
-      Product Size Detail（形如 34:1:000...;...）
-    不写 SizeMap；同时过滤男款 52。
+      Product Size（34:有货;...）【返回但你可不写入】
+      Product Size Detail（34:3:000...;...）
+    规则：
+      - 同尺码多次：有货优先
+      - 男款数字：30..50（偶数），显式排除 52（文件上方 MEN_NUM_ORDER 已处理）
+      - ⚠️ 未出现的尺码也补齐为 无货/0（完整栅格）
     """
     bucket_status: dict[str, str] = {}
     bucket_stock: dict[str, int] = {}
 
+    # 1) 先用页面提供的尺码填充（有货优先覆盖）
     for raw_size, meta in (size_detail or {}).items():
-        norm = _normalize_size(raw_size, gender)
+        norm = _normalize_size(raw_size, gender or "男款")
         if not norm:
             continue
         stock = int(meta.get("stock_count", 0) or 0)
         status = "有货" if stock > 0 else "无货"
-        # 同尺码多次出现：有货优先
         prev = bucket_status.get(norm)
         if prev is None or (prev == "无货" and status == "有货"):
             bucket_status[norm] = status
             bucket_stock[norm] = 3 if stock > 0 else 0
 
-    ordered = _sort_sizes(list(bucket_status.keys()), gender)
+    # 2) 准备完整尺码表（按性别），把未出现的尺码补齐为 0
+    if (gender or "男款") == "女款":
+        full_order = WOMEN_ORDER
+    else:
+        full_order = MEN_ALPHA_ORDER + MEN_NUM_ORDER  # MEN_NUM_ORDER 已是 30..50，不含 52
 
-    ps = ";".join(f"{k}:{bucket_status[k]}" for k in ordered)
+    for size in full_order:
+        if size not in bucket_status:
+            bucket_status[size] = "无货"
+            bucket_stock[size] = 0
+
+    # 3) 按完整表输出（保证顺序稳定）
+    ordered = _sort_sizes(full_order, gender or "男款")
+    ps  = ";".join(f"{k}:{bucket_status[k]}" for k in ordered)
     psd = ";".join(f"{k}:{bucket_stock[k]}:0000000000000" for k in ordered)
     return ps, psd
+
 
 
 # ============ 抓取并写入 TXT（pipeline 签名保持不变） ============

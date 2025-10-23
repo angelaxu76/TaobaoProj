@@ -145,36 +145,30 @@ def _fallback_style_category(name: str, desc: str, product_code: str) -> str:
             
 def _build_sizes_from_offers(offers, gender: str):
     """
-    不依赖公共 size_normalizer，按你的新规则生成两行（内部保持原样）：
-    - Product Size（内部仍构建以兼容返回值，但稍后不写入 TXT）
-    - Product Size Detail（仅此写入；有货=3，无货=0）
+    从 Offers 生成两行：
+    - Product Size（返回但一般不写入）
+    - Product Size Detail（写入；有货=3，无货=0）
+    同时补齐未出现的尺码为 无货/0；男装过滤 52。
     """
-    # 先准备空返回，确保任何分支都有双返回
     product_size = ""
     product_size_detail = ""
 
-    # 归一 + 过滤
     def norm(raw):
         s = (raw or "").strip().upper().replace("UK ", "")
         s = re.sub(r"\s*\(.*?\)\s*", "", s)
-        # 数字抽取优先（女款允许 1-2 位数字）
         m = re.findall(r"\d{2,3}", s)
         if not m and gender == "女款" and re.fullmatch(r"\d{1,2}", s):
             m = [s]
         if m:
             n = int(m[0])
-            # 女：4..20（偶数）
             if 4 <= n <= 20 and n % 2 == 0 and gender == "女款":
                 return str(n)
-            # 男数字：30..50（偶数）
             if 30 <= n <= 50 and n % 2 == 0 and gender == "男款":
                 return str(n)
-            # 其它情况：尝试靠近就近偶数（男款）
             if gender == "男款" and 28 <= n <= 54:
                 candidate = n if n % 2 == 0 else n - 1
                 candidate = max(30, min(50, candidate))
                 return str(candidate)
-        # 字母尺码
         map_alpha = {
             "XXXS":"2XS","2XS":"2XS","XXS":"XS","XS":"XS",
             "S":"S","SMALL":"S","M":"M","MEDIUM":"M","L":"L","LARGE":"L",
@@ -183,13 +177,11 @@ def _build_sizes_from_offers(offers, gender: str):
         key = s.replace("-", "").replace(" ", "")
         return map_alpha.get(key)
 
-    # ↓↓↓ 这块要与 norm 平级（把你文件里这几行整体左移一层） ↓↓↓
     bucket = {}
     for size, price, stock_text, _ in offers or []:
         ns = norm(size)
         if not ns:
             continue
-        # 只按 stock_text 判定（来自上游 stockLevelMessage）
         curr = "有货" if (isinstance(stock_text, str) and stock_text.strip() == "有货") else "无货"
         prev = bucket.get(ns)
         if prev is None or (prev == "无货" and curr == "有货"):
@@ -197,15 +189,24 @@ def _build_sizes_from_offers(offers, gender: str):
 
     WOMEN = ["4","6","8","10","12","14","16","18","20"]
     MEN_ALPHA = ["2XS","XS","S","M","L","XL","2XL","3XL"]
-    MEN_NUM = [str(n) for n in range(30, 52, 2)]
+    MEN_NUM = [str(n) for n in range(30, 52, 2)]  # 30..50（不含 52）
 
-    ordered = [k for k in WOMEN if k in bucket] if gender == "女款" \
-              else [k for k in MEN_ALPHA if k in bucket] + [k for k in MEN_NUM if k in bucket]
+    # ① 先对出现过的尺码排序
+    ordered_present = [k for k in WOMEN if k in bucket] if gender == "女款" \
+                      else [k for k in MEN_ALPHA if k in bucket] + [k for k in MEN_NUM if k in bucket]
 
-    product_size = ";".join(f"{k}:{bucket[k]}" for k in ordered)  # 仍返回但不写入
-    # Detail 数量：有货=3，无货=0（按你要求）
+    # ② 再按完整尺码表补齐缺失尺码（无货/0）
+    full_order = WOMEN if gender == "女款" else (MEN_ALPHA + MEN_NUM)
+    for s in full_order:
+        if s not in bucket:
+            bucket[s] = "无货"
+
+    # ③ 最终使用完整尺码表输出
+    ordered = [k for k in full_order]  # 已按预设顺序
+    product_size = ";".join(f"{k}:{bucket[k]}" for k in ordered)
     product_size_detail = ";".join(f"{k}:{3 if bucket[k]=='有货' else 0}:0000000000000" for k in ordered)
     return product_size, product_size_detail
+
 
 
 

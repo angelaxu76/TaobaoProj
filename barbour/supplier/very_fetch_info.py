@@ -50,6 +50,20 @@ MIN_LEAD = 0.04                  # 领先幅度阈值（Top1 与 Top2 差值）
 NAME_WEIGHT = 0.75               # 名称权重
 COLOR_WEIGHT = 0.25              # 颜色权重
 
+
+# ===== 标准尺码表（用于补齐未出现尺码=0） =====
+WOMEN_ORDER = ["4","6","8","10","12","14","16","18","20"]
+MEN_ALPHA_ORDER = ["2XS","XS","S","M","L","XL","2XL","3XL"]
+MEN_NUM_ORDER = [str(n) for n in range(30, 52, 2)]  # 30..50（不含52）
+
+def _full_order_for_gender(gender: str) -> list[str]:
+    """根据性别返回完整尺码顺序；未知/童款先按男款处理。"""
+    g = (gender or "").lower()
+    if "女" in g or "women" in g or "ladies" in g:
+        return WOMEN_ORDER
+    return MEN_ALPHA_ORDER + MEN_NUM_ORDER
+
+
 # ================== 并发去重 + 原子写 ==================
 _WRITTEN: set[str] = set()
 _WRITTEN_LOCK = threading.Lock()
@@ -241,20 +255,33 @@ def _extract_sizes_and_stock(initial: Optional[dict], soup: BeautifulSoup) -> Li
         normed.append((s2, st))
     return normed
 
-def _build_size_lines(pairs: List[Tuple[str, str]]) -> Tuple[str, str]:
+def _build_size_lines(pairs: List[Tuple[str, str]], gender: str) -> Tuple[str, str]:
+    """
+    将出现的尺码按“有货优先”合并，并补齐未出现的尺码为 无货/0。
+    - Product Size:         34:有货;36:无货;...
+    - Product Size Detail:  34:3:000...;36:0:000...;...
+    """
     by_size: Dict[str, str] = {}
-    for size, status in pairs:
+
+    # 1) 页面上“出现的尺码”：同尺码多次 -> 有货优先
+    for size, status in (pairs or []):
         prev = by_size.get(size)
         if prev is None or (prev == "无货" and status == "有货"):
             by_size[size] = status
-    def _key(k: str):
-        m = re.fullmatch(r"\d{1,3}", k)
-        return (0, int(k)) if m else (1, k)
-    ordered = sorted(by_size.keys(), key=_key)
-    ps = ";".join(f"{k}:{by_size[k]}" for k in ordered) or "No Data"
+
+    # 2) 取得完整尺码表，并把未出现的尺码补齐为 无货/0
+    full_order = _full_order_for_gender(gender)
+    for s in full_order:
+        if s not in by_size:
+            by_size[s] = "无货"
+
+    # 3) 按完整表顺序输出（稳定顺序）
     EAN = "0000000000000"
+    ordered = list(full_order)
+    ps  = ";".join(f"{k}:{by_size[k]}" for k in ordered) or "No Data"
     psd = ";".join(f"{k}:{3 if by_size[k]=='有货' else 0}:{EAN}" for k in ordered) or "No Data"
     return ps, psd
+
 
 def _guess_material(desc: str) -> str:
     if not desc or desc == "No Data":
@@ -292,7 +319,8 @@ def parse_info(html: str, url: str) -> Dict[str, Any]:
     if orig is None and curr is not None: orig = curr
 
     size_pairs = _extract_sizes_and_stock(initial, soup)
-    product_size, product_size_detail = _build_size_lines(size_pairs)
+    product_size, product_size_detail = _build_size_lines(size_pairs, gender)
+
 
     material = _guess_material(desc)
 

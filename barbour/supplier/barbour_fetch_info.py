@@ -107,31 +107,45 @@ def _sort_sizes(keys: list[str], gender: str) -> list[str]:
 
 def _build_size_lines_from_buttons(size_buttons_map: dict[str, str], gender: str) -> tuple[str, str]:
     """
-    用按钮文本和可用性，生成：
+    用按钮文本和可用性生成两行，并补齐未出现的尺码为无货(0)：
       - Product Size: "34:有货;36:无货;..."
-      - Product Size Detail: "34:1:0000000000000;36:0:0000000000000;..."
+      - Product Size Detail: "34:3:0000000000000;36:0:0000000000000;..."
     规则：
       - 同尺码重复出现时，“有货”优先
       - 男款数字尺码过滤 52
+      - 未出现的尺码自动补齐为 无货/0
     """
     status_bucket: dict[str, str] = {}
     stock_bucket: dict[str, int] = {}
 
+    # 1) 先把页面上出现的尺码写入（有货优先覆盖）
     for raw, status in (size_buttons_map or {}).items():
         norm = _normalize_size_token(raw, gender or "男款")
         if not norm:
             continue
-        # “有货”优先覆盖
         curr = "有货" if status == "有货" else "无货"
         prev = status_bucket.get(norm)
         if prev is None or (prev == "无货" and curr == "有货"):
             status_bucket[norm] = curr
             stock_bucket[norm] = 3 if curr == "有货" else 0
 
-    ordered = _sort_sizes(list(status_bucket.keys()), gender or "男款")
+    # 2) 准备完整尺码表，并按性别补齐缺失尺码为 0
+    if (gender or "男款") == "女款":
+        full_order = WOMEN_ORDER
+    else:
+        full_order = MEN_ALPHA_ORDER + MEN_NUM_ORDER   # MEN_NUM_ORDER 已经是 30..50（不含 52）
+
+    for size in full_order:
+        if size not in status_bucket:
+            status_bucket[size] = "无货"
+            stock_bucket[size] = 0
+
+    # 3) 重新按完整尺码表排序输出
+    ordered = _sort_sizes(full_order, gender or "男款")
     ps  = ";".join(f"{k}:{status_bucket[k]}" for k in ordered)
     psd = ";".join(f"{k}:{stock_bucket[k]}:0000000000000" for k in ordered)
     return ps, psd
+
 
 # ---------- 解析核心：保持你当前的结构 ----------
 def extract_product_info_from_html(html: str, url: str) -> dict:

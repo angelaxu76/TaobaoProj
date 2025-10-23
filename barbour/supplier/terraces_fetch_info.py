@@ -13,7 +13,7 @@ import json
 import hashlib
 from pathlib import Path
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, soup
 from barbour.core.site_utils import assert_site_or_raise as canon
 from barbour.core.sim_matcher import match_product, choose_best, explain_results
 from sqlalchemy import create_engine
@@ -22,6 +22,19 @@ from config import BARBOUR, BRAND_CONFIG
 # ==== 浏览器兜底（与 very 同风格） ====
 import shutil, subprocess, sys
 import undetected_chromedriver as uc
+
+# ===== 标准尺码表（用于补齐未出现尺码=0） =====
+WOMEN_ORDER = ["4","6","8","10","12","14","16","18","20"]
+MEN_ALPHA_ORDER = ["2XS","XS","S","M","L","XL","2XL","3XL"]
+MEN_NUM_ORDER = [str(n) for n in range(30, 52, 2)]  # 30..50（不含 52）
+
+def _full_order_for_gender(gender: str) -> list[str]:
+    """根据性别返回完整尺码顺序；Terraces 站整体为男款，未知也按男款处理。"""
+    g = (gender or "").lower()
+    if "女" in g or "women" in g or "ladies" in g:
+        return WOMEN_ORDER
+    return MEN_ALPHA_ORDER + MEN_NUM_ORDER
+
 
 def _get_chrome_major_version() -> int | None:
     try:
@@ -175,21 +188,16 @@ _SIZE_PAT = re.compile(
     re.I
 )
 
-def _extract_sizes(soup: BeautifulSoup) -> tuple[list[str], str]:
+def _extract_sizes(soup: BeautifulSoup, gender: str) -> tuple[list[str], str]:
     """
-    返回 (sizes, size_detail)
-    - sizes: 去重有序尺码列表（如 ['S','M','L']）
-    - size_detail: 'S:3:0000000000000;M:0:0000000000000;...'
-      约定：3=有货，0=无货；EAN 无来源时用占位 '000...'
-    策略优先级：
-      1) <script type="application/json"> 的 product/variants
-      2) DOM 中的尺码按钮/选项
-      3) JSON-LD offers（兜底）
+    返回 (sizes_seen, size_detail)
+    - sizes_seen: 网页上出现到的尺码列表（保持原样，便于兼容现有下游）
+    - size_detail: 按完整尺码表输出，出现的尺码用 3/0，未出现的尺码补 0
     """
     sizes: list[str] = []
-    avail: dict[str, int] = {}
+    avail: dict[str, int] = {}  # 1=有货, 0=无货
 
-    # —— 1) product JSON（常见于 Shopify/Turbo 主题）
+    # —— 1) product JSON（优先）
     for tag in soup.find_all("script", {"type": "application/json"}):
         raw = (tag.string or tag.get_text() or "").strip()
         if not raw or "variants" not in raw:
@@ -200,7 +208,6 @@ def _extract_sizes(soup: BeautifulSoup) -> tuple[list[str], str]:
             continue
         variants = data.get("variants")
         if isinstance(variants, list) and variants:
-            # 尺码位（option1/2/3 中的 Size）
             size_idx = None
             options = data.get("options")
             if isinstance(options, list):
@@ -221,11 +228,13 @@ def _extract_sizes(soup: BeautifulSoup) -> tuple[list[str], str]:
                 if sz:
                     if sz not in sizes:
                         sizes.append(sz)
-                    avail.setdefault(sz, is_avail)
+                    # 有货优先：若之前标记无货，这里有货覆盖它
+                    if avail.get(sz, -1) != 1:
+                        avail[sz] = 1 if is_avail else 0
             if sizes:
                 break
 
-    # —— 2) DOM：label.size-wrap > input + button.size-box（Terraces 页面结构）
+    # —— 2) DOM（回退）
     if not sizes:
         for lab in soup.select("label.size-wrap"):
             btn = lab.find("button", class_="size-box")
@@ -243,9 +252,10 @@ def _extract_sizes(soup: BeautifulSoup) -> tuple[list[str], str]:
                 disabled = True
             if sz not in sizes:
                 sizes.append(sz)
-            avail.setdefault(sz, 0 if disabled else 1)
+            if avail.get(sz, -1) != 1:
+                avail[sz] = 0 if disabled else 1
 
-    # —— 3) JSON-LD offers（极少包含尺码；尽量匹配）
+    # —— 3) JSON-LD（兜底）
     if not sizes:
         jl = _parse_json_ld(soup)
         off = jl.get("offers")
@@ -257,13 +267,22 @@ def _extract_sizes(soup: BeautifulSoup) -> tuple[list[str], str]:
                     sz = m.group(0)
                     if sz not in sizes:
                         sizes.append(sz)
-                    avail.setdefault(sz, 1 if "InStock" in str(o.get("availability", "")) else 0)
+                    if avail.get(sz, -1) != 1:
+                        avail[sz] = 1 if "InStock" in str(o.get("availability", "")) else 0
 
-    # 组装 detail（3/0 规则 + EAN 占位）
-    if sizes:
-        detail = ";".join(f"{s}:{3 if avail.get(s,1)==1 else 0}:0000000000000" for s in sizes)
-        return sizes, detail
-    return [], "No Data"
+    # ===== 统一补齐：按完整尺码表输出 Product Size Detail =====
+    EAN = "0000000000000"
+    full_order = _full_order_for_gender(gender)
+
+    # 即使完全抓不到尺码，也输出完整 0 栅格，避免下游缺行
+    if not sizes:
+        detail = ";".join(f"{s}:0:{EAN}" for s in full_order)
+        return [], detail
+
+    # 已抓到部分尺码：出现的按 avail 写 3/0，未出现的补 0
+    detail = ";".join(f"{s}:{3 if avail.get(s, 0)==1 else 0}:{EAN}" for s in full_order)
+    return sizes, detail
+
 
 # ==================== 页面解析 ====================
 def _price_to_num(s: str) -> str:
@@ -386,7 +405,10 @@ def _parse_page(html: str, url: str) -> dict:
                 product_price = adjusted_price
 
     # 尺码 & 库存
-    sizes, size_detail = _extract_sizes(soup)
+    gender = "Men"  # 站点全为男款
+    sizes, size_detail = _extract_sizes(soup, gender)
+
+
 
     # Feature & Description（Details 模块；再兜底 JSON-LD / meta description）
     features: list[str] = []
