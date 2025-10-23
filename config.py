@@ -58,6 +58,10 @@ SIZE_RANGE_CONFIG = {
     }
 }
 
+
+
+
+
 # === Barbour 品牌路径配置 ===
 BARBOUR_BASE = BASE_DIR / "barbour"
 BARBOUR = {
@@ -473,6 +477,44 @@ GEOX = {
     }
 }
 
+MS_BASE = BASE_DIR / "ms"
+MS = {
+    "BRAND": "ms",
+    "BASE": MS_BASE,
+    "IMAGE_FIRST_PRIORITY": ["F", "C", "L", "T"],
+    "IMAGE_DES_PRIORITY": ["C", "F", "L", "T"],
+    "TXT_DIR": MS_BASE / "publication" / "TXT",
+    "ORG_IMAGE_DIR": MS_BASE / "document" / "orgin_images",
+    "DEF_IMAGE_DIR": MS_BASE / "document" / "DEF_images",
+    "IMAGE_DIR": MS_BASE / "document" / "images",
+    "IMAGE_DOWNLOAD": MS_BASE / "publication" / "image_download",
+    "IMAGE_PROCESS": MS_BASE / "publication" / "image_process",
+    "IMAGE_CUTTER": MS_BASE / "publication" / "image_cutter",
+    "MERGED_DIR": MS_BASE / "document" / "image_merged",
+    "HTML_DIR": MS_BASE / "publication" / "html",
+    "HTML_DIR_DES": MS_BASE / "publication" / "html"/ "description",
+    "HTML_DIR_FIRST_PAGE": MS_BASE / "publication" / "html"/ "first_page",
+    "HTML_IMAGE": MS_BASE / "publication" / "html_image",
+    "HTML_IMAGE_DES": MS_BASE / "publication" / "html_image"/ "description",
+    "HTML_IMAGE_FIRST_PAGE": MS_BASE / "publication" / "html_image"/"first_page",
+    "HTML_CUTTER_DES": MS_BASE / "document" / "html_cutter"/ "description",
+    "HTML_CUTTER_FIRST_PAGE": MS_BASE / "document" / "html_cutter"/ "first_page",
+    "STORE_DIR": MS_BASE / "document" / "store",
+    "OUTPUT_DIR": MS_BASE / "repulibcation",
+    "TABLE_NAME": "MS_inventory",
+    "PGSQL_CONFIG": PGSQL_CONFIG,
+    "LINKS_FILE": MS_BASE / "publication" / "product_links.txt",
+    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
+    "FIELDS": {
+        "product_code": "product_code",
+        "url": "product_url",
+        "discount_price": "discount_price_gbp",
+        "original_price": "original_price_gbp",
+        "size": "size",
+        "stock": "stock_count",  # ✅ 实数库存
+        "gender": "gender"
+    }
+}
 
 # === ECCO 品牌路径配置 ===
 ECCO_BASE = BASE_DIR / "ecco"
@@ -523,7 +565,8 @@ BRAND_CONFIG = {
     "ecco": ECCO,
     "birkenstock": BIRKENSTOCK,
     "barbour": BARBOUR,  # ✅ 加这一行
-    "reiss": REISS  # ✅ 加这一行
+    "reiss": REISS,   # ✅ 加这一行
+    "ms": MS  # ✅ 新增
 }
 
 
@@ -537,4 +580,5 @@ BRAND_NAME_MAP = {
     "barbour": ("Barbour", "巴伯尔"),
     "birkenstock": ("BIRKENSTOCK", "勃肯"),
     "reiss": ("REISS", ""),  # ✅ 新增（中文名若需本地化可改为“瑞斯/锐思”等）
+    "ms": ("Marks & Spencer", "马莎"),  # ✅ 新增
 }

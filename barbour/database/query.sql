@@ -269,3 +269,5 @@ select size from barbour_offers where site_name = 'houseoffraser' and size ILIKE
 delete from barbour_offers where site_name = 'houseoffraser';
 
 select * from barbour_offers where product_code ILIKE '%MWB0856%';
+
+select * from barbour_inventory where product_code = 'MQU1638NY71'

@@ -73,7 +73,7 @@ def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 50
         if brand.lower() == "barbour":
             # 服装：从 barbour_products 取（写死仅对 barbour 生效）
             cur.execute("""
-                SELECT color_code, size, COALESCE(gender,''), COALESCE(title,''), COALESCE(category,'')
+                SELECT product_code, size, COALESCE(gender,''), COALESCE(title,''), COALESCE(category,'')
                 FROM barbour_products
             """)
             for code, sz, gender, title, cat in cur.fetchall():

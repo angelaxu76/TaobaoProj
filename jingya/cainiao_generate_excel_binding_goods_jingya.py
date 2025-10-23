@@ -150,7 +150,7 @@ def _fetch_barbour_products(pgcfg: Dict) -> Dict[Tuple[str, str], Dict[str, str]
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT color_code, size, COALESCE(gender,''), COALESCE(title,''), COALESCE(category,'')
+                SELECT product_code, size, COALESCE(gender,''), COALESCE(title,''), COALESCE(category,'')
                 FROM barbour_products
             """)
             for code, sz, gender, title, cat in cur.fetchall():
@@ -272,30 +272,51 @@ def generate_channel_binding_excel(brand: str, goods_dir: Path, debug: bool = Tr
     unbound_df["_size_raw_from_map"] = codes_sizes.apply(_safe_get_size)
 
     # 兜底：从 ch_item 文本解析
-    mask_need_fallback = (unbound_df["_code_from_name"] == "") & (unbound_df["_code_from_map"] == "")
-    if mask_need_fallback.any():
-        parsed = unbound_df.loc[mask_need_fallback, "_ch_item"].apply(_parse_code_size_from_any)
-        unbound_df.loc[mask_need_fallback, "_code_from_map"] = [p[0] for p in parsed]
-        unbound_df.loc[mask_need_fallback, "_size_raw_from_map"] = [p[1] for p in parsed]
+    # —— 兜底：为所有行预先解析一次（效率足够，也最稳妥），避免列未创建
+    parsed_all = unbound_df["_ch_item"].apply(_parse_code_size_from_any)
+    unbound_df["_code_fallback"] = [p[0] for p in parsed_all]
+    unbound_df["_size_raw_fallback"] = [p[1] for p in parsed_all]
 
-    # 选择优先来源：Excel 名称 > DB map > 文本兜底
-    unbound_df["_code"] = unbound_df["_code_from_name"].where(unbound_df["_code_from_name"] != "", unbound_df["_code_from_map"])
-    unbound_df["_size_raw"] = unbound_df["_size_raw_from_name"].where(unbound_df["_size_raw_from_name"] != "", unbound_df["_size_raw_from_map"])
+    # —— 选择优先来源：Excel 名称 > DB map > 文本兜底（统一在这里完成，确保一定有列）
+    _code_pref_1 = unbound_df["_code_from_name"].fillna("").astype(str)
+    _code_pref_2 = unbound_df["_code_from_map"].fillna("").astype(str)
+    _code_pref_3 = unbound_df["_code_fallback"].fillna("").astype(str)
 
-    # 规范化
-    unbound_df["_code"] = unbound_df["_code"].map(_alnum)
-    unbound_df["_size_norm"] = unbound_df["_size_raw"].apply(clean_size_for_barbour)
+    _size_pref_1 = unbound_df["_size_raw_from_name"].fillna("").astype(str)
+    _size_pref_2 = unbound_df["_size_raw_from_map"].fillna("").astype(str)
+    _size_pref_3 = unbound_df["_size_raw_fallback"].fillna("").astype(str)
 
-    # 生成 *外部渠道商品ID = code + size_norm
-    unbound_df["*外部渠道商品ID"] = (unbound_df["_code"].fillna("") + unbound_df["_size_norm"].fillna(""))
+    unbound_df["_code"] = _code_pref_1.where(_code_pref_1 != "", _code_pref_2.where(_code_pref_2 != "", _code_pref_3))
+    unbound_df["_size_raw"] = _size_pref_1.where(_size_pref_1 != "", _size_pref_2.where(_size_pref_2 != "", _size_pref_3))
+
+    # 统一做编码清洗（仅限 code，尺码的清洗分原始/规范化两种，保持你原设计）
+    unbound_df["_code"] = unbound_df["_code"].fillna("").astype(str).map(_alnum)
+
+    # A) 清洗后的尺码（用于名称/DB匹配）
+    unbound_df["_size_norm"] = unbound_df["_size_raw"].fillna("").astype(str).apply(clean_size_for_barbour)
+
+    # B) 原始尺码（用于外部渠道商品ID，不改变大小写，仅去掉首尾空格）
+    unbound_df["_size_id"] = unbound_df["_size_raw"].fillna("").astype(str).str.strip()
+
+
+
+
+
+    # B) 用于外部渠道商品ID（严格使用原始尺码，仅去首尾空格，不改写大小写）
+    unbound_df["_size_id"] = unbound_df["_size_raw"].fillna("").astype(str).str.strip()
+
+    # 生成 *外部渠道商品ID = 原始编码 + 原始尺码（示例：MWX0339NY91 + 2XL → MWX0339NY912XL）
+    unbound_df["*外部渠道商品ID"] = (unbound_df["_code"] + unbound_df["_size_id"])
     null_rate = (unbound_df["*外部渠道商品ID"] == "").mean()
-    log(f"✓ 生成 *外部渠道商品ID 完成（空值占比 {null_rate:.1%}）")
+    log(f"✓ 生成 *外部渠道商品ID 完成（按原始尺码；空值占比 {null_rate:.1%}）")
+
+
 
     # 生成 *商品名称
     def _name_row(row):
         code = row["_code"]
         size_raw = row["_size_raw"]
-        size_norm = row["_size_norm"]
+        size_norm = row.get("_size_norm", "")   # ← 用 get 更安全
         # inventory 提供的性别/风格（鞋类）
         inv_gender, inv_style = code_size_to_gender_style.get((code, row.get("_size_raw_from_map","")), ("", ""))
         # Barbour: 用 bp_map 提升准确性（用 clean_size 匹配）
