@@ -112,13 +112,13 @@ def _build_size_lines_from_buttons(size_buttons_map: dict[str, str], gender: str
       - Product Size Detail: "34:3:0000000000000;36:0:0000000000000;..."
     规则：
       - 同尺码重复出现时，“有货”优先
-      - 男款数字尺码过滤 52
-      - 未出现的尺码自动补齐为 无货/0
+      - 男款：自动在【字母系(2XS–3XL)】与【数字系(30–50, 不含52)】二选一，绝不混用
+      - 女款：固定 4–20
     """
     status_bucket: dict[str, str] = {}
     stock_bucket: dict[str, int] = {}
 
-    # 1) 先把页面上出现的尺码写入（有货优先覆盖）
+    # 1) 先把页面上“出现的尺码”写入（有货优先覆盖）
     for raw, status in (size_buttons_map or {}).items():
         norm = _normalize_size_token(raw, gender or "男款")
         if not norm:
@@ -129,22 +129,45 @@ def _build_size_lines_from_buttons(size_buttons_map: dict[str, str], gender: str
             status_bucket[norm] = curr
             stock_bucket[norm] = 3 if curr == "有货" else 0
 
-    # 2) 准备完整尺码表，并按性别补齐缺失尺码为 0
+    # 2) 按性别选择“单一尺码系”的完整顺序表
     if (gender or "男款") == "女款":
-        full_order = WOMEN_ORDER
+        full_order = WOMEN_ORDER[:]  # 4..20
     else:
-        full_order = MEN_ALPHA_ORDER + MEN_NUM_ORDER   # MEN_NUM_ORDER 已经是 30..50（不含 52）
+        # 男款：根据已出现的尺码自动判定使用哪一系（字母 或 数字）
+        keys = set(status_bucket.keys())
+        has_num   = any(k in MEN_NUM_ORDER   for k in keys)
+        has_alpha = any(k in MEN_ALPHA_ORDER for k in keys)
+        if has_num and not has_alpha:
+            chosen = MEN_NUM_ORDER[:]        # 只用数字系 30..50
+        elif has_alpha and not has_num:
+            chosen = MEN_ALPHA_ORDER[:]      # 只用字母系 2XS..3XL
+        elif has_num or has_alpha:
+            # 同时出现（异常场景）：取出现数量多的那一系
+            num_count   = sum(1 for k in keys if k in MEN_NUM_ORDER)
+            alpha_count = sum(1 for k in keys if k in MEN_ALPHA_ORDER)
+            chosen = MEN_NUM_ORDER[:] if num_count >= alpha_count else MEN_ALPHA_ORDER[:]
+            # 把另一系的键删掉，确保不混用
+            for k in list(status_bucket.keys()):
+                if k not in chosen:
+                    status_bucket.pop(k, None)
+                    stock_bucket.pop(k, None)
+        else:
+            # 页面啥也没识别到：默认用字母系（更常见的外套）
+            chosen = MEN_ALPHA_ORDER[:]
+        full_order = chosen
 
-    for size in full_order:
-        if size not in status_bucket:
-            status_bucket[size] = "无货"
-            stock_bucket[size] = 0
+    # 3) 对“未出现”的尺码补齐为 无货/0（仅在选定的那一系内补齐）
+    for s in full_order:
+        if s not in status_bucket:
+            status_bucket[s] = "无货"
+            stock_bucket[s] = 0
 
-    # 3) 重新按完整尺码表排序输出
-    ordered = _sort_sizes(full_order, gender or "男款")
+    # 4) 固定顺序输出（只输出选定那一系）
+    ordered = [s for s in full_order]
     ps  = ";".join(f"{k}:{status_bucket[k]}" for k in ordered)
     psd = ";".join(f"{k}:{stock_bucket[k]}:0000000000000" for k in ordered)
     return ps, psd
+
 
 
 # ---------- 解析核心：保持你当前的结构 ----------
