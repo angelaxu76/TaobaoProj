@@ -269,13 +269,23 @@ def _extract_sizes_and_stock(initial: Optional[dict], soup: BeautifulSoup) -> Li
             status = "无货" if disabled else "有货"
             pairs.append((size, status))
 
-    # 规范化 size 文本
+    # 规范化 size 文本（含字母尺码映射）
+    _alpha_canon = {
+        "XXXS":"2XS","2XS":"2XS","XXS":"XS","XS":"XS",
+        "S":"S","SMALL":"S","M":"M","MEDIUM":"M","L":"L","LARGE":"L",
+        "XL":"XL","X-LARGE":"XL","XXL":"2XL","2XL":"2XL","XXXL":"3XL","3XL":"3XL",
+    }
     normed: List[Tuple[str, str]] = []
     for s, st in pairs:
         s2 = re.sub(r"\s*\(.*?\)\s*", "", s).strip()
         s2 = re.sub(r"^(UK|EU|US)\s+", "", s2, flags=re.I)
+        s2u = s2.upper().replace("-", "").strip()
+        # 字母优先规范；否则保持数字（如 30–50）
+        if s2u in _alpha_canon:
+            s2 = _alpha_canon[s2u]
         normed.append((s2, st))
     return normed
+
 
 def _build_size_lines(pairs: List[Tuple[str, str]], gender: str) -> Tuple[str, str]:
     """

@@ -230,7 +230,7 @@ def _parse_json_ld(soup: BeautifulSoup) -> dict:
 
 # ==================== 尺码/库存抽取（DOM/JSON 多级策略） ====================
 _SIZE_PAT = re.compile(
-    r"\b(One Size|OS|XXS|XS|S|M|L|XL|XXL|3XL|4XL|5|6|7|8|9|10|11|12|13|28|30|32|34|36|38|40|42)\b",
+    r"\b(One Size|OS|XXS|XS|S|M|L|XL|XXL|3XL|4XL|5|6|7|8|9|10|11|12|13|28|30|32|34|36|38|40|42|44|46|48|50)\b"
     re.I
 )
 
