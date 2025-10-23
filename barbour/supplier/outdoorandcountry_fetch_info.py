@@ -146,39 +146,39 @@ def _fallback_style_category(name: str, desc: str, product_code: str) -> str:
 def _build_sizes_from_offers(offers, gender: str):
     """
     从 Offers 生成两行：
-    - Product Size（返回但一般不写入）
-    - Product Size Detail（写入；有货=3，无货=0）
+    - Product Size（可不写盘）
+    - Product Size Detail（写盘；有货=3，无货=0）
     ✅ 男款：自动在【字母系(2XS–3XL)】与【数字系(30–50, 不含52)】二选一，绝不混用
-    ✅ 女款：固定 4–20
+    ✅ 女款：固定 4–20；未出现的尺码补 0
     """
     product_size = ""
     product_size_detail = ""
 
+    # --- 1) 规范化尺码 ---
     def norm(raw):
         s = (raw or "").strip().upper().replace("UK ", "")
         s = re.sub(r"\s*\(.*?\)\s*", "", s)
-        m = re.findall(r"\d{2,3}", s)
-        if not m and gender == "女款" and re.fullmatch(r"\d{1,2}", s):
-            m = [s]
-        if m:
-            n = int(m[0])
-            if 4 <= n <= 20 and n % 2 == 0 and gender == "女款":
+
+        # 数字系（优先识别出 30..50 偶数）
+        mnum = re.findall(r"\d{2,3}", s)
+        if mnum:
+            n = int(mnum[0])
+            if gender == "女款" and 4 <= n <= 20 and n % 2 == 0:
                 return str(n)
-            if 30 <= n <= 50 and n % 2 == 0 and gender == "男款":
+            if gender == "男款" and 30 <= n <= 50 and n % 2 == 0:
                 return str(n)
-            if gender == "男款" and 28 <= n <= 54:
-                candidate = n if n % 2 == 0 else n - 1
-                candidate = max(30, min(50, candidate))
-                return str(candidate)
-        map_alpha = {
+
+        # 字母系映射
+        alpha = {
             "XXXS":"2XS","2XS":"2XS","XXS":"XS","XS":"XS",
             "S":"S","SMALL":"S","M":"M","MEDIUM":"M","L":"L","LARGE":"L",
             "XL":"XL","X-LARGE":"XL","XXL":"2XL","2XL":"2XL","XXXL":"3XL","3XL":"3XL"
         }
         key = s.replace("-", "").replace(" ", "")
-        return map_alpha.get(key)
+        return alpha.get(key)
 
-    bucket = {}
+    # --- 2) 聚合出现的尺码（同尺码多次：有货优先） ---
+    bucket = {}  # {size: "有货"/"无货"}
     for size, price, stock_text, _ in (offers or []):
         ns = norm(size)
         if not ns:
@@ -188,11 +188,11 @@ def _build_sizes_from_offers(offers, gender: str):
         if prev is None or (prev == "无货" and curr == "有货"):
             bucket[ns] = curr
 
+    # --- 3) 选择“单一尺码系”的完整顺序表 ---
     WOMEN     = ["4","6","8","10","12","14","16","18","20"]
     MEN_ALPHA = ["2XS","XS","S","M","L","XL","2XL","3XL"]
     MEN_NUM   = [str(n) for n in range(30, 52, 2)]  # 30..50（不含52）
 
-    # === 关键：选“单一尺码系” ===
     if gender == "女款":
         full_order = WOMEN[:]
     else:
@@ -208,26 +208,28 @@ def _build_sizes_from_offers(offers, gender: str):
             num_count   = sum(1 for k in keys if k in MEN_NUM)
             alpha_count = sum(1 for k in keys if k in MEN_ALPHA)
             chosen = MEN_NUM[:] if num_count >= alpha_count else MEN_ALPHA[:]
-            # 清理另一系，避免混用
+            # ★ 清理另一系，避免混用
             for k in list(bucket.keys()):
                 if k not in chosen:
                     bucket.pop(k, None)
         else:
-            # 页面没有识别到可归一的尺码：默认用字母系
+            # 实在判不出（页面没识别到可归一的尺码），默认字母系
             chosen = MEN_ALPHA[:]
         full_order = chosen
 
-    # === 补齐“未出现”的尺码为 无货/0（仅在选定的那一系内） ===
+    # --- 4) 仅在选定那一系内补齐未出现尺码为 无货/0 ---
     for s in full_order:
         if s not in bucket:
             bucket[s] = "无货"
 
-    # === 按完整表输出 ===
+    # --- 5) 输出（固定顺序；有货=3，无货=0；EAN 占位不变） ---
+    EAN = "0000000000000"
     product_size = ";".join(f"{k}:{bucket[k]}" for k in full_order)
     product_size_detail = ";".join(
-        f"{k}:{3 if bucket[k]=='有货' else 0}:0000000000000" for k in full_order
+        f"{k}:{3 if bucket[k]=='有货' else 0}:{EAN}" for k in full_order
     )
     return product_size, product_size_detail
+
 
 # ========= Outdoor 专属业务处理 =========
 def _inject_price_from_offers(info: dict) -> None:

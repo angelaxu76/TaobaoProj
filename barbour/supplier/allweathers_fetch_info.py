@@ -381,16 +381,6 @@ def _sort_sizes(keys: list[str], gender: str) -> list[str]:
     return ordered
 
 def _build_size_lines_from_sizedetail(size_detail: dict, gender: str) -> tuple[str, str]:
-    """
-    输入 SizeDetail(dict) → 输出：
-      Product Size: 34:有货;...
-      Product Size Detail: 34:3:000...;...
-    规则：
-      - 同尺码多次：有货优先
-      - 男款二选一：字母系(2XS–3XL) 或 数字系(30–50, 不含52)，不混用
-      - 女款固定：4–20
-      - 未出现的尺码补齐为 0（完整栅格）
-    """
     bucket_status: dict[str, str] = {}
     bucket_stock: dict[str, int] = {}
 
@@ -410,6 +400,12 @@ def _build_size_lines_from_sizedetail(size_detail: dict, gender: str) -> tuple[s
     present_keys = set(bucket_status.keys())
     full_order = _choose_full_order_for_gender(gender or "男款", present_keys)
 
+    # ★★★ 2.5) 先把“另一套系”的键清掉（防止后续被下游再拼回去）
+    for k in list(bucket_status.keys()):
+        if k not in full_order:
+            bucket_status.pop(k, None)
+            bucket_stock.pop(k, None)
+
     # 3) 仅在选定那一系内补齐未出现的尺码为 0
     for size in full_order:
         if size not in bucket_status:
@@ -421,6 +417,7 @@ def _build_size_lines_from_sizedetail(size_detail: dict, gender: str) -> tuple[s
     ps  = ";".join(f"{k}:{bucket_status[k]}" for k in ordered)
     psd = ";".join(f"{k}:{bucket_stock[k]}:0000000000000" for k in ordered)
     return ps, psd
+
 
 # ============ 抓取并写入 TXT（pipeline 签名保持不变） ============
 
