@@ -126,7 +126,7 @@ def _build_size_lines_from_buttons(size_buttons_map: dict[str, str], gender: str
         prev = status_bucket.get(norm)
         if prev is None or (prev == "无货" and curr == "有货"):
             status_bucket[norm] = curr
-            stock_bucket[norm] = 1 if curr == "有货" else 0
+            stock_bucket[norm] = 3 if curr == "有货" else 0
 
     ordered = _sort_sizes(list(status_bucket.keys()), gender or "男款")
     ps  = ";".join(f"{k}:{status_bucket[k]}" for k in ordered)
