@@ -13,11 +13,12 @@ import json
 import hashlib
 from pathlib import Path
 import requests
-from bs4 import BeautifulSoup, soup
+from bs4 import BeautifulSoup
 from barbour.core.site_utils import assert_site_or_raise as canon
 from barbour.core.sim_matcher import match_product, choose_best, explain_results
 from sqlalchemy import create_engine
 from config import BARBOUR, BRAND_CONFIG
+
 
 # ==== 浏览器兜底（与 very 同风格） ====
 import shutil, subprocess, sys

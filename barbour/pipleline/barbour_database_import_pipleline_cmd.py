@@ -37,12 +37,12 @@ def barbour_database_import_pipleline():
     # collect_terraces_links()
 
     # Step 1: TODO 将txt中数据导入barbour product中
-    # barbour_fetch_info()
-    # outdoorandcountry_fetch_info(max_workers=10)
-    # allweathers_fetch_info(7)
-    # houseoffraser_fetch_info(max_workers=1, headless=False)
-    # very_fetch_info()
-    # terraces_fetch_info()
+    barbour_fetch_info()
+    outdoorandcountry_fetch_info(max_workers=10)
+    allweathers_fetch_info(7)
+    houseoffraser_fetch_info(max_workers=1, headless=False)
+    very_fetch_info()
+    terraces_fetch_info()
 
 
     # Step 2: TODO 将txt中数据导入barbour product中
@@ -95,14 +95,14 @@ def barbour_database_import_pipleline():
     # price_dest_excel = r"D:\TB\Products\barbour\repulibcation\publication_prices"
     # export_jiangya_channel_prices("barbour",price_dest_excel)
 
-    print("\n🟡 Step: 6️⃣ 获取excel文件，用来更新各个淘宝店铺价格，输入文件夹可以是多个店铺的导出文件")
-    generate_price_excels_bulk(
-        brand="barbour",
-        input_dir=r"D:\TB\Products\barbour\repulibcation\store_prices\input",
-        output_dir=r"D:\TB\Products\barbour\repulibcation\store_prices\output",
-        suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
-        drop_rows_without_price=False  # 不丢行，查不到的价格留空
-    )
+    # print("\n🟡 Step: 6️⃣ 获取excel文件，用来更新各个淘宝店铺价格，输入文件夹可以是多个店铺的导出文件")
+    # generate_price_excels_bulk(
+    #     brand="barbour",
+    #     input_dir=r"D:\TB\Products\barbour\repulibcation\store_prices\input",
+    #     output_dir=r"D:\TB\Products\barbour\repulibcation\store_prices\output",
+    #     suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
+    #     drop_rows_without_price=False  # 不丢行，查不到的价格留空
+    # )
 
 
     # print("\\n🟡 Step: 6️⃣ 导出barbour sku基本价格用于更新鲸芽价格")
