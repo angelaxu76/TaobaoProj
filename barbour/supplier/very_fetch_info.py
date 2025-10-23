@@ -131,6 +131,28 @@ def get_dbapi_connection(conn_or_engine):
     return conn_or_engine
 
 # ================== 工具函数 ==================
+
+def _choose_full_order_for_gender(gender: str, present: set[str]) -> list[str]:
+    """男款在【字母系(2XS–3XL)】与【数字系(30–50,不含52)】二选一；女款固定 4–20。"""
+    g = (gender or "").lower()
+    if "女" in g or "women" in g or "ladies" in g:
+        return WOMEN_ORDER[:]  # 女款固定 4..20
+
+    has_num   = any(k in MEN_NUM_ORDER   for k in present)
+    has_alpha = any(k in MEN_ALPHA_ORDER for k in present)
+    if has_num and not has_alpha:
+        return MEN_NUM_ORDER[:]          # 只用数字系 30..50
+    if has_alpha and not has_num:
+        return MEN_ALPHA_ORDER[:]        # 只用字母系 2XS..3XL
+    if has_num or has_alpha:
+        # 同时出现（异常）→ 选出现更多的那一系
+        num_count   = sum(1 for k in present if k in MEN_NUM_ORDER)
+        alpha_count = sum(1 for k in present if k in MEN_ALPHA_ORDER)
+        return MEN_NUM_ORDER[:] if num_count >= alpha_count else MEN_ALPHA_ORDER[:]
+    # 实在判不出来：默认用字母系（外套更常见）
+    return MEN_ALPHA_ORDER[:]
+
+
 def _clean(s: Optional[str]) -> str:
     return re.sub(r"\s+", " ", (s or "").strip())
 
@@ -260,27 +282,38 @@ def _build_size_lines(pairs: List[Tuple[str, str]], gender: str) -> Tuple[str, s
     将出现的尺码按“有货优先”合并，并补齐未出现的尺码为 无货/0。
     - Product Size:         34:有货;36:无货;...
     - Product Size Detail:  34:3:000...;36:0:000...;...
+    ✅ 男款：二选一（字母系 或 数字系），绝不混用
+    ✅ 女款：固定 4–20
     """
     by_size: Dict[str, str] = {}
 
-    # 1) 页面上“出现的尺码”：同尺码多次 -> 有货优先
+    # 1) 先合并“出现的尺码”（同尺码多次 → 有货优先）
     for size, status in (pairs or []):
         prev = by_size.get(size)
         if prev is None or (prev == "无货" and status == "有货"):
             by_size[size] = status
 
-    # 2) 取得完整尺码表，并把未出现的尺码补齐为 无货/0
-    full_order = _full_order_for_gender(gender)
+    # 2) 依据“已出现的尺码”选择男款尺码系（或女款 4–20）
+    present_keys = set(by_size.keys())
+    full_order = _choose_full_order_for_gender(gender, present_keys)
+
+    # 3) 清理混入的另一系（防止同时输出两套系）
+    for k in list(by_size.keys()):
+        if k not in full_order:
+            by_size.pop(k, None)
+
+    # 4) 仅在选定那一系内补齐未出现的尺码为 无货/0
     for s in full_order:
         if s not in by_size:
             by_size[s] = "无货"
 
-    # 3) 按完整表顺序输出（稳定顺序）
+    # 5) 固定顺序输出（有货=3，无货=0）
     EAN = "0000000000000"
     ordered = list(full_order)
     ps  = ";".join(f"{k}:{by_size[k]}" for k in ordered) or "No Data"
     psd = ";".join(f"{k}:{3 if by_size[k]=='有货' else 0}:{EAN}" for k in ordered) or "No Data"
     return ps, psd
+
 
 
 def _guess_material(desc: str) -> str:

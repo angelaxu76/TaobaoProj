@@ -25,6 +25,51 @@ import shutil, subprocess, sys
 import undetected_chromedriver as uc
 
 # ===== 标准尺码表（用于补齐未出现尺码=0） =====
+
+# —— 将抓到的尺码规范化到我们的目标表（字母系用 2XS..3XL；数字系用 30..50 偶数）
+_ALPHA_CANON = {
+    "XXXS": "2XS", "2XS": "2XS",
+    "XXS": "XS",  "XS": "XS",
+    "S": "S", "SMALL": "S",
+    "M": "M", "MEDIUM": "M",
+    "L": "L", "LARGE": "L",
+    "XL": "XL", "X-LARGE": "XL",
+    "XXL": "2XL", "2XL": "2XL",
+    "XXXL": "3XL", "3XL": "3XL",
+}
+
+def _canon_token(tok: str) -> str | None:
+    t = (tok or "").strip().upper().replace("UK ", "")
+    # 先看字母系
+    if t in _ALPHA_CANON:
+        return _ALPHA_CANON[t]
+    # 再看数字系：只接收 30..50 的偶数
+    if t.isdigit():
+        n = int(t)
+        if 30 <= n <= 50 and n % 2 == 0:
+            return str(n)
+    return None
+
+def _choose_full_order_for_gender(gender: str, present: set[str]) -> list[str]:
+    """男款在【字母系】与【数字系】二选一；女款固定 4–20。"""
+    g = (gender or "").lower()
+    if "女" in g or "women" in g or "ladies" in g:
+        return WOMEN_ORDER[:]
+
+    has_num   = any(k in MEN_NUM_ORDER   for k in present)
+    has_alpha = any(k in MEN_ALPHA_ORDER for k in present)
+    if has_num and not has_alpha:
+        return MEN_NUM_ORDER[:]
+    if has_alpha and not has_num:
+        return MEN_ALPHA_ORDER[:]
+    if has_num or has_alpha:
+        num_count   = sum(1 for k in present if k in MEN_NUM_ORDER)
+        alpha_count = sum(1 for k in present if k in MEN_ALPHA_ORDER)
+        return MEN_NUM_ORDER[:] if num_count >= alpha_count else MEN_ALPHA_ORDER[:]
+    # 实在判不出来：默认字母系（更常见）
+    return MEN_ALPHA_ORDER[:]
+
+
 WOMEN_ORDER = ["4","6","8","10","12","14","16","18","20"]
 MEN_ALPHA_ORDER = ["2XS","XS","S","M","L","XL","2XL","3XL"]
 MEN_NUM_ORDER = [str(n) for n in range(30, 52, 2)]  # 30..50（不含 52）
@@ -272,17 +317,27 @@ def _extract_sizes(soup: BeautifulSoup, gender: str) -> tuple[list[str], str]:
                         avail[sz] = 1 if "InStock" in str(o.get("availability", "")) else 0
 
     # ===== 统一补齐：按完整尺码表输出 Product Size Detail =====
+# ===== 统一补齐：按“单一尺码系”输出 Product Size Detail =====
     EAN = "0000000000000"
-    full_order = _full_order_for_gender(gender)
 
-    # 即使完全抓不到尺码，也输出完整 0 栅格，避免下游缺行
+    # 先把抓到的尺码规范化，用来判断该选哪一套（字母/数字）
+    present_norm = set()
+    for s in sizes:
+        cs = _canon_token(s)
+        if cs:
+            present_norm.add(cs)
+
+    full_order = _choose_full_order_for_gender(gender, present_norm)
+
+    # 即使完全抓不到尺码，也输出“选定系”的完整 0 栅格，避免下游缺行
     if not sizes:
         detail = ";".join(f"{s}:0:{EAN}" for s in full_order)
         return [], detail
 
-    # 已抓到部分尺码：出现的按 avail 写 3/0，未出现的补 0
+    # 已抓到部分尺码：出现的按 avail 写 3/0，未出现的补 0（仅在选定系里）
     detail = ";".join(f"{s}:{3 if avail.get(s, 0)==1 else 0}:{EAN}" for s in full_order)
     return sizes, detail
+
 
 
 # ==================== 页面解析 ====================

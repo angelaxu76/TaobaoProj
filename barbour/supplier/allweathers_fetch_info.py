@@ -324,6 +324,26 @@ ALPHA_MAP = {
     "XXXL": "3XL", "3XL": "3XL",
 }
 
+def _choose_full_order_for_gender(gender: str, present: set[str]) -> list[str]:
+    """男款在【字母系】与【数字系】二选一；女款固定 4–20。"""
+    g = (gender or "").lower()
+    if "女" in g:
+        return WOMEN_ORDER[:]  # 4..20
+
+    has_num   = any(k in MEN_NUM_ORDER   for k in present)
+    has_alpha = any(k in MEN_ALPHA_ORDER for k in present)
+    if has_num and not has_alpha:
+        return MEN_NUM_ORDER[:]          # 30..50（不含52）
+    if has_alpha and not has_num:
+        return MEN_ALPHA_ORDER[:]        # 2XS..3XL
+    if has_num or has_alpha:
+        num_count   = sum(1 for k in present if k in MEN_NUM_ORDER)
+        alpha_count = sum(1 for k in present if k in MEN_ALPHA_ORDER)
+        return MEN_NUM_ORDER[:] if num_count >= alpha_count else MEN_ALPHA_ORDER[:]
+    # 实在判不出来，默认用字母系
+    return MEN_ALPHA_ORDER[:]
+
+
 def _normalize_size(token: str, gender: str) -> str | None:
     """将 'UK 36' / '36' / 'XL' 归一到你的标准，并过滤男款 52。"""
     s = (token or "").strip().upper()
@@ -363,17 +383,18 @@ def _sort_sizes(keys: list[str], gender: str) -> list[str]:
 def _build_size_lines_from_sizedetail(size_detail: dict, gender: str) -> tuple[str, str]:
     """
     输入 SizeDetail(dict) → 输出：
-      Product Size（34:有货;...）【返回但你可不写入】
-      Product Size Detail（34:3:000...;...）
+      Product Size: 34:有货;...
+      Product Size Detail: 34:3:000...;...
     规则：
       - 同尺码多次：有货优先
-      - 男款数字：30..50（偶数），显式排除 52（文件上方 MEN_NUM_ORDER 已处理）
-      - ⚠️ 未出现的尺码也补齐为 无货/0（完整栅格）
+      - 男款二选一：字母系(2XS–3XL) 或 数字系(30–50, 不含52)，不混用
+      - 女款固定：4–20
+      - 未出现的尺码补齐为 0（完整栅格）
     """
     bucket_status: dict[str, str] = {}
     bucket_stock: dict[str, int] = {}
 
-    # 1) 先用页面提供的尺码填充（有货优先覆盖）
+    # 1) 汇总页面出现的尺码（有货优先）
     for raw_size, meta in (size_detail or {}).items():
         norm = _normalize_size(raw_size, gender or "男款")
         if not norm:
@@ -385,24 +406,21 @@ def _build_size_lines_from_sizedetail(size_detail: dict, gender: str) -> tuple[s
             bucket_status[norm] = status
             bucket_stock[norm] = 3 if stock > 0 else 0
 
-    # 2) 准备完整尺码表（按性别），把未出现的尺码补齐为 0
-    if (gender or "男款") == "女款":
-        full_order = WOMEN_ORDER
-    else:
-        full_order = MEN_ALPHA_ORDER + MEN_NUM_ORDER  # MEN_NUM_ORDER 已是 30..50，不含 52
+    # 2) 选择“单一尺码系”的完整顺序表（男款二选一；女款固定）
+    present_keys = set(bucket_status.keys())
+    full_order = _choose_full_order_for_gender(gender or "男款", present_keys)
 
+    # 3) 仅在选定那一系内补齐未出现的尺码为 0
     for size in full_order:
         if size not in bucket_status:
             bucket_status[size] = "无货"
             bucket_stock[size] = 0
 
-    # 3) 按完整表输出（保证顺序稳定）
-    ordered = _sort_sizes(full_order, gender or "男款")
+    # 4) 按选定系固定顺序输出
+    ordered = list(full_order)
     ps  = ";".join(f"{k}:{bucket_status[k]}" for k in ordered)
     psd = ";".join(f"{k}:{bucket_stock[k]}:0000000000000" for k in ordered)
     return ps, psd
-
-
 
 # ============ 抓取并写入 TXT（pipeline 签名保持不变） ============
 

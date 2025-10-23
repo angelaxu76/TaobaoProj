@@ -24,7 +24,7 @@ from config import BARBOUR
 
 def barbour_database_import_pipleline():
     # print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    backup_and_clear_brand_dirs(BARBOUR)
+    # backup_and_clear_brand_dirs(BARBOUR)
 
 
     print("\n🌐 步骤 1：抓取商品链接")

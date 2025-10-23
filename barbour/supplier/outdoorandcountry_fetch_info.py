@@ -148,7 +148,8 @@ def _build_sizes_from_offers(offers, gender: str):
     从 Offers 生成两行：
     - Product Size（返回但一般不写入）
     - Product Size Detail（写入；有货=3，无货=0）
-    同时补齐未出现的尺码为 无货/0；男装过滤 52。
+    ✅ 男款：自动在【字母系(2XS–3XL)】与【数字系(30–50, 不含52)】二选一，绝不混用
+    ✅ 女款：固定 4–20
     """
     product_size = ""
     product_size_detail = ""
@@ -178,7 +179,7 @@ def _build_sizes_from_offers(offers, gender: str):
         return map_alpha.get(key)
 
     bucket = {}
-    for size, price, stock_text, _ in offers or []:
+    for size, price, stock_text, _ in (offers or []):
         ns = norm(size)
         if not ns:
             continue
@@ -187,28 +188,46 @@ def _build_sizes_from_offers(offers, gender: str):
         if prev is None or (prev == "无货" and curr == "有货"):
             bucket[ns] = curr
 
-    WOMEN = ["4","6","8","10","12","14","16","18","20"]
+    WOMEN     = ["4","6","8","10","12","14","16","18","20"]
     MEN_ALPHA = ["2XS","XS","S","M","L","XL","2XL","3XL"]
-    MEN_NUM = [str(n) for n in range(30, 52, 2)]  # 30..50（不含 52）
+    MEN_NUM   = [str(n) for n in range(30, 52, 2)]  # 30..50（不含52）
 
-    # ① 先对出现过的尺码排序
-    ordered_present = [k for k in WOMEN if k in bucket] if gender == "女款" \
-                      else [k for k in MEN_ALPHA if k in bucket] + [k for k in MEN_NUM if k in bucket]
+    # === 关键：选“单一尺码系” ===
+    if gender == "女款":
+        full_order = WOMEN[:]
+    else:
+        keys = set(bucket.keys())
+        has_num   = any(k in MEN_NUM   for k in keys)
+        has_alpha = any(k in MEN_ALPHA for k in keys)
+        if has_num and not has_alpha:
+            chosen = MEN_NUM[:]
+        elif has_alpha and not has_num:
+            chosen = MEN_ALPHA[:]
+        elif has_num or has_alpha:
+            # 同时出现（异常）→ 取出现数量更多的那一系
+            num_count   = sum(1 for k in keys if k in MEN_NUM)
+            alpha_count = sum(1 for k in keys if k in MEN_ALPHA)
+            chosen = MEN_NUM[:] if num_count >= alpha_count else MEN_ALPHA[:]
+            # 清理另一系，避免混用
+            for k in list(bucket.keys()):
+                if k not in chosen:
+                    bucket.pop(k, None)
+        else:
+            # 页面没有识别到可归一的尺码：默认用字母系
+            chosen = MEN_ALPHA[:]
+        full_order = chosen
 
-    # ② 再按完整尺码表补齐缺失尺码（无货/0）
-    full_order = WOMEN if gender == "女款" else (MEN_ALPHA + MEN_NUM)
+    # === 补齐“未出现”的尺码为 无货/0（仅在选定的那一系内） ===
     for s in full_order:
         if s not in bucket:
             bucket[s] = "无货"
 
-    # ③ 最终使用完整尺码表输出
-    ordered = [k for k in full_order]  # 已按预设顺序
-    product_size = ";".join(f"{k}:{bucket[k]}" for k in ordered)
-    product_size_detail = ";".join(f"{k}:{3 if bucket[k]=='有货' else 0}:0000000000000" for k in ordered)
+    # === 按完整表输出 ===
+    product_size = ";".join(f"{k}:{bucket[k]}" for k in full_order)
+    product_size_detail = ";".join(
+        f"{k}:{3 if bucket[k]=='有货' else 0}:0000000000000" for k in full_order
+    )
     return product_size, product_size_detail
-
-
-
 
 # ========= Outdoor 专属业务处理 =========
 def _inject_price_from_offers(info: dict) -> None:
