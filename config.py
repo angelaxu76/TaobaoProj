@@ -97,41 +97,52 @@ BARBOUR = {
 # === 新增 very 配置 ===
     "LINKS_FILES": {
         "outdoorandcountry": BARBOUR_BASE / "publication" / "outdoorandcountry" / "product_links.txt",
-        "allweathers": BARBOUR_BASE / "publication" / "allweathers" / "product_links.txt",
-        "barbour": BARBOUR_BASE / "publication" / "barbour" / "product_links.txt",
-        "houseoffraser": BARBOUR_BASE / "publication" / "houseoffraser" / "product_links.txt",  # ✅ 新增
-        "philipmorris": BARBOUR_BASE / "publication" / "philipmorris" / "product_links.txt",  # ✅ 新增
-        "very": BARBOUR_BASE / "publication" / "very" / "product_links.txt",  # ✅ 新增
-        "terraces": BARBOUR_BASE / "publication" / "terraces" / "product_links.txt",
+        "allweathers":       BARBOUR_BASE / "publication" / "allweathers" / "product_links.txt",
+        "barbour":           BARBOUR_BASE / "publication" / "barbour" / "product_links.txt",
+        "houseoffraser":     BARBOUR_BASE / "publication" / "houseoffraser" / "product_links.txt",
+        "philipmorris":      BARBOUR_BASE / "publication" / "philipmorris" / "product_links.txt",
+        "very":              BARBOUR_BASE / "publication" / "very" / "product_links.txt",
+        "terraces":          BARBOUR_BASE / "publication" / "terraces" / "product_links.txt",
+        "flannels":          BARBOUR_BASE / "publication" / "flannels" / "product_links.txt",   # ✅ 新增 Flannels
     },
 
 
     "SUPPLIER_DISCOUNT_RULES": {
-        "allweathers": {"type": "coupon_fullprice_only", "ratio": 0.90},
-        "outdoorandcountry":          {"type": "coupon_fullprice_only", "ratio": 0.90},
-        "__default__":   {"type": "none"}
+        "allweathers":        {"type": "coupon_fullprice_only", "ratio": 0.90},
+        "outdoorandcountry":  {"type": "coupon_fullprice_only", "ratio": 0.90},
+        "flannels":           {"type": "none"},   # ✅ 新增 Flannels：目前不参与折扣规则
+        "__default__":        {"type": "none"},
     },
+
 
     "TXT_DIRS": {
-        "all": BARBOUR_BASE / "publication" / "TXT",  # ✅ 新增
+        "all":               BARBOUR_BASE / "publication" / "TXT",
         "outdoorandcountry": BARBOUR_BASE / "publication" / "outdoorandcountry" / "TXT",
-        "allweathers": BARBOUR_BASE / "publication" / "allweathers" / "TXT",  # 👈 修复
-        "barbour": BARBOUR_BASE / "publication" / "barbour" / "TXT",          # 👈 修复
-        "houseoffraser": BARBOUR_BASE / "publication" / "houseoffraser" / "TXT",  # ✅ 新增
-        "philipmorris": BARBOUR_BASE / "publication" / "philipmorris" / "TXT",    # ✅ 新增
-        "very": BARBOUR_BASE / "publication" / "very" / "TXT",  # ✅ 新增
-        "terraces": BARBOUR_BASE / "publication" / "terraces" / "TXT",
+        "allweathers":       BARBOUR_BASE / "publication" / "allweathers" / "TXT",
+        "barbour":           BARBOUR_BASE / "publication" / "barbour" / "TXT",
+        "houseoffraser":     BARBOUR_BASE / "publication" / "houseoffraser" / "TXT",
+        "philipmorris":      BARBOUR_BASE / "publication" / "philipmorris" / "TXT",
+        "very":              BARBOUR_BASE / "publication" / "very" / "TXT",
+        "terraces":          BARBOUR_BASE / "publication" / "terraces" / "TXT",
+        "flannels":          BARBOUR_BASE / "publication" / "flannels" / "TXT",   # ✅ 新增 Flannels
     },
 
+
     "FIELDS": {
-        "product_code": "product_code",
-        "url": "product_url",
+        "product_code":   "product_code",
+        "url":            "product_url",
         "discount_price": "discount_price_gbp",
         "original_price": "original_price_gbp",
-        "size": "size",
-        "stock": "stock_status",
-        "gender": "gender"
+        "size":           "size",
+        "stock":          "stock_status",
+        "gender":         "gender",
     },
+
+
+
+
+
+
     "CODE_PREFIX_RULES":{
         # Wax Jackets
         "MWX": ("男款", "蜡棉夹克"),

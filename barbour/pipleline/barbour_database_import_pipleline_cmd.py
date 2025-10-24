@@ -10,7 +10,7 @@ from barbour.supplier.allweathers_get_links import allweathers_get_links
 from barbour.supplier.houseoffraser_new_fetch_info import houseoffraser_fetch_info
 from barbour.supplier.very_fetch_info import very_fetch_info
 from barbour.supplier.very_get_links import very_get_links
-from barbour.supplier.terraces_fetch_info import terraces_fetch_info
+# from barbour.supplier.terraces_fetch_info import terraces_fetch_info
 from barbour.supplier.terraces_get_links import collect_terraces_links
 from common_taobao.backup_and_clear import backup_and_clear_brand_dirs
 from barbour.jingya.insert_jingyaid_to_db_barbour import insert_missing_products_with_zero_stock, insert_jingyaid_to_db, clear_barbour_inventory
@@ -37,12 +37,12 @@ def barbour_database_import_pipleline():
     # collect_terraces_links()
 
     # Step 1: TODO 将txt中数据导入barbour product中
-    barbour_fetch_info()
-    outdoorandcountry_fetch_info(max_workers=10)
-    allweathers_fetch_info(7)
+    # barbour_fetch_info()
+    # outdoorandcountry_fetch_info(max_workers=10)
+    # allweathers_fetch_info(7)
     houseoffraser_fetch_info(max_workers=1, headless=False)
-    very_fetch_info()
-    terraces_fetch_info()
+    # very_fetch_info()
+    # terraces_fetch_info()
 
 
     # Step 2: TODO 将txt中数据导入barbour product中

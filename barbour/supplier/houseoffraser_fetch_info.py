@@ -361,58 +361,34 @@ def _extract_size_pairs_legacy(soup: BeautifulSoup) -> List[Tuple[str, str]]:
     return entries
 
 def _build_size_lines_legacy(pairs: List[Tuple[str, str]], gender: str) -> Tuple[str, str]:
+    """
+    在 legacy 栈中，将出现的尺码按“有货优先”合并，并补齐未出现的尺码为 无货/0。
+    - Product Size:  34:有货;36:无货;...
+    - Product Size Detail: 34:3:000...;36:0:000...;...
+    """
     by_size: Dict[str, str] = {}
 
-    # 记录出现的尺码；同尺码多次时“有货优先”
+    # 1) 先记录页面“出现的尺码”，同尺码多次时“有货优先”
     for size, status in pairs:
         prev = by_size.get(size)
         if prev is None or (prev == "无货" and status == "有货"):
             by_size[size] = status
 
-    # ★ 按已出现的尺码决定男款用哪一系；女款固定 4–20
-    chosen = _choose_full_order_for_gender(gender, set(by_size.keys()))
-
-    # 清理掉另一系里误混入的键，避免混用
-    for k in list(by_size.keys()):
-        if k not in chosen:
-            by_size.pop(k, None)
-
-    # 补齐“未出现”的尺码为 无货/0（仅在选定系内）
-    for s in chosen:
+    # 2) 取得完整尺码表，并补齐“未出现”的尺码为 无货/0
+    full_order = _full_order_for_gender(gender)
+    for s in full_order:
         if s not in by_size:
             by_size[s] = "无货"
 
+    # 3) 按完整表顺序输出
     EAN = "0000000000000"
-    ordered = list(chosen)
+    ordered = list(full_order)
     ps  = ";".join(f"{k}:{by_size[k]}" for k in ordered) or "No Data"
     psd = ";".join(f"{k}:{3 if by_size[k]=='有货' else 0}:{EAN}" for k in ordered) or "No Data"
     return ps, psd
 
 
-
 # ================== 新版解析骨架（保持你现有实现/可按需细化） ==================
-
-def _choose_full_order_for_gender(gender: str, present: set[str]) -> list[str]:
-    """男款在【字母系】与【数字系】二选一；女款固定 4–20。"""
-    g = (gender or "").lower()
-    if "女" in g or "women" in g or "lady" in g or "ladies" in g:
-        return WOMEN_ORDER[:]  # 4..20
-
-    has_num   = any(k in MEN_NUM_ORDER   for k in present)
-    has_alpha = any(k in MEN_ALPHA_ORDER for k in present)
-    if has_num and not has_alpha:
-        return MEN_NUM_ORDER[:]          # 30..50（不含 52）
-    if has_alpha and not has_num:
-        return MEN_ALPHA_ORDER[:]        # 2XS..3XL
-    if has_num or has_alpha:
-        num_count   = sum(1 for k in present if k in MEN_NUM_ORDER)
-        alpha_count = sum(1 for k in present if k in MEN_ALPHA_ORDER)
-        return MEN_NUM_ORDER[:] if num_count >= alpha_count else MEN_ALPHA_ORDER[:]
-    # 实在判不出来，默认用字母系更稳妥
-    return MEN_ALPHA_ORDER[:]
-
-
-
 def _clean_html_text(s: str) -> str:
     s = re.sub(r"<[^>]+>", " ", s or "")
     s = ihtml.unescape(s)
@@ -470,6 +446,9 @@ def _extract_prices_new(soup: BeautifulSoup, html_text: str) -> Tuple[Optional[f
     return nums[0], nums[-1]
 
 def _extract_sizes_new(soup: BeautifulSoup, gender: str) -> Tuple[str, str]:
+    """
+    从新栈 DOM 下拉中提取尺码→状态，补齐未出现尺码为 无货/0。
+    """
     entries = []
     for opt in soup.find_all("option", attrs={"data-testid": "drop-down-option"}):
         val = (opt.get("value") or "").strip()
@@ -487,31 +466,25 @@ def _extract_sizes_new(soup: BeautifulSoup, gender: str) -> Tuple[str, str]:
     if not entries:
         return "No Data", "No Data"
 
+    # 1) 将出现的尺码按“有货优先”汇总
     by_size: Dict[str, str] = {}
     for size, status in entries:
         prev = by_size.get(size)
         if prev is None or (prev == "无货" and status == "有货"):
             by_size[size] = status
 
-    # ★ 关键：和 legacy 一样，按出现的尺码决定男款系别
-    chosen = _choose_full_order_for_gender(gender, set(by_size.keys()))
-
-    # 清理混系
-    for k in list(by_size.keys()):
-        if k not in chosen:
-            by_size.pop(k, None)
-
-    # 补齐 0
-    for s in chosen:
+    # 2) 补齐完整尺码表为 无货/0
+    full_order = _full_order_for_gender(gender)
+    for s in full_order:
         if s not in by_size:
             by_size[s] = "无货"
 
+    # 3) 输出（按完整表顺序）
     EAN = "0000000000000"
-    ordered = list(chosen)
+    ordered = list(full_order)
     product_size = ";".join(f"{s}:{by_size[s]}" for s in ordered) or "No Data"
     product_size_detail = ";".join(f"{s}:{3 if by_size[s]=='有货' else 0}:{EAN}" for s in ordered) or "No Data"
     return product_size, product_size_detail
-
 
 
 def parse_info_legacy(html: str, url: str) -> Dict[str, Any]:
