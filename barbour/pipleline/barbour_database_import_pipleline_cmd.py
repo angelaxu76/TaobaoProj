@@ -74,8 +74,8 @@ def barbour_database_import_pipleline():
     # fill_supplier_map()
 
     print("     步骤 6.1：为重点商品强制指定供应商覆盖")
-    # xlsx_path = r"D:\TB\Products\barbour\document\barbour_supplier.xlsx"
-    # apply_barbour_supplier_overrides(xlsx_path,dry_run=True)
+    xlsx_path = r"D:\TB\Products\barbour\document\barbour_supplier.xlsx"
+    apply_barbour_supplier_overrides(xlsx_path,dry_run=True)
     # apply_barbour_supplier_overrides(xlsx_path,dry_run=False)
 
     print("     步骤 6.2：生产发布商品的供应商报表")
