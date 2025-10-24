@@ -56,6 +56,107 @@ _URL_CODE_CACHE_READY = False
 import json, re
 from bs4 import BeautifulSoup
 
+
+WOMEN_ORDER = ["4","6","8","10","12","14","16","18","20"]
+MEN_ALPHA_ORDER = ["2XS","XS","S","M","L","XL","2XL","3XL"]
+MEN_NUM_ORDER = [str(n) for n in range(30, 52, 2)]  # 30..50，特意不包含52
+
+ALPHA_MAP = {
+    "XXXS": "2XS", "2XS": "2XS",
+    "XXS": "XS",  "XS": "XS",
+    "S": "S", "SMALL":"S",
+    "M": "M", "MEDIUM":"M",
+    "L": "L", "LARGE":"L",
+    "XL": "XL", "X-LARGE":"XL",
+    "XXL":"2XL","2XL":"2XL",
+    "XXXL":"3XL","3XL":"3XL",
+}
+
+import re
+
+def _normalize_size_token_for_barbour(raw_token: str, gender: str) -> str | None:
+    """
+    把站点尺寸（可能是 '12(M)' / '16 (XL)' / 'UK 14' / 'XL' / '32'）清洗成标准内部码：
+      - 女款: 数字 4,6,8,10,12,14,16,18,20
+      - 男款上衣: 2XS,XS,S,M,L,XL,2XL,3XL
+      - 男款下装: 30,32,34,...,50 (偶数)
+    如果不是合法尺码，返回 None。
+    """
+
+    if not raw_token:
+        return None
+
+    s = raw_token.strip().upper()
+
+    # 去掉括号部分，比如 "12(M)" -> "12"
+    s = re.sub(r"\(.*?\)", "", s)
+    s = s.strip()
+
+    # 去掉 "UK 12" / "UK12" / "EU 40" 这种前缀
+    s = re.sub(r"^(UK|EU|US)\s*", "", s)
+
+    # 压紧空格、连字符
+    s = re.sub(r"\s+", "", s)
+    s = s.replace("-", "")
+
+    # --- 女款逻辑 ---
+    # 注意：不用再只看中文“女”，而是用 _is_female_gender()
+    if _is_female_gender(gender):
+        m = re.match(r"^(\d{1,2})$", s)
+        if m:
+            n = int(m.group(1))
+            if n in {4,6,8,10,12,14,16,18,20}:
+                return str(n)
+        # 女装不输出 S/M/L 之类，直接丢弃
+        return None
+
+    # --- 男款逻辑 ---
+
+    # 数字裤装尺码，比如 32, 34, 36...（腰围）
+    m = re.match(r"^(\d{2})$", s)
+    if m:
+        n = int(m.group(1))
+        if 30 <= n <= 50 and n % 2 == 0:
+            return str(n)
+
+    # 上装字母码，比如 XL, XXL, 3XL...
+    mapped = ALPHA_MAP.get(s)
+    if mapped:
+        return mapped
+
+    return None
+
+
+
+def _choose_size_family_for_gender(gender: str, observed_sizes: set[str]) -> list[str]:
+    """
+    决定我们要输出/补全的“这一套尺码体系”的顺序列表。
+    - 女款：固定 4..20
+    - 男款：在字母系(2XS..3XL) 和 数字系(30..50) 之间二选一
+      - 如果两种都有，则看哪个出现的数量更多
+    """
+
+    g = (gender or "").lower()
+    if "女" in g:
+        return WOMEN_ORDER[:]
+
+    has_num   = any(k in MEN_NUM_ORDER   for k in observed_sizes)
+    has_alpha = any(k in MEN_ALPHA_ORDER for k in observed_sizes)
+
+    if has_num and not has_alpha:
+        return MEN_NUM_ORDER[:]
+    if has_alpha and not has_num:
+        return MEN_ALPHA_ORDER[:]
+
+    if has_num or has_alpha:
+        num_count   = sum(1 for k in observed_sizes if k in MEN_NUM_ORDER)
+        alpha_count = sum(1 for k in observed_sizes if k in MEN_ALPHA_ORDER)
+        return MEN_NUM_ORDER[:] if num_count >= alpha_count else MEN_ALPHA_ORDER[:]
+
+    # 实在看不出来，就默认字母系
+    return MEN_ALPHA_ORDER[:]
+
+
 # ---------- helpers: 提取 next/内嵌 JSON 文本 ----------
 def _extract_next_json_chunks(html: str) -> str:
     # 直接用正则在 HTML 文本里找包含关键字段的大块 JSON
@@ -282,48 +383,178 @@ def _extract_sizes_from_allSizes(html: str):
             pass
     return entries
 
-def _extract_sizes_new(soup: BeautifulSoup, html: str):
+import re
+from typing import Tuple, Dict, Optional, List
+from bs4 import BeautifulSoup
+
+OOS_WORDS = ["out of stock", "sold out", "unavailable", "no stock", "oos"]
+
+def _is_number_size(label: str) -> bool:
+    # 纯数字，比如 "44", "46", "32", "30"
+    return bool(re.fullmatch(r"\d+", label.strip()))
+
+def _is_letter_size(label: str) -> bool:
+    # 常见衣服字母码，包括 3XL / 4XL / XXL / XXXL 等
+    norm = label.strip().upper()
+    # 明确常见集合
+    COMMON = [
+        "2XS","XXS","XS",
+        "S","M","L",
+        "XL","XXL","2XL",
+        "XXXL","3XL","4XL","5XL"
+    ]
+    return norm in COMMON
+
+def _extract_sizes_new(soup: BeautifulSoup) -> Dict[str, Dict[str, int]]:
     """
-    统一出口：
-    1) allSizes = 全量尺码（已清洗）
-    2) 有货集合 = variants(isOnStock=true) ∪ DOM-enabled（已清洗）
-    3) 不在有货集合但在 allSizes 的 => 无货
-    4) 如果 allSizes 为空：仅用 DOM/variants（已清洗）
+    抓 House of Fraser / Flannels 页面上的尺码按钮，返回中间结构:
+    {
+        "12": {"stock": 3},
+        "14": {"stock": 3},
+        "16": {"stock": 3},
+        "XS": {"stock": 0},
+        ...
+    }
+    注意：这里不做清洗/不做补全/不管男女，只负责原始抓取。
+    后面会由 normalize+补码 的流程来生成最终 Product Size / Product Size Detail。
     """
-    all_sizes = _extract_all_sizes(html)
-    var_entries = _extract_sizes_from_variants(html)
-    dom_entries = _extract_sizes_dom_fallback(soup)
 
-    instock_from_variants = {s for s, st in var_entries if st == "有货"}
-    instock_from_dom = {s for s, st in dom_entries if st == "有货"}
+    results: Dict[str, Dict[str, int]] = {}
 
-    # 1) 有全量尺码：按集合标记
-    if all_sizes:
-        in_stock = instock_from_variants | instock_from_dom
-        by_size, ordered = {}, []
-        for s in all_sizes:          # all_sizes 已清洗并保序
-            status = "有货" if s in in_stock else "无货"
-            by_size[s] = status
-            ordered.append(s)
-        EAN = "0000000000000"
-        product_size        = ";".join(f"{s}:{by_size[s]}" for s in ordered) or "No Data"
-        product_size_detail = ";".join(f"{s}:{3 if by_size[s]=='有货' else 0}:{EAN}" for s in ordered) or "No Data"
-        return product_size, product_size_detail
+    # swatch 按钮是我们最可靠的来源
+    for btn in soup.select("button[data-testid='swatch-button-enabled'], button[data-testid='swatch-button-disabled']"):
+        # label 尺码名，比如 "12 (M)" / "16(XL)" / "XL" / "2XL"
+        label = (btn.get("value") or btn.get_text() or "").strip()
+        if not label:
+            continue
 
-    # 2) 无全量尺码：合并 var+dom（都已清洗）
-    if var_entries or dom_entries:
-        merged, order = {}, []
-        for s, st in (var_entries + dom_entries):
-            if (s not in merged) or (merged[s] == "无货" and st == "有货"):
-                merged[s] = st
-                if s not in order:
-                    order.append(s)
-        EAN = "0000000000000"
-        product_size        = ";".join(f"{s}:{merged[s]}" for s in order) or "No Data"
-        product_size_detail = ";".join(f"{s}:{3 if merged[s]=='有货' else 0}:{EAN}" for s in order) or "No Data"
-        return product_size, product_size_detail
+        # 判断库存
+        data_tid = btn.get("data-testid", "")
+        in_stock = "enabled" in data_tid  # enabled = 可选，有货；disabled = 无货
+        stock_qty = 3 if in_stock else 0
 
-    return "No Data", "No Data"
+        # 记录（后面会继续清洗）
+        if label not in results:
+            results[label] = {"stock": stock_qty}
+        else:
+            # 多次出现，保留有货那个
+            if results[label]["stock"] == 0 and stock_qty > 0:
+                results[label]["stock"] = stock_qty
+
+    return results
+
+
+
+def _is_female_gender(g: str) -> bool:
+    """
+    判断是不是女款:
+    - 包含中文"女"
+    - 或英文 women / womens / girl / girls / ladies / female
+    """
+    if not g:
+        return False
+    gl = g.strip().lower()
+    if "女" in gl:
+        return True
+    female_keys = ["women", "womens", "woman", "girl", "girls", "ladies", "lady", "female"]
+    return any(k in gl for k in female_keys)
+
+
+def _is_male_gender(g: str) -> bool:
+    """
+    判断是不是男款:
+    - 包含中文"男"
+    - 或英文 men / mens / boy / boys / male
+    """
+    if not g:
+        return False
+    gl = g.strip().lower()
+    if "男" in gl:
+        return True
+    male_keys = ["men", "mens", "man", "boy", "boys", "male"]
+    return any(k in gl for k in male_keys)
+
+
+def _choose_size_family_for_gender(gender: str, observed_sizes: set[str]) -> list[str]:
+    """
+    决定输出哪套完整尺码序列。
+    - 女款：固定女装数字码 ["4","6","8","10","12","14","16","18","20"]
+    - 男款：在男装字母系(2XS..3XL) 和 男装数字腰围系(30..50 偶数)里二选一
+      （谁出现得多就用谁），然后我们会在后面补全没出现的码。
+    """
+    if _is_female_gender(gender):
+        return WOMEN_ORDER[:]
+
+    # 男款 / 未知 默认按男逻辑
+    has_num   = any(k in MEN_NUM_ORDER   for k in observed_sizes)
+    has_alpha = any(k in MEN_ALPHA_ORDER for k in observed_sizes)
+
+    if has_num and not has_alpha:
+        return MEN_NUM_ORDER[:]
+    if has_alpha and not has_num:
+        return MEN_ALPHA_ORDER[:]
+
+    if has_num or has_alpha:
+        num_count   = sum(1 for k in observed_sizes if k in MEN_NUM_ORDER)
+        alpha_count = sum(1 for k in observed_sizes if k in MEN_ALPHA_ORDER)
+        return MEN_NUM_ORDER[:] if num_count >= alpha_count else MEN_ALPHA_ORDER[:]
+
+    # 实在看不出来，兜底用男款字母系
+    return MEN_ALPHA_ORDER[:]
+
+
+def _finalize_sizes_for_hof(raw_size_dict: Dict[str, Dict[str, int]], gender: str) -> Tuple[str, str]:
+    """
+    raw_size_dict 形如:
+        { "12(M)": {"stock":3}, "14(L)": {"stock":3}, "16(XL)": {"stock":3} }
+
+    gender: 现在可能是 "women"/"men"/"No Data"/"男款"/"女款" 等等
+
+    输出:
+      Product Size:        "10:无货;12:有货;14:有货;16:有货;18:无货;20:无货"
+      Product Size Detail: "10:0:000...;12:3:000...;14:3:000...;16:3:000...;18:0:000...;20:0:000..."
+    """
+
+    # 1. 清洗成我们标准码，并记录库存
+    normalized_stock: Dict[str, int] = {}
+    for raw_label, meta in (raw_size_dict or {}).items():
+        norm = _normalize_size_token_for_barbour(raw_label, gender or "")
+        if not norm:
+            continue
+        stock_qty = int(meta.get("stock", 0))
+        if norm not in normalized_stock:
+            normalized_stock[norm] = stock_qty
+        else:
+            # 如果之前是无货，现在发现有货，就更新
+            if normalized_stock[norm] == 0 and stock_qty > 0:
+                normalized_stock[norm] = stock_qty
+
+    # 2. 选定应该用哪一套完整尺码表（女款固定 4..20，男款在两套男码体系里选）
+    observed = set(normalized_stock.keys())
+    full_order = _choose_size_family_for_gender(gender or "", observed)
+
+    # 3. 把不在该体系里的码剔除（防止 "12" 跟 "M" 混在一起）
+    for k in list(normalized_stock.keys()):
+        if k not in full_order:
+            normalized_stock.pop(k, None)
+
+    # 4. 按 full_order 补全所有码：有的写真实库存>0 => 有货，否则无货
+    EAN_PLACEHOLDER = "0000000000000"
+    size_line_parts = []
+    size_detail_parts = []
+
+    for size_token in full_order:
+        qty = normalized_stock.get(size_token, 0)
+        status = "有货" if qty > 0 else "无货"
+
+        size_line_parts.append(f"{size_token}:{status}")
+        size_detail_parts.append(f"{size_token}:{3 if qty > 0 else 0}:{EAN_PLACEHOLDER}")
+
+    product_size_str = ";".join(size_line_parts) if size_line_parts else "No Data"
+    product_size_detail_str = ";".join(size_detail_parts) if size_detail_parts else "No Data"
+
+    return product_size_str, product_size_detail_str
+
 
 
 
@@ -575,6 +806,8 @@ def _infer_gender_from_text(*texts) -> str:
             return label
     return "No Data"
 
+
+
 def _extract_gender(html: str, soup: BeautifulSoup, title: str, desc: str, url: str) -> str:
     bc = soup.select("nav[aria-label*=breadcrumb] a, ol[aria-label*=breadcrumb] a")
     bc_txt = " ".join(a.get_text(" ", strip=True) for a in bc) if bc else ""
@@ -683,82 +916,268 @@ def _from_jsonld_product_new(soup: BeautifulSoup) -> Dict[str, Any]:
 
     return out
 
-def _extract_prices_new(soup: BeautifulSoup, html: str) -> Tuple[Optional[float], Optional[float]]:
-    """
-    返回 (current_price, original_price)
-    - current_price：当前展示价（常为折后价）
-    - original_price：原价（ticket/was/rrp）
-    逻辑：JSON-LD 的 price 作为“当前价”优先；原价从 DOM 的 ticket/was 节点兜底。
-    """
-    current_price = None
-    original_price = None
 
-    # 1) JSON-LD 的价格作为当前价
-    try:
-        jd = parse_jsonld(html) or {}
-        if jd.get("price"):
-            current_price = float(str(jd["price"]).replace(",", ""))
-    except Exception:
-        pass
 
-    # 2) DOM 里找原价（ticket/was/rrp）
-    was_el = soup.select_one(
-        "[data-testid*='ticket-price'], [data-component*='ticket'], .price-was, .wasPrice, .rrp"
+
+def _parse_price_string(txt: str) -> float | None:
+    """
+    输入类似 '£189.00' / '189.00' / '18900' / '189'
+    返回 float，比如 189.0
+    """
+    if not txt:
+        return None
+
+    import re
+
+    cleaned = txt.strip()
+    # 优先：直接带£的，比如 £189.00
+    m_symbol = re.search(r"£\s*([0-9]+(?:\.[0-9]+)?)", cleaned)
+    if m_symbol:
+        return float(m_symbol.group(1))
+
+    # 其次：data-testvalue="18900" 这种分里面是分(pence)，需要/100
+    m_pence = re.search(r"^([0-9]{3,})$", cleaned)
+    if m_pence:
+        try:
+            pence_val = int(m_pence.group(1))
+            return round(pence_val / 100.0, 2)
+        except:
+            pass
+
+    # 最后兜底：纯数字小数
+    m_plain = re.search(r"([0-9]+(?:\.[0-9]+)?)", cleaned)
+    if m_plain:
+        return float(m_plain.group(1))
+
+    return None
+
+
+def _extract_prices_new(soup: BeautifulSoup) -> tuple[str, str]:
+    """
+    返回 (product_price_str, adjusted_price_str)
+    - product_price_str => 我们TXT里的 Product Price (原价)
+    - adjusted_price_str => 我们TXT里的 Adjusted Price (折后价 / 没打折则 'No Data')
+    """
+
+    price_block = soup.select_one('p[data-testid="price"]')
+    if not price_block:
+        return ("No Data", "No Data")
+
+    # 1. 折后价 (现价)
+    #    只有在打折的时候才会有 class 包含 Price_isDiscounted__
+    discounted_span = price_block.select_one("span[class*='Price_isDiscounted']")
+    discounted_price = None
+    if discounted_span:
+        discounted_price = _parse_price_string(discounted_span.get_text(strip=True))
+
+    # 2. 原价
+    #    原价通常在 data-testid="ticket-price"
+    ticket_span = price_block.select_one('span[data-testid="ticket-price"]')
+    ticket_price = None
+    if ticket_span:
+        ticket_price = _parse_price_string(ticket_span.get_text(strip=True))
+
+    # 3. 如果没有 ticket-price，可能是没打折，
+    #    那就直接看整个 price_block 自己的 data-testvalue 或纯文本
+    if ticket_price is None:
+        # 尝试 data-testvalue="17900"
+        block_testvalue = price_block.get("data-testvalue")
+        ticket_price = _parse_price_string(block_testvalue)
+
+    if ticket_price is None:
+        # 尝试把 <p> 里面第一个 span 的文本当成原价
+        first_span = price_block.find("span")
+        if first_span:
+            ticket_price = _parse_price_string(first_span.get_text(strip=True))
+
+    # 现在我们有:
+    #   discounted_price (可能 None)
+    #   ticket_price (不应该是 None 了，除非页面真的出问题)
+
+    if discounted_price is not None and ticket_price is not None:
+        # 有折扣场景：
+        # Product Price = 原价 (ticket_price)
+        # Adjusted Price = 折后价 (discounted_price)
+        product_price_val = ticket_price
+        adjusted_price_val = discounted_price
+    else:
+        # 无折扣场景：
+        # Product Price = 唯一那个价
+        # Adjusted Price = "No Data"
+        product_price_val = ticket_price or discounted_price
+        adjusted_price_val = None
+
+    # 格式化成字符串；保持两位小数或 "No Data"
+    product_price_str = (
+        f"{product_price_val:.2f}" if product_price_val is not None else "No Data"
     )
-    if was_el:
-        original_price = _to_num(was_el.get_text(" ", strip=True))
+    adjusted_price_str = (
+        f"{adjusted_price_val:.2f}" if adjusted_price_val is not None else "No Data"
+    )
 
-    # 3) 若缺失，互相兜底
-    if original_price is None and current_price is not None:
-        original_price = current_price
-    if current_price is None:
-        # 再尝试从可见价格块取一次“当前价”
-        cur_el = soup.select_one("[data-testid*='price'], [data-component*='price'], [itemprop='price'], meta[itemprop='price']")
-        if cur_el:
-            if getattr(cur_el, "name", "") == "meta":
-                current_price = _to_num(cur_el.get("content") or "")
-            else:
-                current_price = _to_num(cur_el.get_text(" ", strip=True))
-        # 仍然没有就退回原价
-        if current_price is None and original_price is not None:
-            current_price = original_price
+    return product_price_str, adjusted_price_str
 
-    return current_price, original_price
+
+
+
+def _decide_gender_for_logic(sku: str, soup: BeautifulSoup, html: str, url: str) -> str:
+    """
+    返回标准英文性别，优先级：
+    1. 根据 SKU 猜 (最稳定，LQUxxx = women, MQUxxx = men)
+    2. 如果 SKU 猜不到，再尝试页面上的性别提取 _extract_gender_new(...)
+    3. 如果还猜不到，返回 "No Data"
+
+    返回值只可能是: "women", "men", "kids", "unisex", or "No Data"
+    （按你们sku规则一般就是 men / women / No Data）
+    """
+
+    # 1. SKU 推断
+    sku_guess = _infer_gender_from_code(sku or "")
+    # 假设 _infer_gender_from_code 返回类似 "women", "men", 或 "No Data"
+    if sku_guess and sku_guess != "No Data":
+        return sku_guess
+
+    # 2. 其次尝试页面
+    page_guess = _extract_gender_new(soup, html, url)
+    if page_guess and page_guess != "No Data":
+        return page_guess
+
+    # 3. 兜底
+    return "No Data"
+
+
+
 
 # ================== 核心解析 ==================
-def parse_info_new(html: str, url: str) -> Dict[str, Any]:
+def parse_info_new(html: str, url: str, conn) -> Dict[str, Any]:
+    """
+    统一出口：这里产出的 info 就是最终要写进 TXT 的内容。
+    关键点：
+      1. 我们在这里就确定最终 Product Code（用缓存/DB匹配）。
+      2. 用最终 Product Code 推断 gender_for_logic。
+      3. 用 gender_for_logic 生成完整尺码表 Product Size / Product Size Detail。
+      4. 把 Gender 直接转成中文（男款/女款/...）。
+
+    参数:
+        html: 当前商品页完整 HTML
+        url:  当前商品页 URL
+        conn: SQLAlchemy Connection (process_url_with_driver 里传进来的 conn)
+    """
     soup = BeautifulSoup(html, "html.parser")
+
+    # ---------- (A) 基础页面信息（不依赖数据库） ----------
+    # 从 JSON-LD 把基础字段抓出来：name / description / sku 等
     jd = _from_jsonld_product_new(soup) or {}
+    title_guess = jd.get("name") or (soup.title.get_text(strip=True) if soup.title else "No Data")
+    desc_guess  = jd.get("description") or "No Data"
+    sku_guess   = jd.get("sku") or "No Data"
 
-    title = jd.get("name") or (soup.title.get_text(strip=True) if soup.title else "No Data")
-    desc  = jd.get("description") or "No Data"
+    # 颜色：我们有 _extract_color_new (先看页面 JSON 里的color，再兜底 og:image:alt)
+    color_guess = _extract_color_new(soup, html) or "No Data"
 
-    curr, orig = _extract_prices_new(soup, html)
-    if curr is None and orig is not None: curr = orig
-    if orig is None and curr is not None: orig = curr
+    # 尺码原始抓取（页面上所有尺码按钮，带 stock>0 or 0）
+    raw_sizes = _extract_sizes_new(soup)  # dict like { "12(M)": {"stock":3}, "14(L)": {"stock":3}, ... }
 
-    # >>> 新增：颜色/性别/尺码 <<<
-    color  = _extract_color_new(soup, html)
-    gender = _extract_gender_new(soup, html, url)
-    product_size, product_size_detail = _extract_sizes_new(soup, html)
+    # 价格（"Product Price" / "Adjusted Price" 口径）
+    product_price_str, adjusted_price_str = _extract_prices_new(soup)
 
+    # ---------- (B) 基于 URL / DB 确定最终 Product Code ----------
+    norm_url = _normalize_url(url)
+
+    # 1. 先试 URL→Code 缓存
+    final_code = URL_CODE_CACHE.get(norm_url)
+
+    # 2. 如果缓存没有，用 DB 模糊匹配 (match_product + choose_best)
+    if not final_code:
+        # match_product 需要原始连接
+        raw_conn = get_dbapi_connection(conn)
+
+        results = match_product(
+            raw_conn,
+            scraped_title=title_guess or "",
+            scraped_color=color_guess or "",
+            table=PRODUCTS_TABLE,
+            name_weight=NAME_WEIGHT,
+            color_weight=COLOR_WEIGHT,
+            type_weight=(1.0 - NAME_WEIGHT - COLOR_WEIGHT),
+            topk=5,
+            recall_limit=2000,
+            min_name=0.92,
+            min_color=0.85,
+            require_color_exact=False,
+            require_type=False,
+        )
+        chosen = choose_best(results, min_score=MIN_SCORE, min_lead=MIN_LEAD)
+        if chosen:
+            final_code = chosen
+
+    # 3. 如果还是拿不到，就退回 JSON-LD 里的 sku_guess
+    if not final_code:
+        final_code = sku_guess if sku_guess and sku_guess != "No Data" else "No Data"
+
+    # ---------- (C) 用最终 code 判断性别 ----------
+    # 我们现在用的是最终 code，而不是一开始的 sku_guess
+    gender_for_logic = _decide_gender_for_logic(final_code, soup, html, url)
+    # _decide_gender_for_logic 会：
+    #   1. 用 _infer_gender_from_code(final_code) 判断 men/women
+    #   2. 如果还不行，再看页面 JSON/DOM
+    #   3. 实在不行才 "No Data"
+
+    # ---------- (D) 用性别生成最终尺码串 ----------
+    # 注意：_finalize_sizes_for_hof 会：
+    #   - 清洗各类乱七八糟的尺码 ("12(M)" -> "12", "XL" -> "XL", "32" -> "32")
+    #   - 根据 gender_for_logic 选整套尺码全集（女款=4..20；男款=2XS..3XL 或 30..50）
+    #   - 给没出现的尺码补 "无货" / 0:0000000000000
+    product_size_str, product_size_detail_str = _finalize_sizes_for_hof(raw_sizes, gender_for_logic)
+
+    # ---------- (E) 把 gender_for_logic 变成中文展示 ----------
+    def _gender_to_display(g: str) -> str:
+        if g == "women":
+            return "女款"
+        if g == "men":
+            return "男款"
+        if g == "kids":
+            return "童款"
+        if g == "unisex":
+            return "中性款"
+        return "No Data"
+
+    gender_display = _gender_to_display(gender_for_logic)
+
+    # ---------- (F) 组装最终 info ----------
     info = {
-        "Product Code": jd.get("sku") or "No Data",   # 这里仍是组合 SKU（如 321534）；精确编码仍交由你现有的 DB 匹配逻辑
-        "Product Name": title or "No Data",
-        "Product Description": desc or "No Data",
-        "Product Gender": gender,
-        "Product Color": color or "No Data",
-        "Product Price": f"{orig:.2f}" if isinstance(orig, (int, float)) else "No Data",
-        "Adjusted Price": f"{curr:.2f}" if isinstance(curr, (int, float)) else "No Data",
-        "Product Material": "No Data",
-        "Style Category": "casual wear",
-        "Feature": "No Data",
-        "Product Size": product_size,
-        "Product Size Detail": product_size_detail,
-        "Source URL": url,
-        "Site Name": SITE_NAME,
+        "Product Code":        final_code or "No Data",
+        "Product Name":        title_guess or "No Data",
+        "Product Description": desc_guess or "No Data",
+        "Product Gender":      gender_display or "No Data",
+        "Product Color":       color_guess or "No Data",
+
+        "Product Price":       product_price_str,
+        "Adjusted Price":      adjusted_price_str,
+
+        # 暂时没做材质细分，保持原行为
+        "Product Material":    "No Data",
+
+        # 你原本硬编码了 "casual wear"，保持不变，避免下游崩
+        "Style Category":      "casual wear",
+
+        # 你原代码里写的是 "Feature": "No Data"
+        "Feature":             "No Data",
+
+        "Product Size":        product_size_str,
+        "Product Size Detail": product_size_detail_str,
+
+        "Source URL":          url,
+        "Site Name":           SITE_NAME,
     }
+
     return info
+
+
+
+
+
+
 
 
 # ================== Selenium 基础 ==================
@@ -787,78 +1206,61 @@ def fetch_product_info_with_single_driver(driver, url: str) -> Dict[str, Any]:
 
 # ================== 处理单个 URL ==================
 def process_url_with_driver(driver, url: str, conn: Connection, delay: float = DEFAULT_DELAY) -> Path | None:
+    """
+    打开单个 URL，解析出 info（已经包含最终 Product Code / Gender / 尺码等），
+    然后写入 TXT。
+
+    相比旧版本：
+    - 不再这里做 URL→Code 匹配、gender 兜底，这些都提前放进了 parse_info_new。
+    - 不再重复 _gender_to_cn，因为 parse_info_new 里已经把性别转成 "男款"/"女款"。
+    """
+
     print(f"\n🌐 正在抓取: {url}")
-    info = fetch_product_info_with_single_driver(driver, url)
 
-    # 先查 URL→Code 缓存（命中则不做匹配）
-    norm_url = _normalize_url(url)
-    code = URL_CODE_CACHE.get(norm_url)
-
-        # ……（已有匹配 code 的逻辑在这之前）
-    # 此时 code 变量已经确定，info 也已经填好
-
-    # ★ gender 兜底：有 code 才兜底；无 code 则保持 No Data（不发布）
-    if (not info.get("Product Gender")) or (info.get("Product Gender") == "No Data"):
-        g_from_code = _infer_gender_from_code(code or info.get("Product Code"))
-        if g_from_code != "No Data":
-            info["Product Gender"] = g_from_code
-
-
-
-
-    if code:
-        print(f"🔗 缓存命中 URL→{code}")
-        info["Product Code"] = code
+    # 1. 打开页面并等待渲染完成
+    driver.get(url)
+    ok = wait_pdp_ready(driver, timeout=WAIT_HYDRATE_SECONDS)
+    if not ok:
+        # 页面可能还没完全hydrated，我们仍然抓当前HTML做兜底
+        html = driver.page_source or ""
+        _dump_debug_html(html, url, tag="timeout_debug")
     else:
-        # 模糊匹配（沿用旧阈值/逻辑）
-        raw_conn = get_dbapi_connection(conn)
-        title = info.get("Product Name") or ""
-        color = info.get("Product Color") or ""
-        results = match_product(
-            raw_conn,
-            scraped_title=title, scraped_color=color,
-            table=PRODUCTS_TABLE,
-            name_weight=NAME_WEIGHT, color_weight=COLOR_WEIGHT,
-            type_weight=(1.0 - NAME_WEIGHT - COLOR_WEIGHT),
-            topk=5, recall_limit=2000, min_name=0.92, min_color=0.85,
-            require_color_exact=False, require_type=False,
-        )
-        code = choose_best(results, min_score=MIN_SCORE, min_lead=MIN_LEAD)
-        print("🔎 match debug")
-        print(f"  raw_title: {title}")
-        print(f"  raw_color: {color}")
-        txt, why = explain_results(results, min_score=MIN_SCORE, min_lead=MIN_LEAD)
-        print(txt)
-        if code:
-            print(f"  ⇒ ✅ choose_best = {code}")
-            info["Product Code"] = code
-        else:
-            print(f"  ⇒ ❌ no match ({why})")
-            if results:
-                top3 = " | ".join(f"{r['product_code']}[{r['score']:.3f}]" for r in results[:3])
-                print("🧪 top:", top3)
+        # 页面 ready 的情况下多滚几下，确保尺码/价格等JS渲染出来
+        _soft_scroll(driver, steps=6, pause=0.4)
+        html = driver.page_source or ""
+        _dump_debug_html(html, url, tag="debug_new")
 
-    # 输出 TXT
-    if code:
-        out_path = TXT_DIR / f"{code}.txt"
-    else:
+    # 2. 直接用新的 parse_info_new 解析完整信息（含最终code/性别/尺码）
+    info = parse_info_new(html, url, conn)
+
+    # 3. 选输出文件名
+    code_for_filename = info.get("Product Code") or "NoDataCode"
+    code_for_filename = code_for_filename.strip() or "NoDataCode"
+    safe_code_for_filename = _safe_name(code_for_filename)
+
+    # 如果真的没拿到标准code（还是 "No Data"），我们 fallback 用hash+商品名生成文件名
+    if safe_code_for_filename in ("NoDataCode", "No_Data", "NoData", "No", ""):
         short = f"{abs(hash(url)) & 0xFFFFFFFF:08x}"
-        safe_name = _safe_name(info.get("Product Name") or "BARBOUR")
-        out_path = TXT_DIR / f"{safe_name}_{short}.txt"
+        safe_name_part = _safe_name(info.get("Product Name") or "BARBOUR")
+        out_path = TXT_DIR / f"{safe_name_part}_{short}.txt"
+    else:
+        out_path = TXT_DIR / f"{safe_code_for_filename}.txt"
 
-    info["Product Gender"] = _gender_to_cn(info.get("Product Gender"))
-
-
+    # 4. 写 TXT (保持你原来的字段顺序和格式)
     payload = _kv_txt_bytes(info)
-    ok = _atomic_write_bytes(payload, out_path)
-    if ok:
+    ok_write = _atomic_write_bytes(payload, out_path)
+
+    if ok_write:
         print(f"✅ 写入: {out_path} (code={info.get('Product Code')})")
     else:
         print(f"❗ 放弃写入: {out_path.name}")
 
+    # 5. 小延迟，防止被风控
     if delay > 0:
         time.sleep(delay)
+
     return out_path
+
 
 # ================== 主入口 ==================
 def houseoffraser_fetch_info(max_workers: int = MAX_WORKERS_DEFAULT, delay: float = DEFAULT_DELAY, headless: bool = False):
