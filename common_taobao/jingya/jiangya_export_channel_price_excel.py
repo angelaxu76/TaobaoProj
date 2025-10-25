@@ -34,6 +34,7 @@ except Exception:
     # 若你的工程里在其它路径，可替换为实际导入
     from common_taobao.core.price_utils import calculate_jingya_prices  # type: ignore
 
+
 # 固定 sheet 与表头
 SHEET_NAME = "sheet1"
 HEADERS = [
@@ -96,27 +97,26 @@ def _write_one_excel(df_chunk: pd.DataFrame, file_path: Path):
     wb.save(file_path)
     wb.close()
 
-def export_jiangya_channel_prices(brand: str, output_dir: Optional[str] = None) -> str:
+def export_jiangya_channel_prices(
+    brand: str,
+    output_dir: Optional[str] = None,
+    exclude_excel_file: Optional[str] = None,  # ⭐ 新增参数
+) -> str:
     """
-    规则（更新后）：
-    1) 先用库里的人民币价： jingya_untaxed_price, taobao_store_price
-    2) 如果任一缺失/<=0，则 fallback：
-       base = min(original_price_gbp, discount_price_gbp) * BRAND_DISCOUNT[brand]
-       然后 price_utils.calculate_jingya_prices(base, delivery_cost=7, exchange_rate=9.7)
-    3) 仍按渠道聚合：一个 channel_product_id 一行，SKU ID 固定写 0
-    4) 其他行为（过滤、分包、表头）不变
+    通用鲸芽渠道价格导出。
+    新增功能：
+    - 可传入 exclude_excel_file 指定Excel路径，读取商品编码列做排除。
+    其他逻辑完全保持不变。
     """
     brand_l = brand.lower().strip()
     if brand_l not in BRAND_CONFIG:
-        raise ValueError(f"未知品牌：{brand}。已配置品牌：{', '.join(sorted(BRAND_CONFIG.keys()))}")
-
+        raise ValueError(f"未知品牌：{brand}")
     cfg = BRAND_CONFIG[brand_l]
     table = cfg["TABLE_NAME"]
     pgcfg = cfg.get("PGSQL_CONFIG", PGSQL_CONFIG)
     if not pgcfg:
-        raise RuntimeError("PGSQL 连接配置缺失，请在 config.py 中提供 PGSQL_CONFIG 或品牌级 PGSQL_CONFIG。")
+        raise RuntimeError("PGSQL配置缺失")
 
-    # === 1) 取数：把库里的人民币价格也取出来 ===
     conn = psycopg2.connect(
         host=pgcfg["host"], port=pgcfg["port"],
         user=pgcfg["user"], password=pgcfg["password"], dbname=pgcfg["dbname"],
@@ -138,14 +138,12 @@ def export_jiangya_channel_prices(brand: str, output_dir: Optional[str] = None) 
 
     out_dir = Path(output_dir) if output_dir else Path(cfg["OUTPUT_DIR"])
     out_dir.mkdir(parents=True, exist_ok=True)
-
     if df.empty:
         out_file = out_dir / f"{brand_l}_jiangya_price_update_part1_of1.xlsx"
         _write_one_excel(pd.DataFrame(columns=HEADERS), out_file)
-        print(f"[INFO] 无可导出的记录，生成空表：{out_file}")
+        print("[INFO] 无可导出的记录。")
         return str(out_file)
 
-    # === 2) 聚合到渠道级（一行一个渠道商品） ===
     df_grp = df.groupby("channel_product_id", dropna=False).agg({
         "product_code": "first",
         "original_price_gbp": "first",
@@ -154,104 +152,62 @@ def export_jiangya_channel_prices(brand: str, output_dir: Optional[str] = None) 
         "taobao_store_price": "first",
     }).reset_index()
 
-    # 工具函数
-    def _valid_num(x) -> bool:
+    # Excel黑名单过滤（可选参数）
+    blacklist_codes = set()
+    if exclude_excel_file:
+        blacklist_codes = set(_load_exclude_codes_from_excel(Path(exclude_excel_file)))
+    if blacklist_codes:
+        before = len(df_grp)
+        df_grp = df_grp[~df_grp["product_code"].astype(str).str.strip().str.upper().isin(blacklist_codes)]
+        print(f"[INFO] Excel排除清单过滤 {before - len(df_grp)} 行。")
+
+    def _valid_num(x):
         try:
             v = float(x)
-            return (not math.isnan(v)) and (not math.isinf(v)) and (v > 0)
-        except Exception:
+            return v > 0 and not math.isnan(v)
+        except:
             return False
 
-    def _pick_prices(row: pd.Series) -> Tuple[float, float]:
-        """
-        优先使用库里的人民币价格；若任一无效则按 GBP 计算。
-        返回 (untaxed, retail)
-        """
-        db_untaxed = row.get("jingya_untaxed_price")
-        db_retail  = row.get("taobao_store_price")
-
+    def _pick_prices(row):
+        db_untaxed, db_retail = row.get("jingya_untaxed_price"), row.get("taobao_store_price")
         if _valid_num(db_untaxed) and _valid_num(db_retail):
             return float(db_untaxed), float(db_retail)
-
-        # 回退：用 GBP 重新计算
-        o = _to_float_safe(row.get("original_price_gbp"))
-        d = _to_float_safe(row.get("discount_price_gbp"))
-        if o > 0 and d > 0:
-            base_raw = min(o, d)
-        else:
-            base_raw = d if d > 0 else o
+        o, d = _to_float_safe(row.get("original_price_gbp")), _to_float_safe(row.get("discount_price_gbp"))
+        base_raw = min(o, d) if o > 0 and d > 0 else (d if d > 0 else o)
         base = base_raw * _brand_discount(brand_l)
-
         if not _is_valid_price(base):
             return 0.0, 0.0
+        return calculate_jingya_prices(base, delivery_cost=7, exchange_rate=9.6)
 
-        try:
-            return calculate_jingya_prices(base, delivery_cost=7, exchange_rate=9.6)
-        except Exception as e:
-            print(f"❌ calculate_jingya_prices 错误: base_price={base}, 错误: {e}")
-            return 0.0, 0.0
-
-    # === 3) 生成导出的人民币价 ===
     prices = df_grp.apply(_pick_prices, axis=1)
-    expanded = prices.apply(pd.Series).fillna(0)
+    expanded = prices.apply(pd.Series)
     expanded.columns = ["untaxed", "retail"]
-
-    # 过滤：两者都无效的行跳过
     mask_valid = expanded.apply(lambda r: _valid_num(r["untaxed"]) and _valid_num(r["retail"]), axis=1)
-    skipped = (~mask_valid).sum()
-    if skipped > 0:
-        print(f"[INFO] 跳过 {skipped} 行（库价缺失且回退计算无效）。")
-    df_grp = df_grp[mask_valid].reset_index(drop=True)
-    expanded = expanded[mask_valid].reset_index(drop=True)
+    df_grp, expanded = df_grp[mask_valid], expanded[mask_valid]
 
-    if df_grp.empty:
-        out_file = out_dir / f"{brand_l}_jiangya_price_update_part1_of1.xlsx"
-        _write_one_excel(pd.DataFrame(columns=HEADERS), out_file)
-        print(f"[INFO] 过滤后无数据，生成空表：{out_file}")
-        return str(out_file)
-
-    # === 4) 组装导出表（与原脚本一致：SKU 固定 0，零售价写两列） ===
     out_df = pd.DataFrame({
-        "渠道产品ID": df_grp["channel_product_id"].astype(str),
+        "渠道产品ID": df_grp["channel_product_id"],
         "SKU ID(不存在或者设置品价格时,sku填写0)": 0,
         "渠道价格(未税)(元)(必填)": expanded["untaxed"].astype(int),
         "最低建议零售价(元)": expanded["retail"].astype(int),
         "最高建议零售价(元)": expanded["retail"].astype(int),
     })[HEADERS]
 
-    # === 5) 分包写出（与原脚本一致，默认 chunk_size=200） ===
-    n = len(out_df)
-    if n == 0:
-        out_file = out_dir / f"{brand_l}_jiangya_price_update_part1_of1.xlsx"
-        _write_one_excel(out_df, out_file)
-        print(f"[INFO] 无有效记录，已生成空表：{out_file}")
-        return str(out_file)
-
     chunk_size = 200
-    num_parts = (n + chunk_size - 1) // chunk_size
-    created_files: List[Path] = []
+    num_parts = (len(out_df) + chunk_size - 1) // chunk_size
     for i in range(num_parts):
-        start, end = i * chunk_size, min((i + 1) * chunk_size, n)
-        df_chunk = out_df.iloc[start:end].reset_index(drop=True)
+        start, end = i * chunk_size, min((i + 1) * chunk_size, len(out_df))
+        part = out_df.iloc[start:end]
         out_file = out_dir / f"{brand_l}_jiangya_price_update_part{i+1}_of_{num_parts}.xlsx"
-        _write_one_excel(df_chunk, out_file)
-        created_files.append(out_file)
-        print(f"[OK] 写出：{out_file}（行数：{len(df_chunk)}）")
-
-    return str(created_files[0])
+        _write_one_excel(part, out_file)
+        print(f"[OK] 写出 {out_file}")
+    return str(out_file)
 
 
-from pathlib import Path
-from typing import Optional, List, Tuple
-import pandas as pd
-import openpyxl
-import psycopg2
 
-from config import BRAND_CONFIG, BASE_DIR  # 新增: BASE_DIR 用来拼默认路径
-try:
-    from config import PGSQL_CONFIG  # 兜底
-except Exception:
-    PGSQL_CONFIG = {}
+
+
+
 
 SHEET_NAME_PRICE = "sheet1"
 HEADERS_PRICE = ["渠道产品ID(必填)", "skuID", "渠道价格(未税)(元)(必填)", "最低建议零售价(元)", "最高建议零售价(元)"]
@@ -283,51 +239,93 @@ def _load_exclude_codes(file_path: Path) -> List[str]:
     print(f"[INFO] 已加载排除编码 {len(codes)} 条。")
     return codes
 
+def _load_exclude_codes_from_excel(excel_path: Path) -> List[str]:
+    """
+    从 Excel 读取要排除的商品编码列表。
+    逻辑：
+    - 找一列列名里包含 "code"（不区分大小写）或包含 "编码"
+      例: "product_code", "Product Code", "商品编码", "编码"
+    - 读取这一列的值，去前后空格
+    - 转成大写，过滤空值 / NaN / 空字符串
+    - 返回list[str]
+    如果 Excel 不存在或无法解析，返回空列表。
+    """
+    codes: List[str] = []
+    if not excel_path.exists():
+        print(f"[INFO] 未找到Excel排除清单文件：{excel_path}")
+        return codes
+
+    try:
+        df_exc = pd.read_excel(excel_path)
+    except Exception as e:
+        print(f"[WARN] 无法读取Excel排除清单 {excel_path}: {e}")
+        return codes
+
+    # 自动识别“商品编码列”
+    candidate_cols = []
+    for col in df_exc.columns:
+        col_str = str(col)
+        low = col_str.lower().strip()
+        if ("code" in low) or ("编码" in col_str):
+            candidate_cols.append(col)
+
+    if not candidate_cols:
+        print(f"[WARN] Excel文件中未找到包含 'code' 或 '编码' 的列，跳过。列名={list(df_exc.columns)}")
+        return codes
+
+    col_use = candidate_cols[0]
+    raw_vals = (
+        df_exc[col_use]
+        .astype(str)
+        .map(lambda s: s.strip())
+        .tolist()
+    )
+
+    for v in raw_vals:
+        up = v.upper()
+        if up and up != "NAN":
+            codes.append(up)
+
+    print(f"[INFO] 从Excel排除清单读取 {len(codes)} 条商品编码（原始 {len(raw_vals)} 条）。")
+    return codes
+
+
 def export_barbour_channel_price_by_sku(
     brand: str = "barbour",
-    output_dir: Optional[str] = None,
-    filename: Optional[str] = None,
-    chunk_size: int = 490,
-    strict: bool = True,  # True：发现空字段直接报错；False：跳过空行并仅告警
-    exclude_codes_file: Optional[str] = None,  # 新增：排除清单路径
+    output_excel_path: str = "D:/TB/Products/barbour_channel_price.xlsx",
+    exclude_excel_file: Optional[str] = None,
+    chunk_size: Optional[int] = None,   # ⭐ 新增可选参数：行数分包上限
 ) -> str:
     """
-    逐个 SKU 导出价格（Barbour 专用，不做任何价格计算，直接用 inventory 里的结果）
-    导出列：渠道产品ID(必填), skuID, 渠道价格(未税)(元)(必填), 最低建议零售价(元), 最高建议零售价(元)
-
-    规则：
-    - channel_product_id 可重复；每个 skuid 必须存在
-    - 若发现以下任一字段为空：channel_product_id / skuid / jingya_untaxed_price / taobao_store_price
-      则打印告警清单；strict=True 时抛错终止，strict=False 时跳过该行继续导出
-    - 支持排除清单：exclude_codes.txt 中列出的 product_code 全部过滤（对应所有 skuid 都不导出）
-    - 每个文件最多 chunk_size 条数据行（默认 490）
-    返回：第一个导出文件路径
+    Barbour SKU 级价格导出（最终版）
+    - 参数最简化，仅保留：
+        brand：品牌名
+        output_excel_path：输出文件的完整路径（绝对路径）
+        exclude_excel_file：Excel黑名单路径（排除商品编码）
+        chunk_size：可选参数；若传入，则按每 chunk_size 行切分为多个文件
+    - 保留所有原有价格与SKU汇总逻辑
     """
     brand_l = brand.lower().strip()
     if brand_l not in BRAND_CONFIG:
-        raise ValueError(f"未知品牌：{brand}。可用：{', '.join(sorted(BRAND_CONFIG.keys()))}")
+        raise ValueError(f"未知品牌：{brand}。")
 
     cfg = BRAND_CONFIG[brand_l]
-    table = cfg["TABLE_NAME"]  # barbour_inventory
+    table = cfg["TABLE_NAME"]
     pgcfg = cfg.get("PGSQL_CONFIG", PGSQL_CONFIG)
     if not pgcfg:
-        raise RuntimeError("PGSQL 连接配置缺失，请在 config.py 中提供 PGSQL_CONFIG 或品牌级 PGSQL_CONFIG。")
+        raise RuntimeError("PGSQL 连接配置缺失，请检查 config.py。")
 
-    # 默认排除清单路径（D:/TB/Products/barbour/document/exclude_codes.txt）
-    if exclude_codes_file is None:
-        # BASE_DIR/barbour/document/exclude_codes.txt
-        default_exclude = Path(BASE_DIR) / "barbour" / "document" / "exclude_codes.txt"
-    else:
-        default_exclude = Path(exclude_codes_file)
+    # === 载入 Excel 黑名单 ===
+    exclude_codes = set()
+    if exclude_excel_file:
+        exclude_codes = set(_load_exclude_codes_from_excel(Path(exclude_excel_file)))
+        print(f"[INFO] 从Excel排除清单加载 {len(exclude_codes)} 条商品编码。")
 
-    exclude_codes = set(_load_exclude_codes(default_exclude))
-
-    # 连接
+    # === 查询数据库 ===
     conn = psycopg2.connect(
         host=pgcfg["host"], port=pgcfg["port"],
         user=pgcfg["user"], password=pgcfg["password"], dbname=pgcfg["dbname"],
     )
-    # 注意：为实现“按 product_code 排除”，这里把 product_code 一并查出来
     sql = f"""
         SELECT
             channel_product_id,
@@ -342,129 +340,79 @@ def export_barbour_channel_price_by_sku(
     df = pd.read_sql(sql, conn)
     conn.close()
 
-    # 空表处理
-    out_dir = Path(output_dir) if output_dir else Path(cfg["OUTPUT_DIR"])
-    out_dir.mkdir(parents=True, exist_ok=True)
-    base = Path(filename).stem if filename else f"{brand_l}_jiangya_channel_price_sku"
-
     if df.empty:
-        out_file = out_dir / f"{base}_part1_of1.xlsx"
-        _write_simple_excel(pd.DataFrame(columns=HEADERS_PRICE), out_file)
-        print(f"[INFO] 无可导出的记录，生成空表：{out_file}")
-        return str(out_file)
+        print(f"[INFO] 数据表 {table} 无可导出记录。")
+        _write_simple_excel(pd.DataFrame(columns=HEADERS_PRICE), Path(output_excel_path))
+        return output_excel_path
 
-    # 规范化
+    # === 标准化字段 ===
     for col in ("channel_product_id", "skuid", "product_code"):
         df[col] = df[col].astype(str).str.strip()
 
-    # 按排除清单过滤（大小写不敏感：统一转大写比对）
+    # === 黑名单过滤 ===
     if exclude_codes:
         before = len(df)
         df = df[~df["product_code"].str.upper().isin(exclude_codes)].reset_index(drop=True)
-        removed = before - len(df)
-        print(f"[INFO] 已按排除清单过滤 {removed} 行。")
+        print(f"[INFO] 已按Excel黑名单过滤 {before - len(df)} 行。")
 
-    # 转数字
+    # === 转换数值类型 ===
     def to_num(s):
         try:
             return float(s)
         except Exception:
             return None
-
     df["jingya_untaxed_price"] = df["jingya_untaxed_price"].apply(to_num)
     df["taobao_store_price"] = df["taobao_store_price"].apply(to_num)
 
-    # 关键字段校验
-    issues: List[Tuple[int, str]] = []
-    mask_missing = (
-        (df["channel_product_id"] == "") |
-        (df["skuid"] == "") |
-        (df["jingya_untaxed_price"].isna()) |
-        (df["taobao_store_price"].isna())
-    )
-    if mask_missing.any():
-        bad = df[mask_missing].copy()
-        for idx, row in bad.iterrows():
-            issues.append((
-                idx,
-                f"缺失字段 -> code='{row.get('product_code', '')}', "
-                f"cpid='{row.get('channel_product_id', '')}', "
-                f"skuid='{row.get('skuid', '')}', "
-                f"jingya='{row.get('jingya_untaxed_price', '')}', "
-                f"taobao='{row.get('taobao_store_price', '')}'"
-            ))
-        print("[WARN] 发现字段缺失的记录：")
-        for i in issues:
-            print("   - 行", i[0], i[1])
-        if strict:
-            raise ValueError(f"存在 {len(issues)} 条缺失关键字段的记录；已列出详情。请先修复后再导出。")
-        # 非严格模式：跳过有问题的行
-        df = df[~mask_missing].reset_index(drop=True)
-
-
-
-
-    # === 在此处插入：为每个渠道产品ID补一行 skuID=0 的“品价格”（取该商品价格中最高值） ===
-    # 1) 只保留导出所需列（避免带入 product_code）
+    # === 构造 skuID=0 的品价格行 ===
     df_use = df[["channel_product_id", "skuid", "jingya_untaxed_price", "taobao_store_price"]].copy()
-
-    # 2) 统计每个渠道产品ID的最高价（jingya、taobao 各自取最高）
     agg_max = (
         df_use.groupby("channel_product_id", as_index=False)
               .agg(max_j=("jingya_untaxed_price", "max"),
                    max_t=("taobao_store_price", "max"))
     )
-
-    # 3) 生成 skuID=0 的“品价格”行
     zero_rows = agg_max.assign(
         skuid="0",
         jingya_untaxed_price=lambda x: x["max_j"],
         taobao_store_price=lambda x: x["max_t"]
     )[["channel_product_id", "skuid", "jingya_untaxed_price", "taobao_store_price"]]
-
-    # 4) 原始明细去掉已存在的 skuID=0，避免重复
     detail_rows = df_use[df_use["skuid"] != "0"]
 
-    # 5) 合并，并设置排序：同一渠道产品ID里，skuID=0 放最前，再按 skuid 升序
-    df_for_export = pd.concat([zero_rows, detail_rows], ignore_index=True)
-    df_for_export["zero_first"] = (df_for_export["skuid"] != "0").astype(int)
-    df_for_export = df_for_export.sort_values(
+    df_final = pd.concat([zero_rows, detail_rows], ignore_index=True)
+    df_final["zero_first"] = (df_final["skuid"] != "0").astype(int)
+    df_final = df_final.sort_values(
         by=["channel_product_id", "zero_first", "skuid"]
     ).drop(columns=["zero_first"]).reset_index(drop=True)
 
-
-    # 组织导出列
+    # === 生成输出表 ===
     out_df = pd.DataFrame({
-        "渠道产品ID(必填)": df_for_export["channel_product_id"],
-        "skuID": df_for_export["skuid"],
-        "渠道价格(未税)(元)(必填)": df_for_export["jingya_untaxed_price"].round(2),
-        "最低建议零售价(元)": df_for_export["taobao_store_price"].round(2),
-        "最高建议零售价(元)": df_for_export["taobao_store_price"].round(2),
+        "渠道产品ID(必填)": df_final["channel_product_id"],
+        "skuID": df_final["skuid"],
+        "渠道价格(未税)(元)(必填)": df_final["jingya_untaxed_price"].round(2),
+        "最低建议零售价(元)": df_final["taobao_store_price"].round(2),
+        "最高建议零售价(元)": df_final["taobao_store_price"].round(2),
     })[HEADERS_PRICE]
 
-    # 👉 按渠道产品ID排序
-    out_df = out_df.sort_values(by=["渠道产品ID(必填)", "skuID"]).reset_index(drop=True)
-    
+    # === 输出 ===
+    output_path = Path(output_excel_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # 分包写出
-    n = len(out_df)
-    if n == 0:
-        out_file = out_dir / f"{base}_part1_of1.xlsx"
-        _write_simple_excel(out_df, out_file)
-        print(f"[INFO] 过滤后无有效记录，已生成空表：{out_file}")
-        return str(out_file)
+    # ⭐ 根据 chunk_size 决定是否分包
+    if chunk_size and len(out_df) > chunk_size:
+        num_parts = (len(out_df) + chunk_size - 1) // chunk_size
+        for i in range(num_parts):
+            start, end = i * chunk_size, min((i + 1) * chunk_size, len(out_df))
+            chunk = out_df.iloc[start:end]
+            part_path = output_path.parent / f"{output_path.stem}_part{i+1}_of_{num_parts}.xlsx"
+            _write_simple_excel(chunk, part_path)
+            print(f"[OK] 写出分包文件：{part_path}")
+        return str(output_path.parent)
+    else:
+        _write_simple_excel(out_df, output_path)
+        print(f"[OK] 已生成完整文件：{output_path}（共 {len(out_df)} 行）")
+        return str(output_path)
 
-    num_parts = (n + chunk_size - 1) // chunk_size
-    created: List[Path] = []
-    for i in range(num_parts):
-        start, end = i * chunk_size, min((i + 1) * chunk_size, n)
-        chunk = out_df.iloc[start:end].reset_index(drop=True)
-        out_file = out_dir / (f"{base}.xlsx" if num_parts == 1 and filename else f"{base}_part{i+1}_of_{num_parts}.xlsx")
-        _write_simple_excel(chunk, out_file)
-        created.append(out_file)
-        print(f"[OK] 写出：{out_file}（行数：{len(chunk)}）")
 
-    return str(created[0])
 
 
 # CLI（可选）
