@@ -40,7 +40,7 @@ def barbour_database_import_pipleline():
     # barbour_fetch_info()
     # outdoorandcountry_fetch_info(max_workers=10)
     # allweathers_fetch_info(7)
-    houseoffraser_fetch_info(max_workers=1, headless=False)
+    # houseoffraser_fetch_info(max_workers=1, headless=False)
     # very_fetch_info()
     # terraces_fetch_info()
 
@@ -75,7 +75,7 @@ def barbour_database_import_pipleline():
 
     print("     步骤 6.1：为重点商品强制指定供应商覆盖")
     xlsx_path = r"D:\TB\Products\barbour\document\barbour_supplier.xlsx"
-    apply_barbour_supplier_overrides(xlsx_path,dry_run=True)
+    # apply_barbour_supplier_overrides(xlsx_path,dry_run=True)
     # apply_barbour_supplier_overrides(xlsx_path,dry_run=False)
 
     print("     步骤 6.2：生产发布商品的供应商报表")
@@ -91,9 +91,9 @@ def barbour_database_import_pipleline():
 
     
 
-
     print("步骤 7：根据步骤5中的prduct map表中的供货商，将商品的价格库存等信息回填到barbour inventory表")
     # backfill_barbour_inventory_single_supplier()
+
 
 
     ######################################################################
