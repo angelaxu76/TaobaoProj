@@ -95,18 +95,33 @@ def normalize_color_en(raw: str) -> str:
     return s
 
 def get_primary_material_cn(material_en: str) -> str:
+    """
+    输入英文材质描述，比如:
+        "Premium nubuck leather upper with waterproof Gore-Tex membrane"
+    返回主材质的中文，比如:
+        "牛皮" / "反毛皮" / "防水" / "头层牛皮"
+    规则：
+    1. 优先用 MATERIAL_MAP 的精确材质词
+    2. 再用 TERM_MAP 的正则特征词（防水/真皮/织物等）
+    3. 如果还是没有，返回 "" 而不是 "材质未知"
+    """
     parts = re.split(r"[ /,|]+", material_en or "")
-    # 先走材料映射（大小写无关）
+
+    # 1. 优先用 MATERIAL_MAP（精确英文 -> 中文）
     for part in parts:
         pc = part.strip().capitalize()
         if pc in MATERIAL_MAP:
             return MATERIAL_MAP[pc]
-    # 没识别到就尝试术语映射
-    low = (material_en or "").lower()
-    for k, v in TERM_MAP.items():
-        if k in low:
-            return v
-    return (parts[0] if parts and parts[0] else "材质未知")
+
+    # 2. TERM_MAP 是 [(pattern, "中文"), ...]
+    low_full = (material_en or "").lower()
+    for pat, cn in TERM_MAP:
+        if re.search(pat, low_full, flags=re.IGNORECASE):
+            return cn
+
+    # 3. 兜底：现在不再返回"材质未知"，而是返回空字符串
+    return ""
+
 
 def extract_field_from_content(content: str, field: str) -> str:
     pattern = re.compile(rf"{field}[:：]?\s*(.+)", re.IGNORECASE)
@@ -389,7 +404,7 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
 
     # 加入商品短码
     short_code = ""
-    if (brand_key or "").lower() in ["camper", "clarks_jingya"]:
+    if (brand_key or "").lower() in ["camper", "clarks_jingya", "ecco"]:
         short_code = extract_short_code(product_code, brand_key=brand_key)
         if short_code:
             base_title = f"{base_title} {short_code}"
