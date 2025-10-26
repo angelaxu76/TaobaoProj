@@ -101,33 +101,30 @@ def barbour_database_import_pipleline():
     ######################################################################
 
 
-    # print("导出excel 用于更新鲸芽库存")
+    print("导出excel 用于更新鲸芽库存")
     stock_dest_excel_folder = r"D:\TB\Products\barbour\repulibcation\stock"
-    # export_stock_excel("barbour",stock_dest_excel_folder)
-
+    export_stock_excel("barbour",stock_dest_excel_folder)
     
-    # print("导出excel 用于更新鲸芽价格=====商品级别"    )
-    # price_dest_excel_path = r"D:\TB\Products\barbour\repulibcation\publication_prices"
-    # xlsx_path = r"D:\TB\Products\barbour\document\barbour_supplier.xlsx"
-
-    # export_jiangya_channel_prices(
-    # brand="barbour",
-    # output_dir=price_dest_excel_path,
-    # exclude_excel_file=xlsx_path
-    # )
-
-    # print("导出excel 用于更新鲸芽价格=====SKU级别"    )
-    # export_barbour_channel_price_by_sku(
-    # brand="barbour",
-    # output_excel_path=r"D:\TB\Products\barbour\repulibcation\publication_sku_prices",
-    # exclude_excel_file=xlsx_path,
-    # chunk_size=200   # 用的是默认值
-    # )
-
-
-    # print("\n🟡 Step: 6️⃣ 获取excel文件，用来更新各个淘宝店铺价格，输入文件夹可以是多个店铺的导出文件")
+    print("导出excel 用于更新鲸芽价格=====商品级别"    )
+    price_dest_excel_path = r"D:\TB\Products\barbour\repulibcation\publication_prices"
     xlsx_path = r"D:\TB\Products\barbour\document\barbour_supplier.xlsx"
 
+    export_jiangya_channel_prices(
+    brand="barbour",
+    output_dir=price_dest_excel_path,
+    exclude_excel_file=xlsx_path
+    )
+
+    print("导出excel 用于更新鲸芽价格=====SKU级别"    )
+    export_barbour_channel_price_by_sku(
+    brand="barbour",
+    output_excel_path=r"D:\TB\Products\barbour\repulibcation\publication_sku_prices\sku_level_prices",
+    exclude_excel_file=xlsx_path,
+    chunk_size=200   # 用的是默认值
+    )
+
+    print("\n🟡 Step: 6️⃣ 获取excel文件，用来更新各个淘宝店铺价格，输入文件夹可以是多个店铺的导出文件")
+    xlsx_path = r"D:\TB\Products\barbour\document\barbour_supplier.xlsx"
     generate_price_excels_bulk(
         brand="barbour",
         input_dir=r"D:\TB\Products\barbour\repulibcation\store_prices\input",

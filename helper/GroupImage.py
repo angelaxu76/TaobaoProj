@@ -3,13 +3,13 @@ import shutil
 from math import ceil
 
 # 原始图片目录
-source_dir = r"D:\TB\Products\geox\publication\image_cutter"
+source_dir = r"D:\TB\Products\ECCO\publication\html_image\first_page"
 
 # 目标根目录（可以修改为其他路径）
-target_root_dir = r"D:\TB\Products\geox\publication\image_cutter分组图片"
+target_root_dir = r"D:\TB\Products\ECCO\publication\html_image\first_page分组图片"
 
 # 每组的图片数量
-group_size = 500
+group_size = 390
 
 # 支持的图片扩展名
 image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']

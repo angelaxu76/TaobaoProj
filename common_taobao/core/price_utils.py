@@ -86,7 +86,7 @@ def calculate_jingya_prices(base_price: float, delivery_cost=7, exchange_rate=9.
         untaxed = (base_price + delivery_cost) * 1.16 * exchange_rate
         untaxed = floor(untaxed / 10) * 10
 
-        retail = untaxed * 1.45
+        retail = untaxed * 1.43
         retail = floor(retail / 10) * 10
 
         return untaxed, retail

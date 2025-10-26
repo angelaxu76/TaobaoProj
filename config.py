@@ -88,7 +88,7 @@ BARBOUR = {
     "HTML_CUTTER_FIRST_PAGE": BARBOUR_BASE / "document" / "html_cutter"/ "first_page",
     "HTML_DEST": BARBOUR_BASE / "document" / "dest",
     "TABLE_NAME": "barbour_inventory",
-    "TAOBAO_STORE_DISCOUNT": 0.9,  # 不包关税→淘宝店铺价再打9折
+    "TAOBAO_STORE_DISCOUNT": 1,  # 不包关税→淘宝店铺价再打9折
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": BARBOUR_BASE / "publication" / "barbour" / "product_links.txt",
     "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
