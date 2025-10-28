@@ -58,7 +58,8 @@ def main():
 
     print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
     price_dest_excel = r"D:\TB\Products\geox\repulibcation\publication_prices"
-    export_jiangya_channel_prices("geox",price_dest_excel)
+    exclude_exccel = r"D:\TB\Products\geox\document\exclude.xlsx"
+    export_jiangya_channel_prices("geox",price_dest_excel,exclude_exccel)
 
 if __name__ == "__main__":
     main()

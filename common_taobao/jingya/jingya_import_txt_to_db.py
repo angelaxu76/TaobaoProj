@@ -17,6 +17,7 @@ BRAND_DISCOUNT = {
     "camper": 0.71,
     "geox": 0.98,
     "clarks_jingya": 1.0,
+    "ecco": 0.9,
     # 其它品牌默认 1.0
 }
 
