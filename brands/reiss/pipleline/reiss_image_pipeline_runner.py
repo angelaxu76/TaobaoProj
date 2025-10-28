@@ -18,25 +18,25 @@ def main():
 
     print("\n🟡 Step: 4️⃣ 下载指定编码的图片")
     sample_codes_file = Path(r"D:\TB\Products\reiss\repulibcation\publication_codes_outerwear.txt")
-    # download_reiss_images_from_codes(sample_codes_file)
+    download_reiss_images_from_codes(sample_codes_file)
 
     input_folder = REISS["IMAGE_DOWNLOAD"]
     output_folder = REISS["IMAGE_CUTTER"]
     print("将图片变成正方形")
-    # expand_images_in_folder(input_folder, output_folder)
+    expand_images_in_folder(input_folder, output_folder)
 
     print("将图片merge到一张图片中")
-    # batch_merge_images(REISS["IMAGE_DOWNLOAD"],REISS["MERGED_DIR"], width=750)
+    batch_merge_images(REISS["IMAGE_DOWNLOAD"],REISS["MERGED_DIR"], width=750)
 
     print("图片从download拷贝到document下面")
-    #shutil.copytree(REISS["IMAGE_DOWNLOAD"], REISS["IMAGE_DIR"], dirs_exist_ok=True)
+    shutil.copytree(REISS["IMAGE_DOWNLOAD"], REISS["IMAGE_DIR"], dirs_exist_ok=True)
 
     print("生成产品详情卡HTML")
-    #generate_html_from_codes_files("reiss",code_file_path)
+    generate_html_from_codes_files("reiss",code_file_path)
     generate_first_page_from_codes_files("reiss",code_file_path)
 
-    print("生成产品详情卡图片")
-    #convert_html_to_images(REISS["HTML_DIR_DES"], REISS["HTML_IMAGE_DES"],"",6)
+    # print("生成产品详情卡图片")
+    convert_html_to_images(REISS["HTML_DIR_DES"], REISS["HTML_IMAGE_DES"],"",6)
     trim_sides_batch(REISS["HTML_IMAGE_DES"],REISS["HTML_CUTTER_DES"])
 
     print("生成产品首页图片")

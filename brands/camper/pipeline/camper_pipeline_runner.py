@@ -38,10 +38,10 @@ def main():
     insert_missing_products_with_zero_stock("camper")
 
     print("\n🟡 Step: 5️⃣ 找出尺码很少的商品ID，将它所有的尺码都设置成0，并将状态变成未发布，为下一步该库存做准备")
-    #disable_low_stock_products("camper")
+    disable_low_stock_products("camper")
 
     print("\\n🟡 Step: 6️⃣ 导出男鞋商品列表，女鞋商品列表，用于更新尺码库存数据库版")
-    #export_gender_split_excel("camper")
+    export_gender_split_excel("camper")
 
 
 
@@ -58,7 +58,7 @@ def main():
     generate_publication_excels("camper")
 
     print("\n🟡 Step: 6️⃣ 输出低库存的商品，准备下架")
-    #export_low_stock_for_brand("camper", threshold=5)
+    export_low_stock_for_brand("camper", threshold=5)
 
 
 

@@ -19,16 +19,16 @@ def main():
         "https://www.reiss.com/shop/feat-sale-gender-women-0",
         "https://www.reiss.com/shop/feat-sale-gender-men-0",
     ]
-    #reiss_get_links(cats, headless=True)
+    reiss_get_links(cats, headless=True)
 
     print("\\n🟡 Step: 6️⃣下载商品信息写入TXT")
-    #reiss_fetch_all()
+    reiss_fetch_all()
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
-    #import_txt_to_db_supplier("reiss")  # ✅ 新逻辑
+    import_txt_to_db_supplier("reiss")  # ✅ 新逻辑
 
     print("\n🟡 Step: 4️⃣ 生成发布产品的excel")
-    #generate_publication_excels_clothing(brand="reiss",pricing_mode="taobao",min_sizes=3,min_total_stock=6,gender_filter="women", category_filter=["Dresses"])
+    generate_publication_excels_clothing(brand="reiss",pricing_mode="taobao",min_sizes=3,min_total_stock=6,gender_filter="women", category_filter=["Dresses"])
 
     
     print("\n🟡 Step: 4️⃣ 下载指定编码的图片")

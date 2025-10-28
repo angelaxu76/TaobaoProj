@@ -14,15 +14,15 @@ def run_channel_product_split():
 
 if __name__ == "__main__":
     # 将GEI excel中的产品的货品ID等鲸牙这边的数据导入数据库
-    #parse_and_update_excel("camper")
+    parse_and_update_excel("camper")
 
-    #run_channel_product_split()
+    run_channel_product_split()
 
-    #copy_product_images_for_recent_publication("camper")
+    copy_product_images_for_recent_publication("camper")
 
     export_channel_price_excel("camper")
 
-    #export_all_sku_price_excel("camper")
+    export_all_sku_price_excel("camper")
 
     export_gender_split_excel("camper")
 

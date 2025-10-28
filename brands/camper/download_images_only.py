@@ -74,4 +74,4 @@ if __name__ == "__main__":
     download_camper_images()
 
     # 如果需要从指定文件下载，取消注释以下代码
-    # download_images_from_codes("D:/TB/camper_missing_codes.txt")
+    download_images_from_codes("D:/TB/camper_missing_codes.txt")
