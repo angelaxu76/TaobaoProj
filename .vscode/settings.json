@@ -26,5 +26,20 @@
     // ✅ 让 Python 能识别项目根路径
     "python.analysis.extraPaths": [
         "D:/Projects/VS-TaobaoProj/TaobaoProj"
-    ]
+    ],
+
+    // =========================
+    // 🚀 Rope 自动重构配置段落
+    // =========================
+    "python.roperefactoring.enabled": true,
+    "python.roperefactoring.preview": true,              // 移动前显示预览
+    "python.analysis.autoImportCompletions": true,       // 启用自动 import
+    "python.analysis.autoSearchPaths": true,
+    "python.languageServer": "Pylance",
+    "editor.rename.enablePreview": true,                 // 重命名前显示对比
+    "editor.refactor.preview": true,
+    "python.analysis.useLibraryCodeForTypes": true,      // 允许跨模块类型检查
+    "python.linting.enabled": true,
+    "python.linting.flake8Enabled": false,
+    "python.linting.pylintEnabled": true
 }

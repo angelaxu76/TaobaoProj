@@ -59,11 +59,11 @@ def main():
     # export_stock_excel("ecco", stock_dest_excel_folder)
 
     # print("\n🟡 Step: 6️⃣ 生成鲸芽【价格更新】Excel")
-    # price_dest_excel_folder = r"D:\TB\Products\ecco\repulibcation\publication_prices"
-    # export_jiangya_channel_prices("ecco", price_dest_excel_folder)
+    price_dest_excel_folder = r"D:\TB\Products\ecco\repulibcation\publication_prices"
+    export_jiangya_channel_prices("ecco", price_dest_excel_folder)
 
     print("\n🟡 Step: 7️⃣ 为新品生成【鲸芽上新模板】Excel")
-    generate_publication_excels("ecco")
+    # generate_publication_excels("ecco")
 
     print("\n🟡 Step: 8️⃣ 输出低库存商品列表，准备在鲸芽下架")
     # export_low_stock_for_brand("ecco", threshold=5)
