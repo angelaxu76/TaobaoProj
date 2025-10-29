@@ -1,11 +1,8 @@
-import os
-import subprocess
 from pathlib import Path
 from config import REISS
 from brands.reiss.core.reiss_link_collector import reiss_get_links
-from common_taobao.backup_and_clear import backup_and_clear_brand_dirs
 from brands.reiss.core.reiss_product_fetcher import reiss_fetch_all
-from common_taobao.jingya.jingya_import_txt_to_db import import_txt_to_db_supplier
+from channels.jingya.ingest.import_txt_to_db import import_txt_to_db_supplier
 from common_taobao.core.generate_publication_excel_outerwear import generate_publication_excels_clothing
 from brands.reiss.core.download_reiss_images import download_reiss_images_from_codes
 

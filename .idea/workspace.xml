@@ -4,10 +4,225 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7ad83b3f-8c84-4560-8d4c-2361cece7f17" name="更改" comment="增加第三方barbour爬取">
+    <list default="true" id="7ad83b3f-8c84-4560-8d4c-2361cece7f17" name="更改" comment="c">
+      <change afterPath="$PROJECT_DIR$/barbour/pipeline/image_tool_pipeline.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/barbour/pipeline/image_tool_pipleline_watermark.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/channels/jingya/cainiao/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/channels/jingya/export/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/channels/jingya/ingest/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/channels/jingya/legacy/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/channels/jingya/maintenance/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/channels/jingya/utils/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/channels/taobao/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/channels/taobao/legacy/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/channels/taobao/utils/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/common_taobao/image/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/common_taobao/ingest/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/common_taobao/maintenance/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/common_taobao/pricing/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/common_taobao/publication/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/common_taobao/text/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/helper/README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/helper/excel/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/helper/html/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/helper/image/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/helper/txt/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/TaobaoProj.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/TaobaoProj.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/sqldialects.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/sqldialects.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/barbour/pipleline/barbour_database_import_pipleline_cmd.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/pipleline/barbour_database_import_pipleline_cmd.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/barbour/supplier/houseoffraser_fetch_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/supplier/houseoffraser_fetch_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/common/generate_sql_for_pulication.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/common/generate_sql_for_publication.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/common/import_supplier_to_db_offers.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/common/import_supplier_to_db_offers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/image/image_move_for_publication_folder.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/image/move_images_to_publication_folder.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/jingya/backfill_barbour_inventory.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/jingya/backfill_inventory.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/jingya/fill_offer_to_barbour_inventory.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/jingya/merge_offer_into_inventory.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/jingya/insert_jingyaid_to_db_barbour.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/jingya/insert_jingyaid_mapping.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/pipleline/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/pipleline/barbour_candidates_pipeline.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/pipeline/barbour_candidates_pipeline.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/pipleline/barbour_database_import_pipleline_cmd.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/pipeline/barbour_database_import_pipeline.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/pipleline/barbour_publication_pipleline.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/pipeline/barbour_publication_pipleline.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/pipleline/cho_pipleline.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/pipleline/image_tool_pipleline.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/pipleline/image_tool_pipleline_watermark.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/pipleline/main_first_image_pipleline.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/pipeline/main_first_image_pipleline.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/pipleline/sizechat_html_image_pipeline.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/pipeline/sizechat_html_image_pipeline.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/supplier/allweathers_fetch_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/supplier/allweathers_fetch_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/supplier/barbour_fetch_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/supplier/barbour_fetch_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/supplier/houseoffraser_new_fetch_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/supplier/houseoffraser_new_fetch_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/supplier/outdoorandcountry_fetch_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/supplier/outdoorandcountry_fetch_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/barbour/supplier/terraces_fetch_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/supplier/terraces_fetch_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/barbour/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/barbour/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/barbour/barbour_download_images_only.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/barbour/barbour_download_images_only.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/barbour/barbour_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/barbour/barbour_pipeline_runner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/barbour/image/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/barbour/image/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/barbour/image/compose_with_background.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/barbour/image/compose_with_background.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/barbour/image/compose_with_background_batch.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/barbour/image/compose_with_background_batch.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/barbour/image/image_defence.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/barbour/image/image_defence.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/barbour/image/move_image_model_flat.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/barbour/image/move_image_model_flat.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/barbour/image/move_jacket_image.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/barbour/image/move_jacket_image.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/barbour/细节裁剪.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/barbour/细节裁剪.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/birkenstock/birkenstock_image_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/birkenstock/birkenstock_image_pipeline_runner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/birkenstock/birkenstock_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/birkenstock/birkenstock_pipeline_runner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/birkenstock/download_images_only.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/birkenstock/download_images_only.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/birkenstock/fetch_product_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/birkenstock/fetch_product_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper/camper_tool_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/legacy/camper_tool_pipeline_runner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper/download_images_only.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/download_product_images.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper/fetch_product_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/fetch_product_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper/generate_publish_excels_from_db.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/legacy/generate_publish_excels_from_db.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper/image/ResizeImage.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/camper_global/ResizeImage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper/image/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/camper_global/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper/image/image_defender_with_flip.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/helpers_local/image_defender_with_flip.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper/pipeline/camper_image_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/pipeline/image_pipeline_runner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper/pipeline/camper_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/pipeline/prepare_jingya_listing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper/pipeline/camper_update_Stock_pipleline.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/pipeline/sync_stock_to_jingya.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper/pipeline/channel_product_pipeline.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/legacy/channel_product_pipeline.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper/tools/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/clarks/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper/tools/find_taobaoID_from_url.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/legacy/find_taobaoID_from_url.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper/tools/query_stock_by_productcode.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/legacy/query_stock_by_productcode.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper/unified_link_collector.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/collect_product_links.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper/unified_link_specify_collector.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/collect_product_links_manual.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper_global/ResizeImage.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/helpers_local/ResizeImage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper_global/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/clarks/core/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper_global/camperGB_image_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/camper_global/camperGB_image_pipeline_runner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper_global/camperGlobal_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/camper_global/camperGlobal_pipeline_runner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper_global/database" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/camper_global/database" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper_global/download_images_only.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/camper_global/download_images_only.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper_global/fetch_product_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/camper_global/fetch_product_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper_global/generate_camper_publish_excel.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/camper_global/generate_camper_publish_excel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper_global/import_txt_to_db_camper.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/camper_global/import_txt_to_db_camper.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/camper_global/unified_link_collector.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/camper_global/unified_link_collector.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/clarks/test/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/clarks_image_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/clarks/clarks_image_pipeline_runner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/clarks_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/clarks/clarks_pipeline_runner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/core/GetOutletProductURL.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/clarks/core/GetOutletProductURL.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/core/GetProductURLs.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/clarks/core/GetProductURLs.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/core/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/barbour/pipeline/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/database.txt" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/clarks/database.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/download_images_only.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/clarks/download_images_only.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/fetch_product_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/clarks/fetch_product_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/test/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/helpers_local/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/test/download_product_images.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/clarks/test/download_product_images.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/test/find_publishable_products.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/clarks/test/find_publishable_products.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/test/get_publishable_product_codes.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/clarks/test/get_publishable_product_codes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/test/prepare_products_for_publication.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/clarks/test/prepare_products_for_publication.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/test/testStore.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/clarks/test/testStore.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/test/test_publishable_codes.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/clarks/test/test_publishable_codes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/test/test_unpublished_valid_stock.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/clarks/test/test_unpublished_valid_stock.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks/unified_link_collector.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/clarks/unified_link_collector.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks_Jingya/clarks_jingya_image_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks_Jingya/pipeline/image_pipeline_runner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks_Jingya/clarks_jingya_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks_Jingya/pipeline/prepare_jingya_listing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks_Jingya/clarks_jingya_update_Stock_pipleline.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks_Jingya/pipeline/sync_stock_to_jingya.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks_Jingya/clarks_jinya_fetch_product_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks_Jingya/fetch_product_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks_Jingya/core/GetOutletProductURL.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks_Jingya/helpers_local/GetOutletProductURL.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks_Jingya/core/GetProductURLs.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks_Jingya/helpers_local/GetProductURLs.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks_Jingya/core/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/camper/legacy/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks_Jingya/db_create_sql.sql" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks_Jingya/database/db_create_sql.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks_Jingya/download_images_only.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks_Jingya/download_product_images.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks_Jingya/query.sql" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks_Jingya/database/query.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/clarks_Jingya/unified_link_collector.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks_Jingya/collect_product_links.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/ecco/database.txt" beforeDir="false" afterPath="$PROJECT_DIR$/brands/ecco/legacy/database_old_note.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/ecco/download_images_only.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/ecco/download_product_images.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/ecco/fetch_product_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/ecco/fetch_product_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/ecco/image/GroupImage.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/ecco/helpers_local/group_images.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/ecco/image/ImageMaxCutter.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/ecco/helpers_local/image_max_cutter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/ecco/image/imageNameFormat.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/ecco/helpers_local/image_name_format.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/ecco/pipeline/ecco_image_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/ecco/pipeline/image_pipeline_runner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/ecco/pipeline/ecco_jingya_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/ecco/pipeline/prepare_jingya_listing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/ecco/pipeline/ecco_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/ecco/legacy/prepare_store_listing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/ecco/unified_link_collector.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/ecco/collect_product_links.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/geox/core/download_images_only.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/geox/download_product_images.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/geox/core/fetch_product_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/geox/fetch_product_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/geox/core/geox_jingya_fetch_product_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/geox/fetch_product_info_jingya.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/geox/core/unified_link_collector.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/geox/collect_product_links.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/geox/image/MaxCutter.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/geox/helpers_local/MaxCutter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/geox/image/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks_Jingya/helpers_local/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/geox/image/image_defender_with_flip.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/geox/helpers_local/image_defender_with_flip.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/geox/pipeline/geox_image_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/geox/pipeline/image_pipeline_runner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/geox/pipeline/geox_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/geox/pipeline/prepare_jingya_listing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/ms/core/ms_fetch_product_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/ms/core/ms_fetch_product_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/reiss/core/reiss_product_fetcher.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/reiss/core/reiss_product_fetcher.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/reiss/pipleline/reiss_get_info_pipleline.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/reiss/pipleline/reiss_get_info_pipleline.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/brands/reiss/pipleline/reiss_image_pipeline_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/reiss/pipleline/reiss_image_pipeline_runner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/clarks_Jingya/pipeline/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common/scraper_base.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/scraper_base.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/backup_and_clear.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/maintenance/backup_and_clear.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/check_missing_images.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/image/check_missing_images.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/export_low_stock_products.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/publication/export_low_stock_products.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/export_skuid_stock.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/publication/export_skuid_stock.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/export_taobao_sku_price_stock_excels.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/pricing/export_taobao_sku_price_stock_excels.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/generate_discount_price_excel.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/pricing/generate_discount_price_excel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/generate_html.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/publication/generate_html.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/generate_html_FristPage.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/publication/generate_html_FristPage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/generate_html_noImage.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/publication/generate_html_noImage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/generate_taobao_store_price_for_import_excel.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/publication/generate_taobao_store_price_for_import_excel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/generate_taobao_title.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/text/generate_taobao_title.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/import_txt_to_db.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/ingest/import_txt_to_db.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/jingya/copy_product_images_for_recent_publication.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/maintenance/copy_recent_publication_images.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/jingya/disable_low_stock_product.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/maintenance/disable_low_stock_products.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/jingya/export_channel_price_excel.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/taobao/legacy/export_channel_price_excel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/jingya/export_gender_split_excel.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/export/export_gender_split_excel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/jingya/extract_unpublished_ids_binding_taobaostore.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/maintenance/extract_unpublished_binding_ids.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/jingya/generate_Exce_For_Goods_Update.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/legacy/generate_goods_update_excel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/jingya/generate_publication_excel.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/export/generate_publication_excel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/jingya/generate_unbound_goods_excel.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/legacy/generate_unbound_goods_excel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/jingya/import_channel_info_from_excel.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/ingest/import_channel_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/jingya/jiangya_export_channel_price_excel.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/export/export_channel_price_excel_jingya.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/jingya/jingya_export_stockcount_to_excel.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/export/export_stock_to_excel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/jingya/jingya_import_txt_to_db.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/ingest/import_txt_to_db.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/jingya/prepare_utils_extended_jingya.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/taobao/utils/prepare_utils_extended.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/mark_offline_products.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/publication/mark_offline_products.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/mark_offline_products_from_store_excels.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/publication/mark_offline_products_from_store_excels.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/prepare_utils_extended.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/publication/prepare_utils_extended.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/sample_standard_format.txt" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/sample_standard_format.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/size_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/core/size_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/txt_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/ingest/txt_parser.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common_taobao/txt_writer.py" beforeDir="false" afterPath="$PROJECT_DIR$/common_taobao/ingest/txt_writer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/ECCOImageRename.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/rename_ecco_images.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/GroupImage.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/group_images.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/HTMLToPGNBatchMutipleThread.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/html/html_to_png_multithread.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/HtmlToPGNBatch.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/html/html_to_png_batch.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/avif_to_jpg.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/avif_to_jpg.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/copy_images.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/copy_images.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/crop_gray_to_square.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/crop_to_square.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/cutterAllsiderSpace.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/trim_sides_batch.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/excel_splitor.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/excel/split_excel_by_rows.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/expand_to_square.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/expand_to_square.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/export_discount_candidates.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/excel/export_discount_candidates_excel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/export_excel_from_jingya_copy.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/excel/export_excel_from_jingya_copy.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/find_duplicate_codes_in_store.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/excel/find_duplicate_codes_excel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/image_defender.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/image_antifingerprint.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/image_defender_leftright.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/image_antifingerprint_flip.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/image_expand_square_add_product_code.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/expand_square_add_code.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/image_html_jpg_pipleline.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/html/html_image_pipeline.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/image_reduce_size.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/reduce_image_size.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/merge_product_images.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/merge_product_images.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/miage_cutter_11_34.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/image_cutter_11_34.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/remove.sale.id.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/txt/remove_sale_id.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/remove_processed_ids.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/txt/remove_processed_ids.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/resize_images.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/resize_images_batch.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/resize_images_to_1500.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/resize_images_to_1500_batch.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/splite_image_by_size.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/split_image_by_size.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/text_watermark.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/add_text_watermark.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/watermark.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/add_image_watermark.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/webp_to_jpg.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/webp_to_jpg.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helper/从打折列表中获取淘宝宝贝ID.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/excel/get_taobao_ids_from_discount_list.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jingya/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/ecco/helpers_local/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jingya/cainiao_generate_excel_HSCODE_barbour.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/cainiao/generate_hscode_excel_barbour.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jingya/cainiao_generate_excel_HSCODE_shoe.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/cainiao/generate_hscode_excel_shoes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jingya/cainiao_generate_excel_binding_goods_jingya.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/cainiao/generate_binding_goods_excel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jingya/cainiao_generate_excel_binding_goods_shoe.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/cainiao/generate_binding_goods_excel_shoes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jingya/cainiao_generate_excel_update_goods_excel.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/cainiao/generate_goods_update_excel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jingya/cainiao_generate_excel_update_goods_for_shoe.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/cainiao/generate_goods_update_excel_shoes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jingya/check_duplicate_from_jingya_excel.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/cainiao/check_duplicate_from_excel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jingya/dedup_jingya_goods_by_db.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/cainiao/dedup_goods_by_db.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jingya/jinga_pipleline.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels/jingya/cainiao/jinga_pipleline.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/make_manifest.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/make_manifest.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pipeline.py" beforeDir="false" afterPath="$PROJECT_DIR$/_legacy/pipeline.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/ecco/legacy/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/image/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/brands/geox/helpers_local/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/image/image_composer_background.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/jpg_to_pdf.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/image/jpg_to_pdf.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/检查GEI重复值.py" beforeDir="false" afterPath="$PROJECT_DIR$/helper/excel/check_gei_duplicates.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -41,7 +256,7 @@
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
     &quot;url&quot;: &quot;https://github.com/angelaxu76/TaobaoProj.git&quot;,
-    &quot;accountId&quot;: &quot;9f7c89e5-c989-4c40-bd82-77408125929f&quot;
+    &quot;accountId&quot;: &quot;b74ba28c-07c7-43f3-9eb2-9c0228eee6b2&quot;
   }
 }</component>
   <component name="ProjectColorInfo">{
@@ -52,165 +267,168 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Database Script.db_create_sql.sql.executor": "Run",
-    "Database Script.query.sql.executor": "Run",
-    "Python.CamperFilterGoodsExport.executor": "Run",
-    "Python.ECCOImageRename.executor": "Run",
-    "Python.FetchEccoDetailAndImage.executor": "Run",
-    "Python.FetchEccoDetailAndImage_fixed.executor": "Run",
-    "Python.FetchImangeAndInfo.executor": "Run",
-    "Python.Find_unbound_unregistered_products.executor": "Run",
-    "Python.GetAllLink.executor": "Run",
-    "Python.GetEccoProductLinks.executor": "Run",
-    "Python.GetOutletProductURL.executor": "Run",
-    "Python.GetProductLink.executor": "Run",
-    "Python.GetProductURLs.executor": "Run",
-    "Python.GroupImage.executor": "Run",
-    "Python.HTMLToPGNBatchMutipleThread.executor": "Run",
-    "Python.HtmlToPGNBatch.executor": "Run",
-    "Python.ImageMaxCutter.executor": "Run",
-    "Python.MaxCutter.executor": "Run",
-    "Python.MergeImages.executor": "Run",
-    "Python.TestClarks.executor": "Run",
-    "Python.allweathers_fetch_info.executor": "Debug",
-    "Python.allweathers_get_links.executor": "Run",
-    "Python.allweathers_pipleline.executor": "Run",
-    "Python.barbour_database_import_pipleline.executor": "Run",
-    "Python.barbour_database_import_pipleline_cmd.executor": "Run",
-    "Python.barbour_download_images_only.executor": "Run",
-    "Python.barbour_pipeline_runner.executor": "Run",
-    "Python.barbour_pipleline.executor": "Run",
-    "Python.barbour_publication_pipleline.executor": "Run",
-    "Python.barbour_unified_link_collector.executor": "Run",
-    "Python.birkenstock_gender_updater.executor": "Run",
-    "Python.birkenstock_image_pipeline_runner.executor": "Run",
-    "Python.birkenstock_link_collector.executor": "Run",
-    "Python.birkenstock_pipeline_runner.executor": "Run",
-    "Python.brand_data_aggregator.executor": "Run",
-    "Python.cainiao_generate_excel_binding_goods_jingya.executor": "Run",
-    "Python.cainiao_generate_update_goods_excel.executor": "Run",
-    "Python.camperChannelId.executor": "Run",
-    "Python.camperGlobal_pipeline_runner.executor": "Run",
-    "Python.camper_image_pipeline_runner.executor": "Run",
-    "Python.camper_pipeline_runner.executor": "Run",
-    "Python.camper_pipeline_updateStock.executor": "Run",
-    "Python.camper_tool_pipeline_runner.executor": "Run",
-    "Python.changeImageSize.executor": "Run",
-    "Python.clarks_image_pipeline_runner.executor": "Run",
-    "Python.clarks_jingya_pipeline_runner.executor": "Run",
-    "Python.clarks_pipeline_runner.executor": "Run",
-    "Python.clarks_pipepline_size_newproduct.executor": "Run",
-    "Python.clean_brands.executor": "Run",
-    "Python.compose_with_background.executor": "Run",
-    "Python.compose_with_background_batch.executor": "Run",
-    "Python.config.executor": "Run",
-    "Python.convert_xls_to_xlsx.executor": "Run",
-    "Python.crop_gray_to_square.executor": "Run",
-    "Python.cutterAllsiderSpace.executor": "Run",
-    "Python.download_images_only.executor": "Run",
-    "Python.download_product_images.executor": "Run",
-    "Python.ecco_image_pipeline_runner.executor": "Run",
-    "Python.ecco_pipeline_runner.executor": "Run",
-    "Python.excel_splitor.executor": "Run",
-    "Python.expand_to_square.executor": "Run",
-    "Python.export_excel_from_jingya_copy.executor": "Run",
-    "Python.export_gender_split_excel.executor": "Run",
-    "Python.export_skuid_stock.executor": "Run",
-    "Python.export_store_discount_price.executor": "Run",
-    "Python.export_store_skuid_stock.executor": "Run",
-    "Python.extract_product_codes_and_unappointProd_from_excel.executor": "Run",
-    "Python.fetch_barbour_product_info.executor": "Run",
-    "Python.fetch_missing_images.executor": "Run",
-    "Python.fetch_product_info.executor": "Run",
-    "Python.find_duplicate_codes_in_store.executor": "Run",
-    "Python.find_taobaoID_from_url.executor": "Debug",
-    "Python.flip_images_horizontal.executor": "Run",
-    "Python.generate_Exce_For_Goods_Update.executor": "Run",
-    "Python.generate_barbour_prices_from_avg.executor": "Run",
-    "Python.generate_barbour_publication_excel.executor": "Run",
-    "Python.generate_barbour_taobao_title.executor": "Run",
-    "Python.generate_discount_price_excel.executor": "Run",
-    "Python.generate_html.executor": "Run",
-    "Python.generate_html_noImage.executor": "Run",
-    "Python.generate_product_excels.executor": "Run",
-    "Python.generate_publication_excel.executor": "Run",
-    "Python.generate_store_reports.executor": "Run",
-    "Python.generate_unbound_goods_excel.executor": "Run",
-    "Python.geox_DetailAndImages.executor": "Run",
-    "Python.geox_detailAndImage_MutipleThread.executor": "Run",
-    "Python.geox_getTxt_image_mutipleThread.executor": "Run",
-    "Python.geox_pipeline_runner.executor": "Run",
-    "Python.get_ecco_links.executor": "Run",
-    "Python.get_geox_links.executor": "Run",
-    "Python.get_outdoorandcountry_links.executor": "Run",
-    "Python.get_publishable_product_codes.executor": "Run",
-    "Python.houseoffraser_fetch_info.executor": "Run",
-    "Python.houseoffraser_get_links.executor": "Run",
-    "Python.houseoffraser_pipleline.executor": "Run",
-    "Python.imageNameFormat.executor": "Run",
-    "Python.image_defender.executor": "Run",
-    "Python.image_reduce_size.executor": "Run",
-    "Python.import_barbour_txt_to_products.executor": "Run",
-    "Python.import_channel_info_from_excel.executor": "Run",
-    "Python.import_clarks_txt_to_db.executor": "Run",
-    "Python.import_geox_txt_to_db.executor": "Run",
-    "Python.import_outdoor_txt_to_barbour_products.executor": "Run",
-    "Python.import_supplier_to_db_offers.executor": "Run",
-    "Python.import_txt_to_db.executor": "Run",
-    "Python.jinga_pipleline.executor": "Run",
-    "Python.jingya_pipeline_runner.executor": "Run",
-    "Python.move_image_model_flat.executor": "Run",
-    "Python.move_jacket_image.executor": "Run",
-    "Python.outdoorandcountry_pipeline.executor": "Run",
-    "Python.parse_offer_info.executor": "Run",
-    "Python.philipmorrisdirect_fetch_info.executor": "Run",
-    "Python.philipmorrisdirect_get_links.executor": "Run",
-    "Python.pipeline_suppliers.executor": "Run",
-    "Python.prepare_products_for_publication.executor": "Run",
-    "Python.prepare_products_for_publication_updated.executor": "Run",
-    "Python.prepare_utils_extended.executor": "Run",
-    "Python.price_utils.executor": "Run",
-    "Python.query_stock_by_productcode.executor": "Run",
-    "Python.resize_images.executor": "Run",
-    "Python.run_camper_pipeline.executor": "Run",
-    "Python.test.executor": "Debug",
-    "Python.testPrice.executor": "Run",
-    "Python.testStore.executor": "Run",
-    "Python.test_publishable_codes.executor": "Run",
-    "Python.test_unpublished_valid_stock.executor": "Run",
-    "Python.unified_link_collector.executor": "Run",
-    "Python.检查GEI重复值.executor": "Run",
-    "Python.生意参谋商品分析.executor": "Run",
-    "Python.细节裁剪.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "database.data.extractors.current.export.id": "Comma-separated (CSV)_id",
-    "database.data.extractors.current.id": "Comma-separated (CSV)_id",
-    "git-widget-placeholder": "main",
-    "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "D:/Projects/TaobaoProj/brands/clarks_Jingya",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "run.code.analysis.last.selected.profile": "aDefault",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Database Script.db_create_sql.sql.executor&quot;: &quot;Run&quot;,
+    &quot;Database Script.query.sql.executor&quot;: &quot;Run&quot;,
+    &quot;Python.CamperFilterGoodsExport.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ECCOImageRename.executor&quot;: &quot;Run&quot;,
+    &quot;Python.FetchEccoDetailAndImage.executor&quot;: &quot;Run&quot;,
+    &quot;Python.FetchEccoDetailAndImage_fixed.executor&quot;: &quot;Run&quot;,
+    &quot;Python.FetchImangeAndInfo.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Find_unbound_unregistered_products.executor&quot;: &quot;Run&quot;,
+    &quot;Python.GetAllLink.executor&quot;: &quot;Run&quot;,
+    &quot;Python.GetEccoProductLinks.executor&quot;: &quot;Run&quot;,
+    &quot;Python.GetOutletProductURL.executor&quot;: &quot;Run&quot;,
+    &quot;Python.GetProductLink.executor&quot;: &quot;Run&quot;,
+    &quot;Python.GetProductURLs.executor&quot;: &quot;Run&quot;,
+    &quot;Python.GroupImage.executor&quot;: &quot;Run&quot;,
+    &quot;Python.HTMLToPGNBatchMutipleThread.executor&quot;: &quot;Run&quot;,
+    &quot;Python.HtmlToPGNBatch.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ImageMaxCutter.executor&quot;: &quot;Run&quot;,
+    &quot;Python.MaxCutter.executor&quot;: &quot;Run&quot;,
+    &quot;Python.MergeImages.executor&quot;: &quot;Run&quot;,
+    &quot;Python.TestClarks.executor&quot;: &quot;Run&quot;,
+    &quot;Python.allweathers_fetch_info.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.allweathers_get_links.executor&quot;: &quot;Run&quot;,
+    &quot;Python.allweathers_pipleline.executor&quot;: &quot;Run&quot;,
+    &quot;Python.barbour_database_import_pipleline.executor&quot;: &quot;Run&quot;,
+    &quot;Python.barbour_database_import_pipleline_cmd.executor&quot;: &quot;Run&quot;,
+    &quot;Python.barbour_download_images_only.executor&quot;: &quot;Run&quot;,
+    &quot;Python.barbour_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.barbour_pipleline.executor&quot;: &quot;Run&quot;,
+    &quot;Python.barbour_publication_pipleline.executor&quot;: &quot;Run&quot;,
+    &quot;Python.barbour_unified_link_collector.executor&quot;: &quot;Run&quot;,
+    &quot;Python.birkenstock_gender_updater.executor&quot;: &quot;Run&quot;,
+    &quot;Python.birkenstock_image_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.birkenstock_link_collector.executor&quot;: &quot;Run&quot;,
+    &quot;Python.birkenstock_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.brand_data_aggregator.executor&quot;: &quot;Run&quot;,
+    &quot;Python.cainiao_generate_excel_binding_goods_jingya.executor&quot;: &quot;Run&quot;,
+    &quot;Python.cainiao_generate_update_goods_excel.executor&quot;: &quot;Run&quot;,
+    &quot;Python.camperChannelId.executor&quot;: &quot;Run&quot;,
+    &quot;Python.camperGlobal_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.camper_image_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.camper_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.camper_pipeline_updateStock.executor&quot;: &quot;Run&quot;,
+    &quot;Python.camper_tool_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.changeImageSize.executor&quot;: &quot;Run&quot;,
+    &quot;Python.clarks_image_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.clarks_jingya_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.clarks_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.clarks_pipepline_size_newproduct.executor&quot;: &quot;Run&quot;,
+    &quot;Python.clean_brands.executor&quot;: &quot;Run&quot;,
+    &quot;Python.compose_with_background.executor&quot;: &quot;Run&quot;,
+    &quot;Python.compose_with_background_batch.executor&quot;: &quot;Run&quot;,
+    &quot;Python.config.executor&quot;: &quot;Run&quot;,
+    &quot;Python.convert_xls_to_xlsx.executor&quot;: &quot;Run&quot;,
+    &quot;Python.crop_gray_to_square.executor&quot;: &quot;Run&quot;,
+    &quot;Python.cutterAllsiderSpace.executor&quot;: &quot;Run&quot;,
+    &quot;Python.download_images_only.executor&quot;: &quot;Run&quot;,
+    &quot;Python.download_product_images.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ecco_image_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ecco_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.excel_splitor.executor&quot;: &quot;Run&quot;,
+    &quot;Python.expand_to_square.executor&quot;: &quot;Run&quot;,
+    &quot;Python.export_excel_from_jingya_copy.executor&quot;: &quot;Run&quot;,
+    &quot;Python.export_gender_split_excel.executor&quot;: &quot;Run&quot;,
+    &quot;Python.export_skuid_stock.executor&quot;: &quot;Run&quot;,
+    &quot;Python.export_store_discount_price.executor&quot;: &quot;Run&quot;,
+    &quot;Python.export_store_skuid_stock.executor&quot;: &quot;Run&quot;,
+    &quot;Python.extract_product_codes_and_unappointProd_from_excel.executor&quot;: &quot;Run&quot;,
+    &quot;Python.fetch_barbour_product_info.executor&quot;: &quot;Run&quot;,
+    &quot;Python.fetch_missing_images.executor&quot;: &quot;Run&quot;,
+    &quot;Python.fetch_product_info.executor&quot;: &quot;Run&quot;,
+    &quot;Python.find_duplicate_codes_in_store.executor&quot;: &quot;Run&quot;,
+    &quot;Python.find_taobaoID_from_url.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.flip_images_horizontal.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_Exce_For_Goods_Update.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_barbour_prices_from_avg.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_barbour_publication_excel.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_barbour_taobao_title.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_discount_price_excel.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_html.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_html_noImage.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_product_excels.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_publication_excel.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_store_reports.executor&quot;: &quot;Run&quot;,
+    &quot;Python.generate_unbound_goods_excel.executor&quot;: &quot;Run&quot;,
+    &quot;Python.geox_DetailAndImages.executor&quot;: &quot;Run&quot;,
+    &quot;Python.geox_detailAndImage_MutipleThread.executor&quot;: &quot;Run&quot;,
+    &quot;Python.geox_getTxt_image_mutipleThread.executor&quot;: &quot;Run&quot;,
+    &quot;Python.geox_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.get_ecco_links.executor&quot;: &quot;Run&quot;,
+    &quot;Python.get_geox_links.executor&quot;: &quot;Run&quot;,
+    &quot;Python.get_outdoorandcountry_links.executor&quot;: &quot;Run&quot;,
+    &quot;Python.get_publishable_product_codes.executor&quot;: &quot;Run&quot;,
+    &quot;Python.houseoffraser_fetch_info.executor&quot;: &quot;Run&quot;,
+    &quot;Python.houseoffraser_get_links.executor&quot;: &quot;Run&quot;,
+    &quot;Python.houseoffraser_pipleline.executor&quot;: &quot;Run&quot;,
+    &quot;Python.imageNameFormat.executor&quot;: &quot;Run&quot;,
+    &quot;Python.image_defender.executor&quot;: &quot;Run&quot;,
+    &quot;Python.image_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.image_reduce_size.executor&quot;: &quot;Run&quot;,
+    &quot;Python.import_barbour_txt_to_products.executor&quot;: &quot;Run&quot;,
+    &quot;Python.import_channel_info_from_excel.executor&quot;: &quot;Run&quot;,
+    &quot;Python.import_clarks_txt_to_db.executor&quot;: &quot;Run&quot;,
+    &quot;Python.import_geox_txt_to_db.executor&quot;: &quot;Run&quot;,
+    &quot;Python.import_outdoor_txt_to_barbour_products.executor&quot;: &quot;Run&quot;,
+    &quot;Python.import_supplier_to_db_offers.executor&quot;: &quot;Run&quot;,
+    &quot;Python.import_txt_to_db.executor&quot;: &quot;Run&quot;,
+    &quot;Python.jinga_pipleline.executor&quot;: &quot;Run&quot;,
+    &quot;Python.jingya_pipeline_runner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.move_image_model_flat.executor&quot;: &quot;Run&quot;,
+    &quot;Python.move_jacket_image.executor&quot;: &quot;Run&quot;,
+    &quot;Python.outdoorandcountry_pipeline.executor&quot;: &quot;Run&quot;,
+    &quot;Python.parse_offer_info.executor&quot;: &quot;Run&quot;,
+    &quot;Python.philipmorrisdirect_fetch_info.executor&quot;: &quot;Run&quot;,
+    &quot;Python.philipmorrisdirect_get_links.executor&quot;: &quot;Run&quot;,
+    &quot;Python.pipeline_suppliers.executor&quot;: &quot;Run&quot;,
+    &quot;Python.prepare_jingya_listing.executor&quot;: &quot;Run&quot;,
+    &quot;Python.prepare_products_for_publication.executor&quot;: &quot;Run&quot;,
+    &quot;Python.prepare_products_for_publication_updated.executor&quot;: &quot;Run&quot;,
+    &quot;Python.prepare_utils_extended.executor&quot;: &quot;Run&quot;,
+    &quot;Python.price_utils.executor&quot;: &quot;Run&quot;,
+    &quot;Python.query_stock_by_productcode.executor&quot;: &quot;Run&quot;,
+    &quot;Python.resize_images.executor&quot;: &quot;Run&quot;,
+    &quot;Python.run_camper_pipeline.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.testPrice.executor&quot;: &quot;Run&quot;,
+    &quot;Python.testStore.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test_publishable_codes.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test_unpublished_valid_stock.executor&quot;: &quot;Run&quot;,
+    &quot;Python.unified_link_collector.executor&quot;: &quot;Run&quot;,
+    &quot;Python.检查GEI重复值.executor&quot;: &quot;Run&quot;,
+    &quot;Python.生意参谋商品分析.executor&quot;: &quot;Run&quot;,
+    &quot;Python.细节裁剪.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;database.data.extractors.current.export.id&quot;: &quot;Comma-separated (CSV)_id&quot;,
+    &quot;database.data.extractors.current.id&quot;: &quot;Comma-separated (CSV)_id&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/Projects/TaobaoProj/brands/clarks_Jingya&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;run.code.analysis.last.selected.profile&quot;: &quot;aDefault&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
-  "keyToStringList": {
-    "DatabaseDriversLRU": [
-      "postgresql"
+  &quot;keyToStringList&quot;: {
+    &quot;DatabaseDriversLRU&quot;: [
+      &quot;postgresql&quot;
     ],
-    "RunConfigurationTargetLRU": [
-      "dd567798-8b43-4191-a9b6-87a0bdcbf664",
-      "443808b4-81d2-4728-a5bd-d3088bb1da27/database/\"taobao_inventory_db\"/schema/\"public\""
+    &quot;RunConfigurationTargetLRU&quot;: [
+      &quot;dd567798-8b43-4191-a9b6-87a0bdcbf664&quot;,
+      &quot;443808b4-81d2-4728-a5bd-d3088bb1da27/database/\&quot;taobao_inventory_db\&quot;/schema/\&quot;public\&quot;&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\Projects\TaobaoProj\brands\clarks_Jingya" />
@@ -220,16 +438,17 @@
       <recent name="D:\Projects\TaobaoProj\brands\camper_global" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
-      <recent name="D:\Projects\TaobaoProj\barbour\jingya" />
-      <recent name="D:\Projects\TaobaoProj\barbour\common" />
-      <recent name="D:\Projects\TaobaoProj\barbour\image" />
-      <recent name="D:\Projects\TaobaoProj\barbour\core" />
-      <recent name="D:\Projects\TaobaoProj\barbour\database" />
+      <recent name="D:\Projects\TaobaoProj\barbour\pipeline" />
+      <recent name="D:\Projects\TaobaoProj\_legacy" />
+      <recent name="D:\Projects\TaobaoProj\helper\image" />
+      <recent name="D:\Projects\TaobaoProj\helper\excel" />
+      <recent name="D:\Projects\TaobaoProj\helper\txt" />
     </key>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
+        <option value="bundled-js-predefined-d6986cc7102b-b26f3e71634d-JavaScript-PY-251.26094.141" />
         <option value="bundled-python-sdk-9f8e2b94138c-36ea0e71a18c-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.26094.141" />
       </set>
     </attachedChunks>
@@ -322,6 +541,9 @@
       <workItem from="1755595274306" duration="4339000" />
       <workItem from="1755607838509" duration="20235000" />
       <workItem from="1755684451376" duration="22922000" />
+      <workItem from="1761680781650" duration="7232000" />
+      <workItem from="1761689703777" duration="1724000" />
+      <workItem from="1761691563111" duration="5228000" />
     </task>
     <task id="LOCAL-00101" summary="增加第三方barbour爬取">
       <option name="closed" value="true" />
@@ -741,18 +963,18 @@
           <option name="timeStamp" value="1" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/common_taobao/jingya/generate_publication_excel.py</url>
-          <line>140</line>
+          <url>file://$PROJECT_DIR$/channels/jingya/export/generate_publication_excel.py</url>
+          <line>138</line>
           <option name="timeStamp" value="5" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/common_taobao/jingya/export_gender_split_excel.py</url>
+          <url>file://$PROJECT_DIR$/channels/jingya/export/export_gender_split_excel.py</url>
           <line>66</line>
           <option name="timeStamp" value="6" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/brands/camper/fetch_product_info.py</url>
-          <line>55</line>
+          <line>53</line>
           <option name="timeStamp" value="7" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -762,7 +984,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/barbour/common/import_supplier_to_db_offers.py</url>
-          <line>42</line>
+          <line>38</line>
           <option name="timeStamp" value="38" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -772,8 +994,26 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/barbour/supplier/outdoorandcountry_fetch_info.py</url>
-          <line>181</line>
+          <line>180</line>
           <option name="timeStamp" value="42" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/brands/camper/fetch_product_info.py</url>
+          <line>1</line>
+          <option name="timeStamp" value="43" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/channels/taobao/utils/prepare_utils_extended.py</url>
+          <option name="timeStamp" value="44" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/channels/jingya/export/export_channel_price_excel_jingya.py</url>
+          <line>99</line>
+          <option name="timeStamp" value="47" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/barbour/pipeline/image_tool_pipleline_watermark.py</url>
+          <option name="timeStamp" value="48" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
@@ -785,8 +1025,8 @@
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/TaobaoProj$import_txt_to_db.coverage" NAME="import_txt_to_db Coverage Results" MODIFIED="1750415218153" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao" />
-    <SUITE FILE_PATH="coverage/TaobaoProj$ImageMaxCutter.coverage" NAME="ImageMaxCutter Coverage Results" MODIFIED="1750521423351" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/ecco/image" />
     <SUITE FILE_PATH="coverage/TaobaoProj$pipeline_suppliers.coverage" NAME="pipeline_suppliers Coverage Results" MODIFIED="1754341779113" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$ImageMaxCutter.coverage" NAME="ImageMaxCutter Coverage Results" MODIFIED="1750521423351" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/ecco/image" />
     <SUITE FILE_PATH="coverage/TaobaoProj$allweathers_get_links.coverage" NAME="allweathers_get_links Coverage Results" MODIFIED="1754411428848" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
     <SUITE FILE_PATH="coverage/TaobaoProj$barbour_pipeline_runner.coverage" NAME="barbour_pipeline_runner Coverage Results" MODIFIED="1753815628024" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/barbour" />
     <SUITE FILE_PATH="coverage/TaobaoProj$image_defender_with_flip.coverage" NAME="image_defender_with_flip Coverage Results" MODIFIED="1750811451516" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper/image" />
@@ -874,6 +1114,7 @@
     <SUITE FILE_PATH="coverage/TaobaoProj$miage_cutter_11_34.coverage" NAME="miage_cutter_11_34 Coverage Results" MODIFIED="1755174062022" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
     <SUITE FILE_PATH="coverage/TaobaoProj$text_watermark.coverage" NAME="text_watermark Coverage Results" MODIFIED="1755173947094" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
     <SUITE FILE_PATH="coverage/TaobaoProj$geox_getTxt_image_mutipleThread.coverage" NAME="geox_getTxt_image_mutipleThread 覆盖结果" MODIFIED="1749765294793" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/geox" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$image_pipeline_runner.coverage" NAME="image_pipeline_runner Coverage Results" MODIFIED="1761684914401" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/clarks_Jingya/pipeline" />
     <SUITE FILE_PATH="coverage/TaobaoProj$prepare_products_for_publication.coverage" NAME="prepare_products_for_publication Coverage Results" MODIFIED="1750331393259" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../pythonProject1/clarks/pulication" />
     <SUITE FILE_PATH="coverage/TaobaoProj$webp_to_jpg.coverage" NAME="webp_to_jpg Coverage Results" MODIFIED="1755248050752" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
     <SUITE FILE_PATH="coverage/TaobaoProj$TestClarks.coverage" NAME="TestClarks Coverage Results" MODIFIED="1750289549457" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
@@ -901,6 +1142,7 @@
     <SUITE FILE_PATH="coverage/TaobaoProj$barbour_publication_pipleline.coverage" NAME="barbour_publication_pipleline Coverage Results" MODIFIED="1755614918797" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/pipleline" />
     <SUITE FILE_PATH="coverage/TaobaoProj$camper_image_pipeline_runner.coverage" NAME="camper_image_pipeline_runner Coverage Results" MODIFIED="1753899162492" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper" />
     <SUITE FILE_PATH="coverage/TaobaoProj$GEI.coverage" NAME="检查GEI重复值 Coverage Results" MODIFIED="1754488745226" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/common_taobao/tools" />
+    <SUITE FILE_PATH="coverage/TaobaoProj$prepare_jingya_listing.coverage" NAME="prepare_jingya_listing Coverage Results" MODIFIED="1761687240589" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper/pipeline" />
     <SUITE FILE_PATH="coverage/TaobaoProj$fetch_product_info.coverage" NAME="fetch_product_info Coverage Results" MODIFIED="1753645560263" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/brands/camper" />
     <SUITE FILE_PATH="coverage/TaobaoProj$houseoffraser_fetch_info.coverage" NAME="houseoffraser_fetch_info Coverage Results" MODIFIED="1754389774774" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/barbour/supplier" />
     <SUITE FILE_PATH="coverage/TaobaoProj$cutterAllsiderSpace.coverage" NAME="cutterAllsiderSpace Coverage Results" MODIFIED="1755006247188" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />

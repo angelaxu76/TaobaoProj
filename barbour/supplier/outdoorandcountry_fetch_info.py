@@ -23,7 +23,6 @@ Outdoor & Country | Barbour 商品抓取（统一 TXT 模板版）
 import time
 import json
 import re
-from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse, parse_qs, unquote
 
@@ -34,10 +33,10 @@ from config import BARBOUR
 from barbour.supplier.outdoorandcountry_parse_offer_info import parse_offer_info
 
 # ✅ 统一 TXT 写入（与其它站点一致）
-from common_taobao.txt_writer import format_txt
+from common_taobao.ingest.txt_writer import format_txt
 
 # ✅ 尺码清洗（保守：识别不了就原样返回）
-from common_taobao.size_utils import clean_size_for_barbour  # 见你上传的实现
+from common_taobao.core.size_utils import clean_size_for_barbour  # 见你上传的实现
 from barbour.core.site_utils import assert_site_or_raise as canon
 CANON_SITE = canon("outdoorandcountry")
 

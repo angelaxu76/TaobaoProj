@@ -8,16 +8,13 @@ House of Fraser | Barbour - 新版 Next.js PDP 解析
 
 from __future__ import annotations
 
-from logging import info
-import os, re, json, time, tempfile, threading, html as ihtml
+import os, time, tempfile, threading, html as ihtml
 from pathlib import Path
-from typing import Optional, Tuple, List, Dict, Any
-from urllib.parse import urlparse, parse_qsl, urlunparse, urlencode
+from typing import Optional, Dict, Any
 from collections import OrderedDict
 
 # ---- 依赖 ----
 import undetected_chromedriver as uc
-from bs4 import BeautifulSoup
 from selenium.webdriver.common.by import By
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Connection
@@ -25,8 +22,8 @@ from sqlalchemy.engine import Connection
 # ---- 项目内模块（保持不变）----
 from config import BARBOUR, BRAND_CONFIG
 from barbour.core.site_utils import assert_site_or_raise as canon
-from barbour.core.sim_matcher import match_product, choose_best, explain_results
-from common_taobao.size_utils import clean_size_for_barbour as _norm_size  # 尺码清洗
+from barbour.core.sim_matcher import match_product, choose_best
+from common_taobao.core.size_utils import clean_size_for_barbour as _norm_size  # 尺码清洗
 
 # ================== 常量/路径 ==================
 SITE_NAME = canon("houseoffraser")
@@ -53,7 +50,7 @@ URL_CODE_CACHE: Dict[str, str] = {}
 _URL_CODE_CACHE_READY = False
 
 
-import json, re
+import json
 from bs4 import BeautifulSoup
 
 
@@ -72,7 +69,6 @@ ALPHA_MAP = {
     "XXXL":"3XL","3XL":"3XL",
 }
 
-import re
 
 def _normalize_size_token_for_barbour(raw_token: str, gender: str) -> str | None:
     """
@@ -384,7 +380,7 @@ def _extract_sizes_from_allSizes(html: str):
     return entries
 
 import re
-from typing import Tuple, Dict, Optional, List
+from typing import Tuple, Dict, Optional
 from bs4 import BeautifulSoup
 
 OOS_WORDS = ["out of stock", "sold out", "unavailable", "no stock", "oos"]

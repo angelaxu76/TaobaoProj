@@ -3,9 +3,7 @@
 
 import re
 import time
-import json
 import tempfile
-from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import demjson3
@@ -16,7 +14,7 @@ from config import BARBOUR
 from barbour.core.site_utils import assert_site_or_raise as canon
 
 # ✅ 统一写入：使用你的 txt_writer，保证与其它站点同模板
-from common_taobao.txt_writer import format_txt  # 与项目当前用法保持一致
+from common_taobao.ingest.txt_writer import format_txt  # 与项目当前用法保持一致
 
 # 可选的 selenium_stealth（无则跳过）
 try:

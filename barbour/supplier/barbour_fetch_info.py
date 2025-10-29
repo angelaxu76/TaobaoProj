@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 from pathlib import Path
 
 from config import BARBOUR
-from common_taobao.txt_writer import format_txt              # ✅ 统一写入模板
+from common_taobao.ingest.txt_writer import format_txt              # ✅ 统一写入模板
 from barbour.core.site_utils import assert_site_or_raise as canon
 
 

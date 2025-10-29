@@ -5,20 +5,18 @@ ECCO UK (Next.js) 全新抓取 → Clarks Jingya 格式
 - 输出: /TXT/{product_code}.txt  和  可选 /debug_pages/*.html
 - 字段: Code / Name / Description / Gender / Color / Price / Adjusted Price / Material / Size / Feature / Source URL
 """
-import os
 import time
 import hashlib
-import traceback
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from html import unescape
-from config import ECCO, ensure_all_dirs
+from config import ECCO
 import requests
 from bs4 import BeautifulSoup
-import re, json
+import json
 
 # ===== 你本地已有的写入器：保持与现有工程兼容 =====
-from common_taobao.txt_writer import format_txt  # format_txt(info, filepath, brand="clarks_jingya")
+from common_taobao.ingest.txt_writer import format_txt  # format_txt(info, filepath, brand="clarks_jingya")
 
 # ===== 路径配置（按需改）=====
 LINKS_FILE = ECCO["LINKS_FILE"]
@@ -48,9 +46,6 @@ MAX_WORKERS = 1
 
 # ============ 小工具 ============
 
-
-import re
-import demjson3  # pip install demjson3
 
 import re
 import demjson3  # 确保已安装: pip install demjson3

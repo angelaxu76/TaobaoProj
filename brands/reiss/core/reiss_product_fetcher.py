@@ -14,7 +14,7 @@ except ImportError:
     REISS = None
 
 # === 文本写入：沿用你的 writer ===
-from common_taobao.txt_writer import format_txt
+from common_taobao.ingest.txt_writer import format_txt
 
 UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "

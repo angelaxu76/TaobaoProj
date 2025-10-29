@@ -15,9 +15,9 @@ from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
 from barbour.core.site_utils import assert_site_or_raise as canon
-from barbour.core.sim_matcher import match_product, choose_best, explain_results
+from barbour.core.sim_matcher import match_product, choose_best
 from sqlalchemy import create_engine
-from config import BARBOUR, BRAND_CONFIG
+from config import BRAND_CONFIG
 
 
 # ==== 浏览器兜底（与 very 同风格） ====
@@ -143,7 +143,7 @@ PG = BRAND_CONFIG["barbour"]["PGSQL_CONFIG"]  # ✅ 注意这里
 
 # 项目内的通用 TXT 写入（若存在则优先使用，字段/顺序将与全站一致）
 try:
-    from common_taobao.txt_writer import format_txt as write_txt
+    from common_taobao.ingest.txt_writer import format_txt as write_txt
 except Exception:
     write_txt = None  # 用本文件的 fallback 写盘
 
@@ -162,7 +162,6 @@ HEADERS       = {
 
 import random
 import time
-from urllib.parse import urljoin
 
 UA_POOL = [
     # 挑几条常见桌面 UA 轮换

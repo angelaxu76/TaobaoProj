@@ -1,18 +1,14 @@
 
 # import_supplier_to_db_offers.py  — 仅保留数字库存 stock_count（可覆盖）
-import sys
 import csv
 import re
 import unicodedata
 import psycopg2
 import argparse
-from datetime import datetime
 from pathlib import Path
-from config import BARBOUR
 from barbour.core.keyword_mapping import KEYWORD_EQUIVALENTS
-from common_taobao.size_utils import clean_size_for_barbour  # 旧名保留
+from common_taobao.core.size_utils import clean_size_for_barbour  # 旧名保留
 from barbour.core.site_utils import canonical_site, assert_site_or_raise
-from collections import defaultdict
 from config import BARBOUR  # 已有导入就不要重复
 
 # ---------- 小工具 ----------

@@ -1,4 +1,4 @@
-from helper.image_defender_leftright import batch_process_images
+from helper.image.image_antifingerprint_flip import batch_process_images
 from tools import run_crop_and_expand
 from config import BIRKENSTOCK
 

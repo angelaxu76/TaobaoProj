@@ -10,7 +10,6 @@ M&S 商品抓取 → 生成“鲸芽模式”格式化 TXT（Camper 对齐）
 - 兜底：若没有大 JSON，则从 DOM/文本提取整码，库存置 0
 """
 
-import os
 import re
 import json
 import time
@@ -27,7 +26,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from config import BRAND_CONFIG
-from common_taobao.txt_writer import format_txt
+from common_taobao.ingest.txt_writer import format_txt
 
 # ============= 常量&品牌配置 =============
 CFG = BRAND_CONFIG["ms"]

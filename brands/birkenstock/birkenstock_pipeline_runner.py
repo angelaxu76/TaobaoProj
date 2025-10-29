@@ -1,12 +1,9 @@
 import os
 import subprocess
 from config import BIRKENSTOCK,TAOBAO_STORES
-from pathlib import Path
-from common_taobao.generate_discount_price_excel import export_store_discount_price,export_discount_price_with_skuids
-from common_taobao.export_skuid_stock import export_skuid_stock_excel
-from common_taobao.import_txt_to_db import import_txt_to_db
-from common_taobao.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
-from common_taobao.backup_and_clear import backup_and_clear_brand_dirs  # ✅ 新增导入
+from common_taobao.publication.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
+
+
 #
 def run_script(filename: str):
     path = os.path.join(os.path.dirname(__file__), filename)
@@ -18,10 +15,10 @@ def main():
     #backup_and_clear_brand_dirs(BIRKENSTOCK)  # ✅ 使用共享方法
 
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    #run_script("unified_link_collector.py")
+    #run_script("collect_product_links.py")
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    #run_script("clarks_jinya_fetch_product_info.py")
+    #run_script("fetch_product_info.py")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库")
     #import_txt_to_db("birkenstock")
