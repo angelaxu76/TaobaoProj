@@ -3,8 +3,9 @@ import math
 import psycopg2
 from pathlib import Path
 from psycopg2.extras import execute_batch
-from config import BRAND_CONFIG
+from config import BRAND_CONFIG,BRAND_DISCOUNT
 from common_taobao.ingest.txt_parser import jingya_parse_txt_file
+
 
 # ✅ 与导出脚本保持一致的价格工具 & 品牌折扣
 try:
@@ -12,13 +13,6 @@ try:
 except Exception:
     from common_taobao.core.price_utils import calculate_jingya_prices  # type: ignore
 
-BRAND_DISCOUNT = {
-    "camper": 0.71,
-    "geox": 0.98,
-    "clarks_jingya": 1.0,
-    "ecco": 0.9,
-    # 其它品牌默认 1.0
-}
 
 MIN_STOCK_THRESHOLD = 1  # 小于该值的库存将置为0
 

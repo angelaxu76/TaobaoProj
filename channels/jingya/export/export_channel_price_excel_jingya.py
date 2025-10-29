@@ -21,7 +21,7 @@ import pandas as pd
 import openpyxl
 import psycopg2
 
-from config import BRAND_CONFIG
+from config import BRAND_CONFIG,BRAND_DISCOUNT
 try:
     from config import PGSQL_CONFIG  # 兜底
 except Exception:
@@ -45,13 +45,6 @@ HEADERS = [
     "最高建议零售价(元)",
 ]
 
-# 品牌默认折扣
-BRAND_DISCOUNT = {
-    "camper": 0.71,
-    "geox": 0.98,
-    "clarks_jingya": 1.0,
-    # 其它品牌默认 1.0
-}
 
 def _brand_discount(brand: str) -> float:
     return float(BRAND_DISCOUNT.get(brand.lower().strip(), 1.0))

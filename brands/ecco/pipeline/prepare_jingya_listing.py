@@ -50,8 +50,7 @@ def main():
     print("\n🟡 Step: 5️⃣ 根据尺码数量，自动下架稀缺尺码的商品，避免差评/售后")
     disable_low_stock_products("ecco")
 
-    print("\n🟡 Step: 5️⃣ 导出男/女商品列表（可用于手工核对）")
-    export_gender_split_excel("ecco")
+  
 
     print("\n🟡 Step: 6️⃣ 生成鲸芽【库存更新】Excel")
     stock_dest_excel_folder = r"D:\TB\Products\ecco\repulibcation\stock"
@@ -76,7 +75,10 @@ def main():
         drop_rows_without_price=False
     )
 
-    print("\n✅ ECCO 鲸芽 pipeline 完成")
+
+    # print("\n🟡 Step: 5️⃣ 导出男/女商品列表（可用于手工核对）")
+    #     export_gender_split_excel("ecco")
+    #     print("\n✅ ECCO 鲸芽 pipeline 完成")
 
 
 if __name__ == "__main__":

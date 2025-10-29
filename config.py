@@ -18,6 +18,8 @@ SETTINGS = {
 }
 
 
+
+
 # === 项目根路径 ===
 BASE_DIR = Path("D:/TB/Products")
 DISCOUNT_EXCEL_DIR = Path("D:/TB/DiscountCandidates")
@@ -592,4 +594,12 @@ BRAND_NAME_MAP = {
     "birkenstock": ("BIRKENSTOCK", "勃肯"),
     "reiss": ("REISS", ""),  # ✅ 新增（中文名若需本地化可改为“瑞斯/锐思”等）
     "ms": ("Marks & Spencer", "马莎"),  # ✅ 新增
+}
+
+BRAND_DISCOUNT = {
+    "camper": 0.71,
+    "geox": 0.98,
+    "clarks_jingya": 1.0,
+    "ecco": 0.9,
+    # 其它品牌默认 1.0
 }
