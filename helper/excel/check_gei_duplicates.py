@@ -1,6 +1,6 @@
 import pandas as pd
 
-file_path = "d:/GEI.xlsx"
+file_path = r"D:\TB\Products\ECCO\document\GEI@sales_catalogue_export@251028223905@7978.xlsx"
 
 # 尝试读取 Excel 文件
 try:
@@ -25,6 +25,6 @@ dups = df[df.duplicated(subset=[sku_col], keep=False)]
 if dups.empty:
     print("✅ 没有重复的 SKU。")
 else:
-    output_file = "重复SKU.xlsx"
+    output_file = r"D:\TB\Products\ECCO\document\重复SKU.xlsx"
     dups.to_excel(output_file, index=False)
     print(f"⚠️ 共发现 {dups.shape[0]} 行重复记录，已导出至：{output_file}")

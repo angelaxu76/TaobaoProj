@@ -283,7 +283,7 @@ def _load_exclude_codes_from_excel(excel_path: Path) -> List[str]:
     return codes
 
 
-def export_barbour_channel_price_by_sku(
+def export_channel_price_by_sku(
     brand: str = "barbour",
     output_excel_path: str = "D:/TB/Products/barbour_channel_price.xlsx",
     exclude_excel_file: Optional[str] = None,
