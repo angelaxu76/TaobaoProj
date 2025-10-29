@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 
 from config import BARBOUR
-from barbour.core.site_utils import assert_site_or_raise as canon
+from brands.barbour.core.site_utils import assert_site_or_raise as canon
 
 # ✅ 统一写入：使用你的 txt_writer，保证与其它站点同模板
 from common_taobao.ingest.txt_writer import format_txt  # 与项目当前用法保持一致

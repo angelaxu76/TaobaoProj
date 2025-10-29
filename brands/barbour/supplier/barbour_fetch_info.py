@@ -9,7 +9,7 @@ from pathlib import Path
 
 from config import BARBOUR
 from common_taobao.ingest.txt_writer import format_txt              # ✅ 统一写入模板
-from barbour.core.site_utils import assert_site_or_raise as canon
+from brands.barbour.core.site_utils import assert_site_or_raise as canon
 
 
 # 可选：更稳的 Barbour 性别兜底（M*/L* 前缀）

@@ -12,13 +12,7 @@
 - keyword_mapping.KEYWORD_EQUIVALENTS (等价词库，可扩展)   (你已上传)  :contentReference[oaicite:5]{index=5}
 """
 from __future__ import annotations  # ★ 必须在最前（仅允许注释/文档字符串在它前面）
-import re
-from dataclasses import asdict
-from typing import Optional, Tuple
-from barbour.core.color_utils import normalize_color
-from barbour.core.keyword_mapping import KEYWORD_EQUIVALENTS
-from barbour.core.match_resolver import resolve_color_code, debug_log
-import barbour.core.match_resolver as _mr
+import brands.barbour.core.match_resolver as _mr
 
 # -*- coding: utf-8 -*-
 """Product code resolver: normalize name/color, strip stopwords, and resolve product_code via DB."""
@@ -26,29 +20,27 @@ import barbour.core.match_resolver as _mr
 
 
 import re  # ★ 你停用词正则会用到它
-from dataclasses import asdict
 from typing import Optional, Tuple
 
 # 可选依赖：颜色规范化
 try:
-    from barbour.core.color_utils import normalize_color
+    from brands.barbour.core.color_utils import normalize_color
 except Exception:
     normalize_color = None
 
 # 关键词等价 & 停用词（集中维护处）
 try:
-    from barbour.core.keyword_mapping import KEYWORD_EQUIVALENTS, STOPWORDS as _KM_STOPWORDS
+    from brands.barbour.core.keyword_mapping import KEYWORD_EQUIVALENTS, STOPWORDS as _KM_STOPWORDS
 except Exception:
     KEYWORD_EQUIVALENTS = None
     _KM_STOPWORDS = None
 
 # 核心匹配器（不要在站点脚本里直接用它；统一走 find_color_code_by_keywords）
-from barbour.core.match_resolver import resolve_color_code, debug_log
 
 # --- 可选：读取你已有的颜色/关键词工具（存在则自动使用，不存在也不报错） ---
 
 try:
-    from barbour.core.keyword_mapping import STOPWORDS as _KM_STOPWORDS
+    from brands.barbour.core.keyword_mapping import STOPWORDS as _KM_STOPWORDS
 except Exception:
     _KM_STOPWORDS = None
 
@@ -147,8 +139,8 @@ def find_color_code_by_keywords(
     _orig_fetch = getattr(_mr, "_fetch_candidates_by_color")
 
     def _fetch_with_table(conn_in, color_text_in):
-        from typing import List, Tuple
-        from barbour.core.match_resolver import Candidate, normalize_color_for_match, COLOR_FAMILY_KEYS  # type: ignore
+        from typing import Tuple
+        from brands.barbour.core.match_resolver import Candidate, normalize_color_for_match, COLOR_FAMILY_KEYS  # type: ignore
         color_std = normalize_color_for_match(color_text_in)
         color_std_l = color_std.lower()
 

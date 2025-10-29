@@ -8,7 +8,6 @@ Very | Barbour 商品抓取（与 houseoffraser_fetch_info 结构对齐）
 
 from __future__ import annotations
 
-import re
 import os
 import json
 import time
@@ -19,7 +18,6 @@ from typing import Optional, Tuple, List, Dict, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ===== 第三方与解析 =====
-import undetected_chromedriver as uc
 from bs4 import BeautifulSoup
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -29,8 +27,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Connection
 from config import BARBOUR, BRAND_CONFIG
-from barbour.core.site_utils import assert_site_or_raise as canon
-from barbour.core.sim_matcher import match_product, choose_best, explain_results
+from brands.barbour.core.site_utils import assert_site_or_raise as canon
+from brands.barbour.core.sim_matcher import match_product, choose_best, explain_results
 
 # ================== 站点与目录 ==================
 SITE_NAME = canon("very")

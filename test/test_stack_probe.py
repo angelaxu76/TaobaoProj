@@ -16,7 +16,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 # ★ 复用你现有脚本中的配置与判定函数
-from barbour.supplier.houseoffraser_fetch_info import get_driver, _classify_stack_by_html_head  # noqa: E402
+from brands.barbour import get_driver, _classify_stack_by_html_head  # noqa: E402
 
 OUT_DIR = Path("D:/temp/pages")
 

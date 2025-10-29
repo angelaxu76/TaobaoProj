@@ -23,10 +23,10 @@ from sqlalchemy.engine import Connection
 
 # 你的项目配置
 from config import BRAND_CONFIG
-from barbour.core.site_utils import canonical_site, assert_site_or_raise
+from brands.barbour.core.site_utils import canonical_site, assert_site_or_raise
 
 # 复用你已有的 TXT 解析逻辑（不改动原文件）
-from barbour.common.import_supplier_to_db_offers import parse_txt  # 保持不变（外部已有）  :contentReference[oaicite:1]{index=1}
+from brands.barbour.common.import_supplier_to_db_offers import parse_txt  # 保持不变（外部已有）  :contentReference[oaicite:1]{index=1}
 
 # RapidFuzz（可选）
 try:

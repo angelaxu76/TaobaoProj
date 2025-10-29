@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
-import csv
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
 import openpyxl
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
 from config import BRAND_CONFIG, BARBOUR
-from barbour.core.site_utils import canonical_site
+from brands.barbour.core.site_utils import canonical_site
 
 PUBLICATION_DIR = Path(BARBOUR["PUBLICATION_DIR"])
 PATTERN = "barbour_publication_*.xlsx"
@@ -266,9 +265,6 @@ def reassign_low_stock_suppliers(size_threshold: int = 3, dry_run: bool = True) 
 
     return suggest
 
-
-import pandas as pd
-from sqlalchemy import create_engine, text
 
 def export_supplier_stock_price_report(min_sizes_ok: int = 1, output_path: str | None = None) -> str:
     """

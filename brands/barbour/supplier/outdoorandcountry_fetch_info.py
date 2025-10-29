@@ -30,14 +30,14 @@ import undetected_chromedriver as uc
 from bs4 import BeautifulSoup
 
 from config import BARBOUR
-from barbour.supplier.outdoorandcountry_parse_offer_info import parse_offer_info
+from brands.barbour.supplier.outdoorandcountry_parse_offer_info import parse_offer_info
 
 # ✅ 统一 TXT 写入（与其它站点一致）
 from common_taobao.ingest.txt_writer import format_txt
 
 # ✅ 尺码清洗（保守：识别不了就原样返回）
 from common_taobao.core.size_utils import clean_size_for_barbour  # 见你上传的实现
-from barbour.core.site_utils import assert_site_or_raise as canon
+from brands.barbour.core.site_utils import assert_site_or_raise as canon
 CANON_SITE = canon("outdoorandcountry")
 
 # ========== 浏览器与 Cookie ==========

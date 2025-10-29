@@ -14,8 +14,8 @@ import hashlib
 from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
-from barbour.core.site_utils import assert_site_or_raise as canon
-from barbour.core.sim_matcher import match_product, choose_best
+from brands.barbour.core.site_utils import assert_site_or_raise as canon
+from brands.barbour.core.sim_matcher import match_product, choose_best
 from sqlalchemy import create_engine
 from config import BRAND_CONFIG
 

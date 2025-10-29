@@ -3,17 +3,16 @@
 生成 Barbour 外套夹克发布 Excel
 """
 
-import sys
 import re
 import unicodedata
 import openpyxl
 from sqlalchemy import create_engine, text
 
 from config import BRAND_CONFIG, BARBOUR, SETTINGS
-from barbour.common.generate_barbour_taobao_title import generate_barbour_taobao_title
+from brands.barbour.common.generate_barbour_taobao_title import generate_barbour_taobao_title
 from common_taobao.core.price_utils import calculate_jingya_prices
 from datetime import datetime
-from barbour.core.site_utils import canonical_site
+from brands.barbour.core.site_utils import canonical_site
 
 # ========== 路径 ==========
 TXT_DIR = BARBOUR["TXT_DIR_ALL"]

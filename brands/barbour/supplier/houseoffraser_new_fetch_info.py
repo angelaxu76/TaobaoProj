@@ -21,8 +21,8 @@ from sqlalchemy.engine import Connection
 
 # ---- 项目内模块（保持不变）----
 from config import BARBOUR, BRAND_CONFIG
-from barbour.core.site_utils import assert_site_or_raise as canon
-from barbour.core.sim_matcher import match_product, choose_best
+from brands.barbour.core.site_utils import assert_site_or_raise as canon
+from brands.barbour.core.sim_matcher import match_product, choose_best
 from common_taobao.core.size_utils import clean_size_for_barbour as _norm_size  # 尺码清洗
 
 # ================== 常量/路径 ==================

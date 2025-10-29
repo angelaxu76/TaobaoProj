@@ -1,10 +1,6 @@
 from pathlib import Path
 from config import BARBOUR
-from barbour.jingya.insert_jingyaid_mapping import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
-from barbour.common.export_barbour_discounts import export_barbour_discounts_excel
-from barbour.common.generate_barbour_publication_excel import generate_publication_excel
-from barbour.common.generate_sql_for_publication import generate_select_sql_from_excel
-from barbour.common.generate_barbour_prices_from_avg import generate_price_for_jingya_publication
+from brands.barbour.common.generate_barbour_publication_excel import generate_publication_excel
 
 
 def pipeline_barbour():
