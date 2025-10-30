@@ -1,21 +1,7 @@
 # from barbour.supplier.terraces_fetch_info import terraces_fetch_info
 from config import BARBOUR
-from channels.jingya.export.export_stock_to_excel import export_stock_excel
-from channels.jingya.export.export_channel_price_excel_jingya import export_barbour_channel_price_by_sku,export_jiangya_channel_prices
 from common_taobao.publication.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
 from common_taobao.maintenance.backup_and_clear import backup_and_clear_brand_dirs
-from brands.barbour.supplier.barbour_get_links import barbour_get_links
-from brands.barbour.supplier.barbour_fetch_info import barbour_fetch_info
-from brands.barbour.supplier.outdoorandcountry_fetch_info import outdoorandcountry_fetch_info
-from brands.barbour.supplier.outdoorandcountry_get_links import outdoorandcountry_fetch_and_save_links
-from brands.barbour.supplier.allweathers_get_links import allweathers_get_links
-from brands.barbour.supplier.allweathers_fetch_info import allweathers_fetch_info
-from brands.barbour.supplier.houseoffraser_get_links import houseoffraser_get_links
-from brands.barbour.supplier.houseoffraser_new_fetch_info import houseoffraser_fetch_info
-from brands.barbour.supplier.very_get_links import very_get_links
-from brands.barbour.supplier.very_fetch_info import very_fetch_info
-from brands.barbour.supplier.terraces_fetch_info import terraces_fetch_info
-from brands.barbour.supplier.terraces_get_links import collect_terraces_links
 from brands.barbour.common.barbour_import_to_barbour_products import batch_import_txt_to_barbour_product
 from brands.barbour.common.import_supplier_to_db_offers import import_txt_for_supplier
 from brands.barbour.jingya.insert_jingyaid_mapping import insert_jingyaid_to_db,clear_barbour_inventory,insert_missing_products_with_zero_stock
@@ -33,25 +19,25 @@ def barbour_database_import_pipleline():
 
 
 
-    print("步骤 6：为发布的商品选择合适的供应商，比如库存充足且价格低的")
-    #Step 4: TODO 根据发布文件填充barbour 鲸芽的map表
-    fill_supplier_map()
+    # print("步骤 6：为发布的商品选择合适的供应商，比如库存充足且价格低的")
+    # #Step 4: TODO 根据发布文件填充barbour 鲸芽的map表
+    # fill_supplier_map()
 
-    print("     步骤 6.1：为重点商品强制指定供应商覆盖")
-    xlsx_path = r"D:\TB\Products\barbour\document\barbour_supplier.xlsx"
-    apply_barbour_supplier_overrides(xlsx_path,dry_run=True)
-    apply_barbour_supplier_overrides(xlsx_path,dry_run=False)
+    # print("     步骤 6.1：为重点商品强制指定供应商覆盖")
+    # xlsx_path = r"D:\TB\Products\barbour\document\barbour_supplier.xlsx"
+    # apply_barbour_supplier_overrides(xlsx_path,dry_run=True)
+    # apply_barbour_supplier_overrides(xlsx_path,dry_run=False)
 
-    print("     步骤 6.2：生产发布商品的供应商报表")
-    report_path = export_supplier_stock_price_report(
-        output_path=r"D:\TB\Products\barbour\publication\barbour_supplier_report.xlsx"
-    )
-    print("诊断报表：", report_path)
+    # print("     步骤 6.2：生产发布商品的供应商报表")
+    # report_path = export_supplier_stock_price_report(
+    #     output_path=r"D:\TB\Products\barbour\publication\barbour_supplier_report.xlsx"
+    # )
+    # print("诊断报表：", report_path)
 
-    print("     步骤 6.3：为发布商品低库存的商品重新分配供货商")
-    # 先 dry-run 看建议
-    suggestions = reassign_low_stock_suppliers(size_threshold=3, dry_run=True)
-    suggestions = reassign_low_stock_suppliers(size_threshold=3, dry_run=False)
+    # print("     步骤 6.3：为发布商品低库存的商品重新分配供货商")
+    # # 先 dry-run 看建议
+    # suggestions = reassign_low_stock_suppliers(size_threshold=3, dry_run=True)
+    # suggestions = reassign_low_stock_suppliers(size_threshold=3, dry_run=False)
 
     print("步骤 7：根据步骤5中的prduct map表中的供货商，将商品的价格库存等信息回填到barbour inventory表")
     backfill_barbour_inventory_single_supplier()
