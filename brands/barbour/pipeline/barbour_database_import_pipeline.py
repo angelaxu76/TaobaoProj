@@ -23,42 +23,6 @@ from brands.barbour.common.fill_supplier_jingya_map import fill_supplier_map,app
 from brands.barbour.jingya.merge_offer_into_inventory import backfill_barbour_inventory_single_supplier
 
 def barbour_database_import_pipleline():
-    # print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    backup_and_clear_brand_dirs(BARBOUR)
-
-
-    print("步骤 1：获取商品链接")
-    barbour_get_links()
-    outdoorandcountry_fetch_and_save_links()
-    allweathers_get_links()
-    houseoffraser_get_links()
-    very_get_links()
-    collect_terraces_links()
-
-    print("步骤 2：抓取商品信息并存为TXT")
-    barbour_fetch_info()
-    outdoorandcountry_fetch_info(max_workers=10)
-    allweathers_fetch_info(7)
-    houseoffraser_fetch_info(max_workers=1, headless=False)
-    very_fetch_info()
-    terraces_fetch_info()
-
-
-    print("步骤 3：将txt中数据导入barbour product中")
-    batch_import_txt_to_barbour_product("barbour")
-    batch_import_txt_to_barbour_product("outdoorandcountry")
-    batch_import_txt_to_barbour_product("allweathers")
-    batch_import_txt_to_barbour_product("houseoffraser")
-    batch_import_txt_to_barbour_product("houseoffraser")
-
-    print("步骤 4：将txt中数据导入barbour offers中，成为可以供应的仓库")
-    import_txt_for_supplier("barbour",False)
-    import_txt_for_supplier("outdoorandcountry",False)
-    import_txt_for_supplier("allweathers",False)
-    import_txt_for_supplier("houseoffraser",False)
-    import_txt_for_supplier("very",False)
-    import_txt_for_supplier("terraces",False)
-
 
 
     print("步骤 5：将barbour inventory清空，并重新填充已发布商品信息，通过jingya id导出的excel文件")
@@ -89,50 +53,8 @@ def barbour_database_import_pipleline():
     suggestions = reassign_low_stock_suppliers(size_threshold=3, dry_run=True)
     suggestions = reassign_low_stock_suppliers(size_threshold=3, dry_run=False)
 
-    
-
     print("步骤 7：根据步骤5中的prduct map表中的供货商，将商品的价格库存等信息回填到barbour inventory表")
     backfill_barbour_inventory_single_supplier()
-
-
-
-    ######################################################################
-    ################导出EXCEL 用于更新鲸芽和淘宝##########################
-    ######################################################################
-
-
-    print("导出excel 用于更新鲸芽库存")
-    stock_dest_excel_folder = r"D:\TB\Products\barbour\repulibcation\stock"
-    export_stock_excel("barbour",stock_dest_excel_folder)
-    
-    print("导出excel 用于更新鲸芽价格=====商品级别"    )
-    price_dest_excel_path = r"D:\TB\Products\barbour\repulibcation\publication_prices"
-    xlsx_path = r"D:\TB\Products\barbour\document\barbour_supplier.xlsx"
-
-    export_jiangya_channel_prices(
-    brand="barbour",
-    output_dir=price_dest_excel_path,
-    exclude_excel_file=xlsx_path
-    )
-
-    print("导出excel 用于更新鲸芽价格=====SKU级别"    )
-    export_barbour_channel_price_by_sku(
-    brand="barbour",
-    output_excel_path=r"D:\TB\Products\barbour\repulibcation\publication_sku_prices\sku_level_prices",
-    exclude_excel_file=xlsx_path,
-    chunk_size=200   # 用的是默认值
-    )
-
-    print("\n🟡 Step: 6️⃣ 获取excel文件，用来更新各个淘宝店铺价格，输入文件夹可以是多个店铺的导出文件")
-    xlsx_path = r"D:\TB\Products\barbour\document\barbour_supplier.xlsx"
-    generate_price_excels_bulk(
-        brand="barbour",
-        input_dir=r"D:\TB\Products\barbour\repulibcation\store_prices\input",
-        output_dir=r"D:\TB\Products\barbour\repulibcation\store_prices\output",
-        suffix="_价格",                # 输出文件后缀
-        drop_rows_without_price=False,  # 查不到的价格留空（你可以改成 True 表示丢掉无价的）
-        blacklist_excel_file=xlsx_path  # ✅ 新增参数：传入黑名单文件
-    )
 
 if __name__ == "__main__":
     barbour_database_import_pipleline()
