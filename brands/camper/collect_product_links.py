@@ -44,12 +44,18 @@ BASE_URLS = [
     "https://www.camper.com/en_GB/women/shoes/casual?filter.collection=allabw&sort=default&page={}",
     "https://www.camper.com/en_GB/women/shoes/ankle_boots?filter.collection=allabw&sort=default&page={}",
     "https://www.camper.com/en_GB/women/shoes/boots?filter.collection=allabw&sort=default&page={}",
+    "https://www.camper.com/en_GB/women/shoes/heels?filter.collection=allabw&sort=default&page={}",
+    "https://www.camper.com/en_GB/women/shoes/loafers?filter.collection=allabw&sort=default&page={}",
+    "https://www.camper.com/en_GB/women/shoes/fall_winter?filter.collection=allabw&sort=default&page={}",
 
     # 男款细分
     "https://www.camper.com/en_GB/men/shoes/sneakers?filter.collection=allabm&sort=default&page={}",
     "https://www.camper.com/en_GB/men/shoes/formal_shoes?filter.collection=allabm&sort=default&page={}",
     "https://www.camper.com/en_GB/men/shoes/casual?filter.collection=allabm&sort=default&page={}",
     "https://www.camper.com/en_GB/men/shoes/ankle_boots?filter.collection=allabm&sort=default&page={}",
+    "https://www.camper.com/en_GB/men/shoes/loafers?filter.collection=allabw&sort=default&page={}",
+    "https://www.camper.com/en_GB/men/shoes/fall_winter?filter.collection=allabw&sort=default&page={}",
+    
 ]
 
 HEADERS = {

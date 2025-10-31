@@ -9,7 +9,7 @@ from channels.jingya.check.channel_price_check import (
 
 def barbour_price_checks():
     # === 1. 鲸芽价同步检查 ===
-    jingya_excel_path = r"D:\TB\Products\barbour\document\GEI@sales_catalogue_export@251029221824@1313.xlsx"
+    jingya_excel_path = r"D:\TB\Products\barbour\document\GEI@sales_catalogue_export@251031074615@9584.xlsx"
     ts1 = datetime.now().strftime("%Y%m%d_%H%M%S")
     out1 = Path(BARBOUR["BASE"]) / "document" / "price_check" / f"barbour_price_diff_{ts1}.xlsx"
     out1.parent.mkdir(parents=True, exist_ok=True)
