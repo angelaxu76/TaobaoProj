@@ -1,4 +1,5 @@
 from pathlib import Path
+from helper.image.image_antifingerprint import batch_process_images
 from helper.image.expand_square_add_code import process_images
 from helper.html.html_to_png_batch import process_html_folder
 from helper.image.trim_sides_batch import trim_sides_batch
@@ -7,35 +8,34 @@ from helper.image.add_text_watermark import pipeline_text_watermark
 from helper.image.cut_square_white_watermark import batch_process
 from helper.image.avif_to_jpg import avif_to_jpg
 from brands.barbour.supplier.barbour_download_images_only import download_barbour_images
+from common_taobao.image.group_images_by_code import group_and_rename_images
+from config import BARBOUR
 
 def main():
-    # HTML_FOLDER = Path(r"D:/TB/HTMLToImage/input")
-    # OUTPUT_FOLDER = Path(r"D:/TB/HTMLToImage/output")
-    # CUTTER_FOLDER = Path(r"D:/TB/HTMLToImage/cutter")
-    # SPLIT_FOLDER = Path(r"D:/TB/HTMLToImage/split")
-
-    # print("将html转JPG")
-    # process_html_folder(HTML_FOLDER,OUTPUT_FOLDER)
-
-    # print("将JPG切白边")
-    # result = trim_sides_batch(OUTPUT_FOLDER,CUTTER_FOLDER)
 
     # print("从barbour官网下载图片")
-    download_barbour_images()
+    # download_barbour_images()
 
-    print("将JPG转AVIF")
+    # print("给Barbour图片做防指纹处理")
+    # batch_process_images(IMAGE_IN=BARBOUR['IMAGE_DOWNLOAD'], 
+    #                      IMAGE_OUT=BARBOUR['IMAGE_DOWNLOAD'])
+
+    # print("将Barbour图片按编码分组并重命名")
+    # group_and_rename_images(BARBOUR['IMAGE_DOWNLOAD'], code_len=11, overwrite=True)
+
+    # print("将JPG转AVIF")
     # avif_to_jpg(input_dir=r"C:\Users\martin\Downloads", output_dir=r"C:\Users\martin\Downloads")
 
 
 
-    # print("将JPG按长度切分")
+    print("将JPG按长度切分")
     # split_image_by_size(CUTTER_FOLDER,SPLIT_FOLDER,1900)
-    # process_images(
-    #     input_dir=r"C:\Users\martin\Downloads",
-    #     output_dir=r"D:\TB\Products\barbour\images",
-    #     product_code="LQU1866BK91",
-    #     defend=True, 
-    # )
+    process_images(
+        input_dir=r"C:\Users\martin\Downloads",
+        output_dir=r"D:\TB\Products\barbour\images",
+        product_code="LQU0471OL91",
+        defend=True, 
+    )
 
     # batch_process(r"D:\TB\Products\barbour\3", r"D:\TB\Products\barbour\3_processed111", max_workers=3)
  
@@ -51,6 +51,18 @@ def main():
 
     # pipeline_text_watermark(input_dir=r"C:\Users\martin\Desktop\main",
     #                     output_dir=r"C:\Users\martin\Desktop\mainwatered")
+
+
+    # HTML_FOLDER = Path(r"D:/TB/HTMLToImage/input")
+    # OUTPUT_FOLDER = Path(r"D:/TB/HTMLToImage/output")
+    # CUTTER_FOLDER = Path(r"D:/TB/HTMLToImage/cutter")
+    # SPLIT_FOLDER = Path(r"D:/TB/HTMLToImage/split")
+
+    # print("将html转JPG")
+    # process_html_folder(HTML_FOLDER,OUTPUT_FOLDER)
+
+    # print("将JPG切白边")
+    # result = trim_sides_batch(OUTPUT_FOLDER,CUTTER_FOLDER)
 
 
 if __name__ == "__main__":

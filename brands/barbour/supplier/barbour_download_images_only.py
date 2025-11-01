@@ -197,14 +197,19 @@ def _get_with_retry(session: requests.Session, url: str):
             time.sleep(0.8)
     raise last_err
 
-def collect_all_image_urls(html: str):
+def collect_all_image_urls(html: str, product_code: str | None = None):
     """
-    汇总：JSON-LD + <picture>，返回按出现顺序的列表（不去重）
+    汇总：JSON-LD + <picture>(哈希名) + <picture>(含商品编码)
+    返回按出现顺序的列表（不去重）
     """
     urls = []
-    urls += extract_image_urls_ldjson(html)     # 先 JSON-LD（你的原逻辑）
-    urls += extract_picture_hash_urls(html)     # 再补 <picture>
+    urls += extract_image_urls_ldjson(html)       # 先 JSON-LD（你原逻辑）
+    urls += extract_picture_hash_urls(html)       # 再补 <picture> 的哈希名（Salsify）
+    if product_code:
+        urls += extract_picture_urls_by_code(html, product_code)  # <picture> 中含编码的静态图
     return [u for u in urls if u]
+
+
 
 def dedupe_by_identity(urls):
     """
@@ -222,6 +227,38 @@ def dedupe_by_identity(urls):
     ordered_ids = sorted(first_index.items(), key=lambda x: x[1])
     return [(ident, first_url[ident]) for ident, _ in ordered_ids]
 
+def extract_picture_urls_by_code(page_content: str, product_code: str):
+    """
+    从 <picture> 内收集所有 img/source 的 src/srcset，
+    仅保留包含商品编码的链接，按出现顺序去重返回。
+    """
+    soup = BeautifulSoup(page_content, "html.parser")
+    urls, seen = [], set()
+
+    def add(u: str):
+        if not u:
+            return
+        base = u.split("?")[0].split("#")[0]  # 归一化去掉查询串与 # 片段
+        if product_code in base and base not in seen:
+            seen.add(base)
+            urls.append(base)
+
+    for pic in soup.find_all("picture"):
+        for tag in pic.find_all(["img", "source"]):
+            # 直接链接
+            for attr in ("src", "data-src"):
+                add(tag.get(attr))
+            # srcset 里可能有多尺寸，多条逗号分隔
+            for attr in ("srcset", "data-srcset"):
+                srcset = tag.get(attr)
+                if srcset:
+                    for part in srcset.split(","):
+                        add(part.strip().split(" ")[0])
+
+    return urls
+
+
+
 def download_images_for_page(session: requests.Session, page_url: str, out_dir: str, code: str, name: str):
     """
     1) 收集全部候选链接到变量
@@ -232,7 +269,29 @@ def download_images_for_page(session: requests.Session, page_url: str, out_dir: 
     html = html_resp.text
 
     # 1) 收集（你想看也可以 print 出来）
-    candidates = collect_all_image_urls(html)
+    # 1) 收集（你想看也可以 print 出来）
+    candidates = collect_all_image_urls(html, code)
+
+
+    # 🔍 新增过滤逻辑：只保留含商品编码的静态图 + 保留 Salsify 哈希图
+    def _strip_q(u: str) -> str:
+        return u.split("?", 1)[0]
+
+    def _is_salsify(u: str) -> bool:
+        return "images.salsify.com" in u.lower()
+
+    filtered = []
+    for u in candidates:
+        u0 = _strip_q(u)
+        # Salsify 哈希图保留
+        if _is_salsify(u0):
+            filtered.append(u0)
+        # 静态图中含商品编码（如 LQU1834BK11）才保留
+        elif code.upper() in u0.upper():
+            filtered.append(u0)
+
+    # 若过滤完为空，则回退到原 candidates（保证不影响已有逻辑）
+    candidates = filtered or candidates
 
     # 2) 去重（基于 identity）
     unique_list = dedupe_by_identity(candidates)

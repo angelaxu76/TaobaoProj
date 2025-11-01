@@ -53,10 +53,10 @@ def edit_image(img_path: Path, out_path: Path):
         img.save(out_path, quality=90)
         print(f"✅ 已处理: {img_path.name}")
 
-def batch_process_images():
-    for file in INPUT_DIR.glob("*.jpg"):
-        out_file = OUTPUT_DIR / file.name
+def batch_process_images(IMAGE_IN=INPUT_DIR, IMAGE_OUT=OUTPUT_DIR):
+    for file in IMAGE_IN.glob("*.jpg"):
+        out_file = IMAGE_OUT / file.name
         edit_image(file, out_file)
 
 if __name__ == "__main__":
-    batch_process_images()
+    batch_process_images(IMAGE_IN=INPUT_DIR, IMAGE_OUT=OUTPUT_DIR)
