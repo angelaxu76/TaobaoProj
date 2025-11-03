@@ -28,6 +28,7 @@ SHEET_NAME = "sheet"   # ← 如果你之前的工作表名不一样，请改成
 # 3) 品牌 TXT 路径（英文标题兜底；可留空）
 TEXTS_DIRS = {
     "camper": r"D:\TB\Products\camper\publication\TXT",
+    "geox": r"D:\TB\Products\geox\publication\TXT",
     "clarks": r"D:\TB\Products\clarks_jingya\publication\TXT"
 }
 
@@ -48,6 +49,18 @@ BRAND_MAP = {
     },
     "clarks": {
         "table": "clarks_jingya_inventory",
+        "fields": {
+            "channel_item_id": "channel_item_id",
+            "product_code": ["product_code", "product_name", "code"],
+            "size": ["size", "product_size"],
+            "title_en": ["product_title", "title_en", "title"],
+            "goods_name": ["goods_name", "product_name_cn", "name_cn"],
+            "gender": ["gender", "sex"],                                # ← 新增
+        },
+        "name_like_cols": ["goods_name", "product_name"],
+    },
+        "geox": {
+        "table": "geox_inventory",
         "fields": {
             "channel_item_id": "channel_item_id",
             "product_code": ["product_code", "product_name", "code"],
@@ -85,7 +98,7 @@ CORRECT_COLUMNS = [
 HSCODE_FIXED = "6405200090"
 ORIGIN = "越南"
 SPEC = "1双"
-BRAND_FIXED = {"camper": "camper", "clarks": "clarks"}
+BRAND_FIXED = {"camper": "camper", "clarks": "clarks", "geox": "geox"}
 PURPOSE = "衣着用品"
 UOM1 = "千克"; QTY1 = 1
 UOM2 = "双";   QTY2 = 1

@@ -35,5 +35,22 @@ def main():
     process_html_folder( BARBOUR["HTML_DIR_FIRST_PAGE"], BARBOUR["HTML_IMAGE_FIRST_PAGE"])
     result = trim_sides_batch(BARBOUR["HTML_IMAGE_FIRST_PAGE"],BARBOUR["HTML_DEST"])
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
 if __name__ == "__main__":
     main()

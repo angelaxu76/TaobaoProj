@@ -46,18 +46,29 @@ def merge_images_grid(img_files, export_file, product_name, width=750, margin=10
 
 
 def batch_merge_images(image_dir, merged_dir, width=750):
-    os.makedirs(merged_dir, exist_ok=True)
+    # 统一为 Path 类型
+    image_dir = Path(image_dir)
+    merged_dir = Path(merged_dir)
+
+    # 如果输入目录不存在，自动创建一个空目录
+    if not image_dir.exists():
+        print(f"⚠️ 输入目录不存在，已创建空目录: {image_dir}")
+        image_dir.mkdir(parents=True, exist_ok=True)
+
+    # 输出目录也要确保存在
+    merged_dir.mkdir(parents=True, exist_ok=True)
 
     groups = defaultdict(list)
     for filename in os.listdir(image_dir):
         if filename.lower().endswith(".jpg"):
             code = Path(filename).stem.split('_')[0]
-            groups[code].append(os.path.join(image_dir, filename))
+            groups[code].append(str(image_dir / filename))
 
     for code, files in groups.items():
         files.sort()
-        export_file = os.path.join(merged_dir, f"{code}_merged.jpg")
-        merge_images_grid(files, export_file, code, width=width)
+        export_file = merged_dir / f"{code}_merged.jpg"
+        merge_images_grid(files, str(export_file), code, width=width)
+
 
 
 # ========= main 入口 =========
