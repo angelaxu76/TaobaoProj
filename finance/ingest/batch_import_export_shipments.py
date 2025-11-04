@@ -1,79 +1,170 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 """
-Pipeline-callable importer with rich debug logs.
-
-Usage (pipeline):
-    from import_poe_invoice_debug import import_poe_invoice
-    import_poe_invoice(r"D:\OneDrive\CrossBorderDocs\06_Export_Proofs")
-
-CLI:
-    python import_poe_invoice_debug.py --root "D:/OneDrive/CrossBorderDocs/06_Export_Proofs" --verbose
+batch_import_export_shipments.py
+- 宽松文件匹配 + 坐标读取（Header=第15行, B:I）
+- 自动建表 & 自动迁移（缺列则 ALTER TABLE ADD COLUMN）
 """
 
 import os
 import re
-import sys
-import logging
-from datetime import datetime
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-
-import pandas as pd
+import datetime as dt
+from typing import List, Dict, Any, Optional
+import re
 from PyPDF2 import PdfReader
+import pandas as pd
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine
 
-# ---------------- Logging ----------------
-def _setup_logger(verbose: bool):
-    lvl = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(
-        level=lvl,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        datefmt="%H:%M:%S",
-    )
-
-log = logging.getLogger(__name__)
-
-# ---------------- Config ----------------
 try:
-    import config  # 确保 PYTHONPATH 能找到你的 config.py
-except Exception as e:
-    config = None
+    import openpyxl
+    from openpyxl.worksheet.worksheet import Worksheet
+except Exception:
+    openpyxl = None
 
-def _get_db_url_from_config() -> str:
-    if config is None or not hasattr(config, "PGSQL_CONFIG"):
-        raise RuntimeError("config.PGSQL_CONFIG 未找到，请在 config.py 中提供数据库配置。")
-    pg = config.PGSQL_CONFIG
 
-    if isinstance(pg, dict):
-        url = pg.get("SQLALCHEMY_URL") or pg.get("alchemy_url") or pg.get("url")
-        if url:
-            return url
-        host = pg.get("host") or pg.get("HOST")
-        port = pg.get("port") or pg.get("PORT") or 5432
-        user = pg.get("user") or pg.get("USER")
-        password = pg.get("password") or pg.get("PASSWORD")
-        database = pg.get("database") or pg.get("dbname") or pg.get("DBNAME")
-        if not all([host, user, password, database]):
-            raise RuntimeError("PGSQL_CONFIG 缺少 host/user/password/database 字段或 SQLALCHEMY_URL。")
-        return f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}"
-    elif isinstance(pg, str):
-        return pg
-    else:
-        raise RuntimeError("PGSQL_CONFIG 类型不支持，应为 dict 或 连接串。")
+# ---------------------- logging ----------------------
+def _now(): return dt.datetime.now().strftime("%H:%M:%S")
+def _info(msg: str): print(f"{_now()} [INFO] {msg}")
+def _warn(msg: str): print(f"{_now()} [WARNING] {msg}")
+def _debug(msg: str): print(f"{_now()} [DEBUG] {msg}")
 
-# ---------------- Constants ----------------
-INVOICE_EXTS = {".xlsx", ".xls"}
-POE_EXTS = {".pdf"}
 
-RE_POE_ID = re.compile(r"\b(SD\d{8,})\b")
-RE_MRN_LABELED = re.compile(r"MRN[:\s]*([0-9A-Z]{16,18})")
-RE_MRN = re.compile(r"\b([0-9A-Z]{16,18})\b")
-RE_OFFICE = re.compile(r"\b(GB\d{5,6})\b")
-RE_DDMMYYYY = re.compile(r"\b(\d{2}/\d{2}/\d{4})\b")
+# ---------------------- DB helpers -------------------
+def _db_url_from_config() -> str:
+    try:
+        from config import DB_URL  # type: ignore
+        if DB_URL:
+            _info(f"[DB] Using DB URL from config: {DB_URL}")
+            return DB_URL
+    except Exception:
+        pass
 
-TARGET_COLS = [
+    try:
+        from config import PGSQL_CONFIG  # type: ignore
+        user = PGSQL_CONFIG.get("user")
+        password = PGSQL_CONFIG.get("password")
+        host = PGSQL_CONFIG.get("host", "localhost")
+        port = PGSQL_CONFIG.get("port", 5432)
+        database = PGSQL_CONFIG.get("database", PGSQL_CONFIG.get("dbname"))
+        if not all([user, password, host, port, database]):
+            raise KeyError("Missing keys in PGSQL_CONFIG")
+        db_url = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}"
+        _info(f"[DB] Using DB URL from config: {db_url}")
+        return db_url
+    except Exception as e:
+        raise RuntimeError("无法从 config 读取数据库连接信息。请在 config.py 中提供 PGSQL_CONFIG 或 DB_URL。") from e
+
+
+def _get_engine() -> Engine:
+    url = _db_url_from_config()
+    eng = create_engine(url, pool_pre_ping=True)
+    with eng.connect() as _:
+        _info("[DB] Connection OK")
+    return eng
+
+
+# ---------------------- scan helpers -----------------
+PDF_PATT = re.compile(r"(?i)\bpoe[_-]?sd\d+\.pdf$")
+
+def _find_poe_pdf(files: List[str]) -> Optional[str]:
+    for f in files:
+        if PDF_PATT.search(os.path.basename(f)):
+            return f
+    return None
+
+def _list_excel_files(folder: str) -> List[str]:
+    out = []
+    for fn in os.listdir(folder):
+        if fn.startswith("~$"):
+            continue
+        lower = fn.lower()
+        if lower.endswith(".xlsx") or lower.endswith(".xls"):
+            out.append(os.path.join(folder, fn))
+    return sorted(out)
+
+
+# ---------------------- POE meta ---------------------
+def _parse_poe_meta_from_name(pdf_path: str) -> Dict[str, Any]:
+    fname = os.path.basename(pdf_path)
+    m = re.search(r"(?i)(sd\d+)", fname)
+    return {
+        "poe_id": m.group(1).upper() if m else None,
+        "poe_mrn": None,
+        "poe_office": None,
+        "poe_date": None,
+    }
+
+import re
+from PyPDF2 import PdfReader
+
+def _parse_poe_meta_from_pdf(pdf_path: str) -> dict:
+    """
+    从 POE PDF 文件中提取关键信息：
+    - poe_id (SD编号)
+    - poe_mrn (25GB...)
+    - poe_office (GB0000..)
+    - poe_date (2025-10-03)
+    """
+    meta = {"poe_id": None, "poe_mrn": None, "poe_office": None, "poe_date": None}
+    try:
+        text = ""
+        reader = PdfReader(pdf_path)
+        for page in reader.pages:
+            text += page.extract_text() or ""
+
+        # 提取 POE ID
+        m = re.search(r"\b(SD\d{8,})\b", text)
+        if m:
+            meta["poe_id"] = m.group(1)
+
+        # 提取 MRN
+        m = re.search(r"\b(25GB[A-Z0-9]{14,})\b", text)
+        if m:
+            meta["poe_mrn"] = m.group(1)
+
+        # 提取 Office of Exit
+        m = re.search(r"\bGB\d{6,}\b", text)
+        if m:
+            meta["poe_office"] = m.group(0)
+
+        # 提取 Export Date (多种日期格式)
+        m = re.search(r"(\d{2}/\d{2}/\d{4})", text)
+        if m:
+            try:
+                d = dt.datetime.strptime(m.group(1), "%d/%m/%Y").date()
+                meta["poe_date"] = d
+            except Exception:
+                pass
+
+    except Exception as e:
+        _warn(f"[PDF] Failed to parse {pdf_path}: {e}")
+
+    # 若 PDF 内找不到则用文件名兜底
+    if not meta["poe_id"]:
+        base = os.path.basename(pdf_path)
+        m = re.search(r"(?i)(sd\d+)", base)
+        if m:
+            meta["poe_id"] = m.group(1).upper()
+
+    return meta
+
+# ------------------ Invoice (by coord) ---------------
+HDR_ROW_1BASED = 15           # 第15行作表头
+COLS_RANGE = ("B", "I")       # B:I
+
+EXPECTED = [
+    "快递运单号\nShipment ID",
+    "商品ID\nskuid",
+    "LP订单号\nLP Number",
+    "产品英文名\nProduct Description",
+    "价值（GBP）\nValue (GBP)",
+    "数量\nQuantity",
+    "净重（KG）\nNet Weight (KG)",
+    "欧盟税号\nHS Code",
+]
+
+CANON_KEYS = [
+    "shipment_id",
     "skuid",
     "lp_number",
     "product_description",
@@ -81,290 +172,245 @@ TARGET_COLS = [
     "quantity",
     "net_weight_kg",
     "hs_code",
-    "poe_id",
-    "hmrc_mrn",
-    "poe_filename",
-    "export_date",
-    "office_of_exit",
-    "src_folder",
-    "src_invoice_file",
-    "src_poe_file",
 ]
 
-def _norm(s: str) -> str:
-    return re.sub(r"\s+", "", str(s or "").strip().lower())
+def _col_letter_to_idx(letter: str) -> int:
+    s = 0
+    for ch in letter.upper():
+        s = s * 26 + (ord(ch) - 64)
+    return s
 
-# 中英双语列名映射（可自行扩充）
-COL_KEYS = {
-    "skuid": {"skuid","商品idskuid","商品id","sku_id","sku","商品id（skuid）"},
-    "lp_number": {"lp订单号lpnumber","lpnumber","lp订单号","lp no","lpno","lp"},
-    "product_description": {"产品英文名productdescription","productdescription","产品英文名","product name","product title","title","description"},
-    "value_gbp": {"价值（gbp）value(gbp)","value(gbp)","价值（gbp）","valuegbp","value","gbp","amount"},
-    "quantity": {"数量quantity","quantity","数量","qty","q'ty"},
-    "net_weight_kg": {"净重（kg）netweight(kg)","netweight(kg)","净重（kg）","netweightkg","netweight","weight"},
-    "hs_code": {"欧盟税号hscode","hscode","欧盟税号","hs","hs code","hs-code"},
-}
 
-# ---------------- Helpers ----------------
-def _find_files(folder: Path, exts: set) -> List[Path]:
-    return [p for p in folder.iterdir() if p.is_file() and p.suffix.lower() in exts]
+def _read_invoice_by_coord(xlsx_path: str, verbose: bool = False) -> Optional[pd.DataFrame]:
+    if openpyxl is None:
+        _warn("[COORD] openpyxl 未安装，无法按坐标读取。")
+        return None
 
-def _read_invoice_any(inv_path: Path) -> pd.DataFrame:
-    try:
-        xls = pd.ExcelFile(inv_path)
-        df = xls.parse(xls.sheet_names[0])
-        log.debug(f"[INVOICE] Loaded via ExcelFile: {inv_path.name} (rows={len(df)})")
-        return df
-    except Exception as e:
-        log.debug(f"[INVOICE] ExcelFile failed, fallback to read_excel(openpyxl): {inv_path.name} ({e})")
-        df = pd.read_excel(inv_path, engine="openpyxl")
-        log.debug(f"[INVOICE] Loaded via read_excel: {inv_path.name} (rows={len(df)})")
-        return df
+    wb = openpyxl.load_workbook(xlsx_path, data_only=True, read_only=True)
+    ws: Worksheet = wb.active
 
-def _map_invoice_columns(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    raw_cols = list(df.columns)
-    norm_cols = [_norm(c) for c in raw_cols]
+    start_col = _col_letter_to_idx(COLS_RANGE[0])
+    end_col = _col_letter_to_idx(COLS_RANGE[1])
+    hdr_row = HDR_ROW_1BASED
 
-    use_cols = {}
-    for target, candidates in COL_KEYS.items():
-        chosen = None
-        for i, nc in enumerate(norm_cols):
-            if nc in candidates:
-                chosen = raw_cols[i]
-                break
-        if chosen is None:
-            for i, nc in enumerate(norm_cols):
-                if target in nc:  # contains fallback
-                    chosen = raw_cols[i]; break
-        if chosen:
-            use_cols[target] = chosen
+    # 读表头
+    headers = []
+    for col in range(start_col, end_col + 1):
+        v = ws.cell(row=hdr_row, column=col).value
+        headers.append("" if v is None else str(v).strip())
 
-    log.debug(f"[INVOICE] Mapping => {use_cols}")
+    if verbose:
+        _info(f"[INVOICE] [COORD] {os.path.basename(xlsx_path)} header row={hdr_row}, cols={COLS_RANGE[0]}:{COLS_RANGE[1]} -> {headers}")
 
-    # create or assign columns
-    for t in ("skuid","lp_number","product_description","value_gbp","quantity","net_weight_kg","hs_code"):
-        df[t] = df[use_cols[t]] if t in use_cols else None
+    # 宽松校验：命中 EXPECTED >= 5 即通过
+    hit = sum(1 for i, h in enumerate(headers) if i < len(EXPECTED) and h == EXPECTED[i])
+    if hit < 5:
+        _warn(f"[COORD] Header mismatch: {os.path.basename(xlsx_path)} 命中 {hit}/8，跳过。")
+        return None
 
-    df = df[["skuid","lp_number","product_description","value_gbp","quantity","net_weight_kg","hs_code"]]
+    # 读数据
+    rows: List[List[Any]] = []
+    empty_streak = 0
+    r = hdr_row + 1
+    while True:
+        values = [ws.cell(row=r, column=c).value for c in range(start_col, end_col + 1)]
+        norm = [(str(v).strip() if v is not None else "") for v in values]
 
-    # numeric cleanup
-    def _to_num(x):
+        key_fields = [norm[0], norm[1], norm[3]]  # Shipment ID / skuid / Product Desc
+        if all(k == "" for k in key_fields):
+            empty_streak += 1
+        else:
+            empty_streak = 0
+
+        if empty_streak >= 3:
+            break
+
+        if any(n != "" for n in norm):
+            rows.append(norm)
+
+        r += 1
+        if r - hdr_row > 2000:
+            _warn("[COORD] 超过 2000 行，强制停止。")
+            break
+
+    if not rows:
+        _warn(f"[COORD] {os.path.basename(xlsx_path)} 表头下面没有数据行。")
+        return None
+
+    df = pd.DataFrame(rows, columns=CANON_KEYS)
+
+    # 清洗
+    for col in ["shipment_id", "skuid", "lp_number", "product_description", "hs_code"]:
+        df[col] = df[col].astype(str).str.strip()
+
+    def _to_float(x):
         try:
-            return float(str(x).replace(",", "").strip())
+            return float(str(x).strip().replace(",", ""))
         except Exception:
             return None
 
-    df["value_gbp"] = df["value_gbp"].map(_to_num)
-    df["quantity"] = df["quantity"].map(_to_num)
-    df["net_weight_kg"] = df["net_weight_kg"].map(_to_num)
+    def _to_int(x):
+        try:
+            return int(float(str(x).strip().replace(",", "")))
+        except Exception:
+            return None
 
+    df["value_gbp"] = df["value_gbp"].apply(_to_float)
+    df["quantity"] = df["quantity"].apply(_to_int)
+    df["net_weight_kg"] = df["net_weight_kg"].apply(_to_float)
+
+    # LP 拆分
+    def _split_lp(x: str):
+        x = (x or "").strip()
+        if not x:
+            return []
+        parts = re.split(r"[\s,;\/\n]+", x)
+        parts = [p.strip() for p in parts if p.strip()]
+        seen, out = set(), []
+        for p in parts:
+            if p not in seen:
+                seen.add(p)
+                out.append(p)
+        return out
+
+    df["lp_list"] = df["lp_number"].apply(_split_lp)
     return df
 
-def _normalize_lp_cell(x: str) -> list:
-    if x is None or (isinstance(x, float) and pd.isna(x)):
-        return []
-    s = str(x).upper()
-    parts = re.split(r"[,\;\|\t\r\n ]+", s)
-    parts = [p.strip() for p in parts if p.strip()]
-    parts = [p for p in parts if p.startswith("SD")]  # 只保留 SD 开头
-    return parts
 
-def _parse_poe(pdf_path: Path) -> dict:
-    poe_filename = pdf_path.name
-    text_all = ""
-    with open(pdf_path, "rb") as f:
-        r = PdfReader(f)
-        for p in r.pages:
-            text_all += p.extract_text() or ""
+# -------------- DDL: create & migrate table ---------------
+TABLE = "export_shipments"
+REQUIRED_COLUMNS = {
+    "id": "SERIAL PRIMARY KEY",
+    "folder_name": "TEXT",
+    "invoice_file": "TEXT",
+    "poe_file": "TEXT",
+    "poe_id": "TEXT",
+    "poe_mrn": "TEXT",
+    "poe_office": "TEXT",
+    "poe_date": "DATE",
+    "shipment_id": "TEXT",
+    "skuid": "TEXT",
+    "lp_number": "TEXT",
+    "product_description": "TEXT",
+    "value_gbp": "NUMERIC",
+    "quantity": "INTEGER",
+    "net_weight_kg": "NUMERIC",
+    "hs_code": "TEXT",
+    "created_at": "TIMESTAMP DEFAULT NOW()",
+}
 
-    m = RE_POE_ID.search(text_all)
-    poe_id = m.group(1) if m else (re.search(r"(SD\d+)", poe_filename).group(1) if re.search(r"(SD\d+)", poe_filename) else None)
+CREATE_SQL = f"""
+CREATE TABLE IF NOT EXISTS {TABLE} (
+    {', '.join([f"{k} {v}" for k, v in REQUIRED_COLUMNS.items()])}
+);
+"""
 
-    m = RE_MRN_LABELED.search(text_all)
-    if m:
-        mrn = m.group(1)
-    else:
-        m = RE_MRN.search(text_all)
-        mrn = m.group(1) if m else None
+def _ensure_table_and_migrate(eng: Engine):
+    with eng.begin() as conn:
+        # 1) 若不存在则创建（新库能一次性得到所有列）
+        conn.execute(text(CREATE_SQL))
 
-    office = None
-    m = RE_OFFICE.search(text_all)
-    if m:
-        office = m.group(1)
+        # 2) 读取现有列，缺啥补啥
+        q = text("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = :tbl
+              AND table_schema = COALESCE(current_schema(), 'public')
+        """)
+        existing = {r[0] for r in conn.execute(q, {"tbl": TABLE}).fetchall()}
 
-    export_date = None
-    m = RE_DDMMYYYY.search(text_all)
-    if m:
-        try:
-            export_date = datetime.strptime(m.group(1), "%d/%m/%Y").date().isoformat()
-        except Exception:
-            export_date = None
-
-    return {
-        "poe_id": poe_id,
-        "hmrc_mrn": mrn,
-        "poe_filename": poe_filename,
-        "export_date": export_date,
-        "office_of_exit": office,
-    }
-
-# ---------------- Core ----------------
-def import_poe_invoice(
-    root_path: str,
-    table: str = "export_shipments",
-    schema: Optional[str] = "public",
-    verbose: bool = True,
-    dry_run: bool = False,
-    limit: Optional[int] = None,   # 限制每个子目录最多入库多少行（便于测试）
-) -> int:
-    """Scan subfolders under root_path, parse all invoices and POEs, match by LP==POE,
-    and append matched rows into existing `export_shipments` table. Returns inserted row count."""
-    _setup_logger(verbose)
-
-    root = Path(root_path)
-    if not root.exists():
-        raise FileNotFoundError(f"Root not found: {root}")
-
-    db_url = _get_db_url_from_config()
-    log.info(f"[DB] Using DB URL from config: {db_url}")
-    engine = create_engine(db_url)
-
-    # 先试连一次（及早暴露连接问题）
-    try:
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-        log.info("[DB] Connection OK")
-    except Exception as e:
-        log.exception("[DB] Connection failed")
-        raise
-
-    total_rows = 0
-    subfolders = [p for p in sorted(root.iterdir()) if p.is_dir()]
-    log.info(f"[SCAN] Found {len(subfolders)} subfolder(s) under {root}")
-
-    for folder in subfolders:
-        inv_files = _find_files(folder, INVOICE_EXTS)
-        poe_files = _find_files(folder, POE_EXTS)
-        log.info(f"\n[SCAN] Folder: {folder.name} -> {len(inv_files)} invoice(s), {len(poe_files)} POE(s)")
-
-        if not inv_files or not poe_files:
-            log.warning(f"[SKIP] Missing invoices or POEs in {folder.name}")
-            continue
-
-        # 解析所有 POE
-        poe_rows = []
-        for pf in poe_files:
-            row = _parse_poe(pf)
-            row["src_poe_file"] = pf.name
-            poe_rows.append(row)
-            log.debug(f"[POE] {pf.name} -> poe_id={row.get('poe_id')}, mrn={row.get('hmrc_mrn')}, office={row.get('office_of_exit')}, date={row.get('export_date')}")
-
-        df_poe = pd.DataFrame(poe_rows).dropna(subset=["poe_id"]).drop_duplicates(subset=["poe_id"])
-        if df_poe.empty:
-            log.warning(f"[WARN] No valid poe_id extracted in {folder.name}. Skip.")
-            continue
-
-        poe_index = df_poe.set_index("poe_id")
-        log.info(f"[POE] Extracted {len(df_poe)} unique poe_id(s). Sample: {list(df_poe['poe_id'])[:5]}")
-
-        # 解析所有发票并 explode LP
-        inv_frames = []
-        for inv in inv_files:
-            df_raw = _read_invoice_any(inv)
-            df_map = _map_invoice_columns(df_raw)
-            log.debug(f"[INVOICE] {inv.name} mapped columns: {list(df_map.columns)}")
-            before_rows = len(df_map)
-
-            df_map["_lp_list"] = df_map["lp_number"].map(_normalize_lp_cell)
-            exploded = df_map.explode("_lp_list", ignore_index=True)
-            exploded["lp_norm"] = exploded["_lp_list"].fillna("")
-            exploded["src_folder"] = folder.name
-            exploded["src_invoice_file"] = inv.name
-
-            log.info(f"[LP] {inv.name}: {before_rows} row(s) -> exploded to {len(exploded)} row(s)")
-            # 显示前几个 LP 样本
-            sample_lp = exploded["lp_norm"].dropna().unique().tolist()[:5]
-            log.debug(f"[LP] sample LPs: {sample_lp}")
-
-            inv_frames.append(exploded)
-
-        df_inv_all = pd.concat(inv_frames, ignore_index=True) if inv_frames else pd.DataFrame()
-        if df_inv_all.empty:
-            log.warning(f"[WARN] No invoice rows after mapping/explode in {folder.name}")
-            continue
-
-        # 主匹配
-        matched = df_inv_all.join(poe_index, how="left", on="lp_norm")
-        total_folder = len(df_inv_all)
-        matched_rows = matched["poe_filename"].notna().sum()
-        unmatched_rows = total_folder - matched_rows
-        log.info(f"[MATCH] {matched_rows}/{total_folder} matched in folder {folder.name}")
-
-        if unmatched_rows > 0:
-            # 简要展示未匹配样本
-            sample_unmatched = matched.loc[~matched["poe_filename"].notna(), "lp_norm"].head(10).tolist()
-            log.debug(f"[UNMATCHED] sample lp_norm (first 10): {sample_unmatched}")
-
-        matched = matched[matched["poe_filename"].notna()].copy()
-        if matched.empty:
-            log.warning(f"[WARN] Nothing matched in {folder.name}, skip insert.")
-            continue
-
-        # 限流（便于测试）
-        if limit and limit > 0 and len(matched) > limit:
-            log.info(f"[LIMIT] Take first {limit} row(s) for insertion (from {len(matched)})")
-            matched = matched.head(limit)
-
-        # 对应 export_shipments 的列
-        for col in TARGET_COLS:
-            if col not in matched.columns:
-                matched[col] = None
-
-        out = matched[
-            ["skuid","lp_number","product_description","value_gbp","quantity","net_weight_kg","hs_code",
-             "poe_id","hmrc_mrn","poe_filename","export_date","office_of_exit",
-             "src_folder","src_invoice_file","src_poe_file"]
-        ].copy()
-
-        # 最后几条插入前样本
-        log.debug(f"[DB] Sample rows to insert (tail 5):\n{out.tail(5).to_string(index=False)}")
-
-        if dry_run:
-            log.info(f"[DRY-RUN] Would insert {len(out)} row(s) from {folder.name} -> {schema}.{table}")
+        to_add = [(col, coltype) for col, coltype in REQUIRED_COLUMNS.items() if col not in existing]
+        if to_add:
+            _warn(f"[DDL] {TABLE} 缺少列：{[c for c, _ in to_add]}，开始自动迁移...")
+            for col, coltype in to_add:
+                # 注意：不能再次添加 PRIMARY KEY；如果缺的是 id，改用 bigserial 普通列也可，这里假设旧表有 id。
+                if col == "id":
+                    # 旧表若真没有 id，给一个可空的 bigserial
+                    conn.execute(text(f'ALTER TABLE {TABLE} ADD COLUMN IF NOT EXISTS id BIGSERIAL'))
+                else:
+                    conn.execute(text(f'ALTER TABLE {TABLE} ADD COLUMN IF NOT EXISTS {col} {coltype}'))
+            _info(f"[DDL] 已补齐列：{[c for c, _ in to_add]}")
         else:
-            out.to_sql(
-                name=table,
-                con=engine,
-                schema=schema,
-                if_exists="append",
-                index=False,
-                chunksize=500,
-                method="multi",
-            )
-            log.info(f"[DB] Inserted {len(out)} row(s) -> {schema}.{table}")
-            total_rows += len(out)
+            _debug(f"[DDL] {TABLE} 列完整，无需迁移。")
 
-    log.info(f"\n[SUMMARY] Inserted total rows: {total_rows}")
-    return total_rows
 
-# ---------------- CLI ----------------
-if __name__ == "__main__":
-    import argparse
-    ap = argparse.ArgumentParser(description="Import matched invoice+POE rows into DB (export_shipments) with debug logs")
-    ap.add_argument("--root", required=True, help="Root folder containing subfolders like 20251103/")
-    ap.add_argument("--table", default="export_shipments", help="Destination table name")
-    ap.add_argument("--schema", default="public", help="DB schema")
-    ap.add_argument("--verbose", action="store_true", help="Verbose debug logs")
-    ap.add_argument("--dry-run", action="store_true", help="Do not write to DB, just simulate")
-    ap.add_argument("--limit", type=int, default=0, help="Limit rows per folder for testing")
-    args = ap.parse_args()
+# ------------------------- main -----------------------------
+def import_poe_invoice(root_folder: str, verbose: bool = False) -> None:
+    eng = _get_engine()
+    _ensure_table_and_migrate(eng)
 
-    import_poe_invoice(
-        root_path=args.root,
-        table=args.table,
-        schema=args.schema,
-        verbose=args.verbose,
-        dry_run=args.dry_run,
-        limit=args.limit if args.limit and args.limit > 0 else None,
-    )
+    if not os.path.isdir(root_folder):
+        _warn(f"[SCAN] Root not a directory: {root_folder}")
+        return
+
+    subfolders = sorted([d for d in os.listdir(root_folder) if os.path.isdir(os.path.join(root_folder, d))])
+    _info(f"[SCAN] Found {len(subfolders)} subfolder(s) under {root_folder}")
+
+    total_inserted = 0
+    for sub in subfolders:
+        folder_path = os.path.join(root_folder, sub)
+        _info(f"\n[SCAN] Folder: {sub}")
+
+        files = [os.path.join(folder_path, f) for f in os.listdir(folder_path)]
+        excel_files = _list_excel_files(folder_path)
+        poe_pdf = _find_poe_pdf(files)
+
+        if verbose:
+            _debug(f"[SCAN] excel candidates: {[os.path.basename(x) for x in excel_files]}")
+            _debug(f"[SCAN] poe candidate: {os.path.basename(poe_pdf) if poe_pdf else None}")
+
+        _info(f"[SCAN] Folder: {sub} -> {len(excel_files)} invoice(s), {1 if poe_pdf else 0} POE(s)")
+
+        if not excel_files:
+            _warn(f"[WARN] {sub} 没有发票，跳过。")
+            continue
+
+        poe_meta = _parse_poe_meta_from_pdf(poe_pdf) if poe_pdf else {"poe_id": None, "poe_mrn": None, "poe_office": None, "poe_date": None}
+
+        batch_rows = []
+        for xlsx in excel_files:
+            df = _read_invoice_by_coord(xlsx, verbose=verbose)
+            if df is None or df.empty:
+                _warn(f"[INVOICE] {os.path.basename(xlsx)} 无法解析或没有有效数据，跳过。")
+                continue
+
+            # explode LP；若 LP 为空则保留一行
+            if df["lp_list"].map(len).gt(0).any():
+                exploded = df.explode("lp_list")
+                exploded["lp_number"] = exploded["lp_list"].fillna("")
+                exploded = exploded.drop(columns=["lp_list"])
+            else:
+                exploded = df.drop(columns=["lp_list"])
+                exploded["lp_number"] = exploded["lp_number"].fillna("")
+
+            exploded["folder_name"] = sub
+            exploded["invoice_file"] = os.path.basename(xlsx)
+            exploded["poe_file"] = os.path.basename(poe_pdf) if poe_pdf else None
+            exploded["poe_id"] = poe_meta.get("poe_id")
+            exploded["poe_mrn"] = poe_meta.get("poe_mrn")
+            exploded["poe_office"] = poe_meta.get("poe_office")
+            exploded["poe_date"] = poe_meta.get("poe_date")
+
+            keep = [
+                "folder_name", "invoice_file", "poe_file",
+                "poe_id", "poe_mrn", "poe_office", "poe_date",
+                "shipment_id", "skuid", "lp_number", "product_description",
+                "value_gbp", "quantity", "net_weight_kg", "hs_code"
+            ]
+            exploded = exploded[keep]
+            batch_rows.append(exploded)
+
+        if not batch_rows:
+            _warn(f"[WARN] {sub} 没有任何可插入的数据。")
+            continue
+
+        out_df = pd.concat(batch_rows, ignore_index=True)
+
+        with eng.begin() as conn:
+            # 用原生 INSERT 批量兼容 numeric/int（to_sql 也可，这里继续用 to_sql）
+            out_df.to_sql(TABLE, con=conn, if_exists="append", index=False, method="multi", chunksize=1000)
+
+        _info(f"[OK] Inserted {len(out_df)} rows for folder {sub}")
+        total_inserted += len(out_df)
+
+    _info(f"[SUMMARY] Inserted total rows: {total_inserted}")

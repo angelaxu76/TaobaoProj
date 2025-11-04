@@ -1,22 +1,25 @@
 -- DDL for export_shipments table
-CREATE TABLE IF NOT EXISTS export_shipments (
-    id SERIAL PRIMARY KEY,
-    skuid TEXT,
-    lp_number TEXT,
+-- 建表（全新环境）
+CREATE TABLE IF NOT EXISTS public.export_shipments (
+    id              BIGSERIAL PRIMARY KEY,
+    folder_name     TEXT,
+    invoice_file    TEXT,
+    poe_file        TEXT,
+    poe_id          TEXT,
+    poe_mrn         TEXT,
+    poe_office      TEXT,
+    poe_date        DATE,
+    shipment_id     TEXT,
+    skuid           TEXT,
+    lp_number       TEXT,
     product_description TEXT,
-    value_gbp NUMERIC(12,2),
-    quantity NUMERIC(12,2),
-    net_weight_kg NUMERIC(14,3),
-    hs_code TEXT,
-    poe_id TEXT,
-    hmrc_mrn TEXT,
-    poe_filename TEXT,
-    export_date DATE,
-    office_of_exit TEXT,
-    src_folder TEXT,
-    src_invoice_file TEXT,
-    src_poe_file TEXT
+    value_gbp       NUMERIC,
+    quantity        INTEGER,
+    net_weight_kg   NUMERIC,
+    hs_code         TEXT,
+    created_at      TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
 );
+
 
 -- Helpful indexes
 CREATE INDEX IF NOT EXISTS idx_export_shipments_poe_id ON export_shipments(poe_id);
