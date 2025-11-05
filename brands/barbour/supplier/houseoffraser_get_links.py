@@ -10,6 +10,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from config import BARBOUR
+from common_taobao.core.driver_auto import build_uc_driver
 
 # ✅ 两个入口：Barbour & Barbour International（第1页无参，其余 ?dcp=N）
 BASE_URLS = [
@@ -40,7 +41,7 @@ def get_driver():
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
     )
     options.add_argument("accept-language=en-GB,en-US;q=0.9,en;q=0.8")
-    driver = uc.Chrome(options=options, use_subprocess=True)
+    driver = build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True)
     return driver
 
 
