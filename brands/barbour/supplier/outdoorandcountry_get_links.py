@@ -1,10 +1,10 @@
-import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
 from bs4 import BeautifulSoup
+from common_taobao.core.driver_auto import build_uc_driver
 from pathlib import Path
 import time
 from config import BARBOUR
@@ -115,7 +115,7 @@ def build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True)
         try:
             if verbose:
                 print(f"🚗 Creating uc.Chrome (attempt {attempt}/{retries}) with {kwargs} ...")
-            driver = uc.Chrome(**kwargs)
+            driver = build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True)
             if verbose:
                 print("✅ uc.Chrome started successfully.")
             return driver
@@ -230,12 +230,8 @@ def outdoorandcountry_fetch_info():
     # ✅ 使用与抓链接完全一样的 uc.Chrome 方式
     from common_taobao.core.driver_auto import build_uc_driver
 
-    driver = build_uc_driver(
-        headless=False,
-        extra_options=None,  # 需要额外参数时传列表，例如 ["--disable-gpu"]
-        retries=2,
-        verbose=True
-    )
+    driver = build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True)
+
 
     for url in sorted(urls):
         try:
@@ -363,9 +359,8 @@ def outdoorandcountry_fetch_and_save_links():
     DEBUG_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-    options = uc.ChromeOptions()
-    options.add_argument("--start-maximized")
-    driver = uc.Chrome(options=options, headless=False)
+    from common_taobao.core.driver_auto import build_uc_driver
+    driver = build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True)
 
     all_links = set()
 
