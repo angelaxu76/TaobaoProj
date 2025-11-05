@@ -228,7 +228,7 @@ def outdoorandcountry_fetch_info():
                 urls.add(url)
 
     # ✅ 使用与抓链接完全一样的 uc.Chrome 方式
-    from brands.barbour.common.driver_auto import build_uc_driver
+    from common_taobao.core.driver_auto import build_uc_driver
 
     driver = build_uc_driver(
         headless=False,
