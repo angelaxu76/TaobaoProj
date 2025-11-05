@@ -217,5 +217,105 @@ def camper_fetch_product_info(max_workers=MAX_WORKERS):
         # ✅ 关键：每轮任务结束都关闭全部 driver，避免残留进程堆积
         shutdown_all_drivers()
 
+# === New: URL->code 解析与缺失补抓工具 ===
+import re
+from pathlib import Path
+from urllib.parse import urlparse
+
+CODE_PATTERNS = [
+    r"[AK]\d{6}-\d{3}",     # K100743-003 / A700019-001
+    r"\d{5,6}-\d{3}",       # 90203-051 / 16002-323 等
+]
+CODE_REGEX = re.compile(r"(" + "|".join(CODE_PATTERNS) + r")")
+
+def normalize_url(u: str) -> str:
+    u = u.strip()
+    if not u:
+        return u
+    if not u.startswith("http"):
+        u = "https://" + u.lstrip("/")
+    return u
+
+def code_from_url(u: str) -> str | None:
+    u = normalize_url(u)
+    m = list(CODE_REGEX.finditer(u))
+    return m[-1].group(0) if m else None  # 取最后一个匹配，最稳妥
+
+def load_all_urls(path: str) -> list[str]:
+    with open(path, "r", encoding="utf-8") as f:
+        return [normalize_url(x) for x in (line.strip() for line in f) if x.strip()]
+
+def existing_codes_from_txt_dir(txt_dir: str) -> set[str]:
+    p = Path(txt_dir)
+    if not p.exists():
+        p.mkdir(parents=True, exist_ok=True)
+    return {fn.stem.upper() for fn in p.glob("*.txt")}
+
+def expected_maps(urls: list[str]) -> dict[str, str]:
+    # 返回 {code: url}
+    mapping = {}
+    for u in urls:
+        c = code_from_url(u)
+        if c:
+            mapping[c.upper()] = u
+    return mapping
+
+def run_batch_fetch(urls: list[str], max_workers: int = MAX_WORKERS):
+    # 复用你已有的并发抓取逻辑，但只投递给定 urls
+    try:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(process_product_url, u) for u in urls]
+            for fut in as_completed(futures):
+                fut.result()
+    finally:
+        shutdown_all_drivers()  # 你已有的统一回收，防泄漏
+
+def camper_fetch_all_with_retry(
+    product_urls_file: str = PRODUCT_URLS_FILE,
+    txt_dir: str = str(SAVE_PATH),
+    max_passes: int = 3,
+    first_pass_workers: int = MAX_WORKERS,
+    retry_workers: int = 6
+):
+    all_urls = load_all_urls(product_urls_file)
+    code2url = expected_maps(all_urls)
+
+    # 第1轮：全量
+    print(f"==> Pass 1/ {max_passes}: 全量抓取 {len(all_urls)} 条")
+    run_batch_fetch(all_urls, max_workers=first_pass_workers)
+
+    for i in range(2, max_passes + 1):
+        have = existing_codes_from_txt_dir(txt_dir)
+        need = set(code2url.keys())
+        missing_codes = sorted((need - have))
+        if not missing_codes:
+            print("🎉 没有缺失，任务完成。")
+            break
+
+        # 生成缺失名单与对应 URL 列表
+        missing_urls = [code2url[c] for c in missing_codes if c in code2url]
+        miss_list_path = Path(txt_dir) / f"missing_camper_pass{i}.txt"
+        with open(miss_list_path, "w", encoding="utf-8") as f:
+            for c in missing_codes:
+                f.write(f"{c}\t{code2url.get(c,'')}\n")
+
+        print(f"==> Pass {i}/{max_passes}: 发现缺失 {len(missing_urls)} 条，写入 {miss_list_path.name}，开始补抓…")
+        run_batch_fetch(missing_urls, max_workers=retry_workers)
+
+    # 收尾汇总
+    have_final = existing_codes_from_txt_dir(txt_dir)
+    need_final = set(code2url.keys())
+    still_missing = sorted(need_final - have_final)
+    summary_path = Path(txt_dir) / "missing_camper_final.txt"
+    if still_missing:
+        with open(summary_path, "w", encoding="utf-8") as f:
+            for c in still_missing:
+                f.write(f"{c}\t{code2url.get(c,'')}\n")
+        print(f"⚠️ 仍有 {len(still_missing)} 条未抓到，清单见: {summary_path}")
+    else:
+        if summary_path.exists():
+            summary_path.unlink(missing_ok=True)
+        print("✅ 最终没有缺失。")
+
 if __name__ == "__main__":
     camper_fetch_product_info()
