@@ -280,17 +280,29 @@ def camper_fetch_all_with_retry(
     all_urls = load_all_urls(product_urls_file)
     code2url = expected_maps(all_urls)
 
+    print(f"📦 总链接数：{len(all_urls)}")
+    print(f"📁 TXT 目录：{txt_dir}")
+
     # 第1轮：全量
-    print(f"==> Pass 1/ {max_passes}: 全量抓取 {len(all_urls)} 条")
+    print(f"\n==> Pass 1 / {max_passes}: 全量抓取 {len(all_urls)} 条")
     run_batch_fetch(all_urls, max_workers=first_pass_workers)
 
     for i in range(2, max_passes + 1):
         have = existing_codes_from_txt_dir(txt_dir)
         need = set(code2url.keys())
         missing_codes = sorted((need - have))
+
+        print(f"\n🔍 Pass {i} 检查缺失:")
+        print(f"    已有TXT数量：{len(have)}")
+        print(f"    应有总数：{len(need)}")
+        print(f"    缺失数量：{len(missing_codes)}")
+
         if not missing_codes:
             print("🎉 没有缺失，任务完成。")
             break
+
+        # 打印部分缺失编码预览
+        print("    缺失编码示例：", ", ".join(missing_codes[:10]), "..." if len(missing_codes) > 10 else "")
 
         # 生成缺失名单与对应 URL 列表
         missing_urls = [code2url[c] for c in missing_codes if c in code2url]
@@ -299,8 +311,18 @@ def camper_fetch_all_with_retry(
             for c in missing_codes:
                 f.write(f"{c}\t{code2url.get(c,'')}\n")
 
-        print(f"==> Pass {i}/{max_passes}: 发现缺失 {len(missing_urls)} 条，写入 {miss_list_path.name}，开始补抓…")
+        print(f"🧾 已写入缺失清单：{miss_list_path}")
+        print(f"🚀 开始补抓 {len(missing_urls)} 条链接...")
+
+        # 执行补抓
         run_batch_fetch(missing_urls, max_workers=retry_workers)
+
+        # 抓取后再检查数量变化
+        after_have = existing_codes_from_txt_dir(txt_dir)
+        new_files = sorted(after_have - have)
+        print(f"✅ Pass {i} 结束后新增 {len(new_files)} 个TXT。")
+        if new_files:
+            print("    新增文件示例：", ", ".join(new_files[:10]), "..." if len(new_files) > 10 else "")
 
     # 收尾汇总
     have_final = existing_codes_from_txt_dir(txt_dir)
@@ -311,11 +333,12 @@ def camper_fetch_all_with_retry(
         with open(summary_path, "w", encoding="utf-8") as f:
             for c in still_missing:
                 f.write(f"{c}\t{code2url.get(c,'')}\n")
-        print(f"⚠️ 仍有 {len(still_missing)} 条未抓到，清单见: {summary_path}")
+        print(f"\n⚠️ 仍有 {len(still_missing)} 条未抓到，清单见: {summary_path}")
     else:
         if summary_path.exists():
             summary_path.unlink(missing_ok=True)
-        print("✅ 最终没有缺失。")
+        print("\n✅ 最终没有缺失。")
+
 
 if __name__ == "__main__":
     camper_fetch_product_info()
