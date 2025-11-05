@@ -10,6 +10,28 @@ from sqlalchemy.engine import Connection
 from config import BRAND_CONFIG, BARBOUR
 from brands.barbour.core.site_utils import canonical_site
 
+# 顶部 import 旁边补充
+from typing import Iterable
+import pandas as pd
+
+def _load_exclude_codes(xlsx_path: Optional[str]) -> Set[str]:
+    """
+    读取排除清单 Excel，返回需要“完全忽略更新”的商品编码集合。
+    兼容列名：Product Code / 商品编码 / product_code / color_code / 编码
+    """
+    if not xlsx_path:
+        return set()
+    df = pd.read_excel(xlsx_path, dtype=str)
+    cols = [c.strip().lower().replace(" ", "") for c in df.columns]
+    name2idx = {cols[i]: i for i in range(len(cols))}
+    for key in ("productcode","商品编码","product_code","color_code","编码"):
+        if key in name2idx:
+            s = df.iloc[:, name2idx[key]].astype(str).str.strip()
+            return {x for x in s if x}
+    print(f"⚠️ 未在排除清单中识别到编码列：{list(df.columns)}，将忽略该文件。")
+    return set()
+
+
 PUBLICATION_DIR = Path(BARBOUR["PUBLICATION_DIR"])
 PATTERN = "barbour_publication_*.xlsx"
 TABLE = "barbour_supplier_map"
@@ -111,46 +133,65 @@ def _pick_lowest_site(conn: Connection, code: str) -> Optional[str]:
     return canonical_site(row[0]) or row[0]
 
 
-def fill_supplier_map(force_refresh: bool = False) -> None:
+# 修改 fill_supplier_map 签名与实现
+def fill_supplier_map(force_refresh: bool = False, exclude_xlsx: Optional[str] = None) -> None:
     cfg = BRAND_CONFIG["barbour"]["PGSQL_CONFIG"]
     engine = create_engine(
         f"postgresql+psycopg2://{cfg['user']}:{cfg['password']}@{cfg['host']}:{cfg['port']}/{cfg['dbname']}"
     )
 
+    exclude_codes: Set[str] = _load_exclude_codes(exclude_xlsx)
+    if exclude_codes:
+        print(f"🛡️ 排除清单：{len(exclude_codes)} 个编码将不被更新/覆盖。")
+
     with engine.begin() as conn:
-        # 0) 确保表存在（NOT NULL 约束保持）
+        # 0) 确保表存在
         conn.execute(SQL_CREATE)
 
+        preserved: Dict[str, str] = {}
         if force_refresh:
+            # 在清空之前，把排除清单里“已有映射”的编码先保存起来
+            if exclude_codes:
+                rows = conn.execute(
+                    text(f"SELECT product_code, site_name FROM {TABLE} WHERE product_code = ANY(:codes)"),
+                    {"codes": list(exclude_codes)}
+                ).fetchall()
+                preserved = {r[0]: r[1] for r in rows}
+                if preserved:
+                    print(f"🧩 预保存排除映射 {len(preserved)} 条。")
+            # 清空表
             conn.execute(text(f"TRUNCATE TABLE {TABLE};"))
-            print(f"⚠️ 已清空 {TABLE} 表。")       
+            print(f"⚠️ 已清空 {TABLE} 表。")
 
-        # 1) 取“已发布”的编码集合（不插入任何 NULL）
+        # 1) 取“已发布”的编码集合
         published: Set[str] = {r[0] for r in conn.execute(SQL_PUBLISHED_CODES).fetchall()}
-        print(f"📦 已发布编码：{len(published)} 个。")  # 来自 inventory。:contentReference[oaicite:2]{index=2}
+        print(f"📦 已发布编码：{len(published)} 个。")
 
-        # 2) 已有映射（避免重复处理）
+        # 2) 已有映射
         try:
             existing: Set[str] = {r[0] for r in conn.execute(SQL_EXISTING_MAP).fetchall()}
         except Exception:
             existing = set()
 
-        # 3) 从发布清单写入映射（最新覆盖旧值）
+        # 3) 按发布清单覆盖（跳过排除编码）
         pub_map = _load_publication_mappings(PUBLICATION_DIR)
         pub_hit: List[str] = []
         for code, site in pub_map.items():
+            if code in exclude_codes:
+                continue
             if code in published:
                 conn.execute(SQL_UPSERT, {"code": code, "site": site})
                 pub_hit.append(code)
         print(f"✅ 按发布文件更新：{len(pub_hit)} 条。")
-        # 打印命中编码（便于你区分来源）
         if pub_hit:
             print("→ 来自 publication 的编码：", ", ".join(pub_hit))
 
-        # 4) 兜底：对“已发布但还未映射”的编码，用 offers 选最低价站点
+        # 4) 兜底（仅对未命中且未映射的已发布编码，且跳过排除编码）
         need = (published - set(pub_hit)) - existing
         offer_filled: List[str] = []
         for code in sorted(need):
+            if code in exclude_codes:
+                continue
             site = _pick_lowest_site(conn, code)
             if site:
                 conn.execute(SQL_UPSERT, {"code": code, "site": site})
@@ -159,19 +200,44 @@ def fill_supplier_map(force_refresh: bool = False) -> None:
         if offer_filled:
             print("→ 来自 offers 兜底的编码：", ", ".join(offer_filled))
 
-        # 5) 统计收尾
+        # 5) 回填“排除清单中已存在的历史映射”（在 force_refresh 情况下）
+        if preserved:
+            rows = [{"code": k, "site": v} for k, v in preserved.items()]
+            conn.execute(text(f"""
+                INSERT INTO {TABLE}(product_code, site_name)
+                VALUES (:code, :site)
+                ON CONFLICT (product_code) DO UPDATE SET site_name = EXCLUDED.site_name
+            """), rows)
+            print(f"🟢 已恢复排除清单中的历史映射 {len(rows)} 条。")
+
+        # 6) 统计
         total_now = conn.execute(text(f"SELECT COUNT(*) FROM {TABLE}")).scalar_one()
         print(f"🎯 完成映射，总计 {total_now} 条。")
 
 
-def reassign_low_stock_suppliers(size_threshold: int = 3, dry_run: bool = True) -> list[dict]:
+
+def reassign_low_stock_suppliers(
+    size_threshold: int = 3,
+    dry_run: bool = True,
+    exclude_xlsx: Optional[str] = None
+) -> list[dict]:
     """
-    找出当前映射站点“在售尺码数 < size_threshold”的商品；若存在其它站点满足(尺码≥阈值 & 最低价最低)，则建议/执行切换。
+    找出当前映射站点“在售尺码数 < size_threshold”的商品；
+    若存在其它站点满足(尺码≥阈值 & 最低价最低)，则建议/执行切换。
     - dry_run=True：只打印与返回建议，不改库
-    - 返回：建议切换清单 [{code, old_site, old_sizes, new_site, new_sizes, old_min_price, new_min_price}]
+    - exclude_xlsx: Excel文件路径，含需排除更新的商品编码（Product Code / 商品编码）
+    - 返回：[{code, old_site, old_sizes, new_site, new_sizes, old_min_price, new_min_price}]
     """
     cfg = BRAND_CONFIG["barbour"]["PGSQL_CONFIG"]
-    eng = create_engine(f"postgresql+psycopg2://{cfg['user']}:{cfg['password']}@{cfg['host']}:{cfg['port']}/{cfg['dbname']}")
+    eng = create_engine(
+        f"postgresql+psycopg2://{cfg['user']}:{cfg['password']}@{cfg['host']}:{cfg['port']}/{cfg['dbname']}"
+    )
+
+    # === 加载排除清单 ===
+    exclude_codes: Set[str] = _load_exclude_codes(exclude_xlsx)
+    if exclude_codes:
+        print(f"🛡️ 排除清单：{len(exclude_codes)} 个编码将不会被更新/覆盖。")
+
     suggest: list[dict] = []
 
     SQL_AGG = text("""
@@ -209,18 +275,28 @@ def reassign_low_stock_suppliers(size_threshold: int = 3, dry_run: bool = True) 
             on=["product_code", "site_name"], how="left"
         )
 
-        # 遍历：当前站点尺码不足阈值 → 找“候选最佳站点”
+        cur_df["cur_sizes_in_stock"] = cur_df["cur_sizes_in_stock"].fillna(0).astype(int)
+        cur_df["cur_min_eff_price"]  = cur_df["cur_min_eff_price"].fillna(float("nan"))
+
+        # 遍历
         for _, r in cur_df.iterrows():
             code = str(r["product_code"])
+            if code in exclude_codes:
+                continue  # 跳过排除编码
+
             old_site = r["site_name"]
             cur_sizes = (r.get("cur_sizes_in_stock") or 0)
 
             if cur_sizes is None or int(cur_sizes) >= int(size_threshold):
                 continue  # 当前站点尺码数已满足，不处理
 
-            # 候选站点：≥阈值的站点里选价格最低（若并列则尺码多、更新时间新）
+            # 候选站点
             cand = (
-                agg_df[(agg_df["product_code"] == code) & (agg_df["sizes_in_stock"] >= size_threshold) & agg_df["min_eff_price"].notna()]
+                agg_df[
+                    (agg_df["product_code"] == code)
+                    & (agg_df["sizes_in_stock"] >= size_threshold)
+                    & agg_df["min_eff_price"].notna()
+                ]
                 .sort_values(["min_eff_price", "sizes_in_stock", "latest"], ascending=[True, False, False])
                 .head(1)
             )
@@ -232,7 +308,6 @@ def reassign_low_stock_suppliers(size_threshold: int = 3, dry_run: bool = True) 
             new_price = float(cand.iloc[0]["min_eff_price"] or 0.0)
             old_price = float(r.get("cur_min_eff_price") or 0.0)
 
-            # 记录建议
             suggest.append({
                 "product_code": code,
                 "old_site": old_site,
@@ -243,18 +318,19 @@ def reassign_low_stock_suppliers(size_threshold: int = 3, dry_run: bool = True) 
                 "new_min_price": new_price,
             })
 
-        # 执行切换（可选）
+        # === 写库（仅非dry-run） ===
         if suggest and not dry_run:
-            rows = [{"code": s["product_code"], "site": s["new_site"]} for s in suggest]
+            rows = [{"code": s["product_code"], "site": s["new_site"]}
+                    for s in suggest if s["product_code"] not in exclude_codes]
             conn.execute(text("""
                 INSERT INTO barbour_supplier_map(product_code, site_name)
                 VALUES (:code, :site)
                 ON CONFLICT (product_code) DO UPDATE SET site_name = EXCLUDED.site_name
             """), rows)
 
-    # 打印预览
+    # === 打印建议 ===
     if suggest:
-        print(f"共{len(suggest)}条建议：")
+        print(f"共{len(suggest)}条建议（已排除 {len(exclude_codes)} 条编码）：")
         for s in suggest[:30]:
             print(f"- {s['product_code']}: {s['old_site']}({s['old_sizes']}尺) -> {s['new_site']}({s['new_sizes']}尺), "
                   f"价 {s['old_min_price']} -> {s['new_min_price']}")
@@ -264,6 +340,7 @@ def reassign_low_stock_suppliers(size_threshold: int = 3, dry_run: bool = True) 
         print("未找到需要切换的商品（当前映射站点均满足尺码阈值或无更优候选）。")
 
     return suggest
+
 
 
 def export_supplier_stock_price_report(min_sizes_ok: int = 1, output_path: str | None = None) -> str:

@@ -29,6 +29,8 @@ def _warn(msg: str): print(f"{_now()} [WARNING] {msg}")
 def _debug(msg: str): print(f"{_now()} [DEBUG] {msg}")
 
 
+
+
 # ---------------------- DB helpers -------------------
 def _db_url_from_config() -> str:
     try:
@@ -65,6 +67,99 @@ def _get_engine() -> Engine:
 
 # ---------------------- scan helpers -----------------
 PDF_PATT = re.compile(r"(?i)\bpoe[_-]?sd\d+\.pdf$")
+
+
+
+# ========= New helpers for invoice/brand/carrier/totals =========
+
+import os
+import re
+import datetime as dt
+from typing import Optional, Dict, Any
+
+_BRAND_HINTS = {
+    "camper": "Camper",
+    "clarks": "Clarks",
+    "barbour": "Barbour",
+    "ecco": "ECCO",
+    "geox": "GEOX",
+}
+
+_CARRIER_HINTS = {
+    "ecms": "ECMS",
+    "cainiao": "Cainiao",
+    "yt": "YTO Express",      # 有些 Shipment ID 前缀/目录会带 YT
+    "yodel": "Yodel",
+    "royalmail": "Royal Mail",
+}
+
+_DATE_PATTS = [
+    # GB-EMINZORA-251031-1.xlsx -> 25 10 31 -> 2025-10-31
+    (re.compile(r'(?<!\d)(\d{2})(\d{2})(\d{2})(?!\d)'), "%y%m%d"),
+    # 2025-10-31 / 20251031 / 31-10-2025 / 31_10_2025
+    (re.compile(r'(?<!\d)(\d{4})[-_]?(\d{2})[-_]?(\d{2})(?!\d)'), "%Y%m%d"),
+    (re.compile(r'(?<!\d)(\d{2})[-_](\d{2})[-_](\d{4})(?!\d)'), "%d-%m-%Y"),
+]
+
+def _infer_invoice_no_from_filename(xlsx_path: str) -> str:
+    base = os.path.basename(xlsx_path)
+    name, _ = os.path.splitext(base)
+    # 去掉常见噪音前后缀
+    return name.strip()
+
+def _infer_date_from_filename(xlsx_path: str) -> Optional[dt.date]:
+    base = os.path.basename(xlsx_path)
+    name, _ = os.path.splitext(base)
+    s = name.lower()
+    for patt, fmt in _DATE_PATTS:
+        m = patt.search(s)
+        if m:
+            try:
+                if fmt == "%y%m%d":
+                    d = dt.datetime.strptime("".join(m.groups()), fmt).date()
+                elif fmt == "%Y%m%d":
+                    d = dt.datetime.strptime("".join(m.groups()), fmt).date()
+                else:
+                    d = dt.datetime.strptime(m.group(0), fmt).date()
+                # 合理性校验：2000-01-01 ~ 2099-12-31
+                if dt.date(2000,1,1) <= d <= dt.date(2099,12,31):
+                    return d
+            except Exception:
+                pass
+    return None
+
+def _infer_brand(folder_name: str, filename: str, sample_desc: Optional[str]) -> Optional[str]:
+    hay = f"{folder_name} {filename} {sample_desc or ''}".lower()
+    for k, v in _BRAND_HINTS.items():
+        if k in hay:
+            return v
+    return None
+
+def _infer_carrier(folder_name: str, shipment_id: Optional[str]) -> Optional[str]:
+    hay = f"{folder_name} {shipment_id or ''}".lower()
+    for k, v in _CARRIER_HINTS.items():
+        if k in hay:
+            return v
+    return None
+
+def _aggregate_totals(df):
+    # 针对同一个 invoice_file 聚合总额/件数/重量/包裹数（LP 去重计包裹数）
+    grouped = {}
+    for inv, g in df.groupby("invoice_file"):
+        total_value = float(g["value_gbp"].fillna(0).sum())
+        total_qty = int(g["quantity"].fillna(0).sum())
+        total_net_w = float(g["net_weight_kg"].fillna(0).sum())
+        # 票级毛重：没有单独字段时先用净重近似（或后续从 POE 回填）
+        total_gross_w = total_net_w
+        # 包裹数：按 LP 去重计算（如果没有 LP 列则退化为 1）
+        lp_series = g.get("lp_number")
+        if lp_series is not None:
+            pkg_count = int(lp_series.astype(str).str.strip().replace("nan","").replace("None","").replace("","NaN").dropna().nunique())
+            pkg_count = pkg_count if pkg_count > 0 else 1
+        else:
+            pkg_count = 1
+        grouped[inv] = (round(total_value,2), total_qty, round(total_gross_w,3), pkg_count)
+    return grouped
 
 def _find_poe_pdf(files: List[str]) -> Optional[str]:
     for f in files:
@@ -297,6 +392,17 @@ REQUIRED_COLUMNS = {
     "net_weight_kg": "NUMERIC",
     "hs_code": "TEXT",
     "created_at": "TIMESTAMP DEFAULT NOW()",
+    "uk_invoice_no": "TEXT",
+    "uk_invoice_date": "DATE",
+    "uk_po_number": "TEXT",               # 如你想手动回填内部PO，可保留
+    "brand": "TEXT",
+    "currency": "TEXT",
+    "total_value_gbp": "NUMERIC",
+    "total_quantity": "INTEGER",
+    "total_gross_weight_kg": "NUMERIC",
+    "carrier_name": "TEXT",
+    "tracking_no": "TEXT",
+    "package_count": "INTEGER",
 }
 
 CREATE_SQL = f"""
@@ -405,6 +511,37 @@ def import_poe_invoice(root_folder: str, verbose: bool = False) -> None:
             continue
 
         out_df = pd.concat(batch_rows, ignore_index=True)
+
+        # ======== New: 票级字段自动推断/回填 ========
+        # 以每个 invoice_file 为一票（你当前每个子目录通常对应1张发票）
+        # 1) 发票号 & 发票日期 from 文件名
+        out_df["uk_invoice_no"] = out_df["invoice_file"].apply(_infer_invoice_no_from_filename)
+        out_df["uk_invoice_date"] = out_df["invoice_file"].apply(_infer_date_from_filename)
+
+        # 2) 品牌：先用目录/文件名命中，命不中则取任意一条 product_description 再试
+        sample_desc = None
+        try:
+            sample_desc = next((x for x in out_df["product_description"].astype(str).tolist() if x and x.strip()), None)
+        except Exception:
+            pass
+        out_df["brand"] = out_df.apply(
+            lambda r: _infer_brand(r["folder_name"], r["invoice_file"], sample_desc), axis=1
+        )
+
+        # 3) 承运商：目录/Shipment ID 识别；跟踪号直接用 shipment_id
+        out_df["carrier_name"] = out_df.apply(
+            lambda r: _infer_carrier(r["folder_name"], r.get("shipment_id")), axis=1
+        )
+        out_df["tracking_no"] = out_df.get("shipment_id")
+
+        # 4) 票级合计：按 invoice_file 聚合后回填到同票的每一行
+        totals = _aggregate_totals(out_df)
+        out_df["total_value_gbp"] = out_df["invoice_file"].map(lambda k: totals.get(k, (None,None,None,None))[0])
+        out_df["total_quantity"] = out_df["invoice_file"].map(lambda k: totals.get(k, (None,None,None,None))[1])
+        out_df["total_gross_weight_kg"] = out_df["invoice_file"].map(lambda k: totals.get(k, (None,None,None,None))[2])
+        out_df["package_count"] = out_df["invoice_file"].map(lambda k: totals.get(k, (None,None,None,None))[3])
+        # ======== End New ========
+
 
         with eng.begin() as conn:
             # 用原生 INSERT 批量兼容 numeric/int（to_sql 也可，这里继续用 to_sql）

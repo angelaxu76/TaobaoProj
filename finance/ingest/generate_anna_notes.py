@@ -197,7 +197,70 @@ def make_anna_notes_with_auto_po(
         shipment_ids=shipment_ids,
         output_txt=output_txt,
     )
+
+    # === 自动打印 Export Evidence Summary 和 POE 路径 ===
+    try:
+        invoice_no = f"GB-{company_short}-{order_date.replace('-', '')[-6:]}-1" if order_date else f"GB-{company_short}-{dt.datetime.now():%y%m%d}-1"
+        evidence_info = get_evidence_files(invoice_no)
+        _info("------ Export Evidence Files ------")
+        print(evidence_info)
+        _info("-----------------------------------")
+    except Exception as e:
+        _warn(f"无法获取凭证路径信息: {e}")
+
     return po_number, notes, not_found
+
+
+
+# === 生成凭证文件路径 ===
+import os
+import psycopg2
+from config import PGSQL_CONFIG
+
+def get_evidence_files(invoice_no):
+    """
+    根据 invoice_no 自动获取 Export Evidence Summary 和所有 POE 文件路径。
+    """
+    base_dir = r"D:\OneDrive\CrossBorderDocs\06_Export_Proofs"
+
+    # 从数据库查出所有 poe_id
+    conn = psycopg2.connect(**PGSQL_CONFIG)
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT DISTINCT poe_id, poe_date
+        FROM export_shipments
+        WHERE uk_invoice_no = %s
+        AND poe_id IS NOT NULL
+        ORDER BY poe_id;
+    """, (invoice_no,))
+    poe_records = cur.fetchall()
+    conn.close()
+
+    # 提取日期文件夹，例如 20251031
+    date_match = ''.join(filter(str.isdigit, invoice_no))
+    date_folder = f"20{date_match[-6:]}" if len(date_match) >= 6 else ""
+    summary_path = os.path.join(base_dir, date_folder, f"ExportEvidenceSummary_{invoice_no}.pdf")
+
+    result_lines = []
+    if os.path.exists(summary_path):
+        result_lines.append(f"Export Evidence Summary: {summary_path}")
+    else:
+        result_lines.append(f"[MISSING] Summary file not found for {invoice_no}")
+
+    if poe_records:
+        result_lines.append("\nProof of Export (POE):")
+        for idx, (poe_id, poe_date) in enumerate(poe_records, 1):
+            poe_file = os.path.join(base_dir, date_folder, f"POE_{poe_id}.pdf")
+            if os.path.exists(poe_file):
+                result_lines.append(f"{idx}. {poe_file}")
+            else:
+                result_lines.append(f"{idx}. [MISSING] POE file not found for {poe_id}")
+    else:
+        result_lines.append("[MISSING] No POE records found in database.")
+
+    return "\n".join(result_lines)
+
+
 
 # ---------------------- 简单 CLI/示例 ----------------------
 if __name__ == "__main__":
