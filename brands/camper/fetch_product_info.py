@@ -339,6 +339,53 @@ def camper_fetch_all_with_retry(
             summary_path.unlink(missing_ok=True)
         print("\n✅ 最终没有缺失。")
 
+def camper_retry_missing_once():
+    """
+    仅补抓缺失的 TXT，不跑全量。
+    可反复调用多次以进一步补齐。
+    """
+    product_urls_file = PRODUCT_URLS_FILE
+    txt_dir = str(SAVE_PATH)
+    max_workers = 6
+    preview = 30
+
+    all_urls = load_all_urls(product_urls_file)
+    code2url = expected_maps(all_urls)
+
+    have = existing_codes_from_txt_dir(txt_dir)
+    need = set(code2url.keys())
+    missing_codes = sorted(need - have)
+
+    print("\n🔁 Camper Retry Missing Once")
+    print("📦 总链接数：", len(all_urls))
+    print("📁 TXT 目录：", txt_dir)
+    print("🧮 已有TXT：", len(have))
+    print("❌ 缺失数量：", len(missing_codes))
+
+    if not missing_codes:
+        print("🎉 没有缺失可补抓。")
+        return
+
+    print("📝 缺失编码示例：", ", ".join(missing_codes[:preview]), "..." if len(missing_codes) > preview else "")
+
+    from pathlib import Path
+    missing_urls = [code2url[c] for c in missing_codes if c in code2url]
+    miss_list_path = Path(txt_dir) / "missing_camper_once.txt"
+    with open(miss_list_path, "w", encoding="utf-8") as f:
+        for c in missing_codes:
+            f.write(f"{c}\t{code2url.get(c,'')}\n")
+
+    print(f"🧾 已写入缺失清单：{miss_list_path}")
+    print(f"🚀 开始补抓缺失 {len(missing_urls)} 条……")
+
+    run_batch_fetch(missing_urls, max_workers=max_workers)
+
+    after = existing_codes_from_txt_dir(txt_dir)
+    new_files = sorted(after - have)
+    print(f"✅ 本次补抓新增 TXT：{len(new_files)}")
+    if new_files:
+        print("📂 新增文件预览：", ", ".join(new_files[:preview]), "..." if len(new_files) > preview else "")
+
 
 if __name__ == "__main__":
     camper_fetch_product_info()
