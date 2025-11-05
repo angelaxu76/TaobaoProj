@@ -37,6 +37,107 @@ TXT_DIR = BARBOUR["TXT_DIRS"]["outdoorandcountry"]
 LINKS_FILE = BARBOUR["LINKS_FILES"]["outdoorandcountry"]
 
 
+# -*- coding: utf-8 -*-
+import os, re, shutil, subprocess, time
+import undetected_chromedriver as uc
+from selenium.common.exceptions import SessionNotCreatedException, WebDriverException
+
+def _detect_chrome_major_on_windows():
+    # 1) 注册表读取
+    try:
+        import winreg
+        for root in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+            try:
+                key = winreg.OpenKey(root, r"SOFTWARE\Google\Chrome\BLBeacon")
+                version, _ = winreg.QueryValueEx(key, "version")  # e.g. "141.0.7390.125"
+                m = re.match(r"(\d+)\.", version)
+                if m:
+                    return int(m.group(1))
+            except OSError:
+                pass
+    except Exception:
+        pass
+
+    # 2) 通过 chrome.exe --version
+    candidates = [
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+    ]
+    for exe in candidates:
+        if os.path.exists(exe):
+            try:
+                out = subprocess.check_output([exe, "--version"], stderr=subprocess.STDOUT, timeout=5)
+                out = out.decode("utf-8", "ignore")
+                # e.g. "Google Chrome 141.0.7390.125"
+                m = re.search(r"\b(\d+)\.", out)
+                if m:
+                    return int(m.group(1))
+            except Exception:
+                pass
+
+    return None
+
+
+def _clear_uc_cache():
+    # 通常缓存目录
+    candidates = [
+        os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "undetected_chromedriver"),
+        os.path.join(os.path.expanduser("~"), ".undetected_chromedriver"),
+    ]
+    for p in candidates:
+        shutil.rmtree(p, ignore_errors=True)
+
+
+def build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True):
+    """
+    自动适配本机 Chrome 主版本，构建 undetected_chromedriver。
+    - headless: 是否无头
+    - extra_options: 额外的 ChromeOptions 参数（list[str]）
+    - retries: 失败后（清缓存）重试次数
+    """
+    options = uc.ChromeOptions()
+    options.add_argument("--start-maximized")
+    if extra_options:
+        for arg in extra_options:
+            options.add_argument(arg)
+
+    major = _detect_chrome_major_on_windows()
+    if verbose:
+        print(f"🔍 Detected Chrome major version: {major if major else 'UNKNOWN'}")
+
+    # 传入 version_main 可确保下载匹配的驱动
+    kwargs = dict(options=options, headless=headless)
+    if major:
+        kwargs["version_main"] = major
+
+    last_err = None
+    for attempt in range(1, retries + 1):
+        try:
+            if verbose:
+                print(f"🚗 Creating uc.Chrome (attempt {attempt}/{retries}) with {kwargs} ...")
+            driver = uc.Chrome(**kwargs)
+            if verbose:
+                print("✅ uc.Chrome started successfully.")
+            return driver
+        except SessionNotCreatedException as e:
+            last_err = e
+            if verbose:
+                print(f"⚠️ SessionNotCreatedException: {e}\n🧹 Clearing uc cache and retrying ...")
+            _clear_uc_cache()
+            time.sleep(1.5)
+        except WebDriverException as e:
+            last_err = e
+            if "only supports Chrome version" in str(e):
+                if verbose:
+                    print(f"⚠️ Driver version mismatch: {e}\n🧹 Clearing uc cache and retrying ...")
+                _clear_uc_cache()
+                time.sleep(1.5)
+            else:
+                raise
+
+    # 若到这里仍失败，抛出最后一次的错误
+    raise last_err if last_err else RuntimeError("Failed to start uc.Chrome with auto version match.")
+
 # === 提取函数 ===
 def extract_js_object(js_text: str, var_name: str):
     pattern = re.compile(rf"window\.{re.escape(var_name)}\s*=\s*(\{{.*?\}});", re.DOTALL)
@@ -127,9 +228,14 @@ def outdoorandcountry_fetch_info():
                 urls.add(url)
 
     # ✅ 使用与抓链接完全一样的 uc.Chrome 方式
-    options = uc.ChromeOptions()
-    options.add_argument("--start-maximized")
-    driver = uc.Chrome(options=options)  # ❌ 不加 headless
+    from brands.barbour.common.driver_auto import build_uc_driver
+
+    driver = build_uc_driver(
+        headless=False,
+        extra_options=None,  # 需要额外参数时传列表，例如 ["--disable-gpu"]
+        retries=2,
+        verbose=True
+    )
 
     for url in sorted(urls):
         try:

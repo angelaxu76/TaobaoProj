@@ -15,14 +15,14 @@ from common_taobao.publication.export_low_stock_products import export_low_stock
 
 def main():
     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    backup_and_clear_brand_dirs(CAMPER)
+    # backup_and_clear_brand_dirs(CAMPER)
 
-    print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    camper_get_links()
+    # print("\n🟡 Step: 2️⃣ 抓取商品链接")
+    # camper_get_links()
 
-    print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    camper_fetch_product_info()
-    camper_retry_missing_once()
+    # print("\n🟡 Step: 3️⃣ 抓取商品信息")
+    # camper_fetch_product_info()
+    # camper_retry_missing_once()
 
     # print("\n🟡 Step: 4️⃣ TXT导入数据库 -----将各个商品的TXT中信息导入到数据库中")
     import_txt_to_db_supplier("camper")  
