@@ -8,6 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from pathlib import Path
 from config import BARBOUR
+from common_taobao.core.driver_auto import build_uc_driver
 
 # === 页面与输出配置 ===
 BASE_URL = "https://www.allweathers.co.uk/collections/barbour"
@@ -16,13 +17,13 @@ OUTPUT_PATH = BARBOUR["LINKS_FILES"]["allweathers"]
 OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 def get_driver():
-    options = uc.ChromeOptions()
-    options.add_argument("--headless=new")  # ✅ 启用新版无头模式
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    return uc.Chrome(options=options, use_subprocess=True)
+    # options = uc.ChromeOptions()
+    # options.add_argument("--headless=new")  # ✅ 启用新版无头模式
+    # options.add_argument("--disable-gpu")
+    # options.add_argument("--window-size=1920,1080")
+    # options.add_argument("--no-sandbox")
+    # options.add_argument("--disable-blink-features=AutomationControlled")
+    return build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True)
 
 def extract_links_from_html(html: str):
     soup = BeautifulSoup(html, "html.parser")
