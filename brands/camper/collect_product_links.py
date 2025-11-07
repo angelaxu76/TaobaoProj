@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 from config import CAMPER  # ✅ 根据品牌切换
 import sys
-
+import re
 sys.stdout.reconfigure(encoding='utf-8')
 
 # ========= 参数配置 =========
@@ -61,6 +61,26 @@ BASE_URLS = [
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
 }
+
+
+def parse_pagination_spec(url: str):
+    """
+    解析 URL 中的 page 占位符:
+    - page={}        -> (base_url, start=1, end=None)   自动模式
+    - page={20}      -> (base_url, start=1, end=20)     1..20
+    - page={3-12}    -> (base_url, start=3, end=12)     3..12
+    解析后把 {...} 统一替换回 {} 供 format 使用
+    """
+    m = re.search(r"page=\{(\d+)(?:-(\d+))?\}", url)
+    if m:
+        start = int(m.group(1))
+        end = int(m.group(2)) if m.group(2) else int(m.group(1))
+        base_url = re.sub(r"\{(\d+)(?:-(\d+))?\}", "{}", url)
+        return base_url, start, end
+    else:
+        # 没写数字范围，保持原样作为自动模式
+        return url, 1, None
+
 
 # ========= 带重试的请求 =========
 def fetch_with_retry(url, retries=3, timeout=20):
@@ -112,12 +132,15 @@ def get_links_from_page(url):
 def camper_get_links():
     all_links = set()
 
-    for base_url in BASE_URLS:
+    for spec in BASE_URLS:
+        # 关键：先解析 {N} / {A-B} / {} 这三种写法
+        base_url, start, end = parse_pagination_spec(spec)
+
         empty_pages = 0
-        page = 1
-        print(f"\n▶️ 入口：{base_url}")
+        page = start
+        print(f"\n▶️ 入口：{base_url}（页数范围: {start} → {end or 'auto'}）")
         while True:
-            url = base_url.format(page)
+            url = base_url.format(page)  # 现在 base_url 已是标准 ...page={}
             print(f"🌐 抓取: {url}")
             links = get_links_from_page(url)
 
@@ -129,14 +152,19 @@ def camper_get_links():
                 if added > 0:
                     print(f"   ↳ 新增 {added} 条（去重后累计 {len(all_links)}）")
                 empty_pages = 0
-                page += 1
             else:
                 print(f"⚠️ 第 {page} 页无链接或抓取失败")
                 empty_pages += 1
-                page += 1
-                if empty_pages >= MAX_EMPTY_PAGES:
+                if empty_pages >= MAX_EMPTY_PAGES and end is None:
                     print(f"⏹️ 连续 {MAX_EMPTY_PAGES} 页为空，切换下一个入口")
                     break
+
+            # 若手动设了页数上限，到达就换入口
+            if end is not None and page >= end:
+                print(f"⏹️ 达到手动设定页数 {end}，切换下一个入口")
+                break
+
+            page += 1
             time.sleep(WAIT)
 
     # 输出
