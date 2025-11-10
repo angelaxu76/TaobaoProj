@@ -25,36 +25,26 @@ LINK_PREFIX = "https://www.camper.com"
 # ✅ 类目入口（注意每一行末尾都有逗号！）
 BASE_URLS = [
     # 汇总页
+    "https://www.camper.com/en_GB/women/shoes/casual?filter.typology=_CST_T01&sort=default&page={}",
     "https://www.camper.com/en_GB/women/shoes?sort=default&page={}",
+    "https://www.camper.com/en_GB/women/shoes/ballerinas?filter.typology=_CST_T10&sort=default&page={}",
+    "https://www.camper.com/en_GB/women/shoes/boots?filter.typology=T01&sort=default&page={}",
+    "https://www.camper.com/en_GB/women/shoes/loafers?filter.typology=_CST_T17&sort=default&page={}",
+    "https://www.camper.com/en_GB/women/shoes/sneakers?filter.typology=_CST_T04&sort=default&page={}",
+    "https://www.camper.com/en_GB/women/shoes/heels?filter.typology=_CST_T07&sort=default&page={}",
+    "https://www.camper.com/en_GB/women/shoes/casual?filter.typology=_CST_T01&sort=default&page={}",
+    "https://www.camper.com/en_GB/women/shoes/formal_shoes?filter.typology=_CST_T05&sort=default&page={}",
+    "https://www.camper.com/en_GB/women/shoes/fall_winter?filter.collection=fw&sort=default&page={}",
+    "https://www.camperlab.com/en_GB/women/shoes/all_shoes_lab_women?filter.collection=allabw&sort=default&page={}",
+    "https://www.camper.com/en_GB/men/shoes/fall_winter?filter.collection=fw&sort=default&page={}",
+    "https://www.camperlab.com/en_GB/men/shoes/all_shoes_lab_men?filter.collection=allabm&sort=default&page={}",
+    "https://www.camper.com/en_GB/men/shoes/fall_winter?filter.collection=fw&sort=default&page={}",
     "https://www.camper.com/en_GB/men/shoes?sort=default&page={}",
-    "https://www.camper.com/en_GB/kids/shoes?sort=default&page={}",
-
-    # LAB/ALL 系列
-    "https://www.camper.com/en_GB/women/shoes/all_shoes_lab_women?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes/all_shoes_lab_men?filter.collection=allabm&sort=default&page={}",
-
-    # 新品
-    "https://www.camper.com/en_GB/men/shoes/new_collection?filter.collection=neco&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/new_collection?filter.collection=neco&sort=default&page={}",
-
-    # 女款细分
-    "https://www.camper.com/en_GB/women/shoes/ballerinas?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/sneakers?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/formal_shoes?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/casual?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/ankle_boots?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/boots?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/heels?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/loafers?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/fall_winter?filter.collection=allabw&sort=default&page={}",
-
-    # 男款细分
-    "https://www.camper.com/en_GB/men/shoes/sneakers?filter.collection=allabm&sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes/formal_shoes?filter.collection=allabm&sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes/casual?filter.collection=allabm&sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes/ankle_boots?filter.collection=allabm&sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes/loafers?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes/fall_winter?filter.collection=allabw&sort=default&page={}",
+    "https://www.camper.com/en_GB/men/shoes/ankle_boots?filter.typology=_CST_T09&sort=default&page={}",
+    "https://www.camper.com/en_GB/men/shoes/sneakers?filter.typology=_CST_T04&sort=default&page={}",
+    "https://www.camper.com/en_GB/men/shoes/formal_shoes?filter.typology=_CST_T05&sort=default&page={}",
+    "https://www.camper.com/en_GB/men/shoes/casual?filter.typology=_CST_T01&sort=default&page={}",
+    "https://www.camper.com/en_GB/men/shoes/loafers?page={}",
     
 ]
 

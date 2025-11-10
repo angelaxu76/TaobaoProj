@@ -8,6 +8,7 @@ from helper.image.trim_sides_batch import trim_sides_batch
 from helper.image.crop_to_square import run_crop_and_expand
 from helper.image.copy_images import copy_images
 from brands.clarks_Jingya.download_product_images import download_images_by_code_file,download_all_images_from_product_links
+from brands.camper.helpers_local.image_defender_with_flip import batch_process_images
 
 def main():
     code_file_path = r"D:\TB\Products\clarks_jingya\repulibcation\publication_codes.txt"
@@ -17,13 +18,13 @@ def main():
     download_images_by_code_file(code_file_path)
 
     print("下载所有商品图片")
-    download_all_images_from_product_links()
+    # download_all_images_from_product_links()
 
     print("图抖动加上水平翻转")
     INPUT_DIR = Path(CLARKS_JINGYA["IMAGE_DOWNLOAD"])
     OUTPUT_DIR = Path(CLARKS_JINGYA["IMAGE_PROCESS"])
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    #batch_process_images(INPUT_DIR,OUTPUT_DIR)
+    batch_process_images(INPUT_DIR,OUTPUT_DIR)
 
     print("最大化灰度裁剪图片")
     bg_color = (240, 240, 240)

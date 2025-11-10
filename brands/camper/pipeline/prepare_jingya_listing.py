@@ -14,7 +14,7 @@ from common_taobao.publication.export_low_stock_products import export_low_stock
 
 
 def main():
-    print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
+    # print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
     # backup_and_clear_brand_dirs(CAMPER)
 
     # print("\n🟡 Step: 2️⃣ 抓取商品链接")

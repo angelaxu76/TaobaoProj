@@ -20,8 +20,8 @@ def pipeline_jingya():
     # generate_channel_binding_excel_shoes(BRAND, Path("D:/TB/taofenxiao/goods"))
 
     # print("\n🌐导出 barbour，用于更新货品")
-    export_goods_excel_from_db("barbour", Path("D:/TB/taofenxiao/goods"), 500)
-    generate_channel_binding_excel("barbour", Path("D:/TB/taofenxiao/goods"))
+    # export_goods_excel_from_db("barbour", Path("D:/TB/taofenxiao/goods"), 500)
+    # generate_channel_binding_excel("barbour", Path("D:/TB/taofenxiao/goods"))
 
 if __name__ == "__main__":
     pipeline_jingya()

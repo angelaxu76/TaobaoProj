@@ -11,10 +11,10 @@ from channels.jingya.export.export_stock_to_excel import export_stock_excel
 from channels.jingya.export.export_channel_price_excel_jingya import export_jiangya_channel_prices
 from common_taobao.publication.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
 
-def run_script(filename: str):
-    path = os.path.join(os.path.dirname(__file__), filename)
-    print(f"⚙️ 执行脚本: {filename}")
-    subprocess.run(["python", path], check=True)
+# def run_script(filename: str):
+#     path = os.path.join(os.path.dirname(__file__), filename)
+#     print(f"⚙️ 执行脚本: {filename}")
+#     subprocess.run(["python", path], check=True)
 
 def main():
     code_file_path = r"D:\TB\Products\clarks_jingya\repulibcation\publication_codes.txt"
@@ -38,14 +38,14 @@ def main():
     insert_missing_products_with_zero_stock("clarks_jingya")
 
 
-    print("\n🟡 Step: 6️⃣ 获取excel文件用来更新淘宝店铺价格")
-    generate_price_excels_bulk(
-        brand="clarks_jingya",
-        input_dir=r"D:\TB\Products\clarks_jingya\repulibcation\store_prices\input",
-        output_dir=r"D:\TB\Products\clarks_jingya\repulibcation\store_prices\output",
-        suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
-        drop_rows_without_price=False  # 不丢行，查不到的价格留空
-    )
+    # print("\n🟡 Step: 6️⃣ 获取excel文件用来更新淘宝店铺价格")
+    # generate_price_excels_bulk(
+    #     brand="clarks_jingya",
+    #     input_dir=r"D:\TB\Products\clarks_jingya\repulibcation\store_prices\input",
+    #     output_dir=r"D:\TB\Products\clarks_jingya\repulibcation\store_prices\output",
+    #     suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
+    #     drop_rows_without_price=False  # 不丢行，查不到的价格留空
+    # )
 
 
     print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
