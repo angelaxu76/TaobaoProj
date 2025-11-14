@@ -48,7 +48,15 @@ def find_latest_gei_file(document_dir: Path) -> Path:
     print(f"📄 使用文件: {latest.name}")
     return latest
 
-def insert_jingyaid_to_db(brand: str):
+def insert_jingyaid_to_db(brand: str, debug: bool = False):
+    """
+    从 GEI@sales_catalogue_export@*.xlsx 更新数据库中的渠道绑定信息
+    参数:
+        brand: 品牌名（如 clarks_jingya）
+        debug: 是否开启调试模式，若为 True，则打印跳过的编码与尺码并保存日志
+    """
+    import datetime
+
     brand = brand.lower()
     if brand not in BRAND_CONFIG:
         raise ValueError(f"❌ 不支持的品牌: {brand}")
@@ -65,9 +73,8 @@ def insert_jingyaid_to_db(brand: str):
 
     updated = 0
     skipped = 0
-
-    # ✅ 用于收集解析失败的记录
-    unparsed_records = []
+    skipped_records = []       # ⚙️ 新增：收集跳过记录
+    unparsed_records = []      # ⚙️ 收集无法解析的记录
 
     conn = psycopg2.connect(**db_config)
     with conn:
@@ -75,26 +82,25 @@ def insert_jingyaid_to_db(brand: str):
             for _, row in df.iterrows():
                 sku_name_raw = str(row.get("sku名称", "")).strip()
 
+                # ---- 解析 sku名称 (形如 "K200155-025，40") ----
                 if "，" not in sku_name_raw:
                     skipped += 1
-                    # ✅ 收集无法解析的记录
                     unparsed_records.append({
                         "sku名称": sku_name_raw,
                         "渠道产品id": str(row.get("渠道产品id", "")),
                         "货品id": str(row.get("货品id", "")),
-                        "skuID": str(row.get("skuID", ""))
+                        "skuID": str(row.get("skuID", "")),
                     })
                     continue
 
                 parts = list(map(str.strip, sku_name_raw.split("，")))
                 if len(parts) != 2:
                     skipped += 1
-                    # ✅ 收集无法解析的记录
                     unparsed_records.append({
                         "sku名称": sku_name_raw,
                         "渠道产品id": str(row.get("渠道产品id", "")),
                         "货品id": str(row.get("货品id", "")),
-                        "skuID": str(row.get("skuID", ""))
+                        "skuID": str(row.get("skuID", "")),
                     })
                     continue
 
@@ -125,13 +131,32 @@ def insert_jingyaid_to_db(brand: str):
                         updated += 1
                     else:
                         skipped += 1
+                        skipped_records.append((product_code, size))
+
                 except Exception as e:
                     print(f"❌ 行处理失败: {e}")
                     skipped += 1
+                    skipped_records.append((product_code, size))
 
+    # ---- 总结输出 ----
     print(f"✅ 更新完成：成功 {updated} 条，跳过 {skipped} 条")
 
-    # ✅ 将无法解析的记录输出到 Excel
+    # ---- 调试信息 ----
+    if debug:
+        if skipped_records:
+            log_path = output_dir / f"skipped_records_{datetime.datetime.now():%Y%m%d_%H%M%S}.txt"
+            with open(log_path, "w", encoding="utf-8") as f:
+                for code, size in skipped_records:
+                    f.write(f"{code}\t{size}\n")
+            print(f"🧾 已输出跳过记录文件：{log_path}")
+            # 控制台打印前 20 条
+            print("🔍 示例（前 20 条跳过记录）:")
+            for code, size in skipped_records[:20]:
+                print(f"   ⏭️ {code} / {size}")
+        else:
+            print("✅ 无跳过记录。")
+
+    # ---- 无法解析的记录 ----
     if unparsed_records:
         error_df = pd.DataFrame(unparsed_records)
         error_file = output_dir / "unparsed_sku_names.xlsx"
@@ -139,6 +164,7 @@ def insert_jingyaid_to_db(brand: str):
         print(f"⚠️ 无法解析的记录已输出到：{error_file}")
     else:
         print("✅ 没有无法解析的记录")
+
 
 def insert_missing_products_with_zero_stock(brand: str):
     """

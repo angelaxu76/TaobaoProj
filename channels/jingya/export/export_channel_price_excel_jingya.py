@@ -186,7 +186,7 @@ def export_jiangya_channel_prices(
         "最高建议零售价(元)": expanded["retail"].astype(int),
     })[HEADERS]
 
-    chunk_size = 1000
+    chunk_size = 400
     num_parts = (len(out_df) + chunk_size - 1) // chunk_size
     for i in range(num_parts):
         start, end = i * chunk_size, min((i + 1) * chunk_size, len(out_df))

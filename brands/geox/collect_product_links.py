@@ -13,8 +13,9 @@ BASE_URL = "https://www.geox.com"
 CATEGORY_URLS = {
     "woman": "https://www.geox.com/en-GB/woman/shoes/",
     "man": "https://www.geox.com/en-GB/man/shoes/",
-    "Gril": "https://www.geox.com/en-GB/girl/shoes/",
-    "kids": "https://www.geox.com/en-GB/boy/"
+    "girl": "https://www.geox.com/en-GB/girl/shoes/",
+    "boy": "https://www.geox.com/en-GB/boy/shoes/",
+    "preteen_girl": "https://www.geox.com/en-GB/kids/preteen_girl/"
 }
 SAVE_FILE = Path("D:/TB/Products/GEOX/publication/product_links.txt")
 HTML_DEBUG_FILE = Path("D:/TB/Products/GEOX/publication/debug_geox_page.html")

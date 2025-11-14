@@ -5,10 +5,10 @@ def main():
     supplier = "EMINZORA"          # 公司简称；也可作为 company_short
     brand = "camper"
     output_dir = r"D:\OneDrive\CrossBorderDocs\03_Purchase_Records\PO\202510"
-    shipment_ids = ["78953055219496", "78953054826066"] 
-    # shipment_ids = ["78951828799985"] # 多个 shipment_id 用列表传入
-    order_id = "4007437223"        # 原 order_no -> order_id
-    order_date = "2025-10-26"      # 原 po_date -> order_date (YYYY-MM-DD 或 YYYYMMDD)
+    # shipment_ids = ["78953947914055", "78953105068412"] 
+    shipment_ids = ["78955244653355"] # 多个 shipment_id 用列表传入
+    order_id = "4007467262 "        # 原 order_no -> order_id
+    order_date = "2025-11-06"      # 原 po_date -> order_date (YYYY-MM-DD 或 YYYYMMDD)
 
     os.makedirs(output_dir, exist_ok=True)
 

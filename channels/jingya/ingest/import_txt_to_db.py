@@ -1,18 +1,14 @@
-# import_txt_to_db.py 片段（替换 import_txt_to_db_supplier 函数）
 import math
 import psycopg2
 from pathlib import Path
 from psycopg2.extras import execute_batch
-from config import BRAND_CONFIG,BRAND_DISCOUNT
+from config import BRAND_CONFIG, BRAND_DISCOUNT
 from common_taobao.ingest.txt_parser import jingya_parse_txt_file
 
-
-# ✅ 与导出脚本保持一致的价格工具 & 品牌折扣
 try:
     from common_taobao.core.price_utils import calculate_jingya_prices
 except Exception:
     from common_taobao.core.price_utils import calculate_jingya_prices  # type: ignore
-
 
 MIN_STOCK_THRESHOLD = 1  # 小于该值的库存将置为0
 
@@ -47,7 +43,7 @@ def import_txt_to_db_supplier(brand_name: str):
     pg_config = config["PGSQL_CONFIG"]
     table_name = config["TABLE_NAME"]
 
-    # 1) 解析 TXT
+    # 1️⃣ 解析 TXT
     parsed_records = []
     for file in Path(txt_dir).glob("*.txt"):
         recs = jingya_parse_txt_file(file)
@@ -60,18 +56,13 @@ def import_txt_to_db_supplier(brand_name: str):
 
     print(f"📥 共准备导入 {len(parsed_records)} 条记录")
 
-    # 2) 基于解析结果计算两种价格并重组为插入元组
-    #    原有 jingya_parse_txt_file 返回顺序应为：
-    #    (product_code, product_url, size, gender,
-    #     ean, stock_count, original_price_gbp, discount_price_gbp, is_published,
-    #     product_description, product_title, style_category)
+    # 2️⃣ 重组插入数据
     enriched = []
     for t in parsed_records:
         (product_code, product_url, size, gender,
          ean, stock_count, original_price_gbp, discount_price_gbp, is_published,
          product_description, product_title, style_category) = t
 
-        # 库存阈值处理
         try:
             sc = int(stock_count) if stock_count is not None else 0
         except Exception:
@@ -79,7 +70,6 @@ def import_txt_to_db_supplier(brand_name: str):
         if sc < MIN_STOCK_THRESHOLD:
             sc = 0
 
-        # 计算 Base Price -> (untaxed, retail)
         base = _compute_base_price(original_price_gbp, discount_price_gbp, brand_name)
         if base > 0:
             try:
@@ -89,22 +79,18 @@ def import_txt_to_db_supplier(brand_name: str):
         else:
             untaxed, retail = (None, None)
 
-        # 组装含两个新价格字段的插入元组
         enriched.append((
             product_code, product_url, size, gender,
             ean, sc,
             original_price_gbp, discount_price_gbp, is_published,
             product_description, product_title, style_category,
-            # 新增两列：
-            untaxed,   # jingya_untaxed_price
-            retail     # taobao_store_price
+            untaxed, retail
         ))
 
-    # 3) 入库
+    # 3️⃣ 入库
     conn = psycopg2.connect(**pg_config)
     with conn:
         with conn.cursor() as cur:
-            # 可选：清空表（如保留历史请注释掉）
             cur.execute(f"TRUNCATE TABLE {table_name}")
             print(f"🧹 已清空表 {table_name}")
 
@@ -118,6 +104,21 @@ def import_txt_to_db_supplier(brand_name: str):
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
-            execute_batch(cur, sql, enriched, page_size=100)
+            execute_batch(cur, sql, enriched, page_size=500)
+            print(f"✅ [{brand_name.upper()}] 数据已写入 {table_name}")
 
-    print(f"✅ [{brand_name.upper()}] 已完成导入，并写入 jingya_untaxed_price / taobao_store_price")
+            # 4️⃣ 检查缺失 product_code
+            cur.execute(f"SELECT DISTINCT product_code FROM {table_name}")
+            existing_codes = {r[0] for r in cur.fetchall()}
+            all_codes = {r[0] for r in enriched if r[0]}
+            missing_codes = sorted(all_codes - existing_codes)
+
+            if missing_codes:
+                print(f"⚠️ 数据库中缺少 {len(missing_codes)} 个编码：")
+                for c in missing_codes:
+                    print("   ", c)
+                Path("missing_codes.txt").write_text("\n".join(missing_codes), encoding="utf-8")
+            else:
+                print("✅ 所有 product_code 均已导入数据库。")
+
+    print(f"🎯 [{brand_name.upper()}] 导入完成，共 {len(enriched)} 条。")
