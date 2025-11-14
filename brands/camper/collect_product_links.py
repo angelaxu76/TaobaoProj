@@ -53,6 +53,30 @@ HEADERS = {
 }
 
 
+def normalize_link(href: str) -> str:
+    """
+    把商品链接规范化：
+    - 补全域名
+    - 去掉 ? 后面的所有参数（包括 size、utm 等）
+    - 去掉末尾多余的 /
+    """
+    href = (href or "").strip()
+    if not href:
+        return ""
+
+    # 相对路径转绝对
+    if href.startswith("/"):
+        href = LINK_PREFIX + href
+
+    # 去掉 URL 参数（?size=41 之类）
+    href = href.split("?", 1)[0]
+
+    # 可选：去掉末尾斜杠，避免 ...001 和 ...001/ 算两条
+    href = href.rstrip("/")
+
+    return href
+
+
 def parse_pagination_spec(url: str):
     """
     解析 URL 中的 page 占位符:
@@ -95,28 +119,22 @@ def get_links_from_page(url):
 
     links = set()
 
-    # 选择器 1：兼容当前网格卡片（你现有脚本使用的 class）
+    # 选择器 1
     for a_tag in soup.select("div.grid-item a.block[href]"):
-        if a_tag and a_tag.get("href"):
-            href = a_tag["href"].strip()
-            if href.startswith("/"):
-                href = LINK_PREFIX + href
+        href = normalize_link(a_tag.get("href"))
+        if href:
             links.add(href)
 
-    # 选择器 2：兜底，抓取所有商品卡片上的 <a>（避免 UI 细微变动时丢失）
-    if not links:
-        for a in soup.select("a[href*='//www.camper.com/en_']"):
-            href = (a.get("href") or "").strip()
-            if not href:
-                continue
-            if ("/women/shoes/" in href or "/men/shoes/" in href or "/kids/shoes/" in href):
-                # 详情页层级更深，粗略过滤掉列表/筛选页
-                if href.count("/") >= 7:
-                    if href.startswith("/"):
-                        href = LINK_PREFIX + href
-                    links.add(href)
+    # 选择器 2
+    for a in soup.select("a[href*='//www.camper.com/en_']"):
+        href = normalize_link(a.get("href"))
+        if not href:
+            continue
+        if ("/women/shoes/" in href or "/men/shoes/" in href or "/kids/shoes/" in href):
+            if href.count("/") >= 7:
+                links.add(href)
 
-    return list(links)
+        return list(links)
 
 # ========= 主流程：自动翻页，连续空页阈值后切类目 =========
 def camper_get_links():
