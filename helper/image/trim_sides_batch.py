@@ -185,17 +185,23 @@ def _process_one(
 
 
 def trim_sides_batch(
-    input_path: Path,
-    output_path: Path,
-    options: Optional[Dict[str, Any]] = None
+    input_path: Optional[Any] = None,
+    output_path: Optional[Any] = None,
+    options: Optional[Dict[str, Any]] = None,
+    **kwargs
 ) -> dict:
     """
-    供 pipeline 调用的批量裁剪入口（Path 版本，参数精简）。
+    供 pipeline 调用的批量裁剪入口。
 
-    必需参数：
-        input_path  - 输入目录（Path）
-        output_path - 输出目录（Path）
-    可选参数（options）：
+    参数支持多种形式（为了和项目其他代码风格统一）：
+        1）位置参数：
+            trim_sides_batch("D:/in", "D:/out", {...})
+        2）关键词参数（兼容你常用的命名）：
+            trim_sides_batch(input_dir="D:/in", output_dir="D:/out", options={...})
+        3）Path 对象：
+            trim_sides_batch(Path("D:/in"), Path("D:/out"))
+
+    options 可选字段：
         pattern     - 文件匹配模式（如 "*.jpg;*.png"），默认常见图片格式
         tolerance   - 容差（默认 5）
         recursive   - 是否递归子目录（默认 False）
@@ -203,6 +209,19 @@ def trim_sides_batch(
         dry_run     - 仅测试不写入（默认 False）
         workers     - 并行线程数（默认 CPU核数-1，至少 1）
     """
+    # 兼容 input_dir / output_dir 这种命名
+    if input_path is None:
+        input_path = kwargs.get("input_dir")
+    if output_path is None:
+        output_path = kwargs.get("output_dir")
+
+    if input_path is None or output_path is None:
+        raise ValueError("必须提供 input_path/output_path 或 input_dir/output_dir")
+
+    # 接受 str / Path，统一转成 Path
+    input_path = Path(input_path)
+    output_path = Path(output_path)
+
     # 默认参数
     opts = {
         "pattern": "*.jpg;*.jpeg;*.png;*.webp;*.bmp",
@@ -216,14 +235,22 @@ def trim_sides_batch(
         opts.update(options or {})
 
     if not input_path.exists() or not input_path.is_dir():
-        return {"total": 0, "ok": 0, "fail_or_skip": 0,
-                "messages": [f"[错误] 输入目录无效：{input_path}"]}
+        return {
+            "total": 0,
+            "ok": 0,
+            "fail_or_skip": 0,
+            "messages": [f"[错误] 输入目录无效：{input_path}"],
+        }
 
     patterns = [p.strip() for p in (opts["pattern"] or "").split(";") if p.strip()]
     files = list(_iter_files(input_path, patterns, opts["recursive"]))
     if not files:
-        return {"total": 0, "ok": 0, "fail_or_skip": 0,
-                "messages": ["[提示] 未找到匹配文件。"]}
+        return {
+            "total": 0,
+            "ok": 0,
+            "fail_or_skip": 0,
+            "messages": ["[提示] 未找到匹配文件。"],
+        }
 
     ok = 0
     fail_or_skip = 0
@@ -235,16 +262,26 @@ def trim_sides_batch(
     if workers <= 1:
         # 单线程
         for f in files:
-            success, msg = _process_one(f, output_path, opts["tolerance"], opts["overwrite"], opts["dry_run"])
+            success, msg = _process_one(
+                f, output_path, opts["tolerance"], opts["overwrite"], opts["dry_run"]
+            )
             messages.append(msg)
             ok += int(success)
             fail_or_skip += int(not success)
     else:
         # 多线程
         from concurrent.futures import ThreadPoolExecutor, as_completed
+
         with ThreadPoolExecutor(max_workers=workers) as ex:
             futures = [
-                ex.submit(_process_one, f, output_path, opts["tolerance"], opts["overwrite"], opts["dry_run"])
+                ex.submit(
+                    _process_one,
+                    f,
+                    output_path,
+                    opts["tolerance"],
+                    opts["overwrite"],
+                    opts["dry_run"],
+                )
                 for f in files
             ]
             for fut in as_completed(futures):
@@ -254,6 +291,7 @@ def trim_sides_batch(
                 fail_or_skip += int(not success)
 
     return {"total": len(files), "ok": ok, "fail_or_skip": fail_or_skip, "messages": messages}
+
 
 
 # =================== 命令行入口（保留兼容） ===================

@@ -87,19 +87,22 @@ def html_to_full_screenshot(html_path: Path, output_image: Path, geckodriver_pat
     trim_white_margins_lr(output_image)
 
 
-def process_html_folder(html_folder: Path, output_folder: Path, geckodriver_path: Optional[str] = None) -> None:
+def process_html_folder(html_folder, output_folder, geckodriver_path: Optional[str] = None) -> None:
+    html_folder = Path(html_folder)
+    output_folder = Path(output_folder)
+
     output_folder.mkdir(parents=True, exist_ok=True)
 
     for name in os.listdir(html_folder):
         if not name.lower().endswith(".html"):
             continue
         html_path = html_folder / name
-        # 维持你的命名规则：去掉下划线
         out_name = f"{html_path.stem}.png"
         output_image = output_folder / out_name
 
         print(f"[proc] {html_path}")
         html_to_full_screenshot(html_path, output_image, geckodriver_path)
+
 
 
 def html_to_image(input_dir: Optional[str] = None, output_dir: Optional[str] = None):

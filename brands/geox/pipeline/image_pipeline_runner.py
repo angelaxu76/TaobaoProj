@@ -18,8 +18,8 @@ def main():
     print("下载指定商品编码的的图片")
     download_geox_images_by_code_file(code_file_path)
 
-    print("下载所有商品图片")
-    download_all_images_from_product_links()
+    # print("下载所有商品图片")
+    # download_all_images_from_product_links()
 
     print("图抖动加上水平翻转")
     INPUT_DIR = Path(GEOX["IMAGE_DOWNLOAD"])

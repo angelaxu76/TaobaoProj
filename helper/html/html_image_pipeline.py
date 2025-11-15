@@ -17,13 +17,7 @@ def main():
 
     result = trim_sides_batch(
         input_dir=r"D:\TB\HTMLToImage\output",
-        output_dir=r"D:\TB\HTMLToImage\cutter",
-        pattern="*.jpg;*.png",  # 可不传
-        tolerance=5,
-        recursive=False,
-        overwrite=True,
-        dry_run=False,
-        workers=0,  # 0=自动
+        output_dir=r"D:\TB\HTMLToImage\cutter"
     )
 
     # 方案1：自动角标（推荐做主图）
