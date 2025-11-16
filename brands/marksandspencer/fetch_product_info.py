@@ -29,7 +29,7 @@ from config import BRAND_CONFIG
 from common_taobao.ingest.txt_writer import format_txt
 
 # ============= 常量&品牌配置 =============
-CFG = BRAND_CONFIG["ms"]
+CFG = BRAND_CONFIG["marksandspencer"]
 SAVE_PATH: Path = CFG["TXT_DIR"]
 PRODUCT_URLS_FILE: Path = CFG["LINKS_FILE"]
 CHROMEDRIVER_PATH: str = CFG.get("CHROMEDRIVER_PATH", "")
@@ -384,7 +384,7 @@ def process_product_url(url: str):
         filepath = SAVE_PATH / f"{product_code.replace('/', '_')}.txt"
 
         try:
-            format_txt(info, filepath, brand="ms")
+            format_txt(info, filepath, brand="marksandspencer")
         except TypeError:
             format_txt(info, filepath)
 
@@ -394,7 +394,7 @@ def process_product_url(url: str):
         print(f"❌ 错误: {url} - {e}")
 
 # ============= 无参入口（供 pipeline 调用） =============
-def ms_fetch_product_info(max_workers: int = MAX_WORKERS):
+def fetch_product_info(max_workers: int = MAX_WORKERS):
     SAVE_PATH.mkdir(parents=True, exist_ok=True)
     urls_path = Path(PRODUCT_URLS_FILE)
     if not urls_path.exists():
@@ -414,4 +414,4 @@ def ms_fetch_product_info(max_workers: int = MAX_WORKERS):
 
 # 可独立运行调试（生产中建议由 pipeline 调用）
 if __name__ == "__main__":
-    ms_fetch_product_info()
+    fetch_product_info()
