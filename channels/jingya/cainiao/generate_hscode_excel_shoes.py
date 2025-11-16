@@ -29,7 +29,8 @@ SHEET_NAME = "sheet"   # ← 如果你之前的工作表名不一样，请改成
 TEXTS_DIRS = {
     "camper": r"D:\TB\Products\camper\publication\TXT",
     "geox": r"D:\TB\Products\geox\publication\TXT",
-    "clarks": r"D:\TB\Products\clarks_jingya\publication\TXT"
+    "clarks": r"D:\TB\Products\clarks_jingya\publication\TXT",
+    "ecco":   r"D:\TB\Products\ecco\publication\TXT",
 }
 
 # 4) 数据库表与字段映射（按你的现状；字段候选名会自动择优）
@@ -71,6 +72,23 @@ BRAND_MAP = {
         },
         "name_like_cols": ["goods_name", "product_name"],
     },
+
+
+    # ✅ 新增 ECCO
+    "ecco": {
+        "table": "ecco_inventory",  # 或 "ECCO_inventory"，Postgres 会自动转小写，不加引号都可以
+        "fields": {
+            "channel_item_id": "channel_item_id",
+            "product_code": ["product_code", "product_name", "code"],
+            "size": ["size", "product_size"],
+            "title_en": ["product_title", "title_en", "title"],
+            # ECCO 表里没有 goods_name，可以用描述做兜底
+            "goods_name": ["product_description", "product_title"],
+            "gender": ["gender", "sex"],
+        },
+        # 兜底从哪里拆 code/尺码
+        "name_like_cols": ["product_description", "product_title"],
+    },
 }
 
 # 5) 备案字段顺序（保持不变）
@@ -98,7 +116,13 @@ CORRECT_COLUMNS = [
 HSCODE_FIXED = "6405200090"
 ORIGIN = "越南"
 SPEC = "1双"
-BRAND_FIXED = {"camper": "camper", "clarks": "clarks", "geox": "geox"}
+BRAND_FIXED = {
+    "camper": "camper",
+    "clarks": "clarks",
+    "geox":   "geox",
+    "ecco":   "ecco",
+}
+
 PURPOSE = "衣着用品"
 UOM1 = "千克"; QTY1 = 1
 UOM2 = "双";   QTY2 = 1
