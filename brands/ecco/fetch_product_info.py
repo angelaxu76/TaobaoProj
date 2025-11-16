@@ -10,7 +10,7 @@ import hashlib
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from html import unescape
-from config import ECCO
+from config import ECCO, SIZE_RANGE_CONFIG
 import requests
 from bs4 import BeautifulSoup
 import json
@@ -49,6 +49,42 @@ MAX_WORKERS = 1
 
 import re
 import demjson3  # 确保已安装: pip install demjson3
+
+
+def supplement_ecco_sizes(size_map: dict, size_detail: dict, gender: str):
+    """
+    根据性别，用 SIZE_RANGE_CONFIG['ecco'] 补齐缺失尺码：
+    - 男款: 39–46
+    - 女款: 35–42
+    - 童款: 27–40
+    TXT 中未出现的 EU 码统统补成无货:
+        SizeMap[eu] = "无货"
+        SizeDetail[eu] = {"stock_count": 0, "ean": "0000000000000"}
+    """
+    brand_cfg = SIZE_RANGE_CONFIG.get("ecco", {})
+    key = None
+    # ECCO 里 gender 是英文: "men" / "women" / "kids" / "unisex"
+    if gender == "men":
+        key = "男款"
+    elif gender == "women":
+        key = "女款"
+    elif gender == "kids":
+        key = "童款"
+    else:
+        # "unisex" 或未知，不补码，避免误判
+        return size_map, size_detail
+
+    standard_sizes = brand_cfg.get(key, [])
+    if not standard_sizes:
+        return size_map, size_detail
+
+    for eu in standard_sizes:
+        if eu not in size_detail:
+            size_map[eu] = "无货"
+            size_detail[eu] = {"stock_count": 0, "ean": "0000000000000"}
+
+    return size_map, size_detail
+
 
 def parse_ecco_sizes_and_stock(html: str):
     """
@@ -704,6 +740,9 @@ def process_one(url: str, idx: int, total: int):
 
         gender = gender_from_title or gender_by_size or "unisex"
         material = material_from_text or "No Data"
+
+        # ✅ 在这里按 ECCO 标准尺码补码
+        size_map, size_detail = supplement_ecco_sizes(size_map, size_detail, gender)
 
         # ===== 价格 =====
         price, adjusted = extract_prices(html, soup)
