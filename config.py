@@ -493,33 +493,33 @@ GEOX = {
     }
 }
 
-MS_BASE = BASE_DIR / "ms"
-MS = {
-    "BRAND": "ms",
-    "BASE": MS_BASE,
+MARKSANDSPENCER_BASE = BASE_DIR / "marksandspencer"
+MARKSANDSPENCER = {
+    "BRAND": "marksandspencer",
+    "BASE": MARKSANDSPENCER_BASE,
     "IMAGE_FIRST_PRIORITY": ["F", "C", "L", "T"],
     "IMAGE_DES_PRIORITY": ["C", "F", "L", "T"],
-    "TXT_DIR": MS_BASE / "publication" / "TXT",
-    "ORG_IMAGE_DIR": MS_BASE / "document" / "orgin_images",
-    "DEF_IMAGE_DIR": MS_BASE / "document" / "DEF_images",
-    "IMAGE_DIR": MS_BASE / "document" / "images",
-    "IMAGE_DOWNLOAD": MS_BASE / "publication" / "image_download",
-    "IMAGE_PROCESS": MS_BASE / "publication" / "image_process",
-    "IMAGE_CUTTER": MS_BASE / "publication" / "image_cutter",
-    "MERGED_DIR": MS_BASE / "document" / "image_merged",
-    "HTML_DIR": MS_BASE / "publication" / "html",
-    "HTML_DIR_DES": MS_BASE / "publication" / "html"/ "description",
-    "HTML_DIR_FIRST_PAGE": MS_BASE / "publication" / "html"/ "first_page",
-    "HTML_IMAGE": MS_BASE / "publication" / "html_image",
-    "HTML_IMAGE_DES": MS_BASE / "publication" / "html_image"/ "description",
-    "HTML_IMAGE_FIRST_PAGE": MS_BASE / "publication" / "html_image"/"first_page",
-    "HTML_CUTTER_DES": MS_BASE / "document" / "html_cutter"/ "description",
-    "HTML_CUTTER_FIRST_PAGE": MS_BASE / "document" / "html_cutter"/ "first_page",
-    "STORE_DIR": MS_BASE / "document" / "store",
-    "OUTPUT_DIR": MS_BASE / "repulibcation",
-    "TABLE_NAME": "MS_inventory",
+    "TXT_DIR": MARKSANDSPENCER_BASE / "publication" / "TXT",
+    "ORG_IMAGE_DIR": MARKSANDSPENCER_BASE / "document" / "orgin_images",
+    "DEF_IMAGE_DIR": MARKSANDSPENCER_BASE / "document" / "DEF_images",
+    "IMAGE_DIR": MARKSANDSPENCER_BASE / "document" / "images",
+    "IMAGE_DOWNLOAD": MARKSANDSPENCER_BASE / "publication" / "image_download",
+    "IMAGE_PROCESS": MARKSANDSPENCER_BASE / "publication" / "image_process",
+    "IMAGE_CUTTER": MARKSANDSPENCER_BASE / "publication" / "image_cutter",
+    "MERGED_DIR": MARKSANDSPENCER_BASE / "document" / "image_merged",
+    "HTML_DIR": MARKSANDSPENCER_BASE / "publication" / "html",
+    "HTML_DIR_DES": MARKSANDSPENCER_BASE / "publication" / "html"/ "description",
+    "HTML_DIR_FIRST_PAGE": MARKSANDSPENCER_BASE / "publication" / "html"/ "first_page",
+    "HTML_IMAGE": MARKSANDSPENCER_BASE / "publication" / "html_image",
+    "HTML_IMAGE_DES": MARKSANDSPENCER_BASE / "publication" / "html_image"/ "description",
+    "HTML_IMAGE_FIRST_PAGE": MARKSANDSPENCER_BASE / "publication" / "html_image"/"first_page",
+    "HTML_CUTTER_DES": MARKSANDSPENCER_BASE / "document" / "html_cutter"/ "description",
+    "HTML_CUTTER_FIRST_PAGE": MARKSANDSPENCER_BASE / "document" / "html_cutter"/ "first_page",
+    "STORE_DIR": MARKSANDSPENCER_BASE / "document" / "store",
+    "OUTPUT_DIR": MARKSANDSPENCER_BASE / "repulibcation",
+    "TABLE_NAME": "marksandspencer_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
-    "LINKS_FILE": MS_BASE / "publication" / "product_links.txt",
+    "LINKS_FILE": MARKSANDSPENCER_BASE / "publication" / "product_links.txt",
     "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
@@ -582,7 +582,7 @@ BRAND_CONFIG = {
     "birkenstock": BIRKENSTOCK,
     "barbour": BARBOUR,  # ✅ 加这一行
     "reiss": REISS,   # ✅ 加这一行
-    "ms": MS  # ✅ 新增
+    "marksandspencer": MARKSANDSPENCER # ✅ 新增
 }
 
 
