@@ -48,5 +48,5 @@ def process_folder(input_folder, output_folder=None, fill_color=(255, 255, 255))
 
 if __name__ == "__main__":
     input_dir = r"C:\Users\martin\Downloads"  # 修改为你的图片文件夹路径
-    output_dir = r"D:\TB\Products\barbour\556"  # 如果想覆盖原图，可以设为 None
+    output_dir = r"D:\TB\Products\barbour\558"  # 如果想覆盖原图，可以设为 None
     process_folder(input_dir, output_dir, fill_color=(255, 255, 255))  # 白色填充

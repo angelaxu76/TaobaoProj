@@ -14,7 +14,11 @@ URLS = {
     "men_shoes": "https://www.clarksoutlet.co.uk/mens/mens-shoes/m_shoes_uko-c?page=5",
     "men_new": "https://www.clarksoutlet.co.uk/mens/mens-new-in/m_new_uko-c?page=5",
     "men_boots": "https://www.clarksoutlet.co.uk/mens/mens-boots/m_boots_uko-c?page=3",
-    "men_originals": "https://www.clarksoutlet.co.uk/mens-originals/mo_allstyles_uko-c?page=3"
+    "men_originals": "https://www.clarksoutlet.co.uk/mens-originals/mo_allstyles_uko-c?page=3",
+    "girls_shoes": "https://www.clarksoutlet.co.uk/girls/girls-shoes/g_shoes_uko-c?page=3",
+    "boys_shoes": "https://www.clarksoutlet.co.uk/boys/boys-shoes/b_shoes_uko-c?page=3",
+    "girls_school_shoes": "https://www.clarksoutlet.co.uk/girls/girls-school-shoes/g_school_uko-c?page=3",
+    "boys_school_shoes": "https://www.clarksoutlet.co.uk/boys/boys-school-shoes/b_school_uko-c?page=3"
 }
 
 def get_outlet_product_links():

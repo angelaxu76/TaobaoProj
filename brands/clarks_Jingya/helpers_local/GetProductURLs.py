@@ -18,7 +18,11 @@ BASE_URL_TEMPLATES = {
     "mens_news": "https://www.clarks.com/en-gb/mens/mens-new-in-shoes/m_new_uk-c?page={}",
     "mens_boots": "https://www.clarks.com/en-gb/mens-boots/m_boots_uk-c?page={}",
     "mens_originals": "https://www.clarks.com/en-gb/mens-originals/mo_allstyles_uk-c?page={}",
-    "originalsALL": "https://www.clarks.com/en-gb/originals/o_allstyles_uk-c?page={}"
+    "originalsALL": "https://www.clarks.com/en-gb/originals/o_allstyles_uk-c?page={}",
+    "girls_allstyles": "https://www.clarks.com/en-gb/girls/g_allstyles_uk-c?page={}",
+    "boys_allstyles": "https://www.clarks.com/en-gb/boys/b_allstyles_uk-c?page={}",
+    "boys_school_shoes": "https://www.clarks.com/en-gb/kids-school-shoes/boys-school-shoes/s_boys_uk-c?page={}",
+    "girls_school_shoes": "https://www.clarks.com/en-gb/kids-school-shoes/girls-school-shoes/s_girls_uk-c?page={}"
 }
 
 def get_links_from_page(url):
