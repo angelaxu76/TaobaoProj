@@ -18,6 +18,7 @@ LINK_FILE = CLARKS_JINGYA["BASE"] / "publication" / "product_links.txt"
 TXT_DIR = CLARKS_JINGYA["TXT_DIR"]
 BRAND = CLARKS_JINGYA["BRAND"]
 
+# 成人款 UK→EU 映射（保持原来不变）
 UK_TO_EU_CM = {
     "3": "35.5", "3.5": "36", "4": "37", "4.5": "37.5", "5": "38",
     "5.5": "39", "6": "39.5", "6.5": "40", "7": "41", "7.5": "41.5",
@@ -25,21 +26,38 @@ UK_TO_EU_CM = {
     "10.5": "45", "11": "46", "11.5": "46.5", "12": "47"
 }
 
+# ✅ 童款（Junior：UK 7–2.5）专用 UK→EU 映射，避免和成人混用
+UK_TO_EU_KIDS = {
+    "7": "24",  "7.5": "25",
+    "8": "25.5","8.5": "26",
+    "9": "27",  "9.5": "27.5",
+    "10": "28", "10.5": "28.5",
+    "11": "29", "11.5": "29.5",
+    "12": "30", "12.5": "31",
+    "13": "32", "13.5": "32.5",
+    "1": "33",  "1.5": "33.5",
+    "2": "34",  "2.5": "35"
+}
+
+# 这两个目前可以保留给成人逻辑备用（如后续需要）
 FEMALE_RANGE = ["3", "3.5", "4", "4.5", "5", "5.5", "6", "6.5", "7", "7.5", "8"]
 MALE_RANGE = ["6", "6.5", "7", "7.5", "8", "8.5", "9", "9.5", "10", "10.5", "11", "11.5", "12"]
+
 
 def extract_product_code(url):
     match = re.search(r"/(\d+)-p", url)
     return match.group(1) if match else "unknown"
 
+
 def extract_material(soup):
     tags = soup.select("li.sc-ac92809-1 span")
     for i in range(0, len(tags) - 1, 2):
         key = tags[i].get_text(strip=True)
-        val = tags[i+1].get_text(strip=True)
+        val = tags[i + 1].get_text(strip=True)
         if "Upper Material" in key:
             return val
     return "No Data"
+
 
 def detect_gender(text):
     text = text.lower()
@@ -47,9 +65,10 @@ def detect_gender(text):
         return "女款"
     elif "men" in text:
         return "男款"
-    elif "girl" in text or "boy" in text:
+    elif "girl" in text or "boy" in text or "kids" in text or "kid " in text:
         return "童款"
     return "未知"
+
 
 def extract_simple_color(name: str) -> str:
     name = name.lower()
@@ -64,8 +83,87 @@ def extract_simple_color(name: str) -> str:
             return color
     return "No Data"
 
-# === 省略上半部分保持不变 ===
 
+# =========================
+# ✅ 抽取公共：读取页面上的 UK 尺码按钮 + 有货/无货
+# =========================
+def build_size_button_map(soup):
+    """
+    返回形如 {"7": "有货", "7.5": "无货", ...} 的字典（UK 尺码 → 有货/无货）
+    """
+    size_map = {}
+    for btn in soup.find_all("button", {"data-testid": "sizeItem"}):
+        uk = btn.get("title", "").strip()
+        aria = (btn.get("aria-label") or "").lower()
+        sold_out = "currently unavailable" in aria
+        size_map[uk] = "无货" if sold_out else "有货"
+    return size_map
+
+
+# =========================
+# ✅ 成人款：根据 UK_TO_EU_CM + SIZE_RANGE_CONFIG 生成 SizeMap & SizeDetail
+# =========================
+def extract_adult_size_stock(soup, gender: str):
+    """
+    成人款（男款/女款）尺码库存:
+    - 使用 UK_TO_EU_CM 做 UK→EU 映射
+    - 使用 SIZE_RANGE_CONFIG["clarks"][gender] 作为 EU 尺码顺序
+    """
+    size_map_uk = build_size_button_map(soup)
+
+    # 从 config 中读取成人 EU 尺码范围（例如 35.5–47）
+    eu_range = SIZE_RANGE_CONFIG.get("clarks", {}).get(gender, [])
+    size_detail_dict = {}
+    size_map_str = {}
+
+    for eu in eu_range:
+        matched = [
+            uk for uk, status in size_map_uk.items()
+            if UK_TO_EU_CM.get(uk) == eu and status == "有货"
+        ]
+        stock = 3 if matched else 0
+        size_map_str[eu] = "有货" if stock > 0 else "无货"
+        size_detail_dict[eu] = {"stock_count": stock, "ean": "0000000000000"}
+
+    return size_map_str, size_detail_dict
+
+
+# =========================
+# ✅ 童款（Junior）：只使用 UK 7–2.5 区间（UK_TO_EU_KIDS）
+# =========================
+def extract_kids_size_stock(soup):
+    """
+    童款（Kids / Junior）尺码库存:
+    - 只处理 UK 7–2.5
+    - 使用 UK_TO_EU_KIDS 做 UK→EU 映射
+    - EU 尺码范围优先读取 SIZE_RANGE_CONFIG["clarks"]["童款"]，
+      如果没有配置，则按映射表的 value 顺序自动推导 24–35。
+    """
+    size_map_uk = build_size_button_map(soup)
+
+    eu_range = SIZE_RANGE_CONFIG.get("clarks", {}).get("童款")
+    if not eu_range:
+        # 如果 config 中还没配童款 EU 尺码，就从映射里自动生成一个有序列表
+        eu_range = list(dict.fromkeys(UK_TO_EU_KIDS.values()))
+
+    size_detail_dict = {}
+    size_map_str = {}
+
+    for eu in eu_range:
+        matched = [
+            uk for uk, status in size_map_uk.items()
+            if UK_TO_EU_KIDS.get(uk) == eu and status == "有货"
+        ]
+        stock = 3 if matched else 0
+        size_map_str[eu] = "有货" if stock > 0 else "无货"
+        size_detail_dict[eu] = {"stock_count": stock, "ean": "0000000000000"}
+
+    return size_map_str, size_detail_dict
+
+
+# =========================
+# ✅ 主处理函数
+# =========================
 def process_product(url):
     try:
         r = requests.get(url, headers=HEADERS, timeout=15)
@@ -81,8 +179,8 @@ def process_product(url):
         data = json.loads(json_ld.string) if json_ld else {}
         desc = data.get("description", "No Description")
 
+        # ✅ 先根据标题 + 描述识别男女/童款
         gender = detect_gender(title + " " + desc)
-        size_range = FEMALE_RANGE if gender == "女款" else MALE_RANGE
 
         # 折扣价
         discount_price_raw = data.get("offers", {}).get("price", "")
@@ -91,7 +189,9 @@ def process_product(url):
         # 原价
         price_tag = soup.find("span", {"data-testid": "wasPrice"})
         if price_tag:
-            original_price = price_tag.get_text(strip=True).replace("£", "").strip()
+            original_price = (
+                price_tag.get_text(strip=True).replace("£", "").strip()
+            )
         else:
             original_price = discount_price  # ✅ fallback 为折扣价
 
@@ -112,24 +212,16 @@ def process_product(url):
         except Exception as e:
             print(f"⚠️ 解析颜色出错: {e}")
 
-        # ✅ 提取尺码库存
-        size_map = {}
-        for btn in soup.find_all("button", {"data-testid": "sizeItem"}):
-            uk = btn.get("title", "").strip()
-            sold_out = "currently unavailable" in btn.get("aria-label", "").lower()
-            size_map[uk] = "无货" if sold_out else "有货"
-
-        eu_range = SIZE_RANGE_CONFIG.get("clarks", {}).get(gender, [])
-        size_detail_dict = {}
-        size_map_str = {}
-        for eu in eu_range:
-            # UK => EU 反向映射
-            matched = [uk for uk, status in size_map.items() if UK_TO_EU_CM.get(uk) == eu and status == "有货"]
-            stock = 3 if matched else 0
-            size_map_str[eu] = "有货" if stock > 0 else "无货"
-            size_detail_dict[eu] = {"stock_count": stock, "ean": "0000000000000"}
+        # =========================
+        # ✅ 尺码 & 库存：根据 gender 分流
+        # =========================
+        if gender == "童款":
+            size_map_str, size_detail_dict = extract_kids_size_stock(soup)
+        else:
+            size_map_str, size_detail_dict = extract_adult_size_stock(soup, gender)
 
         style_category = infer_style_category(desc)
+
         return {
             "Product Code": code,
             "Product Name": name,
@@ -139,11 +231,11 @@ def process_product(url):
             "Product Price": original_price,
             "Adjusted Price": discount_price,
             "Product Material": material,
-            "Style Category": style_category,  # ✅ 新增字段
+            "Style Category": style_category,
             "Feature": feature_str,
             "SizeMap": size_map_str,
             "SizeDetail": size_detail_dict,
-            "Source URL": url
+            "Source URL": url,
         }
 
     except Exception as e:
@@ -165,6 +257,7 @@ def clarks_fetch_info():
             filepath.parent.mkdir(parents=True, exist_ok=True)
             format_txt(info, filepath, BRAND)
             print(f"✅ 写入: {filepath.name}")
+
 
 if __name__ == "__main__":
     clarks_fetch_info()
