@@ -65,6 +65,7 @@ def safe_translate(text, target_lang="ZH"):
             }
             req.from_json_string(json.dumps(params))
             resp = client.TextTranslate(req)
+            time.sleep(0.2)  # ⭐⭐⭐ 限流（非常重要）
             return resp.TargetText
         except Exception as e:
             print(f"⚠️ 腾讯云翻译失败：{e}")

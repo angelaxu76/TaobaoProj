@@ -37,7 +37,7 @@ def main():
     batch_merge_images(CAMPER["IMAGE_CUTTER"],CAMPER["MERGED_DIR"], width=750)
 
     print("生成产品详情卡HTML")
-    generate_html_from_codes_files("camper",code_file_path)
+    generate_html_from_codes_files("camper",code_file_path,max_workers=2)
     generate_first_page_from_codes_files("camper",code_file_path)
 
     # GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径
