@@ -58,16 +58,88 @@ def extract_material(soup):
             return val
     return "No Data"
 
+def detect_gender_from_text(text: str) -> str:
+    t = text.lower()
 
-def detect_gender(text):
-    text = text.lower()
-    if "women" in text:
-        return "女款"
-    elif "men" in text:
-        return "男款"
-    elif "girl" in text or "boy" in text or "kids" in text or "kid " in text:
+    # 先判断童款（kids / youth / toddler / junior）
+    if any(k in t for k in ["youth", "kid", "kids", "toddler", "junior", "infant", "girl", "boy"]):
         return "童款"
+
+    # 再判断成人女款
+    if "women" in t or "womens" in t or "ladies" in t:
+        return "女款"
+
+    # 再判断成人男款
+    if "men" in t or "mens" in t:
+        return "男款"
+
     return "未知"
+
+
+def detect_gender_from_breadcrumb(soup) -> str:
+    """
+    从 JSON-LD BreadcrumbList 中解析 gender:
+    - position == 2 的 name 通常是 mens / womens / kids / boys / girls
+    """
+    try:
+        scripts = soup.find_all("script", type="application/ld+json")
+    except Exception:
+        return "未知"
+
+    for script in scripts:
+        try:
+            if not script.string:
+                continue
+            data = json.loads(script.string)
+        except Exception:
+            continue
+
+        # 可能有多个 JSON-LD，找 BreadcrumbList 那个
+        if isinstance(data, dict) and data.get("@type") == "BreadcrumbList":
+            items = data.get("itemListElement") or []
+            for item in items:
+                try:
+                    pos = int(item.get("position", 0))
+                except (TypeError, ValueError):
+                    continue
+                if pos == 2:
+                    name = (item.get("name") or "").lower()
+                    # mens / men
+                    if "men" in name:
+                        return "男款"
+                    # womens / women
+                    if "women" in name:
+                        return "女款"
+                    # kids / boys / girls 这一档都归为童款
+                    if any(k in name for k in ["kid", "kids", "boy", "boys", "girl", "girls", "youth", "junior", "infant"]):
+                        return "童款"
+    return "未知"
+
+
+
+def detect_gender(soup, title: str, desc: str, url: str) -> str:
+    # ① 先用 title + description 判
+    text = f"{title} {desc}"
+    gender = detect_gender_from_text(text)
+    if gender != "未知":
+        return gender
+
+    # ② 判不出来再用 breadcrumb
+    gender = detect_gender_from_breadcrumb(soup)
+    if gender != "未知":
+        return gender
+
+    # ③ 最后可以用 URL 做个兜底（可选）
+    u = url.lower()
+    if any(k in u for k in ["youth", "kid", "kids", "toddler", "junior", "infant"]):
+        return "童款"
+    if "women" in u or "womens" in u:
+        return "女款"
+    if "men" in u or "mens" in u:
+        return "男款"
+
+    return "未知"
+
 
 
 def extract_simple_color(name: str) -> str:
@@ -180,7 +252,8 @@ def process_product(url):
         desc = data.get("description", "No Description")
 
         # ✅ 先根据标题 + 描述识别男女/童款
-        gender = detect_gender(title + " " + desc)
+        gender = detect_gender(soup, title, desc, url)
+
 
         # 折扣价
         discount_price_raw = data.get("offers", {}).get("price", "")

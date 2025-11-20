@@ -6,6 +6,21 @@ from config import CAMPER, CLARKS_JINGYA, ECCO, GEOX,BRAND_CONFIG
 # 顶部补充
 import re
 
+
+def _normalize_size(size: str) -> str:
+    """
+    统一淘宝 GEI 里的尺码格式：
+    - 去掉尾部的“码”
+    - 去掉前后空格
+    """
+    if size is None:
+        return None
+    s = str(size).strip()
+    if s.endswith("码"):
+        s = s[:-1].strip()
+    return s
+
+
 def _clean_id(x: object) -> str:
     """
     将 Excel 读出的 id 统一清洗成纯文本：
@@ -106,6 +121,7 @@ def insert_jingyaid_to_db(brand: str, debug: bool = False):
 
                 try:
                     product_code, size = parts
+                    size = _normalize_size(size)
                     new_sku_name = product_code.replace("-", "") + size
                     sql = f"""
                         UPDATE {table_name}
@@ -215,6 +231,7 @@ def insert_missing_products_with_zero_stock(brand: str):
             continue
 
         code, size = parts
+        size = _normalize_size(size)   # ⭐⭐新增同样的清洗步骤
         skuid              = _clean_id(row.get("skuID", ""))   # ← 关键
         channel_product_id = _clean_id(row.get("渠道产品id", ""))
         channel_item_id    = _clean_id(row.get("货品id", ""))
