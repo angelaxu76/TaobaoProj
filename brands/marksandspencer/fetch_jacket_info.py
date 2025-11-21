@@ -87,59 +87,93 @@ def _apply_size_range_completion(size_map: dict, detail: dict, gender: str | Non
 
     return size_map, detail
 
+def _clean_size_label(label: str) -> str:
+    """
+    通用垃圾清洗：
+    - PRODUCT NAME IS 开头的错误内容 → ONE_SIZE
+    - 年龄尺码：16YRS / 16 YRS / 16 YEARS → 16Y
+    - ONE SIZE / Onesize → ONE_SIZE
+    """
+    if not label:
+        return label
+
+    s = str(label).strip()
+    if not s:
+        return s
+
+    up = s.upper()
+
+    # 1) 明显不是尺码，而是文案被误塞进来了
+    if up.startswith("PRODUCT NAME IS"):
+        return "ONE_SIZE"
+
+    # 2) 年龄制尺码：16YRS / 16 YRS / 16 YEARS → 16Y
+    m = re.match(r"^(\d+)\s*(YRS?|YEARS)$", up)
+    if m:
+        return f"{m.group(1)}Y"
+
+    # 3) ONE SIZE 统一成 ONE_SIZE
+    if up in ("ONE SIZE", "ONESIZE"):
+        return "ONE_SIZE"
+
+    return s
+
 
 def _normalize_size_label(label: str) -> str:
     """
     清洗 M&S 服装尺码：
     - Extra Small -> XS, Medium -> M 等
-    - 如果包含数字（8, 10, 12, 8-10 之类），视为 UK 数字尺码，原样保留
+    - 如果包含数字（8, 10, 12, 8-10 之类），视为数字尺码，原样保留
+    - 年龄尺码 16YRS / 13YRS → 16Y / 13Y
+    - “PRODUCT NAME IS ...” 等异常文本 → ONE_SIZE
     """
-    label = _clean(label)
+    if label is None:
+        return label
+
+    # 先做通用清洗（YRS / ONE SIZE / PRODUCT NAME IS...）
+    label = _clean_size_label(label)
     if not label:
         return label
 
-    # 含数字的尺码（8 / 10 / 12 / 8-10 / 5yrs 等）直接保留
-    import re
+    # 只要含有数字，统一当作数字/年龄尺码，不再做 XS/S/M/L 映射
+    # 例如：8、10、12、8-10、16Y 等都直接返回
     if re.search(r"\d", label):
         return label
 
     lower = label.lower().strip()
+
     # 去掉前缀 "size "
     if lower.startswith("size "):
         lower = lower[5:].strip()
 
     mapping = {
+        # 这里根据你原来的映射补全即可
         "extra small": "XS",
-        "x-small": "XS",
         "xs": "XS",
-
         "small": "S",
         "s": "S",
-
         "medium": "M",
         "m": "M",
-
         "large": "L",
         "l": "L",
-
         "extra large": "XL",
-        "x-large": "XL",
         "xl": "XL",
-
         "extra extra large": "XXL",
-        "xx-large": "XXL",
         "xxl": "XXL",
-
-        "extra extra extra large": "3XL",
-        "xxx-large": "3XL",
+        "extra extra extra large": "3xl",
         "3xl": "3XL",
     }
 
     if lower in mapping:
         return mapping[lower]
 
-    # 默认保持原样（比如 ONE SIZE, REGULAR 等）
+    # 再统一一下 ONE SIZE（防止有 "one size" 漏网）
+    if lower in ("one size", "onesize"):
+        return "ONE_SIZE"
+
+    # 其它情况，保持原样
     return label
+
 
 
 def _clean(s: str) -> str:
@@ -548,7 +582,7 @@ def extract_page(url: str) -> dict:
 
 # ===================== Pipeline 主入口 =====================
 
-def ms_fetch_jackcet_info():
+def fetch_jackcet_info():
     """M&S 全品类（服装）抓取入口"""
     links_file: Path = MARKSANDSPENCER["LINKS_FILE_JACKET"]
     txt_dir: Path = MARKSANDSPENCER["TXT_DIR"]
@@ -583,4 +617,4 @@ def ms_fetch_jackcet_info():
 
 
 if __name__ == "__main__":
-    ms_fetch_jackcet_info()
+    fetch_jackcet_info()

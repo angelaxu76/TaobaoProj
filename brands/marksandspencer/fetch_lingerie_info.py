@@ -134,12 +134,81 @@ def _find_product_in_jsonld(jsonld_list: List[dict]) -> dict:
     return product
 
 # ============= 从大 JSON 中提取 SKU 库存 =============
+def _clean_size_label(label: str) -> str:
+    """
+    通用垃圾清洗：
+    - PRODUCT NAME IS 开头的错误内容 → ONE_SIZE
+    - 年龄尺码：16YRS / 16 YRS / 16 YEARS → 16Y
+    - ONE SIZE / Onesize → ONE_SIZE
+    """
+    if not label:
+        return label
+
+    s = str(label).strip()
+    if not s:
+        return s
+
+    up = s.upper()
+
+    # 1) 明显不是尺码，而是文案被误塞进来了
+    if up.startswith("PRODUCT NAME IS"):
+        return "ONE_SIZE"
+
+    # 2) 年龄制尺码：16YRS / 16 YRS / 16 YEARS → 16Y
+    m = re.match(r"^(\d+)\s*(YRS?|YEARS)$", up)
+    if m:
+        return f"{m.group(1)}Y"
+
+    # 3) ONE SIZE 统一成 ONE_SIZE
+    if up in ("ONE SIZE", "ONESIZE"):
+        return "ONE_SIZE"
+
+    return s
+
+
+
 def _norm_size_label(primary: str, secondary: str) -> str:
-    p = (primary or "").strip().upper()
-    s = (secondary or "").strip().upper()
-    if not p or not s:
+    """
+    规范化内衣/睡衣尺寸：
+    - 文胸：primary=数字，secondary=杯型字母 → 34D / 36DD 保持不变
+    - 睡衣：primary=EXTRA SMALL/SMALL/MEDIUM/LARGE/EXTRA LARGE
+            secondary=SHORT/REGULAR/LONG
+            → 映射为 XS-S / S-R / M-L / L-R / XL-L 等短格式
+    - 其它情况：拼接后走通用清洗（处理 16YRS / PRODUCT NAME IS ... 等）
+    """
+    p_raw = (primary or "").strip()
+    s_raw = (secondary or "").strip()
+    p = p_raw.upper()
+    s = s_raw.upper()
+
+    if not p and not s:
         return ""
-    return f"{p}{s}"
+
+    # 1️⃣ 文胸尺码：数字 + 杯型（34D / 36DD / 40G 等），直接保持
+    if re.match(r"^\d{2}$", p) and re.match(r"^[A-Z]{1,3}$", s):
+        return f"{p}{s}"
+
+    # 2️⃣ 睡衣 / 家居服：主尺码 + 长短版型
+    main_map = {
+        "EXTRA SMALL": "XS",
+        "SMALL": "S",
+        "MEDIUM": "M",
+        "LARGE": "L",
+        "EXTRA LARGE": "XL",
+    }
+    len_map = {
+        "SHORT": "S",
+        "REGULAR": "R",
+        "LONG": "L",
+    }
+    if p in main_map and s in len_map:
+        # 例如：EXTRA SMALL + REGULAR → XS-R
+        return f"{main_map[p]}-{len_map[s]}"
+
+    # 3️⃣ 其它情况：拼接后做一次通用清洗
+    combined = (p_raw + s_raw).strip() or p or s
+    return _clean_size_label(combined)
+
 
 def _walk_collect_skus(obj, out: List[Tuple[str, int]]):
     """
@@ -394,7 +463,7 @@ def process_product_url(url: str):
         print(f"❌ 错误: {url} - {e}")
 
 # ============= 无参入口（供 pipeline 调用） =============
-def fetch_product_info(max_workers: int = MAX_WORKERS):
+def fetch_lingerie_info(max_workers: int = MAX_WORKERS):
     SAVE_PATH.mkdir(parents=True, exist_ok=True)
     urls_path = Path(PRODUCT_URLS_FILE)
     if not urls_path.exists():
@@ -414,4 +483,4 @@ def fetch_product_info(max_workers: int = MAX_WORKERS):
 
 # 可独立运行调试（生产中建议由 pipeline 调用）
 if __name__ == "__main__":
-    fetch_product_info()
+    fetch_lingerie_info()

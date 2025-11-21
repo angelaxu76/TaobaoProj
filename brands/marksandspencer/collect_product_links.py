@@ -202,16 +202,16 @@ def save_links(links: list[str], filepath: Path) -> None:
     print(f"💾 已写入到: {filepath.resolve()}")
 
 
-def marksandspencer_get_jacket_links():
+def collect_jacket_links():
     links = collect_all_links(BASE_URLS_JACKET)
     save_links(links, OUTPUT_FILE_JACKET)
 
-def marksandspencer_get_lingerie_links():
+def collect_lingerie_links():
     links = collect_all_links(BASE_URLS_LINGERIE)
     save_links(links, OUTPUT_FILE_LINGERIE)
 
 
 
 if __name__ == "__main__":
-    marksandspencer_get_lingerie_links()
-    marksandspencer_get_jacket_links()
+    collect_lingerie_links()
+    collect_jacket_links()

@@ -8,10 +8,9 @@ from channels.jingya.maintenance.disable_low_stock_products import disable_low_s
 from channels.jingya.export.export_gender_split_excel import export_gender_split_excel
 from channels.jingya.export.generate_publication_excel import generate_publication_excels
 from common_taobao.publication.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
-from brands.marksandspencer.fetch_product_info import fetch_product_info
-from brands.marksandspencer.collect_product_links import marksandspencer_get_links
-from brands.marksandspencer.fetch_jacket_info import ms_fetch_jackcet_info
-from brands.marksandspencer.fetch_product_info import fetch_product_info
+from brands.marksandspencer.collect_product_links import collect_lingerie_links, collect_jacket_links
+from brands.marksandspencer.fetch_jacket_info import fetch_jackcet_info
+from brands.marksandspencer.fetch_lingerie_info import fetch_lingerie_info
 from common_taobao.publication.export_low_stock_products import export_low_stock_for_brand
 
 
@@ -20,13 +19,15 @@ def main():
     # backup_and_clear_brand_dirs(MARKSANDSPENCER)
 
     # print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    # marksandspencer_get_links()
+    # collect_lingerie_links()
+    # collect_jacket_links()
 
-    print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    ms_fetch_jackcet_info()
+    # print("\n🟡 Step: 3️⃣ 抓取商品信息")
+    # fetch_jackcet_info()
+    # fetch_lingerie_info()
 
     # print("\n🟡 Step: 4️⃣ TXT导入数据库 -----将各个商品的TXT中信息导入到数据库中")
-    # import_txt_to_db_supplier("marksandspencer")  
+    import_txt_to_db_supplier("marksandspencer")  
 
     # # print("\n🟡 Step: 5️⃣ 通过解析鲸芽导出的Excel，将鲸芽侧相关的商品ID和SKU信息导入数据库")
     # insert_jingyaid_to_db("marksandspencer")
