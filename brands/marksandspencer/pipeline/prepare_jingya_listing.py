@@ -10,18 +10,20 @@ from channels.jingya.export.generate_publication_excel import generate_publicati
 from common_taobao.publication.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
 from brands.marksandspencer.fetch_product_info import fetch_product_info
 from brands.marksandspencer.collect_product_links import marksandspencer_get_links
+from brands.marksandspencer.fetch_jacket_info import ms_fetch_jackcet_info
+from brands.marksandspencer.fetch_product_info import fetch_product_info
 from common_taobao.publication.export_low_stock_products import export_low_stock_for_brand
 
 
 def main():
-    print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    backup_and_clear_brand_dirs(MARKSANDSPENCER)
+    # print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
+    # backup_and_clear_brand_dirs(MARKSANDSPENCER)
 
-    print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    marksandspencer_get_links()
+    # print("\n🟡 Step: 2️⃣ 抓取商品链接")
+    # marksandspencer_get_links()
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    fetch_product_info()
+    ms_fetch_jackcet_info()
 
     # print("\n🟡 Step: 4️⃣ TXT导入数据库 -----将各个商品的TXT中信息导入到数据库中")
     # import_txt_to_db_supplier("marksandspencer")  
