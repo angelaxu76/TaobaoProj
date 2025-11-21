@@ -19,7 +19,8 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urldefrag
 
 from config import BRAND_CONFIG
-
+CFG = BRAND_CONFIG["marksandspencer"]
+OUTPUT_FILE_JACKET: Path = CFG["LINKS_FILE_JACKET"]
 # ----------------------------------------------------------------------
 # 配置区
 # ----------------------------------------------------------------------
@@ -29,7 +30,8 @@ DOMAIN = "https://www.marksandspencer.com"
 
 # 从全局 config 中读取 Marks & Spencer 品牌配置
 CFG = BRAND_CONFIG["marksandspencer"]
-OUTPUT_FILE: Path = CFG["LINKS_FILE"]
+OUTPUT_FILE_LINGERIE: Path = CFG["LINKS_FILE_LINGERIE"]
+OUTPUT_FILE_JACKET: Path = CFG["LINKS_FILE_JACKET"]
 
 # 请求头（带个 User-Agent 稍微友好一点）
 HEADERS = {
@@ -57,6 +59,33 @@ BASE_URLS = [
     # TODO：后续可以加 jumpers / 所有针织等
     # "https://www.marksandspencer.com/l/women/knitwear/jumpers?filter=Brand%253DM%2526S&page={}",
     # "https://www.marksandspencer.com/l/women/knitwear?filter=Brand%253DM%2526S&page={}",
+]
+
+# --------------------------
+# 外套（jacket）类目
+# --------------------------
+BASE_URLS_JACKET = [
+    "https://www.marksandspencer.com/l/women/knitwear/cardigans?filter=Brand%253DM%2526S&page={}",
+    "https://www.marksandspencer.com/l/women/coats-and-jackets?filter=Brand%253DM%2526S&page={}",
+    "https://www.marksandspencer.com/l/women/dresses?filter=Brand%253DM%2526S&page={}",
+    "https://www.marksandspencer.com/l/women/knitwear/jumpers?filter=Brand%253DM%2526S&page={}",
+
+    "https://www.marksandspencer.com/l/men/mens-coats-and-jackets?filter=Brand%253DM%2526S&page={}",
+    "https://www.marksandspencer.com/l/men/mens-coats-and-jackets/fs5/gilet?filter=Brand%253DM%2526S&page={}",
+    "https://www.marksandspencer.com/l/men/mens-hoodies-and-sweatshirts?filter=Brand%253DM%2526S&page={}",
+    "https://www.marksandspencer.com/l/men/mens-knitwear?filter=Brand%253DM%2526S&page={}",
+    # 你可以继续加入 jumper、coat 等
+]
+
+# --------------------------
+# 内衣（lingerie）类目
+# --------------------------
+BASE_URLS_LINGERIE = [
+    "https://www.marksandspencer.com/l/lingerie/bras?filter=Brand%253DM%2526S&page={}",
+    "https://www.marksandspencer.com/l/lingerie/knickers?filter=Brand%253DM%2526S&page={}",
+    "https://www.marksandspencer.com/l/lingerie/nightwear?filter=Brand%253DM%2526S&page={}",
+    # 例如 bra、knickers 之类
+    # "https://www.marksandspencer.com/l/women/lingerie/bras?page={}",
 ]
 
 
@@ -117,16 +146,15 @@ def extract_product_links(html: str) -> list[str]:
 # 主逻辑：按类目自动翻页抓取
 # ----------------------------------------------------------------------
 
-def collect_all_links() -> list[str]:
-    """遍历 BASE_URLS，把所有列表页的商品链接抓出来并去重。"""
+def collect_all_links(base_urls: list[str]) -> list[str]:
     all_links: set[str] = set()
 
-    for base_url in BASE_URLS:
+    for base_url in base_urls:
         print(f"\n🟡 开始处理类目入口: {base_url}")
 
         page = 1
         empty_pages = 0
-        last_page_links: set[str] | None = None  # 记录上一页的链接集合
+        last_page_links: set[str] | None = None
 
         while True:
             url = base_url.format(page)
@@ -134,50 +162,35 @@ def collect_all_links() -> list[str]:
 
             html = fetch_page(url)
             if not html:
-                # 如果直接请求失败，也算一页无结果
                 empty_pages += 1
                 if empty_pages >= MAX_EMPTY_PAGES:
-                    print(f"  ⚠ 连续 {MAX_EMPTY_PAGES} 页无数据，停止该类目")
                     break
                 page += 1
                 time.sleep(SLEEP_SECONDS)
                 continue
 
             links = extract_product_links(html)
-            links = list(set(links))  # 当前页去重
             current_set = set(links)
 
             if not links:
                 empty_pages += 1
-                print(f"    本页未发现商品卡片（连续空页 {empty_pages}）")
                 if empty_pages >= MAX_EMPTY_PAGES:
-                    print(f"  ⚠ 连续 {MAX_EMPTY_PAGES} 页无数据，停止该类目")
                     break
             else:
-                # ✅ 关键逻辑：如果这一页和上一页完全相同，说明很可能被重定向回首页，直接停止该类目
                 if last_page_links is not None and current_set == last_page_links:
-                    print("    本页商品列表与上一页完全相同（可能已经跳回首页），停止该类目")
                     break
 
-                # 记录当前页用于下一次对比
                 last_page_links = current_set
-
-                # 只统计真正新增的链接
                 new_links = [u for u in links if u not in all_links]
                 all_links.update(new_links)
-                print(
-                    f"    本页抓到 {len(new_links)} 个【新增】商品链接，"
-                    f"累计总数 {len(all_links)}"
-                )
 
             page += 1
             time.sleep(SLEEP_SECONDS)
 
-    # 全部类目抓完，做一次全局去重 + 排序
     all_links_list = sorted(all_links)
-    print(f"\n✅ 所有类目合计抓到 {len(all_links_list)} 条去重后的商品链接")
-
+    print(f"\n✅ 抓到 {len(all_links_list)} 条去重后的商品链接")
     return all_links_list
+
 
 
 def save_links(links: list[str], filepath: Path) -> None:
@@ -189,11 +202,16 @@ def save_links(links: list[str], filepath: Path) -> None:
     print(f"💾 已写入到: {filepath.resolve()}")
 
 
-def marksandspencer_get_links():
-    """保持给 pipeline 调用的函数名和参数不变。"""
-    links = collect_all_links()
-    save_links(links, OUTPUT_FILE)
+def marksandspencer_get_jacket_links():
+    links = collect_all_links(BASE_URLS_JACKET)
+    save_links(links, OUTPUT_FILE_JACKET)
+
+def marksandspencer_get_lingerie_links():
+    links = collect_all_links(BASE_URLS_LINGERIE)
+    save_links(links, OUTPUT_FILE_LINGERIE)
+
 
 
 if __name__ == "__main__":
-    marksandspencer_get_links()
+    marksandspencer_get_lingerie_links()
+    marksandspencer_get_jacket_links()

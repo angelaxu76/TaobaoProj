@@ -528,7 +528,8 @@ MARKSANDSPENCER = {
     "OUTPUT_DIR": MARKSANDSPENCER_BASE / "repulibcation",
     "TABLE_NAME": "marksandspencer_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
-    "LINKS_FILE": MARKSANDSPENCER_BASE / "publication" / "product_links.txt",
+    "LINKS_FILE_JACKET": MARKSANDSPENCER_BASE / "marksandspencer" / "publication" / "links_jacket.txt",
+    "LINKS_FILE_LINGERIE": MARKSANDSPENCER_BASE / "marksandspencer" / "publication" / "links_lingerie.txt",
     "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",

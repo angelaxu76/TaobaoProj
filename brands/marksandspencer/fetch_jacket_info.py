@@ -550,7 +550,7 @@ def extract_page(url: str) -> dict:
 
 def ms_fetch_jackcet_info():
     """M&S 全品类（服装）抓取入口"""
-    links_file: Path = MARKSANDSPENCER["LINKS_FILE"]
+    links_file: Path = MARKSANDSPENCER["LINKS_FILE_JACKET"]
     txt_dir: Path = MARKSANDSPENCER["TXT_DIR"]
     txt_dir.mkdir(parents=True, exist_ok=True)
 

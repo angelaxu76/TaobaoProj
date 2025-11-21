@@ -31,7 +31,7 @@ from common_taobao.ingest.txt_writer import format_txt
 # ============= 常量&品牌配置 =============
 CFG = BRAND_CONFIG["marksandspencer"]
 SAVE_PATH: Path = CFG["TXT_DIR"]
-PRODUCT_URLS_FILE: Path = CFG["LINKS_FILE"]
+PRODUCT_URLS_FILE: Path = CFG["LINKS_FILE_LINGERIE"]
 CHROMEDRIVER_PATH: str = CFG.get("CHROMEDRIVER_PATH", "")
 MAX_WORKERS = 6
 
