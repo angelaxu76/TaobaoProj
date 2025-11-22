@@ -6,7 +6,7 @@ CREATE TABLE marksandspencer_inventory (
     -- 基础信息
     product_code VARCHAR(200) NOT NULL,               -- 商品编码，如 K800548-001
     product_url TEXT NOT NULL,                        -- 商品链接
-    size VARCHAR(10) NOT NULL,                        -- 尺码（EU，如 38、39）
+    size VARCHAR(30) NOT NULL,                        -- 尺码（EU，如 38、39）
     gender VARCHAR(10),                               -- 性别：男款、女款、童款
 
     -- 商品补充字段

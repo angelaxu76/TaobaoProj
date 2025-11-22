@@ -285,6 +285,199 @@ def generate_export_evidence_pdf(invoice_no: str):
     doc.build(text)
     print(f"[OK] Export Evidence Summary generated: {pdf_path}")
 
+
+def generate_commercial_invoice_pdf(invoice_no: str):
+    """
+    Generate Commercial Invoice (CI) PDF for a given internal invoice_no.
+    CI = 英国出口给香港的商业发票，金额与 EES / POE 一致。
+    """
+    data_summary = fetch_export_summary(invoice_no)
+    if not data_summary:
+        print(f"[WARN] Invoice {invoice_no} not found in export_shipments_summary.")
+        return
+
+    items = fetch_itemized_goods(invoice_no)
+    items = _prepare_items(items)  # 已经按 skuid + 描述聚合，并算好 unit_value / total_value
+
+    # 输出目录与 EES 保持一致：D:\OneDrive\CrossBorderDocs\06_Export_Proofs\{folder_name}
+    folder_name = data_summary.get("folder_name") or "UNKNOWN"
+    out_dir = os.path.join(CONFIG["output_dir"], folder_name)
+    os.makedirs(out_dir, exist_ok=True)
+    pdf_path = os.path.join(out_dir, f"CommercialInvoice_{invoice_no}.pdf")
+
+    # ========= reportlab 文档基础 =========
+    doc = SimpleDocTemplate(
+        pdf_path,
+        pagesize=A4,
+        rightMargin=2*cm, leftMargin=2*cm,
+        topMargin=1.8*cm, bottomMargin=1.5*cm
+    )
+    styles = getSampleStyleSheet()
+    normal = styles["Normal"]
+    title_style = ParagraphStyle(
+        "title", parent=normal,
+        fontSize=16, leading=20,
+        alignment=1,  # center
+        spaceAfter=10
+    )
+    h2 = ParagraphStyle(
+        "h2", parent=normal,
+        fontSize=12, leading=15,
+        spaceBefore=8, spaceAfter=6
+    )
+    desc_style = ParagraphStyle(
+        "desc",
+        fontName="HeiseiKakuGo-W5",
+        fontSize=8, leading=10,
+        wordWrap="CJK"
+    )
+
+    def _nz(v, fb="N/A"):
+        s = str(v or "").strip()
+        return s or fb
+
+    exp, con = CONFIG["exporter"], CONFIG["consignee"]
+
+    story = []
+
+    # ---------- Title ----------
+    story.append(Paragraph("<b>COMMERCIAL INVOICE</b>", title_style))
+
+    # ---------- Exporter & Consignee ----------
+    exporter_info = f"""
+    <b>Exporter (UK)</b><br/>
+    {exp['name']}<br/>{exp['address']}<br/>
+    Company No.: {_nz(exp.get('company_no'))}<br/>
+    VAT No.: {_nz(exp.get('vat_no'))}<br/>
+    EORI: {_nz(exp.get('eori_no'))}<br/>
+    Phone: {_nz(exp.get('phone'))}<br/>
+    Email: {_nz(exp.get('email'))}
+    """
+
+    consignee_info = f"""
+    <b>Buyer / Consignee (Hong Kong)</b><br/>
+    {con['name']}<br/>{con['address']}<br/>
+    Phone: {_nz(con.get('phone'))}<br/>
+    Email: {_nz(con.get('email'))}
+    """
+
+    t_party = Table(
+        [[Paragraph(exporter_info, normal), Paragraph(consignee_info, normal)]],
+        colWidths=[8*cm, 8*cm]
+    )
+    story.extend([t_party, Spacer(1, 8)])
+
+    # ---------- Invoice Details ----------
+    story.append(Paragraph("<b>Invoice Details</b>", h2))
+
+    invoice_date = data_summary.get("uk_invoice_date")
+    currency = _nz(data_summary.get("currency"), "GBP")
+    total_value = float(data_summary.get("total_value_gbp") or 0)
+    total_qty = int(float(data_summary.get("total_quantity") or 0))
+    carrier_name = _nz(data_summary.get("carrier_name"), CONFIG["carrier"])
+    tracking_no = _nz(data_summary.get("tracking_no"), "N/A")
+
+    tbl_details = [
+        ["Invoice No.", invoice_no],
+        ["Invoice Date", _nz(invoice_date)],
+        ["Currency", currency],
+        ["Total Value (GBP)", f"{total_value:,.2f}"],
+        ["Total Quantity", f"{total_qty}"],
+        ["Incoterms 2020", "DAP Hong Kong (default)"],
+        ["Payment Terms", "100% Prepaid (Trade Payment)"],
+        ["Reason for Export", "Commercial Export"],
+        ["VAT Status", "Zero-rated export (0%), HMRC Notice 703"],
+        ["Carrier", carrier_name],
+        ["Tracking Reference", tracking_no],
+    ]
+
+    tbl = Table(tbl_details, colWidths=[5*cm, 10*cm])
+    tbl.setStyle(TableStyle([
+        ("GRID", (0,0), (-1,-1), 0.25, colors.grey),
+        ("FONT", (0,0), (-1,-1), "HeiseiKakuGo-W5", 9),
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
+    ]))
+    story.extend([tbl, Spacer(1, 8)])
+
+    # ---------- Itemized Goods (Invoice Lines) ----------
+    story.append(Paragraph("<b>Itemized Goods</b>", h2))
+
+    item_rows = [["No.", "Product Code / SKU", "Description", "Quantity", "Unit Price (GBP)", "Line Total (GBP)"]]
+
+    grand_total, grand_qty = 0.0, 0
+    line_no = 1
+    for _, r in items.iterrows():
+        q = int(r.get("quantity", 0) or 0)
+        if q <= 0:
+            continue
+
+        tv = float(r.get("total_value", 0.0) or 0.0)
+        uv = float(r.get("unit_value", 0.0) or 0.0)
+        grand_qty += q
+        grand_total += tv
+
+        item_rows.append([
+            str(line_no),
+            str(r.get("skuid") or ""),
+            Paragraph(str(r.get("product_description") or ""), desc_style),
+            f"{q}",
+            f"{uv:,.2f}",
+            f"{tv:,.2f}",
+        ])
+        line_no += 1
+
+    # Totals row
+    item_rows.append([
+        "",
+        "",
+        Paragraph("<b>TOTALS</b>", desc_style),
+        Paragraph(f"<b>{grand_qty}</b>", desc_style),
+        "",
+        Paragraph(f"<b>{grand_total:,.2f}</b>", desc_style),
+    ])
+
+    goods_table = Table(
+        item_rows,
+        colWidths=[1.0*cm, 3.0*cm, 7.0*cm, 2.0*cm, 2.5*cm, 2.5*cm]
+    )
+    goods_table.setStyle(TableStyle([
+        ("GRID", (0,0), (-1,-1), 0.25, colors.grey),
+        ("FONT", (0,0), (-1,-1), "HeiseiKakuGo-W5", 8),
+        ("BACKGROUND", (0,0), (-1,0), colors.whitesmoke),
+        ("ALIGN", (0,1), (0,-1), "CENTER"),
+        ("ALIGN", (3,1), (5,-2), "RIGHT"),
+        ("BACKGROUND", (0,-1), (-1,-1), colors.lightgrey),
+    ]))
+    story.extend([goods_table, Spacer(1, 10)])
+
+    # ---------- Declaration ----------
+    story.append(Paragraph("<b>Declaration by Exporter</b>", h2))
+    declaration_text = (
+        "I hereby certify that the information on this Commercial Invoice is true and correct, "
+        "that the goods described herein are intended for export from the United Kingdom, "
+        "and that this supply is treated as zero-rated for VAT purposes under HMRC Notice 703. "
+        "All supporting documents (including UK supplier invoices, packing lists, freight "
+        "documents, and proof of export) are retained on file for the statutory period."
+    )
+    story.append(Paragraph(declaration_text, normal))
+
+    story.extend([
+        Spacer(1, 30),
+        Paragraph("Exporter: EMINZORA TRADE LTD", normal),
+        Spacer(1, 8),
+        Paragraph("Name: _________________________________", normal),
+        Spacer(1, 8),
+        Paragraph("Title: Director", normal),
+        Spacer(1, 8),
+        Paragraph("Signature: ____________________________", normal),
+        Spacer(1, 8),
+        Paragraph("Date: _________________________________", normal),
+        Spacer(1, 30),
+    ])
+
+    doc.build(story)
+    print(f"[OK] Commercial Invoice generated: {pdf_path}")
+
 # ---------- CLI ----------
 if __name__ == "__main__":
     invoice_no = input("Enter invoice no [default: GB-EMINZORA-251031-1]: ").strip() or "GB-EMINZORA-251031-1"

@@ -110,7 +110,29 @@ def generate_publication_excels(brand: str):
         print("⚠️ 没有符合条件的商品，任务结束")
         return
 
-    price_map = df_codes.set_index("product_code")[["original_price_gbp", "discount_price_gbp"]].to_dict("index")
+    # === 新增：检测重复 product_code 并打印出来 ===
+    dup_codes = df_codes[df_codes.duplicated(subset="product_code", keep=False)]
+
+    if not dup_codes.empty:
+        print("\n❗❗ 检测到重复的商品编码（导致 set_index 失败）:")
+        for c in sorted(dup_codes["product_code"].unique()):
+            print(f"   ⚠ 重复编码: {c}")
+            print(dup_codes[dup_codes["product_code"] == c])
+        print("❗ 请检查以上编码的 TXT 或数据库记录。")
+
+    # === 修复：自动去重，保留每个编码一行 ===
+    df_codes_unique = (
+        df_codes
+        .sort_values(["product_code", "discount_price_gbp", "original_price_gbp"])
+        .drop_duplicates(subset="product_code", keep="last")
+    )
+
+    # === 原来的代码 ===
+    price_map = df_codes_unique.set_index("product_code")[["original_price_gbp", "discount_price_gbp"]].to_dict("index")
+
+
+
+
     gender_map = {
         k.strip().upper(): v for k, v in
         pd.read_sql(f"SELECT DISTINCT product_code, gender FROM {config['TABLE_NAME']}", engine)
