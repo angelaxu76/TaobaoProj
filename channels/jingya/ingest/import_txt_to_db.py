@@ -4,7 +4,7 @@ from pathlib import Path
 from psycopg2.extras import execute_batch
 from config import BRAND_CONFIG, BRAND_DISCOUNT
 from common_taobao.ingest.txt_parser import jingya_parse_txt_file
-
+from channels.jingya.utils.brand_price_rules import compute_brand_base_price
 try:
     from common_taobao.core.price_utils import calculate_jingya_prices
 except Exception:
@@ -21,17 +21,17 @@ def _safe_float(x) -> float:
     except Exception:
         return 0.0
 
-def _brand_discount(brand: str) -> float:
-    return float(BRAND_DISCOUNT.get(brand.lower().strip(), 1.0))
+# def _brand_discount(brand: str) -> float:
+#     return float(BRAND_DISCOUNT.get(brand.lower().strip(), 1.0))
 
-def _compute_base_price(original_gbp, discount_gbp, brand: str) -> float:
-    o = _safe_float(original_gbp)
-    d = _safe_float(discount_gbp)
-    if o > 0 and d > 0:
-        base_raw = min(o, d)
-    else:
-        base_raw = d if d > 0 else o
-    return base_raw * _brand_discount(brand)
+# def _compute_base_price(original_gbp, discount_gbp, brand: str) -> float:
+#     o = _safe_float(original_gbp)
+#     d = _safe_float(discount_gbp)
+#     if o > 0 and d > 0:
+#         base_raw = min(o, d)
+#     else:
+#         base_raw = d if d > 0 else o
+#     return base_raw * _brand_discount(brand)
 
 def import_txt_to_db_supplier(brand_name: str):
     brand_name = brand_name.lower()
@@ -70,7 +70,8 @@ def import_txt_to_db_supplier(brand_name: str):
         if sc < MIN_STOCK_THRESHOLD:
             sc = 0
 
-        base = _compute_base_price(original_price_gbp, discount_price_gbp, brand_name)
+        base = compute_brand_base_price(brand_name, original_price_gbp, discount_price_gbp)
+
         if base > 0:
             try:
                 untaxed, retail = calculate_jingya_prices(base, delivery_cost=7, exchange_rate=9.7)
