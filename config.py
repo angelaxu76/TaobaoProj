@@ -2,7 +2,7 @@ from pathlib import Path
 
 # === 数据库连接配置 ===
 PGSQL_CONFIG = {
-    "host": "192.168.5.9",
+    "host": "192.168.5.243",
     "port": 5432,
     "user": "postgres",
     "password": "516518",
