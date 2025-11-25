@@ -118,8 +118,26 @@ def add_local_logo(img, text: str = None):
     return Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
 
 
-def pipeline_text_watermark(input_dir: str, output_dir: str) -> None:
-    """批量处理目录中的图片，加水印后保存到指定目录"""
+def pipeline_text_watermark(
+    input_dir: str,
+    output_dir: str,
+    watermark_text: str | None = None,
+) -> None:
+    """
+    批量处理目录中的图片，加水印后保存到指定目录
+
+    watermark_text:
+        如果不为 None，则在这里覆盖全局水印文字：
+        - DIAGONAL_TEXT（斜纹水印）
+        - LOCAL_LOGO_TEXT（右下角文字）
+    """
+    global DIAGONAL_TEXT, LOCAL_LOGO_TEXT
+
+    # 如果调用时传入了水印文字，就覆盖全局配置
+    if watermark_text:
+        DIAGONAL_TEXT = watermark_text
+        LOCAL_LOGO_TEXT = watermark_text
+
     os.makedirs(output_dir, exist_ok=True)
     exts = {".jpg", ".jpeg", ".png"}
 

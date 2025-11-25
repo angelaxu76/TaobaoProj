@@ -24,6 +24,7 @@ from config import BARBOUR, BRAND_CONFIG
 from brands.barbour.core.site_utils import assert_site_or_raise as canon
 from brands.barbour.core.sim_matcher import match_product, choose_best
 from common_taobao.core.size_utils import clean_size_for_barbour as _norm_size  # 尺码清洗
+from common_taobao.core.driver_auto import build_uc_driver
 
 # ================== 常量/路径 ==================
 SITE_NAME = canon("houseoffraser")
@@ -1178,15 +1179,20 @@ def parse_info_new(html: str, url: str, conn) -> Dict[str, Any]:
 
 # ================== Selenium 基础 ==================
 def get_driver(headless: bool = False):
-    options = uc.ChromeOptions()
-    if headless: options.add_argument("--headless=new")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--start-maximized")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--lang=en-GB")
-    options.add_argument("accept-language=en-GB,en-US;q=0.9,en;q=0.8")
-    return uc.Chrome(options=options)
+    """
+    使用 TaobaoProj 的通用自动驱动：build_uc_driver
+    - 自动检测本机 Chrome 主版本
+    - 自动选择正确驱动
+    - 自动清除 uc 缓存
+    - 更稳定，避免 WinError 10060 / session not created
+    """
+    extra = [
+        "--disable-blink-features=AutomationControlled",
+        "--lang=en-GB",
+        "accept-language=en-GB,en-US;q=0.9,en;q=0.8",
+    ]
+    return build_uc_driver(headless=headless, extra_options=extra, verbose=True)
+
 
 def fetch_product_info_with_single_driver(driver, url: str) -> Dict[str, Any]:
     driver.get(url)
