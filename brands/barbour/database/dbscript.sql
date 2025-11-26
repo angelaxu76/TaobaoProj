@@ -175,7 +175,7 @@ CREATE TABLE barbour_inventory (
     UNIQUE (product_code, size)
 );
 
--- ========== 6. Barbour supplier 映射关系表 ==========
+-- ========== 6. Barbour supplier 映射关系表 =========
 
 CREATE TABLE barbour_supplier_map (
   product_code VARCHAR(50) PRIMARY KEY,
