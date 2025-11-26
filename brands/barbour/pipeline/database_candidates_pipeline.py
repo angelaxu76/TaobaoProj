@@ -11,7 +11,7 @@ def pipeline_barbour():
 
     # —— 人工在 Excel 里把 product_code 填好后 —— 
     # 3) 回填编码到 barbour_products（source_rank=2），并自动从候选池删除
-    import_codes_from_excel(r"D:\TB\Products\barbour\output\barbour_candidates_20250914_082712.xlsx")
+    import_codes_from_excel(r"D:\TB\Products\barbour\document\barbour_candidates_20250914_082712.xlsx")
 
     # 4) 回填编码到 houseoffraser 的 TXT 文件，并重命名
     backfill_product_codes_to_txt("houseoffraser")
