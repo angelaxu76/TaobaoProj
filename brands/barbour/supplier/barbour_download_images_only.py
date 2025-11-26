@@ -22,6 +22,48 @@ SALSIFY_TMPL = (
     "s--i74AAA0n--/c_fill,w_1000,h_1334,f_auto/{name}.jpg"
 )
 
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+def worker(url, image_folder):
+    """每个线程独立运行，不共享 session。"""
+    try:
+        code, name = extract_code_and_name(url)
+        with requests.Session() as session:
+            saved = download_images_for_page(session, url, image_folder, code, name)
+        return (url, saved, None)
+    except Exception as e:
+        return (url, 0, str(e))
+
+
+def download_barbour_images_multi(max_workers=6):
+    links_file = BARBOUR["LINKS_FILE"]
+    image_folder = BARBOUR["IMAGE_DOWNLOAD"]
+    os.makedirs(image_folder, exist_ok=True)
+
+    with open(links_file, "r", encoding="utf-8") as f:
+        urls = [line.strip() for line in f if line.strip()]
+
+    print(f"📦 共 {len(urls)} 个商品链接，开启 {max_workers} 线程并发下载...")
+
+    results = []
+    with ThreadPoolExecutor(max_workers=max_workers) as exe:
+        futures = {exe.submit(worker, url, image_folder): url for url in urls}
+
+        for fut in as_completed(futures):
+            url = futures[fut]
+            try:
+                u, saved, err = fut.result()
+                if err:
+                    print(f"❌ 失败: {url} 错误: {err}")
+                else:
+                    print(f"✅ 完成: {url}  下载 {saved} 张")
+            except Exception as e:
+                print(f"🔴 异常线程: {url} -> {e}")
+
+    print("🎯 并发下载全部完成！")
+
+
 # ========== 工具函数 ==========
 def extract_code_and_name(url: str):
     """
@@ -366,5 +408,3 @@ def download_barbour_images():
 
     print("🎯 所有图片处理完毕。")
 
-if __name__ == "__main__":
-    download_barbour_images()
