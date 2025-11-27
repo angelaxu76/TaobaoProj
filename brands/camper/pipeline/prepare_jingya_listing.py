@@ -64,7 +64,7 @@ def main():
         input_dir=r"D:\TB\Products\camper\document\store_prices\input",
         output_dir=r"D:\TB\Products\camper\repulibcation\store_prices\output",
         suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
-        drop_rows_without_price=False，
+        drop_rows_without_price=False,
         blacklist_excel_file=r"D:\TB\Products\camper\document\camper_blacklist_excel.xlsx" # 不丢行，查不到的价格留空
     )
 
