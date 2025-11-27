@@ -62,20 +62,29 @@ def compute_brand_base_price(brand: str, original_gbp, discount_gbp) -> float:
     # - 如果官网折扣没那么狠（site_ratio >= ratio_conf），则按折后价 d 计算；
     # - 无法判断折扣时，用 raw * ratio_conf。
     if brand == "camper":
-        ratio_conf = float(BRAND_DISCOUNT.get("camper", 1.0))
+        extra_ratio = float(BRAND_DISCOUNT.get("camper", 1.0))
 
-        if o > 0 and d > 0:
-            site_ratio = d / o  # 官网实际折扣比例（0~1）
+        o = _safe_float(original_gbp)
+        d = _safe_float(discount_gbp)
 
-            if site_ratio < ratio_conf:
-                # 官网折扣更狠 → 按“期望折扣”封顶
-                return o * ratio_conf
-            else:
-                # 官网折扣不够狠 → 直接用折后价，不再额外 * ratio_conf
-                return d
-        else:
-            # 没有明确折扣信息 → 按默认 ratio_conf 打折
-            return raw * ratio_conf
+        prices = []
+
+        # 把有效价格加入列表（>0）
+        if o > 0:
+            prices.append(o)
+        if d > 0:
+            prices.append(d)
+
+        if not prices:
+            # 没有任何有效价格 → 返回 0
+            return 0.0
+
+        # 两者都有效 → 取较小的；只有一个有效 → 自动就是那一个
+        base_raw = min(prices)
+
+        # 再乘以 config 的折扣（0.75）
+        return base_raw * extra_ratio
+
 
     # ========== ECCO 规则 ==========
     # 需求：
