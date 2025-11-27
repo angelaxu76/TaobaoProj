@@ -30,9 +30,21 @@ def barbour_database_import_pipleline():
     # backfill_barbour_inventory_single_supplier()
 
 
+    # 常规场景3: TODO 数据库全部清空后需要重新填充数据。
+    # clear_barbour_inventory()
+    # insert_missing_products_with_zero_stock("barbour")
+    # insert_jingyaid_to_db("barbour")
+
+    xlsx_path = r"D:\TB\Products\barbour\document\barbour_exclude_list.xlsx"
+    # apply_barbour_supplier_overrides(xlsx_path,dry_run=True)
+    # apply_barbour_supplier_overrides(xlsx_path,dry_run=False)
+
+    fill_supplier_map(force_refresh=False, exclude_xlsx=xlsx_path)
+    backfill_barbour_inventory_single_supplier()
 
 
-    # 常规场景3: TODO 为低库存的商品重新分配供货商，并更新和设置所有商品的库存和价格
+
+    # 常规场景4: TODO 为低库存的商品重新分配供货商，并更新和设置所有商品的库存和价格
     # 仅预览建议，不改库，同时跳过排除清单中列出的编码
     # reassign_low_stock_suppliers(
     #     size_threshold=3,
