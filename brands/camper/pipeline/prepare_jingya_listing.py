@@ -61,10 +61,11 @@ def main():
     print("\n🟡 Step: 6️⃣ 获取excel文件，用来更新各个淘宝店铺价格，输入文件夹可以是多个店铺的导出文件")
     generate_price_excels_bulk(
         brand="camper",
-        input_dir=r"D:\TB\Products\camper\repulibcation\store_prices\input",
+        input_dir=r"D:\TB\Products\camper\document\store_prices\input",
         output_dir=r"D:\TB\Products\camper\repulibcation\store_prices\output",
         suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
-        drop_rows_without_price=False  # 不丢行，查不到的价格留空
+        drop_rows_without_price=False，
+        blacklist_excel_file=r"D:\TB\Products\camper\document\camper_blacklist_excel.xlsx" # 不丢行，查不到的价格留空
     )
 
     print("\n✅ CAMPER pipeline 完成")
