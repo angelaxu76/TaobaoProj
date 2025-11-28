@@ -79,18 +79,9 @@ def strategy_ratio_when_no_discount(
     shipping_fee: float,
 ) -> float:
     """
-    通用策略（统一第三策略 + 第二策略）：
-
-    1. 若折扣价 discounted_price > 0 → 使用折扣价
-    2. 否则如果原价 original_price > 0 → 使用原价 * extra_ratio
-    3. extra_ratio 一般为 0（表示不额外打折），也支持非 0 折扣
-    4. 最后加上 shipping_fee（如果网站有固定运费）
-    5. 任何价格为 0 或无效都视为 None
-
-    这是一个通用的基础「店铺逻辑」策略：
-    - 折扣价优先（不叠加额外折扣）
-    - 全价商品根据站点规则按额外折扣率打折
-    - 加站点运费（如 PMD 固定配送费）
+    有折扣就用折扣价（不叠加额外折扣）；
+    没折扣时，对原价按 extra_ratio 打折；
+    最后加上 shipping_fee。
     """
 
     op = _to_f(original_price)
@@ -102,26 +93,21 @@ def strategy_ratio_when_no_discount(
     if dp is not None and dp <= 0:
         dp = None
 
-    # 1) 基础价选择
+    # 1) 先决定基础价
     if dp is not None:
-        base_before = dp
+        # 有折扣价 → 直接用折扣价，不再乘 extra_ratio
+        base_after_ratio = round(dp, 2)
     elif op is not None:
-        base_before = op
+        # 没折扣价 → 原价 * extra_ratio
+        try:
+            ratio = float(extra_ratio)
+        except (TypeError, ValueError):
+            ratio = 1.0
+        base_after_ratio = round(op * ratio, 2)
     else:
         return 0.0
 
-    # 2) 额外折扣
-    try:
-        ratio = float(extra_ratio)
-    except (TypeError, ValueError):
-        ratio = 0.0
-
-    if ratio and ratio > 0:
-        base_after_ratio = round(base_before * ratio, 2)
-    else:
-        base_after_ratio = round(base_before, 2)
-
-    # 3) 加运费
+    # 2) 加运费
     try:
         shipping = float(shipping_fee) if shipping_fee is not None else 0.0
     except (TypeError, ValueError):
