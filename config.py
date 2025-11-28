@@ -18,10 +18,10 @@ SETTINGS = {
 }
 
 BRAND_STRATEGY = {
-    "camper": "strategy_min_price_times_ratio",
-    "ecco": "strategy_discount_priority",
-    "geox": "strategy_discount_priority",
-    "clarks_jingya": "strategy_min_price_times_ratio",
+    "camper": "min_price_times_ratio",
+    "ecco": "discount_priority",          # 如果你已经改 ecco 用策略3
+    "geox": "discount_priority",
+    "clarks_jingya": "min_price_times_ratio",
 }
 
 
