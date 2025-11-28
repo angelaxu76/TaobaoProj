@@ -495,31 +495,10 @@ def extract_prices(html, soup):
     def _parse_money(text: str) -> float:
         if not text:
             return 0.0
-        # 提取 153 / 170 这类数字
         m = re.search(r'(\d+(?:\.\d+)?)', text.replace(",", ""))
         return float(m.group(1)) if m else 0.0
 
-    # 1) 优先：新版 ECCO DOM 中的 "Discounted Price / Original Price"
-    try:
-        # 主商品区域的价格，一般是页面中第一个 product-price / product-discounted-price
-        p_discounted = soup.select_one("p.product-price")
-        p_original   = soup.select_one("p.product-discounted-price")
-
-        disc_val = _parse_money(p_discounted.get_text(" ", strip=True)) if p_discounted else 0.0
-        orig_val = _parse_money(p_original.get_text(" ", strip=True)) if p_original else 0.0
-
-        if orig_val > 0 or disc_val > 0:
-            # 有原价就优先用原价，没有就用折后价当原价
-            price = orig_val if orig_val > 0 else disc_val
-
-            # 只有在“原价”和“折后价”都存在且不相等时，才认为有打折价
-            adjusted = disc_val if (orig_val > 0 and disc_val > 0 and disc_val != orig_val) else 0.0
-            return price, adjusted
-    except Exception:
-        # 出错不影响后面逻辑
-        pass
-
-    # 2) 旧逻辑：onProductPageInit（老站）
+    # 1) 旧逻辑：老站的 onProductPageInit
     try:
         m = re.search(r'productdetailctrl\.onProductPageInit\((\{.*?\})\)', html, re.DOTALL)
         if m:
@@ -531,41 +510,53 @@ def extract_prices(html, soup):
     except Exception:
         pass
 
-    # 3) JSON-LD 回退：只有一个 offers.price（通常是当前售卖价）
+    # 2) JSON-LD 中的当前价格（一般是折后价）
+    current_price = 0.0
     try:
         for s in soup.find_all("script", {"type": "application/ld+json"}):
             data = json.loads(s.string or "{}")
             items = data if isinstance(data, list) else [data]
             for item in items:
                 offers = item.get("offers")
-                if isinstance(offers, dict):
-                    price = float(str(offers.get("price", "0")).replace(",", "") or 0)
-                    # 没有原价信息，只能当成原价，用 AdjustedPrice = 0
-                    return price, 0.0
+                if isinstance(offers, dict) and "price" in offers:
+                    current_price = float(str(offers.get("price", "0")).replace(",", "") or 0)
+                    break
+            if current_price:
+                break
     except Exception:
         pass
 
-    # 4) 兜底：在脚本 JSON 里随缘找 "price"/"salePrice"
+    # 3) DOM 里的原价：<p data-testid="RecommendedPrice">£170.00</p>
+    orig_price = 0.0
     try:
-        for s in soup.find_all("script"):
-            txt = s.string or ""
-            if not txt or "price" not in txt:
-                continue
-
-            m = re.search(r'"price"\s*:\s*"?(\d+(?:\.\d+)?)"?', txt)
-            if not m:
-                continue
-            price = float(m.group(1))
-
-            m2 = re.search(r'"(salePrice|specialPrice|finalPrice)"\s*:\s*"?(\d+(?:\.\d+)?)"?', txt, re.I)
-            adjusted = float(m2.group(2)) if m2 else 0.0
-
-            return price, adjusted
+        p_orig = soup.find("p", attrs={"data-testid": "RecommendedPrice"})
+        if p_orig:
+            orig_price = _parse_money(p_orig.get_text(" ", strip=True))
     except Exception:
         pass
 
-    # 全部失败
+    # 3.1 优先用「原价 + 折后价」组合
+    if orig_price > 0 and current_price > 0 and orig_price > current_price:
+        return orig_price, current_price
+
+    # 3.2 只有一个价格：当成原价
+    if current_price > 0:
+        return current_price, 0.0
+
+    # 4) 兜底：只从 DOM 拿折后价（极少数没有 JSON-LD 的页面）
+    try:
+        p_disc = soup.select_one("p.product-price")
+        disc_val = _parse_money(p_disc.get_text(" ", strip=True)) if p_disc else 0.0
+        if orig_price > 0 and disc_val > 0 and orig_price > disc_val:
+            return orig_price, disc_val
+        if disc_val > 0:
+            return disc_val, 0.0
+    except Exception:
+        pass
+
+    # 5) 全部失败
     return 0.0, 0.0
+
 
 
 def build_size_fields_jingya(rows):
