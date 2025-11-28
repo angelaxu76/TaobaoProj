@@ -79,32 +79,57 @@ def strategy_ratio_when_no_discount(
     shipping_fee: float,
 ) -> float:
     """
-    有折扣就用折扣价（不叠加额外折扣）；
-    没折扣时，对原价按 extra_ratio 打折；
-    最后加上 shipping_fee。
+    策略：ratio_when_no_discount
+
+    语义（改进版，考虑 dp == op / dp=0 等情况）：
+    - 若 op 和 dp 同时存在：
+        * 若 dp < op  => 视为“真的打折了”，直接用 dp（不再额外打折）
+        * 若 dp >= op => 视为“没打折”，忽略 dp，用 op * extra_ratio
+    - 若只有 dp（op 为空）：
+        * 视为“网站给的有效售价”，直接用 dp（不再额外打折）
+    - 若只有 op（dp 为空或为 0）：
+        * 视为“没打折”，用 op * extra_ratio
+    - 最后统一加 shipping_fee
     """
 
     op = _to_f(original_price)
     dp = _to_f(discounted_price)
 
-    # 过滤无效数据
+    # 过滤无效数值（<=0 当作没有）
     if op is not None and op <= 0:
         op = None
     if dp is not None and dp <= 0:
         dp = None
 
-    # 1) 先决定基础价
-    if dp is not None:
-        # 有折扣价 → 直接用折扣价，不再乘 extra_ratio
+    # 1) 先算折扣前/后的基准价 base_after_ratio
+    if op is not None and dp is not None:
+        # 两个都有：比较大小判断是不是“真打折”
+        if dp < op:
+            # 确认是打折价 -> 不叠加 extra_ratio
+            base_after_ratio = round(dp, 2)
+        else:
+            # dp >= op -> 说明没有实际折扣（或者展示价=原价）
+            # 忽略 dp，当成未打折价，给原价额外折扣
+            try:
+                r = float(extra_ratio)
+            except (TypeError, ValueError):
+                r = 1.0
+            base_after_ratio = round(op * r, 2)
+
+    elif dp is not None and op is None:
+        # 只有一个 dp：不知道是否打折，保守：视作最终售价，不再叠加 extra_ratio
         base_after_ratio = round(dp, 2)
-    elif op is not None:
-        # 没折扣价 → 原价 * extra_ratio
+
+    elif op is not None and dp is None:
+        # 只有原价：肯定没打折，对原价按 extra_ratio 打折
         try:
-            ratio = float(extra_ratio)
+            r = float(extra_ratio)
         except (TypeError, ValueError):
-            ratio = 1.0
-        base_after_ratio = round(op * ratio, 2)
+            r = 1.0
+        base_after_ratio = round(op * r, 2)
+
     else:
+        # 两个都没有
         return 0.0
 
     # 2) 加运费
