@@ -23,9 +23,9 @@ def barbour_database_import_pipleline():
 
 
     # 常规场景2: TODO 在鲸芽发布了新的商品后，为新的商品绑定供货商，并更新和设置所有商品的库存和价格
-    # clear_barbour_inventory()
-    # insert_missing_products_with_zero_stock("barbour")
-    # insert_jingyaid_to_db("barbour")
+    clear_barbour_inventory()
+    insert_missing_products_with_zero_stock("barbour")
+    insert_jingyaid_to_db("barbour")
     # fill_supplier_map(force_refresh=False, exclude_xlsx=r"D:\TB\Products\barbour\document\barbour_exclude_list.xlsx")
     # backfill_barbour_inventory_single_supplier()
 
@@ -39,8 +39,8 @@ def barbour_database_import_pipleline():
     # apply_barbour_supplier_overrides(xlsx_path,dry_run=True)
     # apply_barbour_supplier_overrides(xlsx_path,dry_run=False)
 
-    fill_supplier_map(force_refresh=False, exclude_xlsx=xlsx_path)
-    backfill_barbour_inventory_single_supplier()
+    fill_supplier_map(force_refresh=True, exclude_xlsx=xlsx_path)
+    # backfill_barbour_inventory_single_supplier()
 
 
 
