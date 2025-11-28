@@ -17,7 +17,12 @@ SETTINGS = {
     "EXCHANGE_RATE": 9.7
 }
 
-
+BRAND_STRATEGY = {
+    "camper": "strategy_min_price_times_ratio",
+    "ecco": "strategy_discount_priority",
+    "geox": "strategy_discount_priority",
+    "clarks_jingya": "strategy_min_price_times_ratio",
+}
 
 
 # === 项目根路径 ===
