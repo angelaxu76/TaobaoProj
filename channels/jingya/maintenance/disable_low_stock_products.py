@@ -10,7 +10,7 @@ BRAND_MAP = {
 }
 
 # ✅ 可配置变量
-MIN_SIZES = 1  # 如果有效尺码数 <= 这个值，商品下架（库存清零 + is_published=False）
+MIN_SIZES = 2  # 如果有效尺码数 <= 这个值，商品下架（库存清零 + is_published=False）
 
 def disable_low_stock_products(brand_name: str):
     brand_name = brand_name.lower()
@@ -56,11 +56,3 @@ def disable_low_stock_products(brand_name: str):
             """
             cur.execute(update_sql, (product_codes,))
             print(f"✅ [{brand_name.upper()}] 已更新 {cur.rowcount} 条记录（库存清零 + 下架）")
-
-if __name__ == "__main__":
-    # 示例：处理 Camper Global
-    disable_low_stock_products("camper_global")
-
-    # 如果需要一次性处理所有品牌，可以循环调用：
-    # for brand in BRAND_MAP.keys():
-    #     disable_low_stock_products(brand)
