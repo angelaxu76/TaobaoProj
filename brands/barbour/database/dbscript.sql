@@ -73,8 +73,9 @@ CREATE TABLE barbour_offers (
   product_code  VARCHAR(50),
 
   -- 价格与库存
-  price_gbp            NUMERIC(10,2),          -- 当前售价（可为空）
-  original_price_gbp   NUMERIC(10,2),          -- 原价（RRP）
+  price_gbp            NUMERIC(10,2),          -- TXT 中原价（RRP，Product Price）
+  original_price_gbp   NUMERIC(10,2),          -- TXT 中折扣价（如果有，Adjusted/Now Price）
+  sale_price_gbp       NUMERIC(10,2),          -- 经过策略+运费计算后的“供货基准价”
   stock_count          INT DEFAULT 0,          -- 数字库存
 
   -- 维护字段
@@ -83,20 +84,15 @@ CREATE TABLE barbour_offers (
   last_seen     TIMESTAMP DEFAULT NOW(),
   last_checked  TIMESTAMP DEFAULT NOW(),
 
-  -- ============ 生成列 ============
-
-  -- 实际销售价：如果有折扣价用折扣价，否则用原价
-  sale_price_gbp NUMERIC(10,2)
-    GENERATED ALWAYS AS (COALESCE(price_gbp, original_price_gbp)) STORED,
-
-  -- 折扣百分比
+  -- 折扣百分比：相对于原价（price_gbp）折扣多少
   discount_pct NUMERIC(5,1)
     GENERATED ALWAYS AS (
       CASE
-        WHEN original_price_gbp IS NOT NULL
-         AND COALESCE(price_gbp, original_price_gbp) < original_price_gbp
+        WHEN price_gbp IS NOT NULL
+         AND sale_price_gbp IS NOT NULL
+         AND sale_price_gbp < price_gbp
         THEN ROUND(
-               (1 - COALESCE(price_gbp, original_price_gbp) / NULLIF(original_price_gbp, 0)) * 100,
+               (1 - sale_price_gbp / NULLIF(price_gbp, 0)) * 100,
                1
              )
         ELSE 0
@@ -110,6 +106,7 @@ CREATE TABLE barbour_offers (
   CONSTRAINT chk_price_nonneg CHECK (
     (price_gbp IS NULL OR price_gbp >= 0)
     AND (original_price_gbp IS NULL OR original_price_gbp >= 0)
+    AND (sale_price_gbp IS NULL OR sale_price_gbp >= 0)
   )
 );
 

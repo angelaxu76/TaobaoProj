@@ -35,33 +35,33 @@ def main():
     # print("\n🟡 Step: 2️⃣ 抓取 ECCO 商品链接")
     # ecco_get_links()
 
-    print("\n🟡 Step: 3️⃣ 抓取 ECCO 商品信息 & 生成 TXT")
-    ecco_fetch_info()
+    # print("\n🟡 Step: 3️⃣ 抓取 ECCO 商品信息 & 生成 TXT")
+    # ecco_fetch_info()
 
-    # print("\n🟡 Step: 4️⃣ TXT 导入数据库（鲸芽专用结构）")
-    # import_txt_to_db_supplier("ecco")
+    print("\n🟡 Step: 4️⃣ TXT 导入数据库（鲸芽专用结构）")
+    import_txt_to_db_supplier("ecco")
 
-    # print("\n🟡 Step: 5️⃣ 导入鲸芽渠道Excel，写入渠道商品ID/SKUID 绑定关系")
-    # insert_jingyaid_to_db("ecco")
+    print("\n🟡 Step: 5️⃣ 导入鲸芽渠道Excel，写入渠道商品ID/SKUID 绑定关系")
+    insert_jingyaid_to_db("ecco")
 
-    # print("\n🟡 Step: 5️⃣ 处理已下架商品：补库存=0，防止违规超卖")
-    # insert_missing_products_with_zero_stock("ecco")
+    print("\n🟡 Step: 5️⃣ 处理已下架商品：补库存=0，防止违规超卖")
+    insert_missing_products_with_zero_stock("ecco")
 
     # print("\n🟡 Step: 5️⃣ 根据尺码数量，自动下架稀缺尺码的商品，避免差评/售后")
     # disable_low_stock_products("ecco")
 
   
 
-    # print("\n🟡 Step: 6️⃣ 生成鲸芽【库存更新】Excel")
-    # stock_dest_excel_folder = r"D:\TB\Products\ecco\repulibcation\stock"
-    # export_stock_excel("ecco", stock_dest_excel_folder)
+    print("\n🟡 Step: 6️⃣ 生成鲸芽【库存更新】Excel")
+    stock_dest_excel_folder = r"D:\TB\Products\ecco\repulibcation\stock"
+    export_stock_excel("ecco", stock_dest_excel_folder)
 
-    # # print("\n🟡 Step: 6️⃣ 生成鲸芽【价格更新】Excel")
-    # price_dest_excel_folder = r"D:\TB\Products\ecco\repulibcation\publication_prices"
-    # export_jiangya_channel_prices("ecco", price_dest_excel_folder)
+    # print("\n🟡 Step: 6️⃣ 生成鲸芽【价格更新】Excel")
+    price_dest_excel_folder = r"D:\TB\Products\ecco\repulibcation\publication_prices"
+    export_jiangya_channel_prices("ecco", price_dest_excel_folder)
 
-    # print("\n🟡 Step: 7️⃣ 为新品生成【鲸芽上新模板】Excel")
-    # generate_publication_excels("ecco")
+    print("\n🟡 Step: 7️⃣ 为新品生成【鲸芽上新模板】Excel")
+    generate_publication_excels("ecco")
 
     # print("\n🟡 Step: 8️⃣ 输出低库存商品列表，准备在鲸芽下架")
     # export_low_stock_for_brand("ecco", threshold=5)

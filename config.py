@@ -127,10 +127,61 @@ BARBOUR = {
 
 
     "SUPPLIER_DISCOUNT_RULES": {
-        "allweathers":        {"type": "coupon_fullprice_only", "ratio": 0.90},
-        "outdoorandcountry":  {"type": "coupon_fullprice_only", "ratio": 0.90},
-        "flannels":           {"type": "none"},   # ✅ 新增 Flannels：目前不参与折扣规则
-        "__default__":        {"type": "none"},
+        # O&C / Allweathers：有折扣价就用折扣价，不再额外打折；
+        # 没有折扣价时，对原价再打 9 折；运费先按 0 配，有需要再加。
+        "outdoorandcountry": {
+            "strategy": "ratio_when_no_discount",   # 对应 strategy_ratio_when_no_discount
+            "extra_ratio": 0.90,
+            "shipping_fee": 0.0,
+        },
+        "allweathers": {
+            "strategy": "all_ratio",
+            "extra_ratio": 0.90,
+            "shipping_fee": 0.0,
+        },
+
+        # Barbour 官网：先简单用“有折扣就再打 extra_ratio”的版本，
+        # 如果你之后明确它不叠加就改成 ratio_when_no_discount
+        "barbour": {
+            "strategy": "all_ratio",                # 对应 strategy_all_ratio
+            "extra_ratio": 1.0,                     # 目前不额外打折
+            "shipping_fee": 0.0,
+        },
+
+        # House of Fraser / Philip Morris / Very / Terraces / Flannels
+        # 先默认：有折扣就用折扣价、没折扣就用原价，不额外打折、不加运费
+        "houseoffraser": {
+            "strategy": "all_ratio",
+            "extra_ratio": 1.0,
+            "shipping_fee": 0.0,
+        },
+        "philipmorris": {
+            "strategy": "ratio_when_no_discount",
+            "extra_ratio": 0.9,
+            "shipping_fee": 0.0,
+        },
+        "very": {
+            "strategy": "ratio_when_no_discount",
+            "extra_ratio": 1.0,
+            "shipping_fee": 4.0,
+        },
+        "terraces": {
+            "strategy": "ratio_when_no_discount",
+            "extra_ratio": 1.0,
+            "shipping_fee": 0.0,
+        },
+        "flannels": {
+            "strategy": "ratio_when_no_discount",
+            "extra_ratio": 1.0,
+            "shipping_fee": 0.0,
+        },
+
+        # 默认兜底：任何没单独配的网站都走这里
+        "__default__": {
+            "strategy": "ratio_when_no_discount",
+            "extra_ratio": 1.0,
+            "shipping_fee": 0.0,
+        },
     },
 
 

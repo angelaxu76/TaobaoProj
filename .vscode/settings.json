@@ -10,6 +10,17 @@
             "username": "postgres",
             "password": "516518",
             "connectionTimeout": 50
+        },
+        {
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "192.168.5.243",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "name": "dbserver",
+            "database": "taobao_inventory_db",
+            "username": "postgres",
+            "password": "516518"
         }
     ],
 

@@ -10,6 +10,11 @@ from brands.barbour.core.keyword_mapping import KEYWORD_EQUIVALENTS
 from common_taobao.core.size_utils import clean_size_for_barbour  # 旧名保留
 from brands.barbour.core.site_utils import canonical_site, assert_site_or_raise
 from config import BARBOUR  # 已有导入就不要重复
+from brands.barbour.core.supplier_price_rules import (
+    strategy_all_ratio,
+    strategy_ratio_when_no_discount,
+)
+
 
 # ---------- 小工具 ----------
 _PRICE_NUM = re.compile(r"([0-9]+(?:\.[0-9]+)?)")
@@ -18,56 +23,45 @@ RE_CODE = re.compile(r'[A-Z]{3}\d{3,4}[A-Z]{2,3}\d{2,3}')
 # ==================== 仅新增：供货商“全价才打折”策略 ====================
 
 
-SUPPLIER_DISCOUNT_RULES = BARBOUR.get("SUPPLIER_DISCOUNT_RULES", {
-    "__default__": {"type": "none"}
-})
+# ========== 供货商价格策略（从 config + supplier_price_rules 统一调度） ==========
 
-def _is_full_price(op, dp, tol=0.01):
+SUPPLIER_DISCOUNT_RULES = BARBOUR.get("SUPPLIER_DISCOUNT_RULES", {})
+
+STRATEGY_MAP = {
+    "all_ratio": strategy_all_ratio,
+    "ratio_when_no_discount": strategy_ratio_when_no_discount,
+}
+
+
+def compute_supplier_sale_price(site_canon: str, op, dp) -> float:
     """
-    认为是“全价”的条件：
-    - 没有页面折扣价（dp is None），或
-    - 折扣价与原价几乎相等（abs(dp - op) <= tol）
+    根据站点（供货商）、原价 op、折扣价 dp，再结合 config 中的
+    SUPPLIER_DISCOUNT_RULES，计算最终的 sale_price_gbp。
+
+    - site_canon: canonical_site 之后的站点名，如 "outdoorandcountry"
+    - op: 原价（TXT 中 Product Price）
+    - dp: 折扣价（TXT 中 Adjusted Price / Now Price）
+
+    返回值：已按 extra_ratio 和 shipping_fee 处理后的最终英镑价。
     """
-    try:
-        if op is None:
-            return False
-        if dp is None:
-            return True
-        return abs(float(dp) - float(op)) <= float(tol)
-    except Exception:
-        return False
+    site_key = (site_canon or "").lower()
+    rule = SUPPLIER_DISCOUNT_RULES.get(
+        site_key,
+        SUPPLIER_DISCOUNT_RULES.get("__default__", {}),
+    )
 
-def _apply_supplier_policy(site_canon: str, op, dp):
-    """
-    计算入库用的英镑价（仅对“全价”按比例打折；markdown 不叠加）
-    返回：effective_price_gbp, original_price_gbp
-    """
-    def _to_f(v):
-        try:
-            return None if v is None else float(v)
-        except Exception:
-            return None
+    strategy_name = (rule.get("strategy") or "ratio_when_no_discount").lower()
+    extra_ratio = rule.get("extra_ratio", 1.0)
+    shipping_fee = rule.get("shipping_fee", 0.0)
 
-    site = (site_canon or "").lower()
-    rule = SUPPLIER_DISCOUNT_RULES.get(site, SUPPLIER_DISCOUNT_RULES.get("__default__", {"type": "none"}))
-    rtype = (rule.get("type") or "none").lower()
-    ratio = float(rule.get("ratio", 1.0))
+    func = STRATEGY_MAP.get(strategy_name)
+    if func is None:
+        # 兜底：当配置错了（写了不存在的 strategy），
+        # 就当「只用折扣价/原价 + 运费，不再额外打折」处理。
+        return strategy_ratio_when_no_discount(op, dp, 1.0, shipping_fee)
 
-    op_f = _to_f(op)
-    dp_f = _to_f(dp)
-    fallback = dp_f if dp_f is not None else op_f
+    return func(op, dp, extra_ratio, shipping_fee)
 
-    if rtype == "coupon_fullprice_only":
-        if _is_full_price(op_f, dp_f) and (op_f is not None) and (op_f > 0):
-            # 仅在“全价”时对原价按 ratio 打折
-            eff = round(op_f * ratio, 2)
-            return eff, op_f
-        # markdown 不叠加：直接用页面已有折扣价（或回退原价）
-        return (fallback if fallback is not None else 0.0), (op_f if op_f is not None else fallback)
-
-    # 默认：不处理，按页面价入库
-    return (fallback if fallback is not None else 0.0), (op_f if op_f is not None else fallback)
-# ==================== 新增结束 ====================
 
 
 def _parse_price(text):
@@ -300,17 +294,21 @@ def insert_offer(info, conn, missing_log: list) -> int:
         return 0
 
     # === 仅替换开始：按供货商策略计算入库英镑价 ===
-    op = _parse_price(info.get("price_line"))              # 原价（Product Price）
-    dp = _parse_price(info.get("adjusted_price_line"))     # 页面折后价（Adjusted/Now Price）
+    # === 仅替换开始：按供货商策略计算 3 类价格 ===
+    # 1）从 TXT 中解析原价和折扣价
+    op = _parse_price(info.get("price_line"))              # TXT: Product Price → 原价
+    dp = _parse_price(info.get("adjusted_price_line"))     # TXT: Adjusted Price / Now Price → 折扣价
 
-    # site 为你的供货商标识变量（已有，不要改名）；如果变量名不同，请用当前作用域里的站点名变量替换
-    effective_price_gbp, original_price_gbp_final = _apply_supplier_policy(site, op, dp)
+    # 2）根据站点 + 策略配置计算最终 sale_price_gbp
+    #    注意：这里的 site 已经是 canonical_site 之后的值（见上面 assert_site_or_raise）
+    sale_price_gbp = compute_supplier_sale_price(site, op, dp)
 
-    # 入库用 price_gbp（用于后续汇率换算/回填）
-    price_gbp = effective_price_gbp
-
-    # original_price_gbp 建议保留抓到的原价（无则回退）
-    original_price_gbp = (original_price_gbp_final if original_price_gbp_final is not None else op)
+    # 3）按你新定义的字段语义入库：
+    #    - price_gbp            = TXT 原价
+    #    - original_price_gbp   = TXT 折扣价
+    #    - sale_price_gbp       = 供货商策略计算后的最终基准价
+    price_gbp = op if op is not None else 0.0
+    original_price_gbp = dp if dp is not None else None
     # === 仅替换结束 ===
 
 
@@ -326,16 +324,16 @@ def insert_offer(info, conn, missing_log: list) -> int:
 
             stock_count = int(offer.get("stock_count") or 0)
 
-            # 仅写 stock_count，不写 stock_status/can_order
             cur.execute("""
                 INSERT INTO barbour_offers
                     (site_name, offer_url, size,
-                     price_gbp, original_price_gbp, stock_count,
+                     price_gbp, original_price_gbp, sale_price_gbp, stock_count,
                      product_code, first_seen, last_seen, is_active, last_checked)
-                VALUES (%s,%s,%s,%s,%s,%s,%s, NOW(), NOW(), TRUE, NOW())
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s, NOW(), NOW(), TRUE, NOW())
                 ON CONFLICT (site_name, offer_url, size) DO UPDATE SET
                     price_gbp          = EXCLUDED.price_gbp,
                     original_price_gbp = EXCLUDED.original_price_gbp,
+                    sale_price_gbp     = EXCLUDED.sale_price_gbp,
                     stock_count        = EXCLUDED.stock_count,
                     product_code       = COALESCE(barbour_offers.product_code, EXCLUDED.product_code),
                     last_seen          = NOW(),
@@ -343,7 +341,7 @@ def insert_offer(info, conn, missing_log: list) -> int:
                     last_checked       = NOW()
             """, (
                 site, offer_url, size,
-                price_gbp, original_price_gbp, stock_count,
+                price_gbp, original_price_gbp, sale_price_gbp, stock_count,
                 product_code if product_code else None
             ))
             inserted += 1
