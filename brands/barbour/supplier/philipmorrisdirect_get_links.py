@@ -88,6 +88,7 @@ def philipmorris_get_links():
 
     # 统一去重后写入文件
     sorted_links = sorted(all_links)
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text("\n".join(sorted_links), encoding="utf-8")
     print(f"\n🎯 共提取 {len(sorted_links)} 条商品链接（多分类去重后），已保存至：{OUTPUT_PATH}")
 

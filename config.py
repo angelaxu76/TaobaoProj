@@ -156,7 +156,7 @@ BARBOUR = {
             "shipping_fee": 0.0,
         },
         "philipmorris": {
-            "strategy": "ratio_when_no_discount",
+            "strategy": "all_ratio",
             "extra_ratio": 0.9,
             "shipping_fee": 0.0,
         },
