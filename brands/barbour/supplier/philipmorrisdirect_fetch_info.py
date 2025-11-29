@@ -55,20 +55,76 @@ TXT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ========== 浏览器 ==========
 
-from common_taobao.core.selenium_utils import get_driver as get_shared_driver
+import threading
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+
+# ====== 参照 Camper 的线程局部 driver 池 ====== :contentReference[oaicite:1]{index=1}
+drivers_lock = threading.Lock()
+_all_drivers = set()
+thread_local = threading.local()
+
+def create_driver(headless: bool = True):
+    """
+    每次创建一个独立的 Chrome driver（PhilipMorris 专用）
+    不走 selenium_utils 的共享池，避免 WinError 10061
+    """
+    chrome_options = Options()
+    if headless:
+        chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--window-size=1920x1080")
+    chrome_options.add_argument("user-agent=Mozilla/5.0")
+    chrome_options.add_argument("--log-level=3")
+    chrome_options.add_argument("--disable-logging")
+    chrome_options.add_argument("--disable-notifications")
+    chrome_options.add_argument("--disable-background-networking")
+    chrome_options.add_argument("--disable-default-apps")
+    chrome_options.add_argument("--disable-sync")
+    chrome_options.add_argument("--no-first-run")
+    chrome_options.add_argument("--no-default-browser-check")
+    chrome_options.add_argument("--disable-gcm-driver")
+    chrome_options.add_argument(
+        "--disable-features=Translate,MediaRouter,AutofillServerCommunication"
+    )
+    # 可以按需要关掉图片，加快速度
+    chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+
+    print("🚗 [get_driver] 创建新的 Chrome driver (PhilipMorris)")
+    driver = webdriver.Chrome(options=chrome_options)
+
+    # 记录下来，方便任务结束统一 quit
+    with drivers_lock:
+        _all_drivers.add(driver)
+
+    return driver
+
 
 def get_driver(headless: bool = True):
     """
-    使用项目统一的 selenium_utils.get_driver（全局共享 chromedriver）
-    已经不再使用 build_uc_driver / undetected_chromedriver。
+    每个线程只创建一次 driver，后续复用；
+    参照 Camper 的 thread_local 写法。
     """
-    print("🚗 [get_driver] 调用全局 selenium_utils.get_driver() ...")
-    driver = get_shared_driver(
-        name="philipmorris",
-        headless=headless,
-        window_size="1920,1080"
-    )
-    return driver
+    if not hasattr(thread_local, "driver") or thread_local.driver is None:
+        thread_local.driver = create_driver(headless=headless)
+    return thread_local.driver
+
+
+def shutdown_all_drivers():
+    """
+    参照 Camper 的 shutdown_all_drivers：
+    所有任务结束后统一关闭 driver，避免残留进程。 :contentReference[oaicite:2]{index=2}
+    """
+    with drivers_lock:
+        for d in list(_all_drivers):
+            try:
+                d.quit()
+            except Exception:
+                pass
+        _all_drivers.clear()
+
 
 
 
@@ -463,7 +519,7 @@ def process_url(url: str, output_dir: Path):
     except Exception as e:
         print(f"❌ 处理失败: {url}\n    {e}")
     finally:
-        driver.quit()
+        pass
 
 
 # ========== 多线程入口 ==========

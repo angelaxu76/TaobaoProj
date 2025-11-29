@@ -42,7 +42,7 @@ def barbour_database_import_pipleline():
     # houseoffraser_fetch_info(max_workers=1, headless=False)
     # very_fetch_info()
     # terraces_fetch_info()
-    philipmorris_fetch_info(max_workers=3)
+    philipmorris_fetch_info(max_workers=1)
 
 
     
