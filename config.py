@@ -29,6 +29,7 @@ BRAND_STRATEGY = {
 BASE_DIR = Path("D:/TB/Products")
 DISCOUNT_EXCEL_DIR = Path("D:/TB/DiscountCandidates")
 TAOBAO_STORES = ["五小剑", "英国伦敦代购2015"]
+GLOBAL_CHROMEDRIVER_PATH = r"C:\chromedriver\chromedriver.exe"
 
 def ensure_all_dirs(*dirs):
     for d in dirs:
@@ -110,7 +111,6 @@ BARBOUR = {
     "TAOBAO_STORE_DISCOUNT": 1,  # 不包关税→淘宝店铺价再打9折
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": BARBOUR_BASE / "publication" / "barbour" / "product_links.txt",
-    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     # === 新增 houseoffraser 配置 ===
     
 # === 新增 very 配置 ===
@@ -246,6 +246,47 @@ BARBOUR = {
         "MTS": ("男款", "T恤"),
         "LTS": ("女款", "T恤"),
     },
+
+    "BARBOUR_COLOR_CODE_MAP":{
+        # ===== 高频主色 =====
+        "BK": {"en": "black",          "zh": "黑色"},
+        "NY": {"en": "navy",           "zh": "深蓝"},
+        "OL": {"en": "olive",          "zh": "橄榄绿"},
+        "WH": {"en": "white",          "zh": "白色"},
+        "GN": {"en": "green",          "zh": "绿色"},        # 有时是 forest / uniform green 一类
+        "GY": {"en": "grey",           "zh": "灰色"},
+        "BR": {"en": "brown",          "zh": "棕色"},
+        "BE": {"en": "beige",          "zh": "米色"},
+        "SG": {"en": "sage",           "zh": "鼠尾草绿"},
+        "ST": {"en": "stone",          "zh": "石色 / 浅卡其"},
+        "BL": {"en": "blue",           "zh": "蓝色"},
+
+        # ===== 比较确定的 =====
+        "RE": {"en": "red",            "zh": "红色"},
+        "PI": {"en": "pink",           "zh": "粉色"},
+        "CR": {"en": "cream",          "zh": "奶油色 / 米白"},
+        "CH": {"en": "charcoal",       "zh": "炭灰"},
+        "TN": {"en": "tan",            "zh": "茶色 / 浅棕"},
+        "KH": {"en": "khaki",          "zh": "卡其色"},
+        "YE": {"en": "yellow",         "zh": "黄色"},
+        "OR": {"en": "orange",         "zh": "橙色"},
+        "PU": {"en": "purple",         "zh": "紫色 / 李子紫"},
+        "IN": {"en": "indigo",         "zh": "靛蓝"},
+        "TA": {"en": "taupe",          "zh": "灰褐色"},
+        "CM": {"en": "camel",          "zh": "驼色"},
+        "TE": {"en": "teal",           "zh": "水鸭蓝 / 墨绿蓝"},
+        "CO": {"en": "cobalt",         "zh": "钴蓝色"},
+        "AQ": {"en": "aqua",           "zh": "水绿色 / 青绿色"},
+
+        # ===== Barbour 自己的比较特别的几个 =====
+        "BU": {"en": "burgundy",       "zh": "酒红"},        # Barbour 里 BU 通常是 Burgundy，不是 Blue
+        "RU": {"en": "rustic",         "zh": "乡村棕 / 锈色"},# 对应 rustic / rust 系
+        "SN": {"en": "sand",           "zh": "沙色 / 砂岩色"},
+        "BC": {"en": "black/charcoal", "zh": "黑灰色"},      # 低频，保守定义为黑+灰调
+        "HG": {"en": "heather grey",   "zh": "杂灰 / 麻灰"},
+        "ME": {"en": "merlot",         "zh": "酒红棕"},      # 极低频，粗略按深酒红处理
+    },
+
     "BARBOUR_COLOR_MAP" : {
         "classic navy": "海军蓝",
         "black": "黑色",
@@ -323,7 +364,6 @@ TERRACES = {
     "TABLE_NAME": "terraces_inventory",  # ✅ 数据库表名
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": TERRACES_BASE / "publication" / "product_links.txt",  # ✅ 商品链接文件
-    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",  # 商品编码
         "url": "product_url",
@@ -363,7 +403,6 @@ CAMPER = {
     "TABLE_NAME": "camper_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": CAMPER_BASE / "publication" / "product_links.txt",
-    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
         "url": "product_url",
@@ -403,7 +442,6 @@ REISS = {
     "TABLE_NAME": "reiss_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": REISS_BASE / "publication" / "product_links.txt",
-    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
         "url": "product_url",
@@ -435,7 +473,6 @@ CLARKS = {
     "TABLE_NAME": "clarks_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": CLARKS_BASE / "publication" / "product_links.txt",
-    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
         "url": "product_url",
@@ -477,7 +514,6 @@ CLARKS_JINGYA = {
     "TABLE_NAME": "clarks_jingya_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": CLARKS_JINGYA_BASE / "publication" / "product_links.txt",
-    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
         "url": "product_url",
@@ -505,7 +541,6 @@ BIRKENSTOCK = {
     "TABLE_NAME": "birkenstock_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": BIRKENSTOCK_BASE / "publication" / "product_links.txt",
-    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
         "url": "product_url",
@@ -546,7 +581,6 @@ GEOX = {
     "TABLE_NAME": "geox_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": GEOX_BASE / "publication" / "product_links.txt",
-    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
         "url": "product_url",
@@ -586,7 +620,6 @@ MARKSANDSPENCER = {
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE_JACKET": MARKSANDSPENCER_BASE / "marksandspencer" / "publication" / "links_jacket.txt",
     "LINKS_FILE_LINGERIE": MARKSANDSPENCER_BASE / "marksandspencer" / "publication" / "links_lingerie.txt",
-    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
         "url": "product_url",
@@ -626,7 +659,6 @@ ECCO = {
     "TABLE_NAME": "ECCO_inventory",
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": ECCO_BASE / "publication" / "product_links.txt",
-    "CHROMEDRIVER_PATH": "D:/Projects/chromedriver-win64/chromedriver.exe",
     "FIELDS": {
         "product_code": "product_code",
         "url": "product_url",
