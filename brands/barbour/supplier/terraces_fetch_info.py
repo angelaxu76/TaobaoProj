@@ -19,7 +19,6 @@ from brands.barbour.core.sim_matcher import match_product, choose_best
 from sqlalchemy import create_engine
 from config import BRAND_CONFIG
 
-
 # ==== 浏览器兜底（与 very 同风格） ====
 import shutil, subprocess, sys
 import undetected_chromedriver as uc
@@ -315,8 +314,7 @@ def _extract_sizes(soup: BeautifulSoup, gender: str) -> tuple[list[str], str]:
                     if avail.get(sz, -1) != 1:
                         avail[sz] = 1 if "InStock" in str(o.get("availability", "")) else 0
 
-    # ===== 统一补齐：按完整尺码表输出 Product Size Detail =====
-# ===== 统一补齐：按“单一尺码系”输出 Product Size Detail =====
+    # ===== 统一补齐：按“单一尺码系”输出 Product Size Detail =====
     EAN = "0000000000000"
 
     # 先把抓到的尺码规范化，用来判断该选哪一套（字母/数字）
@@ -338,7 +336,6 @@ def _extract_sizes(soup: BeautifulSoup, gender: str) -> tuple[list[str], str]:
     return sizes, detail
 
 
-
 # ==================== 页面解析 ====================
 def _price_to_num(s: str) -> str:
     s = (s or "").replace(",", "").strip()
@@ -354,6 +351,15 @@ def _refresh_session(sess: requests.Session):
         sess.get(BASE_HOME, timeout=20)
     except Exception:
         pass
+
+def _make_session() -> requests.Session:
+    """
+    每个线程独立一个 Session，避免多线程共享同一个 requests.Session 带来的问题。
+    """
+    sess = requests.Session()
+    sess.headers.update({"User-Agent": random.choice(UA_POOL)})
+    _refresh_session(sess)
+    return sess
 
 def fetch_product_html(sess: requests.Session, url: str, timeout: int = 25) -> str | None:
     """
@@ -405,7 +411,6 @@ def fetch_product_html(sess: requests.Session, url: str, timeout: int = 25) -> s
         print(f"  ↪ UC fallback error: {e3!r}")
 
     return None
-
 
 
 def _parse_page(html: str, url: str) -> dict:
@@ -463,8 +468,6 @@ def _parse_page(html: str, url: str) -> dict:
     gender = "Men"  # 站点全为男款
     sizes, size_detail = _extract_sizes(soup, gender)
 
-
-
     # Feature & Description（Details 模块；再兜底 JSON-LD / meta description）
     features: list[str] = []
     for head in soup.select(".section.product__details h3"):
@@ -492,10 +495,9 @@ def _parse_page(html: str, url: str) -> dict:
     style_category = "No Data"   # 未提供类目
     feature_join   = "; ".join(features) if features else "No Data"
 
-        # ========== 商品编码匹配 ==========
-    product_code = "No Data"
+    # ========== 商品编码匹配 ==========
     try:
-        raw_conn = get_raw_connection() 
+        raw_conn = get_raw_connection()
         results = match_product(
             raw_conn,
             scraped_title=name,
@@ -515,7 +517,6 @@ def _parse_page(html: str, url: str) -> dict:
         print("🔎 match debug")
         print(f"  raw_title: {name}")
         print(f"  raw_color: {color}")
-        
     except Exception as e:
         print(f"❌ 匹配失败: {e}")
 
@@ -560,10 +561,6 @@ def _resolve_output_path(info: dict, out_dir: Path) -> Path:
 
 # ==================== 写盘 ====================
 def _write_txt(info: dict, out_dir: Path) -> Path:
-    title = info.get("Product Name") or "No_Data"
-    color = info.get("Product Color") or ""
-    base  = _safe_filename(f"{title}" + (f"_{color}" if color and color != "No Data" else ""))
-    code = info.get("Product Code") or "NoData"
     path = _resolve_output_path(info, out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -585,8 +582,41 @@ def _write_txt(info: dict, out_dir: Path) -> Path:
     print(f"✅ 写入: {path.name} (code={info.get('Product Code')})")
     return path
 
-# ==================== 主流程 ====================
-def terraces_fetch_info(max_count: int | None = None, timeout: int = 30) -> None:
+
+# ==================== 多线程 worker ====================
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+def _process_single_url(idx: int, total: int, url: str, timeout: int, out_dir: Path):
+    """
+    单个 URL 的抓取任务，供线程池调用。
+    返回: (url, success: bool, error_msg: str | None)
+    """
+    try:
+        print(f"\n🌐 正在抓取 [{idx}/{total}]: {url}")
+        sess = _make_session()
+        html = fetch_product_html(sess, url, timeout=timeout)
+        if not html:
+            raise requests.HTTPError("fetch_product_html returned None")
+
+        info = _parse_page(html, url)
+        _write_txt(info, out_dir)
+        _sleep_jitter(0.5)
+        return url, True, None
+    except Exception as e:
+        print(f"[失败] [{idx}/{total}] ❌ {url}\n    {repr(e)}")
+        return url, False, repr(e)
+
+
+# ==================== 主流程（多线程版） ====================
+def terraces_fetch_info(max_count: int | None = None, timeout: int = 30, max_workers: int = 8) -> None:
+    """
+    Terraces 抓取入口（多线程版）
+
+    参数保持兼容：
+      - max_count: 只抓前 N 条（None 表示全部）
+      - timeout:   每个请求超时时间
+      - max_workers: 线程数量（默认 8）
+    """
     links_file = Path(BARBOUR["LINKS_FILES"][SUPPLIER_KEY])
     out_dir    = Path(BARBOUR["TXT_DIRS"][SUPPLIER_KEY])
 
@@ -598,37 +628,29 @@ def terraces_fetch_info(max_count: int | None = None, timeout: int = 30) -> None
     total = len(urls)
     if max_count is not None:
         urls = urls[:max_count]
-    print(f"📄 共 {len(urls)} / {total} 个商品页面待解析...")
 
-    sess = requests.Session()
-    # 初始 UA + 预热首页拿 cookie
-    sess.headers.update({"User-Agent": random.choice(UA_POOL)})
-    _refresh_session(sess)
+    print(f"📄 Terraces 共 {len(urls)} / {total} 个商品页面待解析，"
+          f"使用多线程 (max_workers={max_workers}) ...")
 
     ok = fail = 0
-    failed_links_path = out_dir.parent / "terraces_failed.txt"
     failed = []
+    failed_links_path = out_dir.parent / "terraces_failed.txt"
 
-    for i, url in enumerate(urls, 1):
-        try:
-            # 每抓 40 个短暂停顿，降低触发率
-            if i % 40 == 0:
-                print("⏳ 节流中（短暂休息 8s）...")
-                time.sleep(8)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-            print(f"\n🌐 正在抓取: {url}  [{i}/{len(urls)}]")
-            html = fetch_product_html(sess, url, timeout=timeout)
-            if not html:
-                raise requests.HTTPError("fetch_product_html returned None")
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_idx = {
+            executor.submit(_process_single_url, idx, len(urls), url, timeout, out_dir): (idx, url)
+            for idx, url in enumerate(urls, start=1)
+        }
 
-            info = _parse_page(html, url)
-            _write_txt(info, out_dir)
-            ok += 1
-
-        except Exception as e:
-            fail += 1
-            failed.append(url)
-            print(f"[失败] [{i}/{len(urls)}] ❌ {url}\n    {repr(e)}")
+        for future in as_completed(future_to_idx):
+            url, success, err = future.result()
+            if success:
+                ok += 1
+            else:
+                fail += 1
+                failed.append(url)
 
     if failed:
         failed_links_path.parent.mkdir(parents=True, exist_ok=True)

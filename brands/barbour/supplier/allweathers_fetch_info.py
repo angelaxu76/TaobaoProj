@@ -12,6 +12,7 @@ from selenium import webdriver
 
 from config import BARBOUR
 from brands.barbour.core.site_utils import assert_site_or_raise as canon
+from common_taobao.core.selenium_utils import get_driver as shared_get_driver, quit_driver
 
 # ✅ 统一写入：使用你的 txt_writer，保证与其它站点同模板
 from common_taobao.ingest.txt_writer import format_txt  # 与项目当前用法保持一致
@@ -36,29 +37,6 @@ TXT_DIR = BARBOUR["TXT_DIRS"]["allweathers"]
 TXT_DIR.mkdir(parents=True, exist_ok=True)
 
 MAX_WORKERS = 6
-
-
-def get_driver():
-    temp_profile = tempfile.mkdtemp()
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless=new")
-    options.add_argument(f"--user-data-dir={temp_profile}")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-
-    driver = webdriver.Chrome(options=options)
-    stealth(
-        driver,
-        languages=["en-US", "en"],
-        vendor="Google Inc.",
-        platform="Win32",
-        webgl_vendor="Intel Inc.",
-        renderer="Intel Iris OpenGL Engine",
-        fix_hairline=True,
-    )
-    return driver
 
 
 # ============ 抽取辅助函数（与户外站实际页面适配） ============
@@ -421,12 +399,17 @@ def _build_size_lines_from_sizedetail(size_detail: dict, gender: str) -> tuple[s
 
 def fetch_one_product(url: str, idx: int, total: int):
     print(f"[{idx}/{total}] 抓取: {url}")
+    driver_name = f"allweathers_{idx}"    # 每个任务单独一个 driver 名
+
     try:
-        driver = get_driver()
+        driver = shared_get_driver(
+            name=driver_name,
+            headless=True,
+            window_size="1920,1080",
+        )
         driver.get(url)
         time.sleep(2.5)
         html = driver.page_source
-        driver.quit()
 
         # —— 不改爬取逻辑：保留你原有的解析 ——
         info = parse_detail_page(html, url)
@@ -462,6 +445,8 @@ def fetch_one_product(url: str, idx: int, total: int):
         return (url, "✅ 成功")
     except Exception as e:
         return (url, f"❌ 失败: {e}")
+    finally:
+        quit_driver(driver_name)
 
 
 def allweathers_fetch_info(max_workers: int = MAX_WORKERS):

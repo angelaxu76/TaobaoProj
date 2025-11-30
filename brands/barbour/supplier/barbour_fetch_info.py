@@ -3,14 +3,19 @@
 
 import re
 import json
+import time
+import traceback
+import threading
+from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import List
+
 import requests
 from bs4 import BeautifulSoup
-from pathlib import Path
 
 from config import BARBOUR
 from common_taobao.ingest.txt_writer import format_txt              # ✅ 统一写入模板
 from brands.barbour.core.site_utils import assert_site_or_raise as canon
-
 
 # 可选：更稳的 Barbour 性别兜底（M*/L* 前缀）
 try:
@@ -29,8 +34,8 @@ HEADERS = {
 CANON_SITE = canon("barbour")
 
 # ---------- 尺码标准化（与其它站点一致） ----------
-WOMEN_ORDER = ["4","6","8","10","12","14","16","18","20"]
-MEN_ALPHA_ORDER = ["2XS","XS","S","M","L","XL","2XL","3XL"]
+WOMEN_ORDER = ["4", "6", "8", "10", "12", "14", "16", "18", "20"]
+MEN_ALPHA_ORDER = ["2XS", "XS", "S", "M", "L", "XL", "2XL", "3XL"]
 MEN_NUM_ORDER = [str(n) for n in range(30, 52, 2)]  # 30..50（按你的要求：不含 52）
 
 ALPHA_MAP = {
@@ -83,7 +88,7 @@ def _normalize_size_token(token: str, gender: str) -> str | None:
     nums = re.findall(r"\d{1,3}", s)
     if nums:
         n = int(nums[0])
-        if gender == "女款" and n in {4,6,8,10,12,14,16,18,20}:
+        if gender == "女款" and n in {4, 6, 8, 10, 12, 14, 16, 18, 20}:
             return str(n)
         if gender == "男款":
             # 男数字 30..50（偶数），明确排除 52
@@ -100,7 +105,7 @@ def _normalize_size_token(token: str, gender: str) -> str | None:
     key = s.replace("-", "").replace(" ", "")
     return ALPHA_MAP.get(key)
 
-def _sort_sizes(keys: list[str], gender: str) -> list[str]:
+def _sort_sizes(keys: List[str], gender: str) -> List[str]:
     if gender == "女款":
         return [k for k in WOMEN_ORDER if k in keys]
     return [k for k in MEN_ALPHA_ORDER if k in keys] + [k for k in MEN_NUM_ORDER if k in keys]
@@ -133,26 +138,22 @@ def _build_size_lines_from_buttons(size_buttons_map: dict[str, str], gender: str
     if (gender or "男款") == "女款":
         full_order = WOMEN_ORDER[:]  # 4..20
     else:
-        # 男款：根据已出现的尺码自动判定使用哪一系（字母 或 数字）
         keys = set(status_bucket.keys())
-        has_num   = any(k in MEN_NUM_ORDER   for k in keys)
+        has_num = any(k in MEN_NUM_ORDER for k in keys)
         has_alpha = any(k in MEN_ALPHA_ORDER for k in keys)
         if has_num and not has_alpha:
-            chosen = MEN_NUM_ORDER[:]        # 只用数字系 30..50
+            chosen = MEN_NUM_ORDER[:]
         elif has_alpha and not has_num:
-            chosen = MEN_ALPHA_ORDER[:]      # 只用字母系 2XS..3XL
+            chosen = MEN_ALPHA_ORDER[:]
         elif has_num or has_alpha:
-            # 同时出现（异常场景）：取出现数量多的那一系
-            num_count   = sum(1 for k in keys if k in MEN_NUM_ORDER)
+            num_count = sum(1 for k in keys if k in MEN_NUM_ORDER)
             alpha_count = sum(1 for k in keys if k in MEN_ALPHA_ORDER)
             chosen = MEN_NUM_ORDER[:] if num_count >= alpha_count else MEN_ALPHA_ORDER[:]
-            # 把另一系的键删掉，确保不混用
             for k in list(status_bucket.keys()):
                 if k not in chosen:
                     status_bucket.pop(k, None)
                     stock_bucket.pop(k, None)
         else:
-            # 页面啥也没识别到：默认用字母系（更常见的外套）
             chosen = MEN_ALPHA_ORDER[:]
         full_order = chosen
 
@@ -164,10 +165,9 @@ def _build_size_lines_from_buttons(size_buttons_map: dict[str, str], gender: str
 
     # 4) 固定顺序输出（只输出选定那一系）
     ordered = [s for s in full_order]
-    ps  = ";".join(f"{k}:{status_bucket[k]}" for k in ordered)
+    ps = ";".join(f"{k}:{status_bucket[k]}" for k in ordered)
     psd = ";".join(f"{k}:{stock_bucket[k]}:0000000000000" for k in ordered)
     return ps, psd
-
 
 
 # ---------- 解析核心：保持你当前的结构 ----------
@@ -251,8 +251,64 @@ def extract_product_info_from_html(html: str, url: str) -> dict:
     }
     return info
 
-# ---------- 主流程（保持函数名） ----------
-def barbour_fetch_info():
+
+# ==============================
+#   多线程 HTTP 抓取部分
+# ==============================
+
+# 每个线程一个 Session，减少 TCP 连接开销
+_thread_local = threading.local()
+
+
+def get_session() -> requests.Session:
+    if not hasattr(_thread_local, "session"):
+        s = requests.Session()
+        s.headers.update(HEADERS)
+        _thread_local.session = s
+    return _thread_local.session
+
+
+def _process_single_url(index: int, total: int, url: str, txt_output_dir: Path, max_retries: int = 3):
+    """
+    单 URL 处理：带重试 & 日志
+    """
+    for attempt in range(1, max_retries + 1):
+        try:
+            sess = get_session()
+            print(f"🌐 [{index}/{total}] 抓取第 {attempt}/{max_retries} 次: {url}")
+            resp = sess.get(url, timeout=25)
+            resp.raise_for_status()
+
+            info = extract_product_info_from_html(resp.text, url)
+
+            # 文件名：用 SKU（无则用安全化标题）
+            code_for_file = info.get("Product Code") or re.sub(
+                r"[^A-Za-z0-9\-]+", "_", info.get("Product Name", "NoCode")
+            )
+            txt_path = txt_output_dir / f"{code_for_file}.txt"
+
+            format_txt(info, txt_path, brand="Barbour")
+            print(f"✅ [{index}/{total}] 写入成功：{txt_path.name}")
+            return  # 成功就直接返回
+
+        except Exception as e:
+            print(f"⚠️ [{index}/{total}] 第 {attempt}/{max_retries} 次失败: {url}，错误：{e}")
+            if attempt == max_retries:
+                print(f"❌ [{index}/{total}] 最终失败: {url}")
+                traceback.print_exc()
+            else:
+                time.sleep(2)  # 小等一下再重试
+
+
+# ---------- 主流程（多线程版） ----------
+def barbour_fetch_info(max_workers: int = 8):
+    """
+    Barbour 官网详情页抓取（多线程版）
+
+    保持原函数名，参数可选：
+      - max_workers: 线程数，默认 8，根据你机器和网络情况可微调
+    """
+    # 仍然使用原来的配置 KEY，避免改 pipeline
     links_file = BARBOUR["LINKS_FILE"]
     txt_output_dir = Path(BARBOUR["TXT_DIR"])
     txt_output_dir.mkdir(parents=True, exist_ok=True)
@@ -260,24 +316,23 @@ def barbour_fetch_info():
     with open(links_file, "r", encoding="utf-8") as f:
         urls = [line.strip() for line in f if line.strip()]
 
-    print(f"📄 共 {len(urls)} 个商品页面待解析...")
+    total = len(urls)
+    print(f"📄 共 {total} 个商品页面待解析，多线程抓取中（max_workers={max_workers}）...")
 
-    for idx, url in enumerate(urls, 1):
-        try:
-            resp = requests.get(url, headers=HEADERS, timeout=25)
-            resp.raise_for_status()
-            info = extract_product_info_from_html(resp.text, url)
+    # 使用线程池并发处理
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = []
+        for idx, url in enumerate(urls, start=1):
+            fut = executor.submit(_process_single_url, idx, total, url, txt_output_dir)
+            futures.append(fut)
 
-            # 文件名：用 SKU（无则用安全化标题）
-            code_for_file = info.get("Product Code") or re.sub(r"[^A-Za-z0-9\-]+", "_", info.get("Product Name", "NoCode"))
-            txt_path = txt_output_dir / f"{code_for_file}.txt"
+        # 等待全部完成（这里不需要对结果做什么，只是确保异常已经打印）
+        for _ in as_completed(futures):
+            pass
 
-            # ✅ 统一写出（和其它站点完全一致）
-            format_txt(info, txt_path, brand="Barbour")
-            print(f"✅ [{idx}/{len(urls)}] 写入成功：{txt_path.name}")
+    print("🎉 Barbour 官网抓取完成！")
 
-        except Exception as e:
-            print(f"❌ [{idx}/{len(urls)}] 失败：{url}，错误：{e}")
 
 if __name__ == "__main__":
-    barbour_fetch_info()
+    # 直接运行时，默认使用 8 个线程
+    barbour_fetch_info(max_workers=8)
