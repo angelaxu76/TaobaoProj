@@ -1,0 +1,400 @@
+# -*- coding: utf-8 -*-
+"""
+Outdoor & Country | Barbour 商品抓取（统一 TXT 模板版）
+保持对外接口 & pipeline 兼容：
+- process_url(url, output_dir)
+- fetch_outdoor_product_offers_concurrent(max_workers=3)
+
+改动要点：
+1) 复用你已有的 parse_offer_info(html, url) 解析站点
+2) 落盘统一走 txt_writer.format_txt（与其它站点一致）
+3) 写入前统一字段：
+   - Product Code = Product Color Code（你当前的组合码策略）
+   - Site Name = "Outdoor and Country"
+   - 不写 SizeMap
+   - 过滤 52 及更大的男装数字尺码
+4) 类目兜底：遇到 wax + jacket 或 code 前缀 MWX/LWX 时，强制 "waxed jacket"
+5) ✅ Outdoor 专属业务处理：
+   - 从 Offers 回填 Product Price（有货优先）
+   - 对 Product Size / Product Size Detail 的尺码做清洗
+   - 若无 Product Size Detail，按 Size 兜底生成（有货=3/无货=0，EAN 占位）
+"""
+
+import time
+import json
+import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import urlparse, parse_qs, unquote
+
+import undetected_chromedriver as uc
+from bs4 import BeautifulSoup
+
+from config import BARBOUR
+from brands.barbour.supplier.outdoorandcountry_parse_offer_info import parse_offer_info
+
+# ✅ 统一 TXT 写入（与其它站点一致）
+from common_taobao.ingest.txt_writer import format_txt
+
+# ✅ 尺码清洗（保守：识别不了就原样返回）
+from common_taobao.core.size_utils import clean_size_for_barbour  # 见你上传的实现
+from brands.barbour.core.site_utils import assert_site_or_raise as canon
+CANON_SITE = canon("outdoorandcountry")
+
+# ========== 浏览器与 Cookie ==========
+def accept_cookies(driver, timeout=8):
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    try:
+        WebDriverWait(driver, timeout).until(
+            EC.element_to_be_clickable((By.ID, "onetrust-accept-btn-handler"))
+        ).click()
+        time.sleep(1)
+    except Exception:
+        pass
+
+# ========== 工具 ==========
+def _normalize_color_from_url(url: str) -> str:
+    try:
+        qs = parse_qs(urlparse(url).query)
+        c = qs.get("c", [None])[0]
+        if not c:
+            return ""
+        c = unquote(c)  # %2F -> /
+        c = c.replace("\\", "/")
+        c = re.sub(r"\s*/\s*", " / ", c)
+        c = re.sub(r"\s+", " ", c).strip()
+        c = " ".join(w.capitalize() for w in c.split(" "))
+        return c
+    except Exception:
+        return ""
+
+def sanitize_filename(name: str) -> str:
+    return re.sub(r"[\\/:*?\"<>|'\s]+", "_", (name or "").strip())
+
+def _extract_description(html: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    tag = soup.find("meta", attrs={"property": "og:description"})
+    if tag and tag.get("content"):
+        desc = tag["content"].replace("<br>", "").replace("<br/>", "").replace("<br />", "")
+        return desc.strip()
+    tab = soup.select_one(".product_tabs .tab_content[data-id='0'] div")
+    return tab.get_text(" ", strip=True) if tab else "No Data"
+
+def _extract_features(html: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    h3 = soup.find("h3", attrs={"title": "Features"})
+    if h3:
+        ul = h3.find_next("ul")
+        if ul:
+            items = [li.get_text(" ", strip=True) for li in ul.find_all("li")]
+            if items:
+                return " | ".join(items)
+    return "No Data"
+
+def _extract_color_code_from_jsonld(html: str) -> str:
+    """
+    从 JSON-LD 的 offers[].mpn 提取颜色编码（或组合码）。例如：
+    mpn: MWX0017NY9140 -> 颜色位 NY91（你当前逻辑把 MWX0017NY91 当 product code 使用也可以）
+    这里按你现有正则，提取 NY99/NY91 这类；如果站点给的是完整 MWX0017NY91 也会传递回去。
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    for script in soup.find_all("script", type="application/ld+json"):
+        try:
+            data = script.string and script.string.strip()
+            if not data:
+                continue
+            j = json.loads(data)
+            if isinstance(j, dict) and j.get("@type") == "Product" and isinstance(j.get("offers"), list):
+                for off in j["offers"]:
+                    mpn = (off or {}).get("mpn")
+                    if isinstance(mpn, str):
+                        # 先尝试取 MWX0017NY91 这种完整组合码（截掉最后2位尺码）
+                        if len(mpn) >= 11:
+                            maybe_code = mpn[:-2]
+                            if re.match(r"^[A-Z]{3}\d{4}[A-Z]{2}\d{2}$", maybe_code):
+                                return maybe_code
+                        # 其次回退到末尾颜色块（OL99/NY91）
+                        m = re.search(r'([A-Z]{2}\d{2})(\d{2})$', mpn)
+                        if m:
+                            return m.group(1)
+        except Exception:
+            continue
+    return ""
+
+def _infer_gender_from_name(name: str) -> str:
+    n = (name or "").lower()
+    if any(x in n for x in ["women", "women's", "womens", "ladies", "lady"]):
+        return "女款"
+    if any(x in n for x in ["men", "men's", "mens"]):
+        return "男款"
+    if any(x in n for x in ["kid", "kids", "child", "children", "boys", "girls", "boy's", "girl's", "junior", "youth"]):
+        return "童款"
+    return "男款"  # 兜底按男款
+
+def _fallback_style_category(name: str, desc: str, product_code: str) -> str:
+    text = f"{name} {desc}".lower()
+    if ("wax" in text and "jacket" in text) or (product_code[:3] in {"MWX", "LWX"}):
+        return "waxed jacket"
+    if "quilt" in text and "jacket" in text or (product_code[:3] in {"MQU", "LQU"}):
+        return "quilted jacket"
+    return "casual wear"
+
+
+            
+def _build_sizes_from_offers(offers, gender: str):
+    """
+    从 Offers 生成两行：
+    - Product Size（可不写盘）
+    - Product Size Detail（写盘；有货=3，无货=0）
+    ✅ 男款：自动在【字母系(2XS–3XL)】与【数字系(30–50, 不含52)】二选一，绝不混用
+    ✅ 女款：固定 4–20；未出现的尺码补 0
+    """
+    product_size = ""
+    product_size_detail = ""
+
+    # --- 1) 规范化尺码 ---
+    def norm(raw):
+        s = (raw or "").strip().upper().replace("UK ", "")
+        s = re.sub(r"\s*\(.*?\)\s*", "", s)
+
+        # 数字系（优先识别出 30..50 偶数）
+        mnum = re.findall(r"\d{2,3}", s)
+        if mnum:
+            n = int(mnum[0])
+            if gender == "女款" and 4 <= n <= 20 and n % 2 == 0:
+                return str(n)
+            if gender == "男款" and 30 <= n <= 50 and n % 2 == 0:
+                return str(n)
+
+        # 字母系映射
+        alpha = {
+            "XXXS":"2XS","2XS":"2XS","XXS":"XS","XS":"XS",
+            "S":"S","SMALL":"S","M":"M","MEDIUM":"M","L":"L","LARGE":"L",
+            "XL":"XL","X-LARGE":"XL","XXL":"2XL","2XL":"2XL","XXXL":"3XL","3XL":"3XL"
+        }
+        key = s.replace("-", "").replace(" ", "")
+        return alpha.get(key)
+
+    # --- 2) 聚合出现的尺码（同尺码多次：有货优先） ---
+    bucket = {}  # {size: "有货"/"无货"}
+    for size, price, stock_text, _ in (offers or []):
+        ns = norm(size)
+        if not ns:
+            continue
+        curr = "有货" if (isinstance(stock_text, str) and stock_text.strip() == "有货") else "无货"
+        prev = bucket.get(ns)
+        if prev is None or (prev == "无货" and curr == "有货"):
+            bucket[ns] = curr
+
+    # --- 3) 选择“单一尺码系”的完整顺序表 ---
+    WOMEN     = ["4","6","8","10","12","14","16","18","20"]
+    MEN_ALPHA = ["2XS","XS","S","M","L","XL","2XL","3XL"]
+    MEN_NUM   = [str(n) for n in range(30, 52, 2)]  # 30..50（不含52）
+
+    if gender == "女款":
+        full_order = WOMEN[:]
+    else:
+        keys = set(bucket.keys())
+        has_num   = any(k in MEN_NUM   for k in keys)
+        has_alpha = any(k in MEN_ALPHA for k in keys)
+        if has_num and not has_alpha:
+            chosen = MEN_NUM[:]
+        elif has_alpha and not has_num:
+            chosen = MEN_ALPHA[:]
+        elif has_num or has_alpha:
+            # 同时出现（异常）→ 取出现数量更多的那一系
+            num_count   = sum(1 for k in keys if k in MEN_NUM)
+            alpha_count = sum(1 for k in keys if k in MEN_ALPHA)
+            chosen = MEN_NUM[:] if num_count >= alpha_count else MEN_ALPHA[:]
+            # ★ 清理另一系，避免混用
+            for k in list(bucket.keys()):
+                if k not in chosen:
+                    bucket.pop(k, None)
+        else:
+            # 实在判不出（页面没识别到可归一的尺码），默认字母系
+            chosen = MEN_ALPHA[:]
+        full_order = chosen
+
+    # --- 4) 仅在选定那一系内补齐未出现尺码为 无货/0 ---
+    for s in full_order:
+        if s not in bucket:
+            bucket[s] = "无货"
+
+    # --- 5) 输出（固定顺序；有货=3，无货=0；EAN 占位不变） ---
+    EAN = "0000000000000"
+    product_size = ";".join(f"{k}:{bucket[k]}" for k in full_order)
+    product_size_detail = ";".join(
+        f"{k}:{3 if bucket[k]=='有货' else 0}:{EAN}" for k in full_order
+    )
+    return product_size, product_size_detail
+
+
+# ========= Outdoor 专属业务处理 =========
+def _inject_price_from_offers(info: dict) -> None:
+    """Outdoor 页无显式价格时，从 Offers 回填（有货优先，其次第一条）"""
+    if info.get("Product Price"):
+        return
+    offers = info.get("Offers") or []
+    price_val = None
+    for size, price, stock_text, can_order in offers:
+        if price:
+            if can_order:              # 有货价优先
+                price_val = price
+                break
+            if price_val is None:      # 否则先记第一条
+                price_val = price
+    if price_val:
+        info["Product Price"] = str(price_val)
+
+def _clean_sizes(info: dict) -> None:
+    """对两行尺码做一次清洗；不识别则保持原样"""
+    # Product Size: "S:有货;M:无货..."
+    if info.get("Product Size"):
+        cleaned = []
+        for token in str(info["Product Size"]).split(";"):
+            token = token.strip()
+            if not token:
+                continue
+            try:
+                size, status = token.split(":")
+                size = clean_size_for_barbour(size)
+                cleaned.append(f"{size}:{status}")
+            except ValueError:
+                cleaned.append(token)
+        info["Product Size"] = ";".join(cleaned)
+
+    # Product Size Detail: "S:3:EAN;M:0:EAN..."
+    if info.get("Product Size Detail"):
+        cleaned = []
+        for token in str(info["Product Size Detail"]).split(";"):
+            token = token.strip()
+            if not token:
+                continue
+            parts = token.split(":")
+            if len(parts) == 3:
+                size, stock, ean = parts
+                size = clean_size_for_barbour(size)
+                cleaned.append(f"{size}:{stock}:{ean}")
+            else:
+                cleaned.append(token)
+        info["Product Size Detail"] = ";".join(cleaned)
+
+def _ensure_detail_from_size(info: dict) -> None:
+    """若无 Detail，用 Size 兜底生成（有货=3，无货=0，EAN 占位）"""
+    if info.get("Product Size") and not info.get("Product Size Detail"):
+        detail = []
+        for token in str(info["Product Size"]).split(";"):
+            token = token.strip()
+            if not token:
+                continue
+            try:
+                size, status = token.split(":")
+                size = clean_size_for_barbour(size)
+                stock = 3 if status.strip() == "有货" else 0
+                detail.append(f"{size}:{stock}:0000000000000")
+            except ValueError:
+                continue
+        if detail:
+            info["Product Size Detail"] = ";".join(detail)
+
+# ========== 主流程 ==========
+def process_url(url, output_dir):
+    options = uc.ChromeOptions()
+    options.add_argument("--start-maximized")
+    # 如需无头：options.add_argument("--headless=new")
+    driver = uc.Chrome(options=options)
+
+    try:
+        print(f"\n🌐 正在抓取: {url}")
+        driver.get(url)
+        accept_cookies(driver)
+        time.sleep(3)
+        html = driver.page_source
+
+        # 1) 解析（复用你已有的站点解析）
+        info = parse_offer_info(html, url, site_name=CANON_SITE) or {}
+        url_color = _normalize_color_from_url(url)
+
+        if info.get("original_price_gbp"):
+            info["Product Price"] = info["original_price_gbp"]
+        if info.get("discount_price_gbp"):
+            info["Adjusted Price"] = info["discount_price_gbp"]
+        # 2) 基础字段补齐（统一）
+        info.setdefault("Brand", "Barbour")
+        info.setdefault("Product Name", "No Data")
+        info.setdefault("Product Color", url_color or "No Data")
+        info.setdefault("Product Description", _extract_description(html))
+        info.setdefault("Feature", _extract_features(html))
+        info.setdefault("Site Name", CANON_SITE)
+        info["Source URL"] = url  # 与其他站点保持一致的字段名
+
+        # 3) Product Code / Product Color Code（你的策略：组合码即可）
+        color_code = info.get("Product Color Code") or _extract_color_code_from_jsonld(html)
+        if color_code:
+            info["Product Color Code"] = color_code
+            info["Product Code"] = color_code  # ✅ 你要求：直接把组合码当 Product Code
+
+        # 4) 性别（优先标题/名称关键词，兜底男款）
+        if not info.get("Product Gender"):
+            info["Product Gender"] = _infer_gender_from_name(info.get("Product Name", ""))
+
+        # 5) Offers → 两行尺码（不写 SizeMap，且过滤 52）
+        offers = info.get("Offers") or []
+        ps, psd = _build_sizes_from_offers(offers, info["Product Gender"])
+        # ⚠️ 按你的要求：不再写入 Product Size，只保留 Detail
+        info["Product Size Detail"] = psd
+
+        # 6) 类目（本地兜底，防止 category_utils 旧版误判）
+        if not info.get("Style Category"):
+            info["Style Category"] = _fallback_style_category(
+                info.get("Product Name",""),
+                info.get("Product Description",""),
+                info.get("Product Code","") or ""
+            )
+
+        # ========= ✅ Outdoor 专属增强：写盘前一次性处理 =========
+        _inject_price_from_offers(info)   # Outdoor 无价 → 从 offers 补
+        _clean_sizes(info)                 # 清洗（仅 Detail 生效）
+        _ensure_detail_from_size(info)     # 没 Detail 就从 Size 兜底（Detail 用 3/0）
+
+        # 7) 文件名策略
+        if color_code:
+            filename = f"{sanitize_filename(color_code)}.txt"
+        else:
+            safe_name = sanitize_filename(info.get('Product Name', 'NoName'))
+            safe_color = sanitize_filename(info.get('Product Color', 'NoColor'))
+            filename = f"{safe_name}_{safe_color}.txt"
+
+        # 8) ✅ 统一用 txt_writer.format_txt 写出（与其它站点完全一致）
+        output_dir.mkdir(parents=True, exist_ok=True)
+        txt_path = output_dir / filename
+        format_txt(info, txt_path, brand="Barbour")
+        print(f"✅ 写入: {txt_path.name}")
+
+    except Exception as e:
+        print(f"❌ 处理失败: {url}\n    {e}")
+    finally:
+        driver.quit()
+
+def outdoorandcountry_fetch_info(max_workers=3):
+    links_file = BARBOUR["LINKS_FILES"]["outdoorandcountry"]
+    output_dir = BARBOUR["TXT_DIRS"]["outdoorandcountry"]
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    urls = []
+    with open(links_file, "r", encoding="utf-8") as f:
+        for line in f:
+            url = line.strip()
+            if url:
+                urls.append(url)
+
+    print(f"🔄 启动多线程抓取，总链接数: {len(urls)}，并发线程数: {max_workers}")
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(process_url, url, output_dir) for url in urls]
+        for _ in as_completed(futures):
+            pass
+
+if __name__ == "__main__":
+    outdoorandcountry_fetch_info(max_workers=3)
