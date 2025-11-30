@@ -6,6 +6,7 @@ INSERT INTO barbour_color_map (
     is_confirmed
 )
 VALUES
+    -- ===== Basic solid colors =====
     ('BK', 'black', 'black', 'config_code_map', TRUE),
     ('NY', 'navy', 'navy', 'config_code_map', TRUE),
     ('OL', 'olive', 'olive', 'config_code_map', TRUE),
@@ -17,41 +18,6 @@ VALUES
     ('SG', 'sage', 'sage', 'config_code_map', TRUE),
     ('ST', 'stone', 'stone', 'config_code_map', TRUE),
     ('BL', 'blue', 'blue', 'config_code_map', TRUE),
-    ('PI', 'Arabesque', 'arabesque', 'config_code_map', TRUE),
-    ('BR', 'Bark', 'bark', 'config_code_map', TRUE),
-    ('SN', 'Beech/Classic', 'beech classic', 'config_code_map', TRUE),
-    ('RE', 'Bordeaux', 'bordeaux', 'config_code_map', TRUE),
-    ('ST', 'Clay', 'clay', 'config_code_map', TRUE),
-    ('WH', 'Cloud', 'cloud', 'config_code_map', TRUE),
-    ('GN', 'Forest', 'forest', 'config_code_map', TRUE),
-    ('TN', 'Forest Mist', 'forest mist', 'config_code_map', TRUE),
-    ('BE', 'Light Trench', 'light trench', 'config_code_map', TRUE),
-    ('TN', 'Midnight', 'midnight', 'config_code_map', TRUE),
-    ('BE', 'Mist', 'mist', 'config_code_map', TRUE),
-    ('CR', 'Pearl', 'pearl', 'config_code_map', TRUE),
-    ('BR', 'Black Oak', 'black oak', 'config_code_map', TRUE),
-    ('OL', 'Fern', 'fern', 'config_code_map', TRUE),
-    ('BR', 'Brown', 'brown', 'config_code_map', TRUE),
-    ('GN', 'Dundee Tartan', 'dundee tartan', 'config_code_map', TRUE),
-    ('BK', 'Black Carbon', 'black carbon', 'config_code_map', TRUE),
-    ('BR', 'Umber', 'umber', 'config_code_map', TRUE),
-    ('ST', 'Light Fawn', 'fawn light', 'config_code_map', TRUE),
-    ('CR', 'Pearl/Navy', 'navy pearl', 'config_code_map', TRUE),
-    ('BE', 'Trench', 'trench', 'config_code_map', TRUE),
-    ('NY', 'Navy/Classic', 'classic navy', 'config_code_map', TRUE),
-    ('OL', 'Deep Olive/Ancient Tartan', 'ancient deep olive tartan', 'config_code_map', TRUE),
-    ('GN', 'Olive', 'olive', 'config_code_map', TRUE),
-    ('BL', 'Sky Micro Check', 'check micro sky', 'config_code_map', TRUE),
-    ('OL', 'Fern/Classic Tartan', 'classic fern tartan', 'config_code_map', TRUE),
-    ('BR', 'Bark/Muted', 'bark muted', 'config_code_map', TRUE),
-    ('OL', 'Tan/Dress Tartan', 'dress tan tartan', 'config_code_map', TRUE),
-    ('NY', 'Royal Navy/Dress Tartan', 'dress navy royal tartan', 'config_code_map', TRUE),
-    ('TA', 'Tan/Dress Tartan', 'dress tan tartan', 'config_code_map', TRUE),
-    ('OL', 'Fern/Ancient Tartan', 'ancient fern tartan', 'config_code_map', TRUE),
-    ('OL', 'Archive Olive/Ancient Tartan', 'ancient archive olive tartan', 'config_code_map', TRUE),
-    ('RU', 'Rustic/Ancient Tartan', 'ancient rustic tartan', 'config_code_map', TRUE),
-    ('OL', 'Fern/Beech/Ancient Tartan', 'ancient beech fern tartan', 'config_code_map', TRUE),
-    ('OL', 'Fern/Sage/Ancient Tartan', 'ancient fern sage tartan', 'config_code_map', TRUE),
     ('RE', 'red', 'red', 'config_code_map', TRUE),
     ('PI', 'pink', 'pink', 'config_code_map', TRUE),
     ('CR', 'cream', 'cream', 'config_code_map', TRUE),
@@ -70,9 +36,46 @@ VALUES
     ('BU', 'burgundy', 'burgundy', 'config_code_map', TRUE),
     ('RU', 'rustic', 'rustic', 'config_code_map', TRUE),
     ('SN', 'sand', 'sand', 'config_code_map', TRUE),
-    ('BC', 'black/charcoal', 'black charcoal', 'config_code_map', TRUE),
-    ('HG', 'heather grey', 'grey heather', 'config_code_map', TRUE),
-    ('ME', 'merlot', 'merlot', 'config_code_map', TRUE)
+
+    -- ===== Confirmed special / Barbour-specific =====
+    ('PI', 'Arabesque', 'arabesque', 'config_code_map', TRUE),
+    ('BR', 'Bark', 'bark', 'config_code_map', TRUE),
+    ('RE', 'Bordeaux', 'bordeaux', 'config_code_map', TRUE),
+    ('ST', 'Clay', 'clay', 'config_code_map', TRUE),
+    ('WH', 'Cloud', 'cloud', 'config_code_map', TRUE),
+    ('OL', 'Fern', 'fern', 'config_code_map', TRUE),
+    ('GN', 'Forest', 'forest', 'config_code_map', TRUE),
+    ('TN', 'Midnight', 'midnight', 'config_code_map', TRUE),
+    ('BE', 'Mist', 'mist', 'config_code_map', TRUE),
+    ('CR', 'Pearl', 'pearl', 'config_code_map', TRUE),
+
+    -- ===== Multi-tone / Tartan derived =====
+    ('SN', 'Beech/Classic', 'beech_classic', 'config_code_map', TRUE),
+    ('BR', 'Black Oak', 'black_oak', 'config_code_map', TRUE),
+    ('GN', 'Dundee Tartan', 'dundee_tartan', 'config_code_map', TRUE),
+    ('BK', 'Black Carbon', 'black_carbon', 'config_code_map', TRUE),
+    ('BR', 'Umber', 'umber', 'config_code_map', TRUE),
+
+    ('ST', 'Light Fawn', 'light_fawn', 'config_code_map', TRUE),
+    ('CR', 'Pearl/Navy', 'pearl_navy', 'config_code_map', TRUE),
+    ('BE', 'Trench', 'trench', 'config_code_map', TRUE),
+    ('NY', 'Navy/Classic', 'navy_classic', 'config_code_map', TRUE),
+
+    ('OL', 'Deep Olive/Ancient Tartan', 'deep_olive_ancient_tartan', 'config_code_map', TRUE),
+    ('BL', 'Sky Micro Check', 'sky_micro_check', 'config_code_map', TRUE),
+
+    ('OL', 'Fern/Classic Tartan', 'fern_classic_tartan', 'config_code_map', TRUE),
+    ('BR', 'Bark/Muted', 'bark_muted', 'config_code_map', TRUE),
+
+    ('TA', 'Tan/Dress Tartan', 'tan_dress_tartan', 'config_code_map', TRUE),
+    ('NY', 'Royal Navy/Dress Tartan', 'royal_navy_dress_tartan', 'config_code_map', TRUE),
+
+    ('OL', 'Fern/Ancient Tartan', 'fern_ancient_tartan', 'config_code_map', TRUE),
+    ('OL', 'Archive Olive/Ancient Tartan', 'archive_olive_ancient_tartan', 'config_code_map', TRUE),
+    ('RU', 'Rustic/Ancient Tartan', 'rustic_ancient_tartan', 'config_code_map', TRUE),
+    ('OL', 'Fern/Beech/Ancient Tartan', 'fern_beech_ancient_tartan', 'config_code_map', TRUE),
+    ('OL', 'Fern/Sage/Ancient Tartan', 'fern_sage_ancient_tartan', 'config_code_map', TRUE)
+
 ON CONFLICT (color_code, raw_name) DO UPDATE
 SET
     norm_key     = EXCLUDED.norm_key,

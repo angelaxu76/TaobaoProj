@@ -17,6 +17,7 @@ Philip Morris Direct | Barbour 商品抓取（最终整合版）
 import re
 import time
 import threading
+import traceback
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -133,7 +134,13 @@ def _color_key(s: str) -> str:
 def _load_color_map_from_db() -> None:
     """
     只在第一次调用时，从 barbour_color_map 表中把所有
-    (color_code, raw_name) 读出来，构建 _COLOR_MAP_CACHE。
+    (color_code, raw_name, norm_key, source, is_confirmed) 读出来，
+    构建 _COLOR_MAP_CACHE。
+
+    优先级：
+      1）source = 'config_code_map' 的记录排在前面
+      2）source = 'products' 等其它来源排在后面
+    同一个 key 下如果出现重复 color_code，只保留一份。
     """
     global _COLOR_MAP_LOADED, _COLOR_MAP_CACHE
 
@@ -144,8 +151,21 @@ def _load_color_map_from_db() -> None:
         try:
             conn = psycopg2.connect(**PGSQL_CONFIG)
             cur = conn.cursor()
-            # ✅ 用 raw_name，而不是 color_en
-            cur.execute("SELECT color_code, raw_name FROM barbour_color_map")
+            # 按 norm_key + source 优先级排序
+            cur.execute(
+                """
+                SELECT color_code, raw_name, norm_key, source, is_confirmed
+                FROM barbour_color_map
+                ORDER BY
+                    norm_key,
+                    CASE
+                        WHEN source = 'config_code_map' THEN 0
+                        WHEN source = 'products'       THEN 1
+                        ELSE 2
+                    END,
+                    color_code
+                """
+            )
             rows = cur.fetchall()
             cur.close()
             conn.close()
@@ -156,11 +176,25 @@ def _load_color_map_from_db() -> None:
             return
 
         cache: Dict[str, List[str]] = {}
-        for code, en in rows:
-            key = _color_key(en or "")
+
+        for color_code, raw_name, norm_key, source, is_confirmed in rows:
+            # norm_key 已经是标准化 key 了，但为安全起见，
+            # 如果 norm_key 为空就用 raw_name 现算一遍
+            key = norm_key or _color_key(raw_name or "")
             if not key:
                 continue
-            cache.setdefault(key, []).append(code)
+
+            codes = cache.setdefault(key, [])
+
+            # 去重 + 保证 config_code_map 的优先级
+            if color_code in codes:
+                continue
+
+            if source == "config_code_map":
+                # 人工配置的放前面
+                codes.insert(0, color_code)
+            else:
+                codes.append(color_code)
 
         _COLOR_MAP_CACHE = cache
         _COLOR_MAP_LOADED = True
@@ -168,6 +202,8 @@ def _load_color_map_from_db() -> None:
             f"🎨 已从 barbour_color_map 载入 {len(rows)} 条颜色记录，"
             f"归一化 key 数量：{len(cache)}"
         )
+
+
 
 
 
@@ -317,9 +353,49 @@ def record_problem_item(style, color, product_code, reason, url):
 # 款式编码提取
 #########################################
 
-def extract_style_code(html: str) -> str | None:
+#########################################
+# 款式编码提取（含完整 MPN）
+#########################################
+
+def extract_full_mpn(html: str) -> str | None:
+    """
+    从页面 HTML 中尽量抽取完整的 Barbour MPN，例如 MCA1053OL34。
+    成功时返回完整编码（含颜色+尺码），失败时返回 None。
+    """
     text = html or ""
 
+    # 1) 优先从 "MPN:" 一行中提取
+    m = re.search(r"MPN:\s*([A-Z0-9,\s]+)", text)
+    if m:
+        raw = m.group(1)
+        for token in re.split(r"[,\s]+", raw):
+            token = token.strip()
+            # 标准形态：3字母 + 4数字 + 2字母(颜色) + 2~4位尺码数字
+            # 例如：MCA1053OL34 / MWX0008NY91
+            if re.match(r"^[A-Z]{3}\d{4}[A-Z]{2}\d{2,4}$", token):
+                return token
+
+    # 2) 兜底：在整页里直接找形如 MCA1053OL34 的片段
+    m = re.search(r"\b([A-Z]{3}\d{4}[A-Z]{2}\d{2,4})\b", text)
+    if m:
+        return m.group(1)
+
+    return None
+
+
+def extract_style_code(html: str) -> str | None:
+    """
+    提取 7 位款式编码（不含颜色/尺码，例如 MCA1053）。
+    如果已经能拿到完整 MPN，则直接截前 7 位。
+    """
+    text = html or ""
+
+    # ✅ 优先用完整 MPN 截取前 7 位
+    full_mpn = extract_full_mpn(text)
+    if full_mpn:
+        return full_mpn[:7]
+
+    # 下面是原有兜底逻辑，防止某些页面没有完整 MPN
     mpn = re.search(r"MPN:\s*([A-Z0-9,\s]+)", text)
     if mpn:
         raw = mpn.group(1)
@@ -337,6 +413,7 @@ def extract_style_code(html: str) -> str | None:
         return m.group(1)
 
     return None
+
 
 
 #########################################
@@ -461,6 +538,10 @@ def find_product_code_in_db(style: str, color: str, conn, url: str):
 # 主流程：处理单 URL
 #########################################
 
+#########################################
+# 主流程：处理单 URL
+#########################################
+
 def process_url(url: str, output_dir: Path):
     """
     处理单个 URL（含自动重试 2 次）
@@ -487,11 +568,19 @@ def process_url(url: str, output_dir: Path):
 
             base_orig, base_sale = extract_prices(soup)
 
+            # 颜色按钮（如有）
             color_elems = driver.find_elements(By.CSS_SELECTOR, "label.form-option.label-img")
             variants = []
 
+            # 🔍 尝试从整页拿完整 MPN
+            full_mpn = extract_full_mpn(html)
+            if full_mpn:
+                print(f"🔍 检测到完整 MPN: {full_mpn}")
+
             if color_elems:
+                # 多颜色/单颜色都走一套变体逻辑
                 for idx in range(len(color_elems)):
+                    # 每次重新抓元素，避免点击后 DOM 变化导致过时引用
                     color_elems = driver.find_elements(By.CSS_SELECTOR, "label.form-option.label-img")
                     if idx >= len(color_elems):
                         break
@@ -504,6 +593,7 @@ def process_url(url: str, output_dir: Path):
                     if color == "No Data":
                         continue
 
+                    # 点击颜色，等页面更新
                     driver.execute_script("arguments[0].click();", elem)
                     time.sleep(1.3)
 
@@ -511,15 +601,11 @@ def process_url(url: str, output_dir: Path):
                     soup_c = BeautifulSoup(html_c, "html.parser")
 
                     orig, sale = extract_prices(soup_c)
-                    if not sale:
-                        sale = base_sale
-                    if not orig:
-                        orig = base_orig or sale
-
                     sizes = extract_sizes(html_c)
                     size_str = build_size_str(sizes)
 
-                    adjusted = sale if sale != orig else ""
+                    # Adjusted Price：有折扣时用折后价，否则空
+                    adjusted = sale if sale and sale != orig else ""
 
                     variants.append({
                         "_style": style,
@@ -534,6 +620,7 @@ def process_url(url: str, output_dir: Path):
                     })
 
             else:
+                # 完全没有颜色按钮，视为单色商品
                 print("⚠️ 无颜色选项 → 视为单色")
                 color = "No Data"
                 sizes = extract_sizes(html)
@@ -566,8 +653,12 @@ def process_url(url: str, output_dir: Path):
                 conn = psycopg2.connect(**PGSQL_CONFIG)
                 print("✅ 数据库连接成功")
             except:
-                print("⚠️ 数据库连接失败 → 全部算问题文件")
+                print("⚠️ 数据库连接失败 → 如无完整 MPN，将全部算问题文件")
 
+            # 是否“单色页面”：
+            # - 没有颜色按钮
+            # - 或者颜色按钮数量 == 1
+            single_color_mode = (not color_elems) or (len(color_elems) <= 1)
 
             for info in variants:
                 style = info.pop("_style") or ""
@@ -576,28 +667,33 @@ def process_url(url: str, output_dir: Path):
                 product_code = None
                 reason = ""
 
-                # 先算出这个颜色对应的所有候选颜色码（用于判断 unknown_color / no_db_match）
-                if conn:
-                    codes_for_color = map_color_to_codes(color)
-                else:
+                # =========================
+                # 优先逻辑：单色页面 + 完整 MPN
+                # =========================
+                # 仅在“单色页面”使用完整 MPN，避免多色时把一个颜色的编码错用到其他颜色。
+                if single_color_mode and full_mpn and re.match(r"^[A-Z]{3}\d{4}[A-Z]{2}\d{2,4}$", full_mpn):
+                    product_code = full_mpn
+                    # 用完整 MPN 时，不需要颜色映射 / DB，也不记录 unknown_color
                     codes_for_color = []
+                else:
+                    # =========================
+                    # 原有逻辑：款式 + 颜色 → DB 匹配
+                    # =========================
+                    if conn:
+                        # 先算出这个颜色对应的所有候选颜色码（用于判断 unknown_color / no_db_match）
+                        codes_for_color = map_color_to_codes(color)
+                    else:
+                        codes_for_color = []
 
-                if style and conn:
-                    product_code = find_product_code_in_db(style, color, conn, url)
-
-
-
-
-
-
-
+                    if style and conn:
+                        product_code = find_product_code_in_db(style, color, conn, url)
 
                 if product_code:
-                    # ✅ 命中 DB，认为是完整编码
+                    # ✅ 找到完整编码（要么来自 MPN，要么来自 DB）
                     target_dir = TXT_DIR
                     info["Product Code"] = product_code
                 else:
-                    # ❗ 问题文件
+                    # ❗ 问题文件：没有完整编码，只能用 style 或 UNKNOWN 占位
                     target_dir = TXT_PROBLEM_DIR
                     info["Product Code"] = style or "UNKNOWN"
 
@@ -607,10 +703,6 @@ def process_url(url: str, output_dir: Path):
                         reason = "no_db_match"
 
                     record_problem_item(style, color, info["Product Code"], reason, url)
-
-
-
-
 
                 fname = sanitize_filename(info["Product Code"]) + ".txt"
                 fpath = target_dir / fname
@@ -626,18 +718,18 @@ def process_url(url: str, output_dir: Path):
         except InvalidSessionIdException as e:
             print(f"⚠️ driver 会话失效 → 重建: {e}")
             invalidate_current_driver()
-            time.sleep(1)
-            continue
-
+            time.sleep(2)
         except WebDriverException as e:
-            print(f"❌ WebDriver 异常 → 放弃: {e}")
-            return
-
+            print(f"⚠️ WebDriverException（第 {attempt+1} 次）: {e}")
+            invalidate_current_driver()
+            time.sleep(2)
         except Exception as e:
-            print(f"❌ 处理失败: {url}\n    {e}")
-            return
+            print(f"❌ 抓取失败（第 {attempt+1} 次）: {e}")
+            traceback.print_exc()
+            break
 
-    return
+    print(f"❌ 最终失败: {url}")
+
 
 
 #########################################
