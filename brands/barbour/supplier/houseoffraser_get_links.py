@@ -1,16 +1,15 @@
-# barbour/supplier/houseoffraser_get_links.py
-
 import re
 import time
 import random
 from pathlib import Path
+
 from bs4 import BeautifulSoup
-import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
 from config import BARBOUR
-from common_taobao.core.driver_auto import build_uc_driver
+from common_taobao.selenium_utils import get_driver as get_shared_driver, quit_driver
 
 # ✅ 两个入口：Barbour & Barbour International（第1页无参，其余 ?dcp=N）
 BASE_URLS = [
@@ -29,20 +28,15 @@ DCP_IN_HREF = re.compile(r"[?&]dcp=(\d+)")
 
 
 def get_driver():
-    options = uc.ChromeOptions()
-    # 如需静默运行可启用（不建议静默，容易触发风控）
-    # options.add_argument("--headless=new")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument(
-        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+    """
+    使用 common_taobao.selenium_utils 提供的共享 driver，
+    不再通过 undetected_chromedriver / driver_auto 联网下载。
+    """
+    return get_shared_driver(
+        name="houseoffraser",
+        headless=False,             # 你如果想静默可以自己改 True
+        window_size="1920,1080",
     )
-    options.add_argument("accept-language=en-GB,en-US;q=0.9,en;q=0.8")
-    driver = build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True)
-    return driver
 
 
 def _build_page_url(base_url: str, page: int) -> str:
@@ -221,17 +215,4 @@ def houseoffraser_get_links():
     print(f"\n===== 🧭 当前分类：{BASE_URLS[0]} =====")
     _crawl_category(driver, BASE_URLS[0], all_links)
 
-    # 切换第二个分类前，给 2 秒缓冲，避免刚导航就判空
-    print(f"\n===== 🧭 当前分类：{BASE_URLS[1]} =====")
-    time.sleep(2)
-    _crawl_category(driver, BASE_URLS[1], all_links)
-
-    driver.quit()
-
-    # 写入 TXT
-    OUTPUT_PATH.write_text("\n".join(sorted(all_links)), encoding="utf-8")
-    print(f"\n🎯 共提取 {len(all_links)} 条商品链接，已保存至：{OUTPUT_PATH}")
-
-
-if __name__ == "__main__":
-    houseoffraser_get_links()
+    # 切换第二个分类
