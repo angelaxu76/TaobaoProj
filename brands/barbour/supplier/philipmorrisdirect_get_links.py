@@ -1,13 +1,13 @@
-# barbour/supplier/philipmorris_get_links.py
-
 import time
 from pathlib import Path
+
 from bs4 import BeautifulSoup
-import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
 from config import BARBOUR
+from common_taobao.core.selenium_utils import get_driver as get_shared_driver, quit_driver
 
 # ====== 多个分类 URL，按需增减 ======
 CATEGORY_URLS = [
@@ -23,14 +23,15 @@ OUTPUT_PATH = BARBOUR["LINKS_FILES"]["philipmorris"]
 OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 
-def get_driver():
-    options = uc.ChromeOptions()
-    options.add_argument("--headless=new")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    return uc.Chrome(options=options, use_subprocess=True)
+def get_philipmorris_driver():
+    """
+    使用统一的 selenium_utils 获取 driver，不再走 undetected_chromedriver。
+    """
+    return get_shared_driver(
+        name="philipmorris",
+        headless=False,          # 需要无头可以改 True
+        window_size="1200,2000",
+    )
 
 
 def extract_links_from_html(html: str):
@@ -49,7 +50,7 @@ def extract_links_from_html(html: str):
 
 def philipmorris_get_links():
     print("🚀 开始抓取 Philip Morris 商品链接（多分类）")
-    driver = get_driver()
+    driver = get_philipmorris_driver()
     all_links = set()
 
     try:
@@ -65,7 +66,9 @@ def philipmorris_get_links():
 
                 try:
                     WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "a.card-figure__link"))
+                        EC.presence_of_element_located(
+                            (By.CSS_SELECTOR, "a.card-figure__link")
+                        )
                     )
                 except Exception:
                     print(f"⚠️ 第 {page} 页加载超时或无商品，结束该分类")
@@ -84,7 +87,8 @@ def philipmorris_get_links():
                 time.sleep(1)
 
     finally:
-        driver.quit()
+        # 用统一的 quit_driver 管理关闭
+        quit_driver("philipmorris")
 
     # 统一去重后写入文件
     sorted_links = sorted(all_links)
