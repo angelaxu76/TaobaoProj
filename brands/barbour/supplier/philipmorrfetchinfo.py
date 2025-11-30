@@ -25,7 +25,7 @@ import psycopg2
 
 from config import BARBOUR
 from common_taobao.ingest.txt_writer import format_txt
-from typing import List
+
 # selenium imports
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -69,143 +69,6 @@ PROBLEM_SUMMARY_FILE = TXT_DIR.parent / "problem_summary.csv"
 drivers_lock = threading.Lock()
 _all_drivers = set()
 thread_local = threading.local()
-
-
-import re
-from typing import List
-
-
-# ============================================
-# 颜色处理：从数据库 barbour_color_map 读取颜色码
-# ============================================
-
-import threading
-import psycopg2
-from typing import List, Dict
-
-# 这里假设文件顶部已经有：
-# from config import BARBOUR, PGSQL_CONFIG
-# PGSQL_CONFIG 就是连接 PostgreSQL 的 dict
-
-# 全局缓存：归一化后的颜色名 -> 可能的 color_code 列表
-_COLOR_MAP_CACHE: Dict[str, List[str]] = {}
-_COLOR_MAP_LOADED: bool = False
-_COLOR_MAP_LOCK = threading.Lock()
-
-
-def _normalize_color_tokens(s: str) -> List[str]:
-    """
-    把颜色名统一成单词列表，用来做“完全同一组单词”的匹配。
-
-    规则：
-    - 不关心大小写
-    - 把 '/', ',', '&', '-' 等都当成分隔符
-    - 只保留 a-z0-9
-    - 去掉空单词
-    """
-    if not s:
-        return []
-
-    import re
-
-    s = s.lower()
-    # 把各种分隔符先统一成空格
-    s = re.sub(r"[\/,&\-]+", " ", s)
-    # 去掉其它奇怪符号，只留字母数字和空格
-    s = re.sub(r"[^a-z0-9\s]+", " ", s)
-    tokens = [t for t in s.split() if t]
-    return tokens
-
-
-def _color_key(s: str) -> str:
-    """
-    把颜色名变成一个“排序后的 token 串”，
-    用这个作为字典的 key，保证：
-      - 'Oatmeal / Ancient Tartan' 和 'Ancient Tartan Oatmeal' → 同一个 key
-      - 'Oatmeal' 和 'Oatmeal / Ancient Tartan' → 不同 key
-    """
-    tokens = _normalize_color_tokens(s)
-    if not tokens:
-        return ""
-    return " ".join(sorted(tokens))
-
-
-def _load_color_map_from_db() -> None:
-    """
-    只在第一次调用时，从 barbour_color_map 表中把所有
-    (color_code, raw_name) 读出来，构建 _COLOR_MAP_CACHE。
-    """
-    global _COLOR_MAP_LOADED, _COLOR_MAP_CACHE
-
-    with _COLOR_MAP_LOCK:
-        if _COLOR_MAP_LOADED:
-            return
-
-        try:
-            conn = psycopg2.connect(**PGSQL_CONFIG)
-            cur = conn.cursor()
-            # ✅ 用 raw_name，而不是 color_en
-            cur.execute("SELECT color_code, raw_name FROM barbour_color_map")
-            rows = cur.fetchall()
-            cur.close()
-            conn.close()
-        except Exception as e:  # noqa: BLE001
-            print("⚠️ 从 barbour_color_map 读取颜色映射失败：", e)
-            _COLOR_MAP_LOADED = True
-            _COLOR_MAP_CACHE = {}
-            return
-
-        cache: Dict[str, List[str]] = {}
-        for code, en in rows:
-            key = _color_key(en or "")
-            if not key:
-                continue
-            cache.setdefault(key, []).append(code)
-
-        _COLOR_MAP_CACHE = cache
-        _COLOR_MAP_LOADED = True
-        print(
-            f"🎨 已从 barbour_color_map 载入 {len(rows)} 条颜色记录，"
-            f"归一化 key 数量：{len(cache)}"
-        )
-
-
-
-def map_color_to_codes(color: str) -> List[str]:
-    """
-    一个颜色名 → 可能对应多个颜色码（从 barbour_color_map 表中来）
-
-    匹配规则：
-      - 不修改 TXT / config 中的原始颜色字符串；
-      - 内部用 _color_key 做“单词集合完全一致”的匹配：
-          * 'Navy'            ↔ 'navy'               ✅
-          * 'Oatmeal / Ancient Tartan'
-              ↔ 'Ancient Tartan Oatmeal'            ✅
-          * 'Oatmeal'
-              ↔ 'Oatmeal / Ancient Tartan'          ❌（单词数不同）
-    """
-    if not color:
-        return []
-
-    _load_color_map_from_db()
-    key = _color_key(color)
-    if not key:
-        return []
-
-    codes = _COLOR_MAP_CACHE.get(key, [])
-    # 调试时可以看一下映射结果
-    print(f"🧩 map_color_to_codes: '{color}' (key='{key}') -> {codes}")
-    return codes
-
-
-def map_color_to_code(color: str) -> str | None:
-    """
-    兼容旧代码：多数地方只需要一个 color_code，
-    这里简单取第一个，有多个的时候交给 DB 再筛选。
-    """
-    codes = map_color_to_codes(color)
-    return codes[0] if codes else None
-
 
 
 def create_driver(headless=True):
@@ -313,6 +176,43 @@ def record_problem_item(style, color, product_code, reason, url):
         f.write(f"{style},{color},{product_code},{reason},{url},{datetime.now().isoformat(timespec='seconds')}\n")
 
 
+def map_color_to_code(color: str) -> str | None:
+    """
+    尝试 3 步：
+    1）组合色取第一个
+    2）直接匹配配置
+    3）去掉 Soft/Ancient/Muted 等前缀后再次匹配
+    """
+    if not color:
+        return None
+
+    s = color.strip().lower()
+
+    if "/" in s:
+        s = s.split("/")[0].strip()
+
+    def try_map(text: str):
+        for code, names in COLOR_CODE_MAP.items():
+            en = (names.get("en") or "").lower()
+            if text == en or text in en or en in text:
+                return code
+        return None
+
+    code = try_map(s)
+    if code:
+        return code
+
+    prefixes = ["soft ", "muted ", "ancient ", "classic ", "dark ", "light ", "mid ", "deep "]
+    for p in prefixes:
+        if s.startswith(p):
+            base = s[len(p):].strip()
+            code = try_map(base)
+            if code:
+                return code
+
+    return None
+
+
 #########################################
 # 款式编码提取
 #########################################
@@ -412,19 +312,11 @@ def build_size_str(sizes):
 #########################################
 
 def find_product_code_in_db(style: str, color: str, conn, url: str):
-    """
-    通过 款式编码 + 颜色英文，从 barbour_products 中找到真正的 product_code。
-
-    支持“一色多码”：
-      例如 'Olive' -> ['OL', 'GN']
-      会依次用 MQU0281OL%、MQU0281GN% 去查，
-      谁能命中就用谁。
-    """
     if not style or not color or not conn:
         return None
 
-    color_codes = map_color_to_codes(color)
-    if not color_codes:
+    color_abbr = map_color_to_code(color)
+    if not color_abbr:
         print(f"⚠️ 未找到颜色简写映射：{style} / {color}")
         record_unknown_color(style, color, url)
         return None
@@ -432,28 +324,26 @@ def find_product_code_in_db(style: str, color: str, conn, url: str):
     sql = """
         SELECT product_code FROM barbour_products
         WHERE product_code ILIKE %s
-        ORDER BY product_code
         LIMIT 1
     """
 
+    prefix = f"{style}{color_abbr}"
     with conn.cursor() as cur:
-        # 先按 COLOR_CODE_MAP 中的顺序尝试所有颜色码
-        for abbr in color_codes:
-            prefix = f"{style}{abbr}"
-            cur.execute(sql, (prefix + "%",))
+        cur.execute(sql, (prefix + "%",))
+        row = cur.fetchone()
+        if row:
+            return row[0]
+
+    # 特例：Sage SG → GN
+    if color.lower() == "sage" and color_abbr == "SG":
+        alt = f"{style}GN"
+        with conn.cursor() as cur:
+            cur.execute(sql, (alt + "%",))
             row = cur.fetchone()
-            if row and row[0]:
+            if row:
                 return row[0]
 
-        # 特例：Sage SG → GN（如果 SG 在候选列表里）
-        if color.strip().lower() == "sage" and "SG" in color_codes and "GN" not in color_codes:
-            alt_prefix = f"{style}GN"
-            cur.execute(sql, (alt_prefix + "%",))
-            row = cur.fetchone()
-            if row and row[0]:
-                return row[0]
-
-    print(f"⚠️ 数据库未匹配到：{style} / {color} / codes={color_codes}")
+    print(f"⚠️ 数据库未匹配到：{style} / {color}")
     return None
 
 
@@ -568,7 +458,6 @@ def process_url(url: str, output_dir: Path):
             except:
                 print("⚠️ 数据库连接失败 → 全部算问题文件")
 
-
             for info in variants:
                 style = info.pop("_style") or ""
                 color = info["Product Color"]
@@ -576,41 +465,18 @@ def process_url(url: str, output_dir: Path):
                 product_code = None
                 reason = ""
 
-                # 先算出这个颜色对应的所有候选颜色码（用于判断 unknown_color / no_db_match）
-                if conn:
-                    codes_for_color = map_color_to_codes(color)
-                else:
-                    codes_for_color = []
-
                 if style and conn:
                     product_code = find_product_code_in_db(style, color, conn, url)
 
-
-
-
-
-
-
-
                 if product_code:
-                    # ✅ 命中 DB，认为是完整编码
                     target_dir = TXT_DIR
                     info["Product Code"] = product_code
                 else:
-                    # ❗ 问题文件
+                    # 问题文件
                     target_dir = TXT_PROBLEM_DIR
                     info["Product Code"] = style or "UNKNOWN"
-
-                    if not codes_for_color:
-                        reason = "unknown_color"
-                    else:
-                        reason = "no_db_match"
-
+                    reason = "unknown_color" if map_color_to_code(color) is None else "no_db_match"
                     record_problem_item(style, color, info["Product Code"], reason, url)
-
-
-
-
 
                 fname = sanitize_filename(info["Product Code"]) + ".txt"
                 fpath = target_dir / fname

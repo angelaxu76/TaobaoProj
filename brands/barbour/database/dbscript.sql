@@ -10,6 +10,8 @@ DROP TABLE IF EXISTS barbour_inventory;
 DROP TABLE IF EXISTS barbour_supplier_map;
 DROP TABLE IF EXISTS barbour_product_candidates;
 DROP TABLE IF EXISTS barbour_products;
+DROP TABLE IF EXISTS barbour_color_map;
+
 
 -- ========== 2. 公共更新时间戳函数 ==========
 
@@ -20,6 +22,60 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+
+
+-- ========== 3.1 barbour_color_map：颜色简码映射表 ==========
+
+-- 用于维护 “颜色英文名 ↔ 颜色简码（BK/NY/OL 等）” 的标准映射
+-- 场景：
+--   - 从 barbour_products / 各站点 TXT 中抽取颜色名
+--   - 预处理生成 norm_key（单词集合标准化）
+--   - 抓取 Philip Morris 等站点时，用 norm_key 精确匹配颜色简码
+
+CREATE TABLE barbour_color_map (
+    id           SERIAL PRIMARY KEY,
+
+    -- 颜色简码，例如 'NY', 'OL', 'BK'
+    color_code   VARCHAR(4) NOT NULL,
+
+    -- 原始颜色英文名，例如：
+    -- 'Navy', 'Navy/Classic', 'Oatmeal / Ancient Tartan'
+    raw_name     TEXT NOT NULL,
+
+    -- 标准化后的颜色 key，用于比较：
+    -- 规则（由应用层构造，比如 Python）：
+    --   * 全部转小写
+    --   * 非字母字符全部当成分隔符
+    --   * 拆成单词，去重，排序
+    --   * 用空格拼接
+    -- 例：
+    --   'Oatmeal / Ancient Tartan'    -> 'ancient oatmeal tartan'
+    --   'Tartan Oatmeal - ANCIENT'    -> 'ancient oatmeal tartan'
+    --   'Navy'                        -> 'navy'
+    norm_key     TEXT NOT NULL,
+
+    -- 数据来源：products / config / manual / txt_problem 等
+    source       VARCHAR(50),
+
+    -- 是否经过人工确认（避免误配用）
+    is_confirmed BOOLEAN DEFAULT FALSE,
+
+    -- 时间戳
+    created_at   TIMESTAMP DEFAULT NOW(),
+    updated_at   TIMESTAMP DEFAULT NOW(),
+
+    -- 同一个颜色简码 + 原始名字 只存一条
+    UNIQUE (color_code, raw_name)
+);
+
+-- 复用通用的更新时间戳触发器
+DROP TRIGGER IF EXISTS trg_barbour_color_map_updated ON barbour_color_map;
+CREATE TRIGGER trg_barbour_color_map_updated
+BEFORE UPDATE ON barbour_color_map
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
+
 
 -- ========== 3. barbour_products：产品信息表 ==========
 

@@ -247,13 +247,13 @@ BARBOUR = {
         "LTS": ("女款", "T恤"),
     },
 
-    "BARBOUR_COLOR_CODE_MAP":{
+    "BARBOUR_COLOR_CODE_MAP": {
         # ===== 高频主色 =====
         "BK": {"en": "black",          "zh": "黑色"},
         "NY": {"en": "navy",           "zh": "深蓝"},
         "OL": {"en": "olive",          "zh": "橄榄绿"},
         "WH": {"en": "white",          "zh": "白色"},
-        "GN": {"en": "green",          "zh": "绿色"},        # 有时是 forest / uniform green 一类
+        "GN": {"en": "green",          "zh": "绿色"},                 # 有时是 forest / uniform green 一类
         "GY": {"en": "grey",           "zh": "灰色"},
         "BR": {"en": "brown",          "zh": "棕色"},
         "BE": {"en": "beige",          "zh": "米色"},
@@ -261,7 +261,44 @@ BARBOUR = {
         "ST": {"en": "stone",          "zh": "石色 / 浅卡其"},
         "BL": {"en": "blue",           "zh": "蓝色"},
 
-        # ===== 比较确定的 =====
+        # 精细色名（完全按 Product Color 对应）
+        "PI": {"en": "Arabesque",              "zh": "偏玫瑰粉"},
+        "BR": {"en": "Bark",                   "zh": "树皮棕"},
+        "SN": {"en": "Beech/Classic",          "zh": "山毛榉浅棕"},
+        "RE": {"en": "Bordeaux",               "zh": "波尔多红"},
+        "ST": {"en": "Clay",                   "zh": "陶土色"},
+        "WH": {"en": "Cloud",                  "zh": "白云色"},
+        "GN": {"en": "Forest",                 "zh": "森林绿"},
+        "TN": {"en": "Forest Mist",            "zh": "森林雾绿"},
+        "BE": {"en": "Light Trench",           "zh": "浅风衣米色 / 浅卡其色"},
+        "TN": {"en": "Midnight",               "zh": "午夜蓝 / 深蓝黑"},
+        "BE": {"en": "Mist",                   "zh": "雾灰色 / 雾霾米色"},
+        "CR": {"en": "Pearl",                  "zh": "珍珠白"},
+        "BR": {"en": "Black Oak",              "zh": "黑橡木棕"},
+        "OL": {"en": "Fern",                   "zh": "蕨绿色"},
+        "BR": {"en": "Brown",                  "zh": "棕色"},                     # 与上面 brown 大致同义，保留
+        "GN": {"en": "Dundee Tartan",          "zh": "Dundee 格纹绿色"},
+        "BK": {"en": "Black Carbon",           "zh": "碳黑色"},
+        "BR": {"en": "Umber",                  "zh": "棕褐色 / 赭棕"},
+        "ST": {"en": "Light Fawn",             "zh": "浅鹿皮色 / 浅驼色"},
+        "CR": {"en": "Pearl/Navy",             "zh": "珍珠白/海军蓝"},
+        "BE": {"en": "Trench",                 "zh": "风衣米色"},
+        "NY": {"en": "Navy/Classic",           "zh": "深蓝/经典格纹"},
+        "OL": {"en": "Deep Olive/Ancient Tartan",      "zh": "深橄榄绿/Ancient 格纹"},
+        "GN": {"en": "Olive",                  "zh": "橄榄绿调"},
+        "BL": {"en": "Sky Micro Check",        "zh": "天蓝细格纹"},
+        "OL": {"en": "Fern/Classic Tartan",    "zh": "蕨绿/经典格纹"},
+        "BR": {"en": "Bark/Muted",             "zh": "树皮棕/柔和色调"},
+        "OL": {"en": "Tan/Dress Tartan",       "zh": "茶色/礼服格纹"},
+        "NY": {"en": "Royal Navy/Dress Tartan","zh": "皇家海军蓝/礼服格纹"},
+        "TA": {"en": "Tan/Dress Tartan",       "zh": "茶色/礼服格纹"},
+        "OL": {"en": "Fern/Ancient Tartan",    "zh": "蕨绿/Ancient 格纹"},
+        "OL": {"en": "Archive Olive/Ancient Tartan", "zh": "Archive 橄榄/Ancient 格纹"},
+        "RU": {"en": "Rustic/Ancient Tartan",  "zh": "乡村棕/Ancient 格纹"},
+        "OL": {"en": "Fern/Beech/Ancient Tartan", "zh": "蕨绿/山毛榉/Ancient 格纹"},
+        "OL": {"en": "Fern/Sage/Ancient Tartan",  "zh": "蕨绿/鼠尾草/Ancient 格纹"},
+
+        # ===== 比较确定的基础色（你原来的第二段） =====
         "RE": {"en": "red",            "zh": "红色"},
         "PI": {"en": "pink",           "zh": "粉色"},
         "CR": {"en": "cream",          "zh": "奶油色 / 米白"},
@@ -278,14 +315,15 @@ BARBOUR = {
         "CO": {"en": "cobalt",         "zh": "钴蓝色"},
         "AQ": {"en": "aqua",           "zh": "水绿色 / 青绿色"},
 
-        # ===== Barbour 自己的比较特别的几个 =====
-        "BU": {"en": "burgundy",       "zh": "酒红"},        # Barbour 里 BU 通常是 Burgundy，不是 Blue
-        "RU": {"en": "rustic",         "zh": "乡村棕 / 锈色"},# 对应 rustic / rust 系
+        # ===== Barbour 自己的特别几组 =====
+        "BU": {"en": "burgundy",       "zh": "酒红"},
+        "RU": {"en": "rustic",         "zh": "乡村棕 / 锈色"},
         "SN": {"en": "sand",           "zh": "沙色 / 砂岩色"},
-        "BC": {"en": "black/charcoal", "zh": "黑灰色"},      # 低频，保守定义为黑+灰调
+        "BC": {"en": "black/charcoal", "zh": "黑炭灰"},
         "HG": {"en": "heather grey",   "zh": "杂灰 / 麻灰"},
-        "ME": {"en": "merlot",         "zh": "酒红棕"},      # 极低频，粗略按深酒红处理
+        "ME": {"en": "merlot",         "zh": "酒红棕 / 梅洛红"},
     },
+
 
     "BARBOUR_COLOR_MAP" : {
         "classic navy": "海军蓝",
