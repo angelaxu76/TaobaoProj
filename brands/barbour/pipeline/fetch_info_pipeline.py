@@ -30,9 +30,9 @@ def barbour_database_import_pipleline():
     # barbour_get_links()
     # outdoorandcountry_fetch_and_save_links()
     allweathers_get_links()
-    # houseoffraser_get_links()
-    # very_get_links()
-    # collect_terraces_links()
+    houseoffraser_get_links()
+    very_get_links()
+    collect_terraces_links()
     philipmorris_get_links()
 
     print("步骤 2：抓取商品信息并存为TXT")

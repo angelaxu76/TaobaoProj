@@ -9,7 +9,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from config import BARBOUR
-from common_taobao.selenium_utils import get_driver as get_shared_driver, quit_driver
+from common_taobao.core.selenium_utils import get_driver as get_shared_driver, quit_driver
 
 # ✅ 两个入口：Barbour & Barbour International（第1页无参，其余 ?dcp=N）
 BASE_URLS = [
