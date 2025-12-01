@@ -45,14 +45,14 @@ def main():
     insert_missing_products_with_zero_stock("clarks_jingya")
 
 
-    print("\n🟡 Step: 6️⃣ 获取excel文件用来更新淘宝店铺价格")
-    generate_price_excels_bulk(
-        brand="clarks_jingya",
-        input_dir=r"D:\TB\Products\clarks_jingya\repulibcation\store_prices\input",
-        output_dir=r"D:\TB\Products\clarks_jingya\repulibcation\store_prices\output",
-        suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
-        drop_rows_without_price=False  # 不丢行，查不到的价格留空
-    )
+    # print("\n🟡 Step: 6️⃣ 获取excel文件用来更新淘宝店铺价格")
+    # generate_price_excels_bulk(
+    #     brand="clarks_jingya",
+    #     input_dir=r"D:\TB\Products\clarks_jingya\repulibcation\store_prices\input",
+    #     output_dir=r"D:\TB\Products\clarks_jingya\repulibcation\store_prices\output",
+    #     suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
+    #     drop_rows_without_price=False  # 不丢行，查不到的价格留空
+    # )
 
 
     print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
@@ -62,8 +62,8 @@ def main():
     price_dest_excel = r"D:\TB\Products\clarks_jingya\repulibcation\publication_prices"
     export_jiangya_channel_prices("clarks_jingya",price_dest_excel)
 
-    print("\\n🟡 Step: 6️⃣生成发布产品的excel")
-    generate_publication_excels("clarks_jingya")
+    # print("\\n🟡 Step: 6️⃣生成发布产品的excel")
+    # generate_publication_excels("clarks_jingya")
 
 if __name__ == "__main__":
     main()
