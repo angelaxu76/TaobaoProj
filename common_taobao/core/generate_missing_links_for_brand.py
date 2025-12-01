@@ -48,14 +48,26 @@ def load_codes_from_txt_dir(txt_dir: Path) -> Set[str]:
     return codes
 
 
+from psycopg2.extras import DictCursor
+from psycopg2.errors import UndefinedColumn   # 新增这一行
+
 def load_codes_and_urls_from_db(table: str, db_conf: Dict) -> Dict[str, str]:
     """
     从数据库中读取所有商品编码 + 对应 product_url。
-    约定：product_name = 商品编码，product_url 为链接。
+    ✅ 优先使用 product_code（你当前的实际字段）
+    ✅ 如果没有 product_code 字段，再回退使用 product_name（兼容旧表 / 其他表）
+
     返回 dict: {CODE_UPPER: url}
     """
-    sql = f"""
-        SELECT DISTINCT product_name, product_url
+    # 先按你现在的标准：product_code
+    sql_use_product_code = f"""
+        SELECT DISTINCT product_code AS code, product_url
+        FROM {table}
+        WHERE product_url IS NOT NULL
+    """
+    # 兼容旧字段 / 其他表
+    sql_use_product_name = f"""
+        SELECT DISTINCT product_name AS code, product_url
         FROM {table}
         WHERE product_url IS NOT NULL
     """
@@ -65,10 +77,18 @@ def load_codes_and_urls_from_db(table: str, db_conf: Dict) -> Dict[str, str]:
     print(f"🔌 正在连接数据库：{db_conf.get('host')} / {db_conf.get('dbname')}，读取 {table} ...")
     with psycopg2.connect(**db_conf) as conn:
         with conn.cursor(cursor_factory=DictCursor) as cur:
-            cur.execute(sql)
+            try:
+                # 1️⃣ 先用 product_code（你现在真实在用的列名）
+                cur.execute(sql_use_product_code)
+                print("✅ 使用字段 product_code 读取编码")
+            except UndefinedColumn:
+                # 2️⃣ 某些表可能还是 product_name，做个兜底
+                print("⚠️ 当前表不存在字段 product_code，改用 product_name 读取编码")
+                cur.execute(sql_use_product_name)
+
             rows = cur.fetchall()
             for row in rows:
-                code = (row["product_name"] or "").strip()
+                code = (row["code"] or "").strip()
                 url = (row["product_url"] or "").strip()
                 if code and url:
                     mapping.setdefault(code.upper(), url)
