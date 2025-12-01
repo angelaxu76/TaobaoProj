@@ -8,6 +8,7 @@ from channels.jingya.export.generate_publication_excel import generate_publicati
 from channels.jingya.export.export_stock_to_excel import export_stock_excel
 from channels.jingya.export.export_channel_price_excel_jingya import export_jiangya_channel_prices
 from channels.jingya.ingest.import_channel_info import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
+from common_taobao.core.generate_missing_links_for_brand import generate_missing_links_for_brand
 
 # from brands.geox.core.fetch_product_info import fetch_all_product_info
 
@@ -19,14 +20,21 @@ def run_script(filename: str):
     subprocess.run(["python", path], check=True)
 
 def main():
-    # print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    # backup_and_clear_brand_dirs(GEOX)
+    print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
+    backup_and_clear_brand_dirs(GEOX)
 
-    # print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    # collect_all_product_links()
+    print("\n🟡 Step: 2️⃣ 抓取商品链接")
+    collect_all_product_links()
 
-    # print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    # fetch_all_product_info()
+    print("\n🟡 Step: 3️⃣ 抓取商品信息")
+    fetch_all_product_info()
+
+    print("\n🟡 Step: 3️⃣ 将鲸牙存在但TXT中不存在的商品抓一遍")
+    missing_product_link = r"D:\TB\Products\geox\publication\missing_product_links.txt";
+    generate_missing_links_for_brand("geox",missing_product_link )
+    fetch_all_product_info(missing_product_link )
+
+
 
     # print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
     # import_txt_to_db_supplier("geox")  # ✅ 新逻辑

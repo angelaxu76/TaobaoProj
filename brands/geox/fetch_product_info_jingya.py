@@ -366,42 +366,54 @@ def derive_code_from_url(url: str) -> str:
         return Path(urlparse(url).path).stem.upper()
 
 # ===================== 主流程（登录一次→批量抓取） =====================
-def fetch_all_product_info():
-    if not PRODUCT_LINK_FILE.exists():
-        print(f"❌ 缺少链接文件: {PRODUCT_LINK_FILE}")
+def fetch_all_product_info(links_file=None):
+    """
+    GEOX 商品抓取主入口（支持外部传入 product_links.txt 覆盖 config 默认路径）。
+
+    :param links_file: 可选，自定义 product_links.txt 路径。如果为 None ，则使用 PRODUCT_LINK_FILE。
+    """
+    # 1) 解析 links 文件路径
+    if links_file is None:
+        links_path = PRODUCT_LINK_FILE   # config 默认
+    else:
+        links_path = Path(links_file)    # 允许 str / Path
+
+    if not links_path.exists():
+        print(f"❌ 缺少链接文件: {links_path}")
         return
 
-    with open(PRODUCT_LINK_FILE, "r", encoding="utf-8") as f:
-        urls = [line.strip() for line in f if line.strip()]
+    with open(links_path, "r", encoding="utf-8") as f:
+        urls = [u.strip() for u in f if u.strip()]
+
     if not urls:
-        print("⚠️ 链接列表为空")
+        print(f"⚠️ 链接列表为空: {links_path}")
         return
 
-    # 1) 用你的定制 Chrome/固定 Profile 打开“可见”窗口登录一次（保留你原有逻辑）
-    login_driver = create_driver(headless=False)   # ← 不改
+    # =========================
+    # === 主流程不变（登录 → 批量抓取）===
+    # =========================
+
+    # 1) 用你的定制 Chrome/固定 Profile 打开“可见”窗口登录一次
+    login_driver = create_driver(headless=False)
     login_driver.get(urls[0])
     print(f"⏳ 如需登录，请在新窗口手动登录 GEOX（等待 {LOGIN_WAIT_SECONDS} 秒）")
-    time.sleep(LOGIN_WAIT_SECONDS)                 # 如已登录可设为 0
+    time.sleep(LOGIN_WAIT_SECONDS)
     session = export_session(login_driver)
     login_driver.quit()
 
-    # 2) 创建一个“长期复用”的工作用 driver（不带 profile，轻量、禁图、eager）
-# 改为带界面的 driver
+    # 2) 创建一个可复用的工作用 driver
     driver = create_driver(headless=False)
+
     try:
         import_session(driver, session, base_url="https://www.geox.com/")
 
         for idx, url in enumerate(urls, 1):
             try:
-                print(f"[{idx}] 🪟 正在打开商品页面：{url}")
+                print(f"[{idx}/{len(urls)}] 🪟 正在打开：{url}")
                 driver.get(url)
-                time.sleep(5)  # 👈 等 5 秒观察页面折扣价是否显示
+                time.sleep(5)
+
                 html = driver.page_source
-
-
-
-
-
                 if not html:
                     print(f"[{idx}] ⚠️ 空页面: {url}")
                     continue
@@ -416,24 +428,16 @@ def fetch_all_product_info():
                 format_txt(info, txt_path, brand=BRAND)
                 print(f"[{idx}] ✅ 写入成功: {txt_path.name}")
 
-
                 time.sleep(1)
-                # 可选：每处理若干个商品，轻刷首页，防止长跑内存/会话抖动
-                # if idx % 50 == 0:
-                #     driver.get("https://www.geox.com/")
-                #     time.sleep(0)
 
             except Exception as e:
                 print(f"[{idx}] ❌ 处理失败 {url} → {e}")
-                # 可选：出错时尝试重注入一次会话（不重启浏览器）
-                # try:
-                #     import_session(driver, session, base_url="https://www.geox.com/")
-                # except Exception:
-                #     pass
+
     finally:
         driver.quit()
 
     print("\n✅ 全部处理完成。")
+
 
 
 if __name__ == "__main__":

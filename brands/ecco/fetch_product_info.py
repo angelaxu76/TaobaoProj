@@ -834,25 +834,50 @@ def process_one(url: str, idx: int, total: int):
             pass
 
 
-def ecco_fetch_info():
+def ecco_fetch_info(links_file=None, max_workers: int = MAX_WORKERS):
+    """
+    ECCO 商品抓取入口。
+
+    :param links_file: 可选，自定义 product_links.txt 路径。
+                       为 None 时，使用 config 中的默认 LINKS_FILE。
+    :param max_workers: 线程数，不传则使用默认 MAX_WORKERS。
+    """
+    # 1) 解析 links 文件路径
+    if links_file is None:
+        links_path = LINKS_FILE            # config 里的 Path
+    else:
+        links_path = Path(links_file)      # 允许传 str/path
+
     ensure_dirs(TXT_DIR, DEBUG_DIR)
-    if not LINKS_FILE.exists():
-        raise FileNotFoundError(f"链接文件不存在: {LINKS_FILE}")
-    urls = [u.strip() for u in LINKS_FILE.read_text(encoding="utf-8").splitlines() if u.strip()]
+
+    if not links_path.exists():
+        raise FileNotFoundError(f"链接文件不存在: {links_path}")
+
+    # 2) 读取 URL 列表
+    urls = [u.strip() for u in links_path.read_text(encoding="utf-8").splitlines() if u.strip()]
     total = len(urls)
-    print(f"📦 共 {total} 条，线程 {MAX_WORKERS}，Selenium 回退: {ENABLE_SELENIUM}")
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
-        futures = [ex.submit(process_one, url, i+1, total) for i, url in enumerate(urls)]
+    print(f"📦 共 {total} 条，线程 {max_workers}，Selenium 回退: {ENABLE_SELENIUM}")
+    if total == 0:
+        print("⚠️ 链接文件为空，直接退出。")
+        return
+
+    # 3) 多线程抓取
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futures = [ex.submit(process_one, url, i + 1, total) for i, url in enumerate(urls)]
         for _ in as_completed(futures):
             pass
-    # 关闭 selenium
+
+    # 4) 关闭 selenium
     if ENABLE_SELENIUM:
         try:
             d = get_driver()
             d.quit()
         except Exception:
             pass
+
     print("✅ 完成")
+
 
 if __name__ == "__main__":
     ecco_fetch_info()
+

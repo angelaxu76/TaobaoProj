@@ -316,8 +316,19 @@ def process_product(url):
         return None
 
 
-def clarks_fetch_info():
-    with open(LINK_FILE, "r", encoding="utf-8") as f:
+def clarks_fetch_info(links_file=None):
+    """
+    Clarks Jingya 商品抓取入口。
+
+    :param links_file: 可选，自定义 product_links.txt 路径。
+                       为 None 时，使用 config 中的默认 LINK_FILE。
+    """
+    if links_file is None:
+        links_file = LINK_FILE
+
+    print(f"📄 使用链接文件: {links_file}")
+
+    with open(links_file, "r", encoding="utf-8") as f:
         urls = [line.strip() for line in f if line.strip()]
 
     for url in urls:

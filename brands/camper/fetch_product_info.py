@@ -354,10 +354,12 @@ def camper_fetch_all_with_retry(
             summary_path.unlink(missing_ok=True)
         print("\n✅ 最终没有缺失。")
 
-def camper_retry_missing_once():
+def camper_retry_missing_once(product_urls_file=None):
     """
     仅补抓缺失的 TXT，不跑全量。
     可反复调用多次以进一步补齐。
+
+    :param product_urls_file: 可选，自定义 links 文件。不传则使用 config 默认。
     """
     if product_urls_file is None:
         product_urls_file = PRODUCT_URLS_FILE
@@ -385,7 +387,6 @@ def camper_retry_missing_once():
 
     print("📝 缺失编码示例：", ", ".join(missing_codes[:preview]), "..." if len(missing_codes) > preview else "")
 
-    from pathlib import Path
     missing_urls = [code2url[c] for c in missing_codes if c in code2url]
     miss_list_path = Path(txt_dir) / "missing_camper_once.txt"
     with open(miss_list_path, "w", encoding="utf-8") as f:
@@ -402,6 +403,7 @@ def camper_retry_missing_once():
     print(f"✅ 本次补抓新增 TXT：{len(new_files)}")
     if new_files:
         print("📂 新增文件预览：", ", ".join(new_files[:preview]), "..." if len(new_files) > preview else "")
+
 
 
 if __name__ == "__main__":
