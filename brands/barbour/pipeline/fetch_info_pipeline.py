@@ -23,7 +23,7 @@ from brands.barbour.jingya.merge_offer_into_inventory import backfill_barbour_in
 
 def barbour_database_import_pipleline():
     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    backup_and_clear_brand_dirs(BARBOUR)
+    # backup_and_clear_brand_dirs(BARBOUR)
 
 
     print("步骤 1：获取商品链接")
@@ -36,13 +36,13 @@ def barbour_database_import_pipleline():
     # philipmorris_get_links()
 
     print("步骤 2：抓取商品信息并存为TXT")
-    barbour_fetch_info()
+    # barbour_fetch_info()
     outdoorandcountry_fetch_info(max_workers=15)
     allweathers_fetch_info(7)
     houseoffraser_fetch_info(max_workers=15, headless=False)
-    very_fetch_info()
-    terraces_fetch_info()
-    philipmorris_fetch_info(max_workers=1)
+    very_fetch_info(max_workers=15)
+    terraces_fetch_info(max_workers=10)
+    philipmorris_fetch_info(max_workers=15)
 
 
     
