@@ -204,8 +204,18 @@ def process_product_url(PRODUCT_URL):
     except Exception as e:
         print(f"❌ 错误: {PRODUCT_URL} - {e}")
 
-def camper_fetch_product_info(max_workers=MAX_WORKERS):
-    with open(PRODUCT_URLS_FILE, "r", encoding="utf-8") as f:
+def camper_fetch_product_info(product_urls_file=None, max_workers=MAX_WORKERS):
+    """
+    Camper 商品抓取主入口。
+    :param product_urls_file: 可选，自定义的 product_links.txt 路径。如果为 None，则使用 config 中的 CAMPER["LINKS_FILE"]。
+    :param max_workers: 线程数。
+    """
+    if product_urls_file is None:
+        product_urls_file = PRODUCT_URLS_FILE
+
+    print(f"📄 使用链接文件: {product_urls_file}")
+
+    with open(product_urls_file, "r", encoding="utf-8") as f:
         urls = [line.strip() for line in f if line.strip()]
 
     try:
@@ -216,6 +226,7 @@ def camper_fetch_product_info(max_workers=MAX_WORKERS):
     finally:
         # ✅ 关键：每轮任务结束都关闭全部 driver，避免残留进程堆积
         shutdown_all_drivers()
+
 
 # === New: URL->code 解析与缺失补抓工具 ===
 import re
@@ -271,12 +282,16 @@ def run_batch_fetch(urls: list[str], max_workers: int = MAX_WORKERS):
         shutdown_all_drivers()  # 你已有的统一回收，防泄漏
 
 def camper_fetch_all_with_retry(
-    product_urls_file: str = PRODUCT_URLS_FILE,
+    product_urls_file=None,
     txt_dir: str = str(SAVE_PATH),
     max_passes: int = 3,
     first_pass_workers: int = MAX_WORKERS,
     retry_workers: int = 6
 ):
+    
+    if product_urls_file is None:
+        product_urls_file = PRODUCT_URLS_FILE
+
     all_urls = load_all_urls(product_urls_file)
     code2url = expected_maps(all_urls)
 
@@ -344,7 +359,9 @@ def camper_retry_missing_once():
     仅补抓缺失的 TXT，不跑全量。
     可反复调用多次以进一步补齐。
     """
-    product_urls_file = PRODUCT_URLS_FILE
+    if product_urls_file is None:
+        product_urls_file = PRODUCT_URLS_FILE
+
     txt_dir = str(SAVE_PATH)
     max_workers = 6
     preview = 30

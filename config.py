@@ -122,7 +122,8 @@ BARBOUR = {
         "philipmorris":      BARBOUR_BASE / "publication" / "philipmorris" / "product_links.txt",
         "very":              BARBOUR_BASE / "publication" / "very" / "product_links.txt",
         "terraces":          BARBOUR_BASE / "publication" / "terraces" / "product_links.txt",
-        "flannels":          BARBOUR_BASE / "publication" / "flannels" / "product_links.txt",   # ✅ 新增 Flannels
+        "flannels":          BARBOUR_BASE / "publication" / "flannels" / "product_links.txt",
+        "cho":               BARBOUR_BASE / "publication" / "cho" / "product_links.txt",
     },
 
 
@@ -176,6 +177,11 @@ BARBOUR = {
             "shipping_fee": 0.0,
         },
 
+        "cho": {
+            "strategy": "all_ratio",
+            "extra_ratio": 0.95,
+            "shipping_fee": 0.0,
+        },
         # 默认兜底：任何没单独配的网站都走这里
         "__default__": {
             "strategy": "ratio_when_no_discount",
@@ -194,7 +200,8 @@ BARBOUR = {
         "philipmorris":      BARBOUR_BASE / "publication" / "philipmorris" / "TXT",
         "very":              BARBOUR_BASE / "publication" / "very" / "TXT",
         "terraces":          BARBOUR_BASE / "publication" / "terraces" / "TXT",
-        "flannels":          BARBOUR_BASE / "publication" / "flannels" / "TXT",   # ✅ 新增 Flannels
+        "flannels":          BARBOUR_BASE / "publication" / "flannels" / "TXT",
+        "cho":               BARBOUR_BASE / "publication" / "cho" / "TXT", 
     },
 
 
@@ -381,36 +388,7 @@ BARBOUR = {
         "pewter": "锡灰",
         "cola": "可乐棕",
         "taupe": "灰褐色",
-    }
-
-}
-
-
-
-# === Terraces（Barbour）路径配置 ===
-TERRACES_BASE = BASE_DIR / "terraces"
-TERRACES = {
-    "BRAND": "terraces",
-    "BASE": TERRACES_BASE,
-    "TXT_DIR": TERRACES_BASE / "publication" / "TXT",
-    "OUTPUT_DIR": TERRACES_BASE / "repulibcation",
-    "STORE_DIR": TERRACES_BASE / "document" / "store",
-    "IMAGE_DIR": TERRACES_BASE / "document" / "images",
-    "IMAGE_DOWNLOAD": TERRACES_BASE / "document" / "images_download",
-    "IMAGE_PROCESS": TERRACES_BASE / "document" / "images_process",
-    "IMAGE_CUTTER": TERRACES_BASE / "document" / "images_cutter",
-    "TABLE_NAME": "terraces_inventory",  # ✅ 数据库表名
-    "PGSQL_CONFIG": PGSQL_CONFIG,
-    "LINKS_FILE": TERRACES_BASE / "publication" / "product_links.txt",  # ✅ 商品链接文件
-    "FIELDS": {
-        "product_code": "product_code",  # 商品编码
-        "url": "product_url",
-        "discount_price": "discount_price_gbp",
-        "original_price": "original_price_gbp",
-        "size": "size",
-        "stock": "stock_status",  # 可改 stock_count
-        "gender": "gender"
-    }
+    },
 }
 
 # === Camper 经销商路径配置 ===

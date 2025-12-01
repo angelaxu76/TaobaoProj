@@ -18,7 +18,7 @@ from selenium import webdriver
 
 import demjson3
 
-from config import BARBOUR
+from config import BARBOUR, BRAND_CONFIG
 from brands.barbour.core.site_utils import assert_site_or_raise as canon
 
 # 统一 TXT 写入
@@ -423,4 +423,4 @@ def cho_fetch_info(max_workers: int = MAX_WORKERS):
 
 
 if __name__ == "__main__":
-    cho_fetch_info()
+    cho_fetch_info(max_workers=10)
