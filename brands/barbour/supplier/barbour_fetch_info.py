@@ -16,7 +16,8 @@ from bs4 import BeautifulSoup
 from config import BARBOUR
 from common_taobao.ingest.txt_writer import format_txt              # ✅ 统一写入模板
 from brands.barbour.core.site_utils import assert_site_or_raise as canon
-
+from config import BARBOUR, SETTINGS
+DEFAULT_STOCK_COUNT = SETTINGS.get("DEFAULT_STOCK_COUNT", 3)
 # 可选：更稳的 Barbour 性别兜底（M*/L* 前缀）
 try:
     from common_taobao.core.size_normalizer import infer_gender_for_barbour
@@ -132,7 +133,7 @@ def _build_size_lines_from_buttons(size_buttons_map: dict[str, str], gender: str
         prev = status_bucket.get(norm)
         if prev is None or (prev == "无货" and curr == "有货"):
             status_bucket[norm] = curr
-            stock_bucket[norm] = 3 if curr == "有货" else 0
+            stock_bucket[norm] = DEFAULT_STOCK_COUNT if curr == "有货" else 0
 
     # 2) 按性别选择“单一尺码系”的完整顺序表
     if (gender or "男款") == "女款":

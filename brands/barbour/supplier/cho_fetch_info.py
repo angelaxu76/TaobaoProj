@@ -18,12 +18,12 @@ from selenium import webdriver
 
 import demjson3
 
-from config import BARBOUR, BRAND_CONFIG
 from brands.barbour.core.site_utils import assert_site_or_raise as canon
 
 # 统一 TXT 写入
 from common_taobao.ingest.txt_writer import format_txt
-
+from config import BARBOUR, BRAND_CONFIG, SETTINGS
+DEFAULT_STOCK_COUNT = SETTINGS.get("DEFAULT_STOCK_COUNT", 3)
 # 可选 stealth
 try:
     from selenium_stealth import stealth
@@ -267,7 +267,7 @@ def _build_size_lines_from_sizedetail(size_detail: dict, gender: str) -> tuple[s
         prev = bucket_status.get(norm)
         if prev is None or (prev == "无货" and status == "有货"):
             bucket_status[norm] = status
-            bucket_stock[norm] = 3 if stock > 0 else 0
+            bucket_stock[norm] = DEFAULT_STOCK_COUNT if stock > 0 else 0
 
     # 2) 选择单一尺码系
     present_keys = set(bucket_status.keys())
@@ -331,7 +331,7 @@ def parse_detail_page(html: str, url: str) -> dict:
         in_stock = "instock" in avail
 
         size_detail[sz_txt] = {
-            "stock_count": 3 if in_stock else 0,
+            "stock_count": DEFAULT_STOCK_COUNT if in_stock else 0,
             "ean": v.get("gtin") or v.get("sku") or "0000000000000",
         }
 

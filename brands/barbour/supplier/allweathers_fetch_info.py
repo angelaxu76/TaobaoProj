@@ -10,7 +10,7 @@ import demjson3
 from bs4 import BeautifulSoup
 from selenium import webdriver
 
-from config import BARBOUR
+from config import BARBOUR, SETTINGS
 from brands.barbour.core.site_utils import assert_site_or_raise as canon
 from common_taobao.core.selenium_utils import get_driver as shared_get_driver, quit_driver
 
@@ -38,7 +38,7 @@ TXT_DIR.mkdir(parents=True, exist_ok=True)
 
 MAX_WORKERS = 6
 
-
+DEFAULT_STOCK_COUNT = SETTINGS.get("DEFAULT_STOCK_COUNT", 3)
 # ============ 抽取辅助函数（与户外站实际页面适配） ============
 
 def _clean_text(s: str) -> str:
@@ -249,7 +249,7 @@ def parse_detail_page(html: str, url: str) -> dict:
         size_tail = sku.split("-")[-1] if "-" in sku else "Unknown"
         size = f"UK {re.sub(r'\\s+', ' ', size_tail)}"
         size_detail[size] = {
-            "stock_count": 3 if can_order else 0,  # 统一上架量策略
+            "stock_count": DEFAULT_STOCK_COUNT if can_order else 0,  # 统一上架量策略
             "ean": "0000000000000",                # 占位 EAN
         }
 
@@ -370,7 +370,7 @@ def _build_size_lines_from_sizedetail(size_detail: dict, gender: str) -> tuple[s
         prev = bucket_status.get(norm)
         if prev is None or (prev == "无货" and status == "有货"):
             bucket_status[norm] = status
-            bucket_stock[norm] = 3 if stock > 0 else 0
+            bucket_stock[norm] = DEFAULT_STOCK_COUNT if stock > 0 else 0
 
     # 2) 选择“单一尺码系”的完整顺序表（男款二选一；女款固定）
     present_keys = set(bucket_status.keys())

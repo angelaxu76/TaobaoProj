@@ -29,6 +29,8 @@ from brands.barbour.core.site_utils import assert_site_or_raise as canon
 from brands.barbour.core.sim_matcher import match_product, choose_best
 from common_taobao.core.size_utils import clean_size_for_barbour as _norm_size  # 尺码清洗
 from common_taobao.core.driver_auto import build_uc_driver  # 目前没用，但保留以兼容原代码
+from config import BARBOUR, BRAND_CONFIG, SETTINGS
+DEFAULT_STOCK_COUNT = SETTINGS.get("DEFAULT_STOCK_COUNT", 3)
 
 # ================== 常量/路径 ==================
 SITE_NAME = canon("houseoffraser")
@@ -228,7 +230,7 @@ def _finalize_sizes_for_hof(raw_size_dict: Dict[str, Dict[str, int]], gender: st
         status = "有货" if qty > 0 else "无货"
 
         size_line_parts.append(f"{size_token}:{status}")
-        size_detail_parts.append(f"{size_token}:{3 if qty > 0 else 0}:{EAN_PLACEHOLDER}")
+        size_detail_parts.append(f"{size_token}:{DEFAULT_STOCK_COUNT if qty > 0 else 0}:{EAN_PLACEHOLDER}")
 
     product_size_str = ";".join(size_line_parts) if size_line_parts else "No Data"
     product_size_detail_str = ";".join(size_detail_parts) if size_detail_parts else "No Data"
@@ -446,7 +448,7 @@ def _extract_sizes_new(soup: BeautifulSoup) -> Dict[str, Dict[str, int]]:
             continue
         data_tid = btn.get("data-testid", "")
         in_stock = "enabled" in data_tid
-        stock_qty = 3 if in_stock else 0
+        stock_qty = DEFAULT_STOCK_COUNT if in_stock else 0
         if label not in results:
             results[label] = {"stock": stock_qty}
         else:
@@ -850,7 +852,7 @@ def _extract_sizes_legacy_dropdown(soup: BeautifulSoup) -> Tuple[str, str]:
     EAN = "0000000000000"
     product_size = ";".join(f"{s}:{seen[s]}" for s in ordered) or "No Data"
     product_size_detail = ";".join(
-        f"{s}:{3 if seen[s]=='有货' else 0}:{EAN}" for s in ordered
+        f"{s}:{DEFAULT_STOCK_COUNT if seen[s]=='有货' else 0}:{EAN}" for s in ordered
     ) or "No Data"
     return product_size, product_size_detail
 

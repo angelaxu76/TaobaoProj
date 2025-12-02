@@ -22,6 +22,8 @@ from config import BRAND_CONFIG
 # ==== 浏览器兜底（与 very 同风格） ====
 import shutil, subprocess, sys
 import undetected_chromedriver as uc
+from config import BARBOUR, BRAND_CONFIG, SETTINGS
+DEFAULT_STOCK_COUNT = SETTINGS.get("DEFAULT_STOCK_COUNT", 3)
 
 # ===== 标准尺码表（用于补齐未出现尺码=0） =====
 
@@ -332,7 +334,7 @@ def _extract_sizes(soup: BeautifulSoup, gender: str) -> tuple[list[str], str]:
         return [], detail
 
     # 已抓到部分尺码：出现的按 avail 写 3/0，未出现的补 0（仅在选定系里）
-    detail = ";".join(f"{s}:{3 if avail.get(s, 0)==1 else 0}:{EAN}" for s in full_order)
+    detail = ";".join(f"{s}:{DEFAULT_STOCK_COUNT if avail.get(s, 0)==1 else 0}:{EAN}" for s in full_order)
     return sizes, detail
 
 

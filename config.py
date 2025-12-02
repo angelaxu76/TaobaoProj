@@ -14,7 +14,9 @@ API_KEYS = {
 }
 
 SETTINGS = {
-    "EXCHANGE_RATE": 9.7
+    "EXCHANGE_RATE": 9.7,
+    "STOCK_VALUE_MODE": "binary",
+    "DEFAULT_STOCK_COUNT": 3,
 }
 
 BRAND_STRATEGY = {

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from pathlib import Path
 from typing import Dict, Any
+from config import SETTINGS
 
 # —— 仅 Barbour 分支会用到（Camper/Clarks 不触发）——
 try:
@@ -69,20 +70,49 @@ def _clean_sizes_for_barbour(info: Dict[str, Any]) -> None:
         info["Product Size Detail"] = ";".join(cleaned)
 
 # —— 仅 Barbour 用：若无 Detail，用 Size 兜底生成 ——
+
+
 def _ensure_detail_from_size(info: Dict[str, Any]) -> None:
     if info.get("Product Size") and not info.get("Product Size Detail"):
+        mode = SETTINGS.get("STOCK_VALUE_MODE", "binary")  # ← 全局控制
+        default_count = SETTINGS.get("DEFAULT_STOCK_COUNT", 3)
+
         tokens = [t.strip() for t in str(info["Product Size"]).split(";") if t.strip()]
         detail = []
+
         for t in tokens:
             try:
                 size, status = t.split(":")
                 size = clean_size_for_barbour(size)
-                stock = 1 if (status.strip() == "有货") else 0
+                status = status.strip()
+
+                # --- 根据 config 自动决定库存写法 ---
+                if mode == "binary":
+                    stock = 1 if status == "有货" else 0
+
+                elif mode == "text":
+                    stock = status  # 直接写“有货/无货”
+
+                elif mode == "count":
+                    stock = default_count if status == "有货" else 0
+
+                elif mode == "bool":
+                    stock = "True" if status == "有货" else "False"
+
+                elif mode == "raw":
+                    stock = status  # 完全保持原样
+
+                else:
+                    stock = 1 if status == "有货" else 0  # fallback
+
                 detail.append(f"{size}:{stock}:0000000000000")
+
             except ValueError:
                 continue
+
         if detail:
             info["Product Size Detail"] = ";".join(detail)
+
 
 def _write_line(lines: list[str], key: str, val):
     if val is not None and val != "":

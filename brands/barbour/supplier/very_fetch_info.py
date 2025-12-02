@@ -24,7 +24,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 # 统一 Selenium 驱动
-from common_taobao.selenium_utils import get_driver as selenium_get_driver, quit_driver
+from common_taobao.core.selenium_utils import get_driver as selenium_get_driver, quit_driver
 
 # ===== DB 与项目配置 =====
 from sqlalchemy import create_engine
@@ -32,6 +32,8 @@ from sqlalchemy.engine import Connection
 from config import BARBOUR, BRAND_CONFIG
 from brands.barbour.core.site_utils import assert_site_or_raise as canon
 from brands.barbour.core.sim_matcher import match_product, choose_best, explain_results
+from config import BARBOUR, BRAND_CONFIG, SETTINGS
+DEFAULT_STOCK_COUNT = SETTINGS.get("DEFAULT_STOCK_COUNT", 3)
 
 import re  # safe filename 等用到
 
@@ -309,7 +311,7 @@ def _build_size_lines(pairs: List[Tuple[str, str]], gender: str) -> Tuple[str, s
     EAN = "0000000000000"
     ordered = list(full_order)
     ps  = ";".join(f"{k}:{by_size[k]}" for k in ordered) or "No Data"
-    psd = ";".join(f"{k}:{3 if by_size[k]=='有货' else 0}:{EAN}" for k in ordered) or "No Data"
+    psd = ";".join(f"{k}:{DEFAULT_STOCK_COUNT if by_size[k]=='有货' else 0}:{EAN}" for k in ordered) or "No Data"
     return ps, psd
 
 

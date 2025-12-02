@@ -43,6 +43,9 @@ from common_taobao.core.size_utils import clean_size_for_barbour  # 见你上传
 from brands.barbour.core.site_utils import assert_site_or_raise as canon
 CANON_SITE = canon("outdoorandcountry")
 
+from config import BARBOUR, BRAND_CONFIG, SETTINGS
+DEFAULT_STOCK_COUNT = SETTINGS.get("DEFAULT_STOCK_COUNT", 3)
+
 
 # ========== 浏览器与 Cookie ==========
 def accept_cookies(driver, timeout=8):
@@ -236,9 +239,9 @@ def _build_sizes_from_offers(offers, gender: str):
         size = (size or "").strip()
         stock = 0
         if (stock_text or "").strip().lower() in ("in stock", "available"):
-            stock = 3
+            stock = DEFAULT_STOCK_COUNT
         if can_order and stock == 0:
-            stock = 3
+            stock = DEFAULT_STOCK_COUNT
         norm.append((size, stock))
 
     # 统一清洗 + 过滤大尺码
@@ -288,7 +291,7 @@ def _build_sizes_from_offers(offers, gender: str):
         stock = bucket.get(s, 0)
         status = "有货" if stock > 0 else "无货"
         size_line.append(f"{s}:{status}")
-        qty = 3 if stock > 0 else 0
+        qty = DEFAULT_STOCK_COUNT if stock > 0 else 0
         detail.append(f"{s}:{qty}:0000000000000")
 
     if not size_line:
@@ -433,7 +436,7 @@ def _ensure_detail_from_size(info: dict):
             s, status = item.split(":")
         except ValueError:
             continue
-        stock = 3 if status == "有货" else 0
+        stock = DEFAULT_STOCK_COUNT if status == "有货" else 0
         detail.append(f"{s}:{stock}:0000000000000")
     if detail:
         info["Product Size Detail"] = ";".join(detail)
