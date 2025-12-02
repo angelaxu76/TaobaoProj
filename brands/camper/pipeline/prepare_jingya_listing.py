@@ -8,7 +8,7 @@ from channels.jingya.maintenance.disable_low_stock_products import disable_low_s
 from channels.jingya.export.export_gender_split_excel import export_gender_split_excel
 from channels.jingya.export.generate_publication_excel import generate_publication_excels
 from common_taobao.publication.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
-from brands.camper.legacy.fetch_product_info import camper_fetch_product_info,camper_retry_missing_once
+from brands.camper.fetch_product_info import camper_fetch_product_info,camper_retry_missing_once
 from brands.camper.collect_product_links import camper_get_links
 from common_taobao.publication.export_low_stock_products import export_low_stock_for_brand
 from common_taobao.core.generate_missing_links_for_brand import generate_missing_links_for_brand
@@ -22,7 +22,7 @@ def main():
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
     camper_fetch_product_info()
-    # camper_retry_missing_once()
+    camper_retry_missing_once()
 
 
     print("\n🟡 Step: 3️⃣ 将鲸牙存在但TXT中不存在的商品抓一遍")
