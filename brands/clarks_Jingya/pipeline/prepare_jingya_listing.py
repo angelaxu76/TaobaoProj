@@ -18,16 +18,16 @@ from common_taobao.core.generate_missing_links_for_brand import generate_missing
 #     subprocess.run(["python", path], check=True)
 
 def main():
-    # code_file_path = r"D:\TB\Products\clarks_jingya\repulibcation\publication_codes.txt"
+    code_file_path = r"D:\TB\Products\clarks_jingya\repulibcation\publication_codes.txt"
     
-    # print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    # backup_and_clear_brand_dirs(CLARKS_JINGYA)  # ✅ 使用共享方法
+    print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
+    backup_and_clear_brand_dirs(CLARKS_JINGYA)  # ✅ 使用共享方法
 
-    # print("\n🟡 Step: 2️⃣ 抓取商品链接") 
-    # generate_product_links("clarks_jingya")
+    print("\n🟡 Step: 2️⃣ 抓取商品链接") 
+    generate_product_links("clarks_jingya")
 
-    # print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    # clarks_fetch_info()
+    print("\n🟡 Step: 3️⃣ 抓取商品信息")
+    clarks_fetch_info()
 
     print("\n🟡 Step: 3️⃣ 将鲸牙存在但TXT中不存在的商品抓一遍")
     missing_product_link = r"D:\TB\Products\clarks_jingya\publication\missing_product_links.txt";
