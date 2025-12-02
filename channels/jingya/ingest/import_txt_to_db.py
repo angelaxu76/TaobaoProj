@@ -10,7 +10,7 @@ try:
 except Exception:
     from common_taobao.core.price_utils import calculate_jingya_prices  # type: ignore
 
-MIN_STOCK_THRESHOLD = 1  # 小于该值的库存将置为0
+MIN_STOCK_THRESHOLD = 2  # 小于该值的库存将置为0
 
 def _safe_float(x) -> float:
     try:
