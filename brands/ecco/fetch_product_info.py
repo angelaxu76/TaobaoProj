@@ -22,7 +22,6 @@ from common_taobao.ingest.txt_writer import format_txt  # format_txt(info, filep
 LINKS_FILE = ECCO["LINKS_FILE"]
 TXT_DIR    = ECCO["TXT_DIR"]
 DEBUG_DIR  = ECCO["BASE"] / "publication" / "debug_pages"
-CHROMEDRIVER_PATH = ECCO["CHROMEDRIVER_PATH"]
 
 
 # 是否保存 HTML 调试页
