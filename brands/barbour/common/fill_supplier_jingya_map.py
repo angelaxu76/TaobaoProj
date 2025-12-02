@@ -62,10 +62,11 @@ SQL_LOWEST_SITE = text("""
 WITH agg AS (
   SELECT
     site_name,
-    -- 有货尺码数
+    -- 有货尺码数（只统计 stock_count>0 的尺码）
     SUM(CASE WHEN COALESCE(stock_count,0) > 0 THEN 1 ELSE 0 END) AS sizes_in_stock,
-    -- 仅在有货尺码中取最低价
-    MIN(COALESCE(NULLIF(price_gbp,0), original_price_gbp))
+    -- 仅在有货尺码中，按“折后价+运费”的真实成本取最低价：
+    -- 优先 sale_price_gbp，其次 price_gbp，最后 original_price_gbp
+    MIN(COALESCE(NULLIF(sale_price_gbp,0), NULLIF(price_gbp,0), original_price_gbp))
       FILTER (WHERE COALESCE(stock_count,0) > 0)                 AS min_price,
     MAX(last_checked)                                            AS latest
   FROM barbour_offers
@@ -74,13 +75,17 @@ WITH agg AS (
   GROUP BY site_name
 ),
 eligible AS (
+  -- 第一步：筛出“库存符合要求”的供货商，这里约定尺码数>=3
   SELECT * FROM agg WHERE sizes_in_stock >= 3
 )
 SELECT site_name
 FROM eligible
 ORDER BY
+  -- 第二步：在库存达标的供货商中，比真实成本（sale_price_gbp 优先）
   min_price ASC NULLS LAST,
+  -- 若价格相同，尺码多的优先
   sizes_in_stock DESC,
+  -- 若还相同，取最近一次检查时间最新的
   latest DESC
 LIMIT 1
 """)  # offers 字段参考：site_name/price_gbp/original_price_gbp/stock_count/last_checked。:contentReference[oaicite:1]{index=1}
@@ -329,13 +334,15 @@ def reassign_low_stock_suppliers(
             """), rows)
 
     # === 打印建议 ===
+    # === 打印建议 ===
     if suggest:
         print(f"共{len(suggest)}条建议（已排除 {len(exclude_codes)} 条编码）：")
-        for s in suggest[:30]:
-            print(f"- {s['product_code']}: {s['old_site']}({s['old_sizes']}尺) -> {s['new_site']}({s['new_sizes']}尺), "
-                  f"价 {s['old_min_price']} -> {s['new_min_price']}")
-        if len(suggest) > 30:
-            print("...（其余省略）")
+        for s in suggest:  # 不再截断，全部打印
+            print(
+                f"- {s['product_code']}: {s['old_site']}({s['old_sizes']}尺) "
+                f"-> {s['new_site']}({s['new_sizes']}尺), "
+                f"价 {s['old_min_price']} -> {s['new_min_price']}"
+            )
     else:
         print("未找到需要切换的商品（当前映射站点均满足尺码阈值或无更优候选）。")
 

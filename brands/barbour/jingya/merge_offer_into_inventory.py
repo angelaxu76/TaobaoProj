@@ -18,6 +18,146 @@ from common_taobao.core.price_utils import calculate_jingya_prices
 # —— 尺码归一化：写死一份轻量规则，确保两边一致（不依赖外部包）
 import re
 import sys, inspect
+
+
+from sqlalchemy import create_engine, text
+import pandas as pd
+from config import BRAND_CONFIG
+from brands.barbour.core.site_utils import canonical_site
+
+def merge_band_stock_into_inventory(band_ratio: float = 0.10, size_threshold: int = 1):
+    """
+    在 barbour_inventory 已经回填完“主供货商价格”的前提下：
+    - 以 barbour_supplier_map 中映射的站点为基准，取该站点的折后价作为 best_base_price
+    - 找出同一 product_code 下，折后价 <= best_base_price * (1 + band_ratio) 的所有站点
+    - 用这些站点的库存做“并集”：任一站点有货，该尺码就视为有货（stock_count=3，否则=0）
+    - 只改 barbour_inventory.stock_count，不动价格字段
+    """
+    cfg = BRAND_CONFIG["barbour"]["PGSQL_CONFIG"]
+    eng = create_engine(
+        f"postgresql+psycopg2://{cfg['user']}:{cfg['password']}@{cfg['host']}:{cfg['port']}/{cfg['dbname']}"
+    )
+
+    SQL_AGG = text("""
+    WITH agg AS (
+      SELECT
+        product_code,
+        site_name,
+        SUM(CASE WHEN COALESCE(stock_count,0) > 0 THEN 1 ELSE 0 END) AS sizes_in_stock,
+        MIN(COALESCE(NULLIF(sale_price_gbp,0), NULLIF(price_gbp,0), original_price_gbp))
+            FILTER (WHERE COALESCE(stock_count,0) > 0)               AS min_eff_price,
+        MAX(last_checked)                                            AS latest
+      FROM barbour_offers
+      WHERE is_active = TRUE
+        AND product_code IS NOT NULL AND product_code <> ''
+        AND site_name IS NOT NULL AND site_name <> ''
+      GROUP BY product_code, site_name
+    )
+    SELECT * FROM agg
+    """)
+
+    with eng.begin() as conn:
+        # 1) 读取当前映射（最佳供货商）
+        map_df = pd.read_sql("SELECT product_code, site_name FROM barbour_supplier_map", conn)
+        map_df["site_name"] = map_df["site_name"].map(lambda s: canonical_site(s) or s)
+
+        # 2) 读取各站点聚合后的“尺码数 + 折后最低价”
+        agg_df = pd.read_sql(SQL_AGG, conn)
+        agg_df["site_name"] = agg_df["site_name"].map(lambda s: canonical_site(s) or s)
+
+        # 合并得到每个 product_code 对应的 best_base_price
+        cur_df = map_df.merge(
+            agg_df.rename(columns={
+                "sizes_in_stock": "cur_sizes_in_stock",
+                "min_eff_price": "cur_min_eff_price",
+                "latest": "cur_latest",
+            }),
+            on=["product_code", "site_name"],
+            how="left",
+        )
+
+        # 3) 读取全部 offers 的“尺码级库存”
+        off_df = pd.read_sql("""
+            SELECT product_code, size, site_name,
+                   COALESCE(stock_count,0) AS stock_count
+            FROM barbour_offers
+            WHERE is_active = TRUE
+              AND product_code IS NOT NULL AND product_code <> ''
+              AND size IS NOT NULL AND size <> ''
+              AND site_name IS NOT NULL AND site_name <> ''
+        """, conn)
+        off_df["site_name"] = off_df["site_name"].map(lambda s: canonical_site(s) or s)
+        off_df["size_norm"] = off_df["size"].map(_clean_size)
+
+        # 4) 读取 inventory 中的尺码行
+        inv_df = pd.read_sql("""
+            SELECT id, product_code, size
+            FROM barbour_inventory
+            WHERE product_code IS NOT NULL AND product_code <> ''
+              AND size IS NOT NULL AND size <> ''
+        """, conn)
+        inv_df["size_norm"] = inv_df["size"].map(_clean_size)
+
+        # 按商品分组，准备更新 payload
+        agg_by_code = agg_df.groupby("product_code")
+        off_by_code = off_df.groupby("product_code")
+        inv_by_code = inv_df.groupby("product_code")
+
+        updates = []
+
+        for _, row in cur_df.iterrows():
+            code = row["product_code"]
+            best_price = row.get("cur_min_eff_price")
+            if best_price is None or pd.isna(best_price):
+                continue
+            try:
+                best_price = float(best_price)
+            except Exception:
+                continue
+            # 该商品在 inventory/offers 中是否存在
+            if code not in off_by_code.groups or code not in inv_by_code.groups:
+                continue
+
+            df_code_agg = agg_by_code.get_group(code)
+            # 价格带内的所有站点（<= best_price * (1+band_ratio)）
+            band_sites = df_code_agg[
+                df_code_agg["min_eff_price"].notna()
+                & (df_code_agg["min_eff_price"] <= best_price * (1.0 + band_ratio))
+            ]["site_name"].unique().tolist()
+            if not band_sites:
+                continue
+
+            df_off = off_by_code.get_group(code)
+            df_off_band = df_off[df_off["site_name"].isin(band_sites)].copy()
+            if df_off_band.empty:
+                continue
+
+            # 对 band 内所有站点做“尺码有无货并集”
+            size_stock = (
+                df_off_band
+                .groupby("size_norm")["stock_count"]
+                .apply(lambda s: int((s > 0).any()))
+                .to_dict()
+            )
+
+            df_inv = inv_by_code.get_group(code)
+            for _, inv_row in df_inv.iterrows():
+                bi_id = inv_row["id"]
+                szn = inv_row["size_norm"]
+                has_stock = size_stock.get(szn, 0)
+                new_stock = 3 if has_stock else 0
+                updates.append({"bi_id": bi_id, "stock_count": new_stock})
+
+        if updates:
+            conn.execute(text("""
+                UPDATE barbour_inventory
+                SET stock_count = :stock_count
+                WHERE id = :bi_id
+            """), updates)
+
+    print(f"✅ 价格带库存合并完成，更新 {len(updates)} 条 inventory 记录。")
+
+
 def _clean_size(s: str) -> str:
     x = (s or "").strip().lower()
     x = re.sub(r"^uk[ \t]*", "", x)        # 去前缀 UK

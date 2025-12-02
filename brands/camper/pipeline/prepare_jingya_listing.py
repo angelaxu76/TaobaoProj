@@ -22,7 +22,7 @@ def main():
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
     camper_fetch_product_info()
-    camper_retry_missing_once()
+    # camper_retry_missing_once()
 
 
     print("\n🟡 Step: 3️⃣ 将鲸牙存在但TXT中不存在的商品抓一遍")
