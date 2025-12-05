@@ -118,27 +118,28 @@ def detect_gender_from_breadcrumb(soup) -> str:
 
 
 def detect_gender(soup, title: str, desc: str, url: str) -> str:
-    # ① 先用 title + description 判
+    # ① Breadcrumb 优先（最靠谱）
+    gender = detect_gender_from_breadcrumb(soup)
+    if gender != "未知":
+        return gender
+
+    # ② 再用标题 + 描述兜底
     text = f"{title} {desc}"
     gender = detect_gender_from_text(text)
     if gender != "未知":
         return gender
 
-    # ② 判不出来再用 breadcrumb
-    gender = detect_gender_from_breadcrumb(soup)
-    if gender != "未知":
-        return gender
-
-    # ③ 最后可以用 URL 做个兜底（可选）
+    # ③ 最后用 URL 兜底
     u = url.lower()
-    if any(k in u for k in ["youth", "kid", "kids", "toddler", "junior", "infant"]):
+    if any(k in u for k in ["kids", "youth", "junior", "toddler"]):
         return "童款"
-    if "women" in u or "womens" in u:
+    if "women" in u:
         return "女款"
-    if "men" in u or "mens" in u:
+    if "men" in u:
         return "男款"
 
     return "未知"
+
 
 
 

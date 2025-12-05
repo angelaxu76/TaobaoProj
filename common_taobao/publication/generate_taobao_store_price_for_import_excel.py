@@ -358,6 +358,32 @@ def generate_price_excels_bulk(
     print(f"\n✅ 所有文件处理完成。输出路径: {output_dir}")
 
 
+def normalize_size_for_taobao(size_raw):
+    """
+    将淘宝导出的尺码格式统一成数据库里的格式：
+    - '38-39' -> '38'
+    - '34码'  -> '34'
+    - 其他不含 '码'、'-' 的值原样返回（如 '39'）
+    """
+    if size_raw is None:
+        return None
+
+    if not isinstance(size_raw, str):
+        size_str = str(size_raw)
+    else:
+        size_str = size_raw
+
+    size_str = size_str.strip()
+
+    # 1) 去掉“码”
+    size_str = size_str.replace("码", "").strip()
+
+    # 2) 如果是 "38-39" 这种，取前半段
+    if "-" in size_str:
+        size_str = size_str.split("-", 1)[0].strip()
+
+    # 3) 空串视为 None
+    return size_str or None
 
 
 
@@ -486,8 +512,9 @@ def _generate_price_excel_from_file(
 
     # 3. sku_spec -> code_part / size_part
     pairs = df_norm["sku_spec"].map(_split_spec_value)
-    df_norm["code_part"] = [p[0] for p in pairs]   # 商品编码 (如 MWX0339OL71 / 也可能是 '海军蓝')
-    df_norm["size_part"] = [p[1] for p in pairs]   # 尺码 (如 'M' / '10')
+    df_norm["code_part"] = [p[0] for p in pairs]
+    df_norm["size_part"] = [normalize_size_for_taobao(p[1]) for p in pairs]
+
     df_norm["spec_key"]  = df_norm["sku_spec"].map(_clean_spec_key)
 
     before_drop = len(df_norm)

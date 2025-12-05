@@ -22,21 +22,15 @@ def export_low_stock_channel_products(
         1）单个商品编码的库存总和 < stock_threshold
         2）有货的尺码数量 <= max_allowed_size_count
 
-    然后导出一个只包含一列【渠道产品ID】的 Excel 文件。
-
-    参数：
-        brand: 品牌名，如 "camper" / "ecco" / "clarks" / "geox" / "clarks_jingya" 等
-        stock_threshold: 总库存阈值，如 3
-        output_excel_path: 输出 Excel 路径，例如 D:/TB/Products/camper/low_stock.xlsx
-        max_allowed_size_count: 有货尺码最大允许数量，默认为 2。
-                                例：默认 2 时，有 0/1/2 个尺码有货的商品会进入列表。
+    然后导出一个包含 4 列的 Excel 文件：
+        Product Code / 总库存 / 有货尺码数 / 渠道产品ID
     """
 
     if brand not in BRAND_CONFIG:
         raise ValueError(f"❌ 未知品牌: {brand}")
 
     brand_cfg = BRAND_CONFIG[brand]
-    table_name = brand_cfg["TABLE_NAME"]       # 如 camper_inventory / ecco_inventory 等 :contentReference[oaicite:1]{index=1}
+    table_name = brand_cfg["TABLE_NAME"]       # 如 camper_inventory / ecco_inventory 等
     pgsql = brand_cfg["PGSQL_CONFIG"]
 
     # 创建输出目录
@@ -44,9 +38,7 @@ def export_low_stock_channel_products(
     if out_dir and not os.path.exists(out_dir):
         os.makedirs(out_dir, exist_ok=True)
 
-    # 注意：
-    #   - 使用 stock_count 统计总库存和有货尺码数量
-    #   - 假设所有 inventory 表结构与 camper_inventory 一致（都有 stock_count / channel_product_id）:contentReference[oaicite:2]{index=2}
+    # 聚合每个 product_code 的库存、尺码数和 channel_product_id
     sql = f"""
         WITH stock_agg AS (
             SELECT
@@ -58,6 +50,9 @@ def export_low_stock_channel_products(
             GROUP BY product_code
         )
         SELECT
+            product_code,
+            total_stock,
+            available_size_count,
             channel_product_id
         FROM stock_agg
         WHERE
@@ -67,7 +62,7 @@ def export_low_stock_channel_products(
             )
             AND channel_product_id IS NOT NULL
             AND channel_product_id <> ''
-        ORDER BY channel_product_id;
+        ORDER BY product_code;
     """
 
     conn = None
@@ -77,15 +72,22 @@ def export_low_stock_channel_products(
             cur.execute(sql, (stock_threshold, max_allowed_size_count))
             rows = cur.fetchall()
 
-        channel_ids = {row["channel_product_id"] for row in rows}  # 去重
-        channel_ids = sorted(channel_ids)
+        # 每一行对应一个 product_code
+        records = []
+        for row in rows:
+            records.append({
+                "Product Code": row["product_code"],
+                "总库存": row["total_stock"],
+                "有货尺码数": row["available_size_count"],
+                "渠道产品ID": row["channel_product_id"],
+            })
 
-        df = pd.DataFrame({"渠道产品ID": channel_ids})
+        df = pd.DataFrame(records)
         df.to_excel(output_excel_path, index=False)
 
         print(
             f"✅ 品牌={brand} | 阈值: 总库存<{stock_threshold} "
-            f"或 有货尺码数≤{max_allowed_size_count} | 导出 {len(channel_ids)} 条渠道产品ID -> {output_excel_path}"
+            f"或 有货尺码数≤{max_allowed_size_count} | 导出 {len(df)} 条商品 -> {output_excel_path}"
         )
 
     except Exception as e:
@@ -94,3 +96,4 @@ def export_low_stock_channel_products(
     finally:
         if conn:
             conn.close()
+
