@@ -102,18 +102,27 @@ def detect_gender_from_breadcrumb(soup) -> str:
                     pos = int(item.get("position", 0))
                 except (TypeError, ValueError):
                     continue
+
                 if pos == 2:
-                    name = (item.get("name") or "").lower()
-                    # mens / men
-                    if "men" in name:
-                        return "男款"
-                    # womens / women
-                    if "women" in name:
-                        return "女款"
-                    # kids / boys / girls 这一档都归为童款
-                    if any(k in name for k in ["kid", "kids", "boy", "boys", "girl", "girls", "youth", "junior", "infant"]):
+                    name = (item.get("name") or "").strip().lower()
+
+                    # 1️⃣ 先判断童款
+                    if any(k in name for k in [
+                        "kid", "kids", "boy", "boys",
+                        "girl", "girls", "youth", "junior", "infant"
+                    ]):
                         return "童款"
+
+                    # 2️⃣ 再判断 womens / women
+                    if "women" in name:   # womens / women
+                        return "女款"
+
+                    # 3️⃣ 最后判断 mens / men
+                    if "men" in name:     # mens / men
+                        return "男款"
+
     return "未知"
+
 
 
 
