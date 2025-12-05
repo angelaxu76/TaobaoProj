@@ -10,7 +10,7 @@ FINANCE_EES = {
     },
     "consignee": {
         "name": "HONG KONG ANGEL XUAN TRADING CO., LIMITED",
-        "address": "FLAT A516, 5/F, EFFICIENCY HOUSE, 35 TAI YAU STREET, SAN PO KONG, HONG KONG",
+        "address": "Rm D07, 8/F, Kai Tak Fty Building, No. 99 King Fuk Street, Sanpokong, Kowloon, Hong Kong",
         "phone": "+8617741796346",
         "email": "maxiaodan2015@gmail.com",
     },
@@ -18,6 +18,15 @@ FINANCE_EES = {
         "carrier": "ECMS",
         "route": "UK → China",
     },
+
+    "bank": {
+        "bank_name": "anna bank",                       # 银行名称（如 Barclays, HSBC）
+        "account_name": "EMINZORA TRADE LTD",  # 账户名称（一般等于公司名）
+        "account_no": "86092219",                      # 银行账号
+        "sort_code": "23-11-85",                       # Sort Code（xx-xx-xx）
+        "iban": "GB26PAYR23118586092219",                            # IBAN（如 GBxx...）
+        "swift": "",                           # SWIFT/BIC（如 BUKBGB22）
+    },    
     "declaration": (
         "I confirm that the goods listed above were exported from the United Kingdom "
         "within three months of their purchase or acquisition, and that the full set "

@@ -225,7 +225,15 @@ def generate_export_evidence_pdf(invoice_no: str):
     ]))
     text.extend([
         goods_table,
-        Paragraph("<font size=8><i>Note: Summary derived from underlying UK supplier invoices retained on file.</i></font>", normal),
+        Paragraph(
+    "<font size=8>"
+    "<i>Supporting UK supplier purchase invoices for these goods are retained separately "
+    "in the accounting records (folder: 03_Purchase_Records/01_Supplier_Invoices) and "
+    "can be provided to HMRC upon request.</i>"
+    "</font>",
+    normal
+),
+
         Spacer(1, 10)
     ])
 
@@ -267,6 +275,12 @@ def generate_export_evidence_pdf(invoice_no: str):
     # ---------- Declaration ----------
     text.append(Paragraph("<b>Declaration</b>", h2))
     text.append(Paragraph(CONFIG["declaration"], normal))
+    text.append(Paragraph(
+    "Supporting UK supplier purchase invoices for the goods listed in this shipment "
+    "are retained separately in the accounting records (03_Purchase_Records/01_Supplier_Invoices) "
+    "and can be provided to HMRC on request.",
+    normal
+    ))
 
     # ✅ 扩大签名区留白
     text.extend([
