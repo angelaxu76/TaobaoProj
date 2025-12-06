@@ -2,7 +2,7 @@ from config import ECCO
 from common_taobao.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 
 # ====== 抓取阶段（沿用 ECCO 原逻辑）======
-from brands.ecco.collect_product_links import ecco_get_links
+from brands.ecco.collect_product_links_v3 import ecco_get_links
 from brands.ecco.fetch_product_info import ecco_fetch_info
 
 # ====== 数据入库 & 绑定阶段（照 Camper 逻辑）======
@@ -68,9 +68,6 @@ def main():
 
     print("\n🟡 Step: 7️⃣ 为新品生成【鲸芽上新模板】Excel")
     generate_publication_excels("ecco")
-
-    # print("\n🟡 Step: 8️⃣ 输出低库存商品列表，准备在鲸芽下架")
-    # export_low_stock_for_brand("ecco", threshold=5)
 
     # print("\n🟡 Step: 9️⃣ 生成淘宝店铺价格导入文件（可选，沿用 Camper 的店铺价逻辑）")
     # generate_price_excels_bulk(
