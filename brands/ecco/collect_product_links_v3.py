@@ -26,6 +26,9 @@ TARGET_URLS = [
     ("https://gb.ecco.com/kids/junior", "Kids Junior"),
     ("https://gb.ecco.com/kids/boys/shoes", "Kids Boys Shoes"),
     ("https://gb.ecco.com/kids/girls/shoes", "Kids Girls Shoes"),
+    ("https://gb.ecco.com/sale/women", "women sale"),
+    ("https://gb.ecco.com/sale/men", "men sale"),
+    ("https://gb.ecco.com/sale/kids", "kid sale"),
 ]
 
 OUTPUT_FILE: Path = ECCO["BASE"] / "publication" / "product_links.txt"
