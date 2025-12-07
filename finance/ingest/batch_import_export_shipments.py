@@ -196,8 +196,8 @@ def _parse_poe_meta_from_pdf(pdf_path: str) -> dict:
     """
     从 POE PDF 文件中提取关键信息：
     - poe_id (SD编号)
-    - poe_mrn (25GB...)
-    - poe_office (GB0000..)
+    - poe_mrn (25GB...，报关 MRN)
+    - poe_office (GB0000..，Office of exit)
     - poe_date (2025-10-03)
     """
     meta = {"poe_id": None, "poe_mrn": None, "poe_office": None, "poe_date": None}
@@ -207,22 +207,32 @@ def _parse_poe_meta_from_pdf(pdf_path: str) -> dict:
         for page in reader.pages:
             text += page.extract_text() or ""
 
-        # 提取 POE ID
+        # ---- POE ID: SD 开头 ----
         m = re.search(r"\b(SD\d{8,})\b", text)
         if m:
             meta["poe_id"] = m.group(1)
 
-        # 提取 MRN
+        # ---- MRN: 25GB 开头 ----
         m = re.search(r"\b(25GB[A-Z0-9]{14,})\b", text)
         if m:
             meta["poe_mrn"] = m.group(1)
 
-        # 提取 Office of Exit
-        m = re.search(r"\bGB\d{6,}\b", text)
+        # ---- Office of exit ----
+        # 1) 优先根据“Office of exit”这一段来找（最稳妥）
+        #    文本大致类似：
+        #    [29] Office of exit [5/12]
+        #    GB000084
+        m = re.search(r"Office of exit[^\n]*\n\s*(GB\d{6})", text, flags=re.IGNORECASE)
         if m:
-            meta["poe_office"] = m.group(0)
+            meta["poe_office"] = m.group(1)
+        else:
+            # 2) 兜底：全文找 GB + 6 位数字（排除 EORI 那种 12 位）
+            offices = re.findall(r"\bGB(\d{6})\b", text)
+            if offices:
+                # 如果有多个，通常最后一个是 [29] Office of exit
+                meta["poe_office"] = "GB" + offices[-1]
 
-        # 提取 Export Date (多种日期格式)
+        # ---- Export Date: 先用 DD/MM/YYYY 这种格式 ----
         m = re.search(r"(\d{2}/\d{2}/\d{4})", text)
         if m:
             try:
@@ -234,7 +244,7 @@ def _parse_poe_meta_from_pdf(pdf_path: str) -> dict:
     except Exception as e:
         _warn(f"[PDF] Failed to parse {pdf_path}: {e}")
 
-    # 若 PDF 内找不到则用文件名兜底
+    # 若 PDF 内找不到 POE ID，则用文件名兜底（只兜底 poe_id）
     if not meta["poe_id"]:
         base = os.path.basename(pdf_path)
         m = re.search(r"(?i)(sd\d+)", base)
@@ -242,6 +252,7 @@ def _parse_poe_meta_from_pdf(pdf_path: str) -> dict:
             meta["poe_id"] = m.group(1).upper()
 
     return meta
+
 
 # ------------------ Invoice (by coord) ---------------
 HDR_ROW_1BASED = 15           # 第15行作表头

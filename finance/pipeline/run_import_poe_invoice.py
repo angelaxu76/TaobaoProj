@@ -1,6 +1,6 @@
 
 import sys
-from finance.ingest.batch_import_export_shipments_v2 import import_poe_invoice
+from finance.ingest.batch_import_export_shipments import import_poe_invoice
 
 def main():
     import_poe_invoice(r"D:\OneDrive\CrossBorderDocs_UK\06_Export_Proofs")
