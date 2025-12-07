@@ -1,12 +1,12 @@
 import os
 import psycopg2
 from config import PGSQL_CONFIG
-from finance.ingest.export_ees_pdf import (
+from finance.ingest.export_ees_pdf_v2 import (
     generate_export_evidence_pdf,
     generate_commercial_invoice_pdf,
 )
 
-OUTPUT_DIR = r"D:\OneDrive\CrossBorderDocs\06_Export_Proofs"
+OUTPUT_DIR = r"D:\OneDrive\CrossBorderDocs_UK\06_Export_Proofs"
 
 
 def main():
@@ -41,9 +41,9 @@ def main():
 
         try:
             if need_ees:
-                generate_export_evidence_pdf(inv)
+                generate_export_evidence_pdf(inv, OUTPUT_DIR)
             if need_ci:
-                generate_commercial_invoice_pdf(inv)
+                generate_commercial_invoice_pdf(inv, OUTPUT_DIR)
         except Exception as e:
             print(f"[ERROR] {inv}: {e}")
 
