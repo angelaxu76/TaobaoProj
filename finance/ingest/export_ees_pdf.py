@@ -17,8 +17,9 @@ from reportlab.lib import colors
 from reportlab.lib.units import cm
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer
+    SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer, Image
 )
+
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 
@@ -41,6 +42,44 @@ CONFIG = {
     "declaration": FINANCE_EES["declaration"],
     "db": {**GLOBAL_PGSQL_CONFIG, "connect_timeout": 5},
 }
+
+# ---------- Signature config ----------
+# 根据自己情况改这 3 个变量即可
+SIGN_NAME = "XIAODAN MA"  # 或者 Nianzhou Xu，看你想谁签
+SIGN_TITLE = "Director, EMINZORA TRADE LTD"
+SIGN_IMAGE = r"D:\OneDrive\CrossBorderDocs_UK\00_Templates\signatures\xiaodan_ma_signature.png"
+# 如果暂时没有签名图片，可以先设为 None 或空字符串，代码会自动退回下划线签名
+
+
+
+def _get_invoice_date(summary: dict) -> dt.date:
+    """
+    从 data_summary 中解析 uk_invoice_date，统一转成 date 对象。
+    如果解析失败，则回退为今天。
+    """
+    raw = summary.get("uk_invoice_date")
+    if isinstance(raw, dt.datetime):
+        return raw.date()
+    if isinstance(raw, dt.date):
+        return raw
+    try:
+        import pandas as pd  # 已经全局导入，这里只是防止类型引用报错
+        if isinstance(raw, pd.Timestamp):
+            return raw.date()
+    except Exception:
+        pass
+
+    # 处理字符串格式，比如 '2025-10-08'
+    if raw:
+        s = str(raw)
+        for fmt in ("%Y-%m-%d", "%Y/%m/%d"):
+            try:
+                return dt.datetime.strptime(s, fmt).date()
+            except Exception:
+                continue
+
+    # 万一都失败，兜底今天
+    return dt.date.today()
 
 # ---------- Data helpers ----------
 def _clean_desc(s: str) -> str:
@@ -126,21 +165,26 @@ def fetch_export_summary(invoice_no: str) -> dict | None:
     """
     sql = """
     SELECT
-        uk_invoice_no,
-        uk_invoice_date,
-        folder_name,
-        currency,
-        total_value_gbp,
-        total_quantity,
-        total_gross_weight_kg,
-        tracking_no,
-        poe_id,
-        poe_mrn,
-        poe_office,
-        poe_date
-    FROM public.export_shipments_summary
-    WHERE uk_invoice_no = %s
+        s.uk_invoice_no,
+        s.uk_invoice_date,
+        s.folder_name,
+        s.currency,
+        s.total_value_gbp,
+        s.total_quantity,
+        s.total_gross_weight_kg,
+        s.tracking_no,
+        s.poe_id,
+        s.poe_mrn,
+        s.poe_office,
+        s.poe_date,
+        p.poe_file
+    FROM public.export_shipments_summary s
+    LEFT JOIN public.export_shipments p
+        ON s.uk_invoice_no = p.uk_invoice_no
+    WHERE s.uk_invoice_no = %s
+    LIMIT 1
     """
+
     conn = _get_conn()
     try:
         df = pd.read_sql(sql, conn, params=[invoice_no])
@@ -352,18 +396,25 @@ def generate_export_evidence_pdf(invoice_no: str, output_dir: str | None = None)
     # ---------- Proof of Export ----------
     story.append(Paragraph("<b>Proof of Export (POE)</b>", h2))
 
+    poe_file = data_summary.get("poe_file", "")
+
     poe_tbl = [
         ["POE ID", _nz(data_summary.get("poe_id"))],
         ["MRN", _nz(data_summary.get("poe_mrn"))],
         ["Office of Exit", _nz(data_summary.get("poe_office"))],
         ["Date of Export", _nz(data_summary.get("poe_date"))],
-        ["Evidence Type", "POE PDF + Internal Reference Summary"],
-        ["Attachments", Paragraph(
-            f"1. POE_{data_summary.get('poe_date','')}.pdf<br/>"
-            f"2. Internal_Reference_{invoice_no}.pdf",
-            desc_style,
-        )],
+        # 这里不再提 Internal Reference，只说明是 POE PDF
+        ["Evidence Type", "POE (UK customs export declaration PDF)"],
+        # 只保留一个附件：POE_xxx.pdf
+        [
+            "Attachments",
+            Paragraph(
+                f"1. {poe_file}",
+                desc_style,
+            ),
+        ],
     ]
+
 
     poe_table = Table(poe_tbl, colWidths=[5*cm, 10*cm])
     poe_table.setStyle(TableStyle([
@@ -374,6 +425,8 @@ def generate_export_evidence_pdf(invoice_no: str, output_dir: str | None = None)
     story.extend([poe_table, Spacer(1, 12)])
 
     # ---------- Declaration ----------
+        # ---------- Declaration ----------
+    # 声明部分保持不变
     story.append(Paragraph("<b>Declaration</b>", h2))
     story.append(Paragraph(CONFIG["declaration"], normal))
     story.append(Paragraph(
@@ -383,17 +436,38 @@ def generate_export_evidence_pdf(invoice_no: str, output_dir: str | None = None)
         normal,
     ))
 
-    story.extend([
+    # ---------- 自动签名区 ----------
+        # ---------- 自动签名区 ----------
+    # EES 签字日期 = 发票日期 + 3 天
+    inv_date = _get_invoice_date(data_summary)
+    ees_sign_date = inv_date + dt.timedelta(days=3)
+    ees_sign_date_str = ees_sign_date.isoformat()
+
+    sig_block = [
         Spacer(1, 30),
-        Paragraph("Prepared by: _________________________________", normal),
+        Paragraph(f"Prepared by: {SIGN_NAME}", normal),
         Spacer(1, 10),
-        Paragraph("Position: Director, EMINZORA TRADE LTD", normal),
+        Paragraph(f"Position: {SIGN_TITLE}", normal),
         Spacer(1, 10),
-        Paragraph("Date: _______________________________________", normal),
+        Paragraph("Signature:", normal),
+    ]
+
+    # 如果有签名图片，就插入图片；否则用下划线占位
+    if SIGN_IMAGE and os.path.exists(SIGN_IMAGE):
+        sig_block.append(Spacer(1, 4))
+        sig_block.append(Image(SIGN_IMAGE, width=4*cm, height=2*cm))
+    else:
+        sig_block.append(Spacer(1, 4))
+        sig_block.append(Paragraph("__________________________________", normal))
+
+    sig_block.extend([
         Spacer(1, 10),
-        Paragraph("Signature: __________________________________", normal),
+        Paragraph(f"Date: {ees_sign_date_str}", normal),
         Spacer(1, 40),
     ])
+
+    story.extend(sig_block)
+
 
     doc.build(story)
     print(f"[OK] Export Evidence Summary generated: {pdf_path}")
@@ -562,6 +636,7 @@ def generate_commercial_invoice_pdf(invoice_no: str, output_dir: str | None = No
     story.append(goods_table)
 
     # ---------- Footer / Declaration ----------
+    # ---------- Footer / Declaration ----------
     story.extend([
         Spacer(1, 20),
         Paragraph(
@@ -572,11 +647,31 @@ def generate_commercial_invoice_pdf(invoice_no: str, output_dir: str | None = No
             normal,
         ),
         Spacer(1, 20),
-        Paragraph("Authorised Signature: _________________________________", normal),
+    ])
+
+    # ---------- 自动签名区 ----------
+    # ---------- 自动签名区 ----------
+    # CI 签字日期 = 发票日期
+    inv_date = _get_invoice_date(data_summary)
+    ci_sign_date_str = inv_date.isoformat()
+
+    story.append(Paragraph("Authorised Signature:", normal))
+    story.append(Spacer(1, 6))
+
+    # 插入电子签名图片或下划线
+    if SIGN_IMAGE and os.path.exists(SIGN_IMAGE):
+        story.append(Image(SIGN_IMAGE, width=4*cm, height=2*cm))
+    else:
+        story.append(Paragraph("__________________________________", normal))
+
+    story.extend([
         Spacer(1, 10),
-        Paragraph("Name: Director, EMINZORA TRADE LTD", normal),
-        Spacer(1, 10),
-        Paragraph("Date: _______________________________________", normal),
+        Paragraph(f"Name: {SIGN_NAME}", normal),
+        Spacer(1, 8),
+        Paragraph(f"Title: {SIGN_TITLE}", normal),
+        Spacer(1, 8),
+        Paragraph(f"Date: {ci_sign_date_str}", normal),
+        Spacer(1, 25),
     ])
 
     doc.build(story)

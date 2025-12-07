@@ -33,6 +33,23 @@ DISCOUNT_EXCEL_DIR = Path("D:/TB/DiscountCandidates")
 TAOBAO_STORES = ["五小剑", "英国伦敦代购2015"]
 GLOBAL_CHROMEDRIVER_PATH = r"C:\chromedriver\chromedriver.exe"
 
+# ============================================================
+# Signature Config (for CI & EES)
+# ============================================================
+
+# 签名人姓名
+SIGN_NAME = "XIAODAN MA"      # 或 "Nianzhou Xu"，看你希望谁是签署人
+
+# 职位名称
+SIGN_TITLE = "Director, EMINZORA TRADE LTD"
+
+# 签名图片路径（PNG 带透明背景最佳）
+SIGN_IMAGE = r"D:\OneDrive\CrossBorderDocs_UK\00_Templates\signatures\xiaodan_ma_signature.png"
+
+# 如果暂时没有签名图，可以设 None
+# SIGN_IMAGE = None
+
+
 def ensure_all_dirs(*dirs):
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)

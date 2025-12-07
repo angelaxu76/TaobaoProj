@@ -1,11 +1,12 @@
 import csv
-from datetime import datetime
+from datetime import datetime, date
 from pathlib import Path
+import os
 
 import pandas as pd
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import Pt
+from docx.shared import Pt, Cm
 
 # finance_config.py 与本文件在同一目录
 from finance_config import FINANCE_EES
@@ -18,6 +19,11 @@ EXCLUDE_CATEGORIES = {
     "Business account fees", # ANNA 账户费：英国公司承担
 }
 
+# ✅ 董事自动电子签名配置
+SIGN_NAME = "XIAODAN MA"  # 如需改为 Nianzhou，只改这几行
+SIGN_TITLE = "Director, EMINZORA TRADE LTD"
+SIGN_IMAGE = r"D:\OneDrive\CrossBorderDocs_UK\00_Templates\signatures\xiaodan_ma_signature.png"
+# 如果没有签名图片，脚本会自动退回为下划线签名占位
 
 
 def load_and_prepare(csv_path: str) -> pd.DataFrame:
@@ -129,6 +135,8 @@ def create_accounting_report(df: pd.DataFrame, output_path: Path) -> Path:
     - Sheet1: 明细（含 Amount, Net_Ex_VAT, VAT_Amount, Item_Type）
     - Sheet2: 汇总（按 Item_Type 分组 + 总计）
     - 再附上 Net total / VAT total / Gross total / UK Profit / HK Payable
+
+    注意：这个 Excel 是“后台成本计算 / 支撑文件”，不是给香港公司的正式发票。
     """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -210,21 +218,55 @@ def _set_paragraph_style(p, bold=False, size=11, align=None):
         p.alignment = align
 
 
+def _make_invoice_number(start_date, csv_path: Path) -> str:
+    """
+    生成一个唯一的发票编号，例如：
+    INV-UKHK-202511
+    """
+    try:
+        if start_date:
+            ym = f"{start_date.year}{start_date.month:02d}"
+            return f"INV-UKHK-{ym}"
+        # fallback: 从文件名推日期，如 2025-11.csv
+        stem = csv_path.stem
+        dt = datetime.strptime(stem, "%Y-%m")
+        ym = f"{dt.year}{dt.month:02d}"
+        return f"INV-UKHK-{ym}"
+    except Exception:
+        return "INV-UKHK-UNKNOWN"
+    
+def _get_invoice_date(start_date, end_date) -> date:
+    """
+    约定规则：
+    - 如果有账期（start_date/end_date），则发票日期 = end_date 所在月份的下一月 3 号
+      例如：2025-11 的交易 -> 2025-12-03
+    - 如果拿不到日期（fallback），则用今天日期
+    """
+    if end_date:
+        year = end_date.year
+        month = end_date.month + 1
+        if month == 13:
+            month = 1
+            year += 1
+        return date(year, month, 3)
+    else:
+        return datetime.today().date()
+
 def create_invoice_docx(
     df: pd.DataFrame,
     csv_path: Path,
     output_path: Path,
 ) -> Path:
     """
-    根据 df 生成一个正式的 Intercompany Invoice（DOCX，英文商务版）。
+    根据 df 生成一个正式的 Intercompany Commercial Invoice（DOCX，英文商务版）。
 
     金额逻辑：
     - gross_total = df["Amount"].sum()        （带符号，负数为成本）
     - net_total   = df["Net_Ex_VAT"].sum()
     - gross_cost  = -gross_total             （正数：含 VAT 成本）
-    - net_cost    = -net_total               （正数：去 VAT 成本 = 香港成本基数）
+    - net_cost    = -net_total               （正数：去 VAT 成本 = HK 采购基数）
     - uk_profit   = net_cost * 0.15
-    - hk_payable  = net_cost * 1.15          （发票金额）
+    - hk_payable  = net_cost * 1.15          （发票金额，Cost Plus 15%）
     """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -256,35 +298,51 @@ def create_invoice_docx(
             start_date = None
             end_date = None
 
+    invoice_no = _make_invoice_number(start_date, csv_path)
     exporter = FINANCE_EES["exporter"]
     consignee = FINANCE_EES["consignee"]
 
     doc = Document()
 
-    # 标题
-    title = doc.add_heading("INVOICE", level=1)
+    # 标题：COMMERCIAL INVOICE
+    title = doc.add_heading("COMMERCIAL INVOICE", level=1)
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-    # 基本信息表头
+    # 副标题：UK → HK Intercompany Supply
+    sub = doc.add_paragraph("UK → HK Intercompany Supply (Cost-Plus 15% Wholesale Pricing)")
+    _set_paragraph_style(sub, size=10, align=WD_ALIGN_PARAGRAPH.CENTER)
+
+    # 发票号
     p = doc.add_paragraph()
-    run = p.add_run(f"Invoice Date: {datetime.today().date().isoformat()}")
+    p.add_run(f"Invoice No.: {invoice_no}")
     _set_paragraph_style(p, size=11)
 
-    period_text = ""
+    # 发票日期（自动今天）
+    # 发票日期：按账期的“下一月 3 号”
+    invoice_date_obj = _get_invoice_date(start_date, end_date)
+    invoice_date = invoice_date_obj.isoformat()
+
+    p = doc.add_paragraph()
+    p.add_run(f"Invoice Date: {invoice_date}")
+
+
+    _set_paragraph_style(p, size=11)
+
+    # 账期
     if start_date and end_date:
         period_text = f"{start_date.isoformat()} to {end_date.isoformat()}"
     else:
         period_text = "See attached ANNA statement"
 
     p = doc.add_paragraph()
-    run = p.add_run(f"Period Covered: {period_text}")
+    p.add_run(f"Period Covered: {period_text}")
     _set_paragraph_style(p, size=11)
 
     doc.add_paragraph()  # 空行
 
     # 出票方（英国公司）
     p = doc.add_paragraph()
-    run = p.add_run("From (Supplier):\n")
+    p.add_run("Seller (UK):\n")
     _set_paragraph_style(p, bold=True, size=11)
     p.add_run(f"{exporter['name']}\n")
     p.add_run(f"Company No: {exporter.get('company_no', '')}\n")
@@ -298,7 +356,7 @@ def create_invoice_docx(
 
     # 收票方（香港公司）
     p = doc.add_paragraph()
-    run = p.add_run("Bill To (Customer):\n")
+    p.add_run("Buyer (HK):\n")
     _set_paragraph_style(p, bold=True, size=11)
     p.add_run(f"{consignee['name']}\n")
     p.add_run(f"Address: {consignee['address']}\n")
@@ -309,17 +367,19 @@ def create_invoice_docx(
 
     # 定价说明
     p = doc.add_paragraph()
-    run = p.add_run("Pricing Model:\n")
+    p.add_run("Pricing Basis:\n")
     _set_paragraph_style(p, bold=True, size=11)
     p.add_run(
-        "The Hong Kong company reimburses the net purchase cost of UK sourcing "
-        "(excluding UK VAT) plus a 15% resale margin. All VAT input tax is "
-        "claimed and retained by the UK company and is not charged to the Hong Kong company."
+        "This Commercial Invoice is issued in accordance with the UK–HK Cross-Border "
+        "Trade Agreement (v4). All goods supplied during this period are sold by the "
+        "UK Seller to the Hong Kong Buyer under a Cost-Plus 15% wholesale pricing "
+        "method. The aggregate invoice amount is calculated as the UK landed net "
+        "cost of goods plus a 15% margin."
     )
 
     doc.add_paragraph()  # 空行
 
-    # 金额表格
+    # 金额汇总表：更标准的商业格式
     table = doc.add_table(rows=1, cols=2)
     table.style = "Table Grid"
     hdr_cells = table.rows[0].cells
@@ -331,38 +391,97 @@ def create_invoice_docx(
         row_cells[0].text = label
         row_cells[1].text = f"{value:,.2f}"
 
-    add_row("Total ANNA cost (gross, incl. VAT, signed)", gross_total)
-    add_row("Total ANNA cost (net of VAT, signed)", net_total)
-    add_row("Total VAT amount (signed)", vat_total)
-    add_row("Net purchase cost (positive)", net_cost)
-    add_row("UK resale margin (15% of net cost)", uk_profit)
-    add_row("Total payable by HK company (net × 1.15)", hk_payable)
+    add_row("Supply of goods (net of UK VAT)", net_cost)
+    add_row("Subtotal", net_cost)
+    add_row("Add: agreed wholesale margin (15%)", uk_profit)
+    add_row("Total amount due (zero-rated export)", hk_payable)
+
+    doc.add_paragraph()  # 空行
+
+    # Internal calculation reference（只作信息参考，金额转成正数）
+    p = doc.add_paragraph()
+    p.add_run("Internal calculation reference (for information only):\n")
+    _set_paragraph_style(p, bold=False, size=9)
+    p.add_run(
+        f"- Underlying ANNA gross cost (including UK VAT): {abs(gross_total):,.2f} GBP\n"
+        f"- Underlying ANNA net cost (excluding UK VAT): {abs(net_total):,.2f} GBP\n"
+        f"- Total UK input VAT on these purchases: {abs(vat_total):,.2f} GBP\n"
+        "  (These figures are shown for reconciliation purposes only and do not "
+        "represent additional charges to the Buyer. UK input VAT is claimed and "
+        "retained by the UK Seller as part of its own VAT return.)"
+    )
 
     doc.add_paragraph()  # 空行
 
     # 备注
-    p = doc.add_paragraph()
-    p.add_run(
-        "Notes:\n"
-        "- The above invoice covers all ANNA bank transactions related to stock purchase, "
-        "shipping, packaging and other direct sourcing costs for the specified period, "
-        "excluding UK-only overheads such as accountant fees and ANNA business account fees.\n"
-        "- The Hong Kong company bears the net purchase cost and logistics related costs "
-        "only. UK VAT input tax is fully retained by the UK company.\n"
-        "- This invoice is issued under the intercompany trade agreement and pricing "
-        "policy between EMINZORA TRADE LTD and HONG KONG ANGEL XUAN TRADING CO., LIMITED."
+    notes = doc.add_paragraph()
+    notes.add_run("Notes:\n")
+    _set_paragraph_style(notes, bold=True, size=10)
+    notes = doc.add_paragraph()
+    notes.add_run(
+        f"- This Commercial Invoice (Invoice No.: {invoice_no}) summarises the wholesale "
+        "supply of goods from the UK Seller to the Hong Kong Buyer for the above period, "
+        "under FCA (ECMS UK warehouse) terms.\n"
+        "- Individual export consignments are documented in separate Commercial Invoices (CI) and "
+        "Export Evidence Summaries (EES), together with customs Proof of Export (POE) documents. "
+        "These are retained by the UK Seller for VAT zero-rating and audit purposes.\n"
+        "- The transaction is treated as a zero-rated export of goods for UK VAT purposes, "
+        "in line with HMRC Notice 703.\n"
+        "- Payment terms: as per the UK–HK Cross-Border Trade Agreement (e.g. payment within 7 days "
+        "from invoice date)."
     )
-    _set_paragraph_style(p, size=10)
+    _set_paragraph_style(notes, size=10)
 
     doc.add_paragraph()  # 空行
 
-    # 签名区
-    p = doc.add_paragraph("\n\nAuthorised Signature (UK): ____________________________")
-    _set_paragraph_style(p, size=11)
+    # 签名区（自动日期 + 电子签名图片）
+    sig_para = doc.add_paragraph()
+    sig_para.add_run("\nAuthorised Signature (UK):")
+    _set_paragraph_style(sig_para, bold=True, size=11)
+
+    # 插入电子签名图片或下划线
+    if SIGN_IMAGE and os.path.exists(SIGN_IMAGE):
+        pic_para = doc.add_paragraph()
+        run = pic_para.add_run()
+        run.add_picture(SIGN_IMAGE, width=Cm(4))
+    else:
+        underline_para = doc.add_paragraph("_______________________________")
+        _set_paragraph_style(underline_para, size=11)
+
+    # 签名人信息 + 日期（自动今天）
+    name_para = doc.add_paragraph(f"Name: {SIGN_NAME}")
+    _set_paragraph_style(name_para, size=10)
+    title_para = doc.add_paragraph(f"Title: {SIGN_TITLE}")
+    _set_paragraph_style(title_para, size=10)
+    date_para = doc.add_paragraph(f"Date: {invoice_date}")
+    _set_paragraph_style(date_para, size=10)
 
     doc.save(output_path)
-    print(f"[OK] Invoice DOCX: {output_path}")
+    print(f"[OK] Commercial Invoice DOCX: {output_path}")
     return output_path
+
+
+def create_invoice_pdf(docx_path: Path, pdf_path: Path) -> Path:
+    """
+    将生成好的 DOCX 发票转换为 PDF。
+    需要安装 docx2pdf:
+        pip install docx2pdf
+
+    如果环境中没有 docx2pdf，会给出提示但不会报错中断。
+    """
+    try:
+        from docx2pdf import convert
+    except ImportError:
+        print("[WARN] docx2pdf not installed; skip PDF export. Run 'pip install docx2pdf' if needed.")
+        return pdf_path
+
+    try:
+        convert(str(docx_path), str(pdf_path))
+        print(f"[OK] Commercial Invoice PDF: {pdf_path}")
+    except Exception as e:
+        print(f"[WARN] Failed to export PDF from {docx_path}: {e}")
+
+    return pdf_path
 
 
 def generate_anna_monthly_reports(csv_path: str, output_dir: str):
@@ -370,11 +489,15 @@ def generate_anna_monthly_reports(csv_path: str, output_dir: str):
     主入口函数（供 pipeline 调用）：
 
     输入：
-        csv_path: ANNA 月度交易 CSV 路径
+        csv_path: ANNA 月度交易 CSV 路径（例如 2025-11.csv）
         output_dir: 输出目录
 
     输出：
         (accounting_path, invoice_path)
+
+    逻辑：
+        1）生成后台会计报表 anna_accounting_report_YYYY-MM.xlsx
+        2）生成 UK→HK 的月度 COMMERCIAL INVOICE（Cost+15% 模式）
     """
     csv_path = Path(csv_path)
     output_dir = Path(output_dir)
@@ -382,14 +505,19 @@ def generate_anna_monthly_reports(csv_path: str, output_dir: str):
 
     df = load_and_prepare(str(csv_path))
 
-    # 生成记账报表
+    # 生成记账报表（后台支撑文件）
     stem = csv_path.stem  # e.g. "2025-11"
     accounting_path = output_dir / f"anna_accounting_report_{stem}.xlsx"
     accounting_path = create_accounting_report(df, accounting_path)
 
-    # 生成 Invoice DOCX（按净成本 × 1.15）
+    # 生成 Intercompany Commercial Invoice DOCX（Cost+15%）
+    # 生成 Intercompany Commercial Invoice DOCX（Cost+15%）
     invoice_path = output_dir / f"Invoice_UK_to_HK_{stem}.docx"
     invoice_path = create_invoice_docx(df, csv_path, invoice_path)
+
+    # 再生成一个 PDF 版本（带电子签名更自然）
+    invoice_pdf_path = output_dir / f"Invoice_UK_to_HK_{stem}.pdf"
+    create_invoice_pdf(invoice_path, invoice_pdf_path)
 
     return accounting_path, invoice_path
 
@@ -399,7 +527,7 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 3:
-        print("Usage: python anna_monthly_reports_v3.py <csv_path> <output_dir>")
+        print("Usage: python anna_monthly_reports_v4.py <csv_path> <output_dir>")
     else:
         acc_path, inv_path = generate_anna_monthly_reports(sys.argv[1], sys.argv[2])
         print(f"[DONE] Accounting: {acc_path}")
