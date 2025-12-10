@@ -9,7 +9,7 @@ from channels.jingya.export.export_stock_to_excel import export_stock_excel
 from channels.jingya.export.export_channel_price_excel_jingya import export_jiangya_channel_prices
 from channels.jingya.ingest.import_channel_info import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
 from common_taobao.core.generate_missing_links_for_brand import generate_missing_links_for_brand
-
+from common_taobao.publication.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
 # from brands.geox.core.fetch_product_info import fetch_all_product_info
 
 from brands.geox.fetch_product_info_jingya import fetch_all_product_info
@@ -47,16 +47,27 @@ def main():
 
 
     # # print("\\n🟡 Step: 6️⃣生成发布产品的excel")
-    # # generate_publication_excels("geox")
+    # generate_publication_excels("geox")
 
     # print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
     # stock_dest_excel_folder = r"D:\TB\Products\geox\repulibcation\stock"
     # export_stock_excel("geox",stock_dest_excel_folder)
 
-    print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
-    price_dest_excel = r"D:\TB\Products\geox\repulibcation\publication_prices"
-    exclude_exccel = r"D:\TB\Products\geox\document\exclude.xlsx"
-    export_jiangya_channel_prices("geox",price_dest_excel,exclude_exccel)
+    # print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
+    # price_dest_excel = r"D:\TB\Products\geox\repulibcation\publication_prices"
+    # exclude_exccel = r"D:\TB\Products\geox\document\exclude.xlsx"
+    # export_jiangya_channel_prices("geox",price_dest_excel,exclude_exccel)
+
+
+    generate_price_excels_bulk(
+        brand="geox",
+        input_dir=r"D:\TB\Products\geox\document\store_prices",
+        output_dir=r"D:\TB\Products\geox\repulibcation\store_prices\output",
+        suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
+        drop_rows_without_price=False,
+        blacklist_excel_file=r"D:\TB\Products\clarksgeox_jingya\document\exclude.xlsx" # 不丢行，查不到的价格留空
+    )
+
 
 if __name__ == "__main__":
     main()

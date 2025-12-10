@@ -9,7 +9,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt, Cm
 
 from config import PGSQL_CONFIG          # 和 manage_export_shipments_costs 一样的数据库配置
-from finance_config import FINANCE_EES   # 出口方 / 收货方信息（和 anna_monthly_reports_v2 一致）
+from finance_config import FINANCE_EES   # 出口方 / 收货方信息 + 银行信息
 
 # 利润率（UK → HK 批发的加成比例）
 MARGIN_RATE = 0.15
@@ -35,10 +35,11 @@ def _set_paragraph_style(p, bold=False, size=11, align=None):
 def load_poe_lines(poe_id: str) -> pd.DataFrame:
     """
     从 export_shipments 读取某个 POE 下的所有【商品行】：
+
     - 只保留 skuid 非空的行（真正有 SKU 的才视为商品）
     - 对这些商品行：
-        * 如果有采购成本 -> 用于生成 CI / EES
-        * 如果没有采购成本 -> 视为非 ANNA 采购 / HK 旧库存，不计入 CI / EES，只打印警告
+        * 如果有采购成本 -> 用于生成 CI / 内部成本报表
+        * 如果没有采购成本 -> 视为非 ANNA 采购 / HK 旧库存，不计入 CI，仅打印警告
     - 那些 skuid 为空的“汇总/物流行”会被跳过，不参与发票金额计算
     """
     sql = """
@@ -86,21 +87,19 @@ def load_poe_lines(poe_id: str) -> pd.DataFrame:
         example_skuids = df_missing["skuid"].head(5).tolist()
         print(
             f"[WARN] poe_id = {poe_id} 中有 {len(df_missing)} 条商品未填写采购成本，"
-            f"将视为非 ANNA 采购 / HK 旧库存，不计入本次 CI / EES。"
+            f"将视为非 ANNA 采购 / HK 旧库存，不计入本次 CI。"
             f" 示例缺失 SKU: {example_skuids}"
         )
 
-    # 如果这一票里完全没有任何有成本的商品，就没必要出 CI / EES 了
+    # 如果这一票里完全没有任何有成本的商品，就没必要出 CI 了
     if df_with_cost.empty:
         raise ValueError(
             f"poe_id = {poe_id} 中没有任何填写采购成本的商品，"
             f"推断为全部为 HK 旧库存 / 非 ANNA 采购。"
-            f"这种 POE 不需要生成 CI，如需 EES 请单独处理。"
+            f"这种 POE 不需要生成 CI。"
         )
 
     return df_with_cost
-
-
 
 
 def build_cost_and_price(df: pd.DataFrame) -> pd.DataFrame:
@@ -111,8 +110,6 @@ def build_cost_and_price(df: pd.DataFrame) -> pd.DataFrame:
       1）自动去掉 20% VAT 得到净成本 net_cost_unit
       2）在净成本基础上加 15% 批发加成（unit_price_gbp）
       3）计算行金额 line_price_gbp
-
-    程序顺序保持不变，只调整数学逻辑。
     """
     df = df.copy()
     df["quantity"] = df["quantity"].fillna(0).astype(int)
@@ -135,7 +132,6 @@ def build_cost_and_price(df: pd.DataFrame) -> pd.DataFrame:
     df["line_price_gbp"] = (df["unit_price_gbp"] * df["quantity"]).round(2)
 
     return df
-
 
 
 def create_poe_cost_report(df: pd.DataFrame, output_path: Path) -> Path:
@@ -190,7 +186,12 @@ def _make_poe_invoice_no(poe_id: str, poe_date: date | None) -> str:
 def create_poe_invoice_docx(df: pd.DataFrame, output_path: Path) -> Path:
     """
     根据单个 POE 的行明细生成对香港的商业发票（非 Intercompany）。
-    已完全删除 Internal Reference 段落，不再暴露净成本或利润。
+
+    v2 调整：
+      - 明细行 No. 重置索引，从 1 连续编号；
+      - 去掉 Tracking Number，只在有承运人时显示 Carrier；
+      - 不再在正文中写死“(v4.2)”版本号；
+      - 增加 Bank Details（从 FINANCE_EES['bank'] 读取）。
     """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -204,12 +205,18 @@ def create_poe_invoice_docx(df: pd.DataFrame, output_path: Path) -> Path:
     poe_date_obj = poe_date.date() if isinstance(poe_date, pd.Timestamp) else poe_date
 
     carrier_name = row0.get("carrier_name") or ""
-    tracking_no = row0.get("tracking_no") or ""
+    tracking_no = row0.get("tracking_no") or ""  # v2: 我们不再打印 tracking_no
 
     price_total = df["line_price_gbp"].sum().round(2)
 
     exporter = FINANCE_EES["exporter"]
     consignee = FINANCE_EES["consignee"]
+    bank = FINANCE_EES.get("bank", {})
+    logistics_cfg = FINANCE_EES.get("logistics", {})
+
+    # 如果数据库中没有 carrier_name，使用配置中的默认（例如 ECMS）
+    if not carrier_name:
+        carrier_name = logistics_cfg.get("carrier", "") or ""
 
     invoice_no = _make_poe_invoice_no(poe_id, poe_date_obj)
     invoice_date = (poe_date_obj or datetime.today().date()).isoformat()
@@ -238,13 +245,9 @@ def create_poe_invoice_docx(df: pd.DataFrame, output_path: Path) -> Path:
         p = doc.add_paragraph(f"Export Office: {poe_office}")
         _set_paragraph_style(p)
 
-    if carrier_name or tracking_no:
-        txt = "Carrier / Tracking: "
-        if carrier_name:
-            txt += carrier_name
-        if tracking_no:
-            txt += f" / {tracking_no}"
-        p = doc.add_paragraph(txt)
+    # v2: 不再显示 tracking_no，仅在有承运人时显示 Carrier
+    if carrier_name:
+        p = doc.add_paragraph(f"Carrier: {carrier_name}")
         _set_paragraph_style(p)
 
     doc.add_paragraph()
@@ -284,9 +287,11 @@ def create_poe_invoice_docx(df: pd.DataFrame, output_path: Path) -> Path:
     p = doc.add_paragraph("Terms and Pricing:\n")
     _set_paragraph_style(p, bold=True)
 
+    # v2: 去掉 “(v4.2)” 固定版本号，改为更通用的 “the Agreement”
     p = doc.add_paragraph(
-        "This Commercial Invoice is issued under the UK–HK Cross-Border Trade Agreement (v4.2). "
-        "The goods are sold by the UK Seller to the Hong Kong Buyer on a wholesale basis.\n\n"
+        "This Commercial Invoice is issued under the UK–HK Cross-Border Trade Agreement "
+        "(the “Agreement”). The goods are sold by the UK Seller to the Hong Kong Buyer "
+        "on a wholesale basis.\n\n"
         "Delivery Terms: FCA (ECMS UK warehouse), Incoterms® 2020.\n\n"
         "Pricing Method: The unit prices are determined by applying the agreed cost-plus 15% "
         "wholesale margin to the Seller's net landed cost, in accordance with the agreed Pricing Policy.\n\n"
@@ -298,6 +303,9 @@ def create_poe_invoice_docx(df: pd.DataFrame, output_path: Path) -> Path:
     doc.add_paragraph()
 
     # ---------------- Item Table ----------------
+    # v2: 重置索引，让 No. 从 1 连续编号
+    df = df.reset_index(drop=True)
+
     table = doc.add_table(rows=1, cols=6)
     table.style = "Table Grid"
     hdr = table.rows[0].cells
@@ -328,12 +336,38 @@ def create_poe_invoice_docx(df: pd.DataFrame, output_path: Path) -> Path:
 
     doc.add_paragraph()
 
-    # >>> 在此处加入最终金额行 <<<
+    # >>> 最终金额行 <<<
     p = doc.add_paragraph()
     p.add_run(f"Total Amount Payable (GBP): {price_total:,.2f}")
     _set_paragraph_style(p, bold=True, size=11)
 
     doc.add_paragraph()  # blank line
+
+    # ---------------- Bank Details ----------------
+    # 从 finance_config.FINANCE_EES["bank"] 读取银行信息
+    if bank:
+        p = doc.add_paragraph("Bank Details (for settlement):")
+        _set_paragraph_style(p, bold=True)
+
+        bank_lines = []
+        if bank.get("bank_name"):
+            bank_lines.append(f"Bank: {bank['bank_name']}")
+        if bank.get("account_name"):
+            bank_lines.append(f"Account Name: {bank['account_name']}")
+        if bank.get("account_no"):
+            bank_lines.append(f"Account No.: {bank['account_no']}")
+        if bank.get("sort_code"):
+            bank_lines.append(f"Sort Code: {bank['sort_code']}")
+        if bank.get("iban"):
+            bank_lines.append(f"IBAN: {bank['iban']}")
+        if bank.get("swift"):
+            bank_lines.append(f"SWIFT / BIC: {bank['swift']}")
+
+        if bank_lines:
+            p = doc.add_paragraph("\n".join(bank_lines))
+            _set_paragraph_style(p, size=10)
+
+        doc.add_paragraph()  # 空一行和签名区隔开
 
     # ---------------- Signature ----------------
     p = doc.add_paragraph("Authorised Signature (UK):")
@@ -354,7 +388,6 @@ def create_poe_invoice_docx(df: pd.DataFrame, output_path: Path) -> Path:
     doc.save(output_path)
     print(f"[OK] Commercial Invoice DOCX (no internal reference): {output_path}")
     return output_path
-
 
 
 def create_invoice_pdf(docx_path: Path, pdf_path: Path) -> Path:

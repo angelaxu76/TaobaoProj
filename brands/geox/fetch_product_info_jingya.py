@@ -411,7 +411,7 @@ def fetch_all_product_info(links_file=None):
             try:
                 print(f"[{idx}/{len(urls)}] 🪟 正在打开：{url}")
                 driver.get(url)
-                time.sleep(5)
+                time.sleep(0.5)
 
                 html = driver.page_source
                 if not html:
