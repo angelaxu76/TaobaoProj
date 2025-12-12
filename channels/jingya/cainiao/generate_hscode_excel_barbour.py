@@ -242,25 +242,34 @@ def build_row(brand: str, goods_id: str) -> dict:
 
     return row
 
-def main(
-    input_list: Path = INPUT_LIST,
-    output_dir: Path = OUTPUT_DIR,
+def generate_barbour_hscode(
+    input_list: Path | str = INPUT_LIST,
+    output_dir: Path | str = OUTPUT_DIR,
     sheet_name: str = SHEET_NAME
 ):
+    # ---- 统一转换为 Path，兼容 pipeline 传入 str ----
+    input_list = Path(input_list)
+    output_dir = Path(output_dir)
+
     df = pd.read_excel(input_list, dtype=str)
 
-    # 校验列
+    # 校验 brand 列
     if "brand" not in df.columns:
         raise KeyError("输入清单必须包含列：brand")
 
-    if "货品ID" in df.columns:
-        gid_col = "货品ID"
-    elif "goods_id" in df.columns:
-        gid_col = "goods_id"
-    else:
-        raise KeyError("输入清单必须包含列：货品ID（或 goods_id）")
+    # ---- 大小写不敏感匹配货品ID列 ----
+    lower_cols = {c.lower(): c for c in df.columns}
+    candidate_names = ["货品id", "货品ID", "goods_id"]
 
-    # 仅支持 barbour
+    gid_col = None
+    for name in candidate_names:
+        if name.lower() in lower_cols:
+            gid_col = lower_cols[name.lower()]
+            break
+
+    if gid_col is None:
+        raise KeyError("输入清单必须包含列：货品ID（或 goods_id），大小写不敏感。")
+
     df["brand"] = df["brand"].str.lower().str.strip()
 
     rows = []
@@ -283,6 +292,7 @@ def main(
 
     out_df = pd.DataFrame(rows, columns=CORRECT_COLUMNS)
 
+    # ---- mkdir 不再报错，因为 output_dir 已是 Path ----
     output_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_path = output_dir / f"备案导入_{ts}.xlsx"
@@ -292,5 +302,6 @@ def main(
 
     print(f"✅ 生成完成：{out_path}")
 
+
 if __name__ == "__main__":
-    main()
+    generate_barbour_hscode()

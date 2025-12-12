@@ -273,18 +273,34 @@ def build_row(brand: str, goods_id: str) -> dict:
         row['申报要素(枚举值详见:hscode列表)（要素内容由hscode决定）'] += "|⚠缺少货号"
     return row
 
-def main(
-    input_list: Path = INPUT_LIST,
-    output_dir: Path = OUTPUT_DIR,
+from pathlib import Path
+
+def generate_shoe_hscode(
+    input_list: Path | str = INPUT_LIST,
+    output_dir: Path | str = OUTPUT_DIR,
     sheet_name: str = SHEET_NAME
 ):
+    # ✅ 无论传进来是 str 还是 Path，这里强制转成 Path
+    input_list = Path(input_list)
+    output_dir = Path(output_dir)
+
     df = pd.read_excel(input_list, dtype=str)
     # 兼容列名
     if "brand" not in df.columns:
         raise KeyError("输入清单必须包含列：brand")
-    gid_col = "货品ID" if "货品ID" in df.columns else ("goods_id" if "goods_id" in df.columns else None)
+
+    # ---- 大小写不敏感匹配列名 ----
+    lower_cols = {c.lower(): c for c in df.columns}
+    candidate_names = ["货品id", "货品ID", "goods_id"]
+
+    gid_col = None
+    for name in candidate_names:
+        if name.lower() in lower_cols:
+            gid_col = lower_cols[name.lower()]
+            break
+
     if gid_col is None:
-        raise KeyError("输入清单必须包含列：货品ID（或 goods_id）")
+        raise KeyError("输入清单必须包含列：货品ID（或 goods_id），大小写不敏感。")
 
     df["brand"] = df["brand"].str.lower().str.strip()
 
@@ -305,15 +321,16 @@ def main(
 
     out_df = pd.DataFrame(rows, columns=CORRECT_COLUMNS)
 
+    # ✅ 这里就安全了，一定是 Path 对象
     output_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_path = output_dir / f"备案导入_{ts}.xlsx"
 
-    # ✅ 不使用模板：直接写一个干净的 Excel，工作表名按你配置
     with pd.ExcelWriter(out_path, engine="openpyxl") as w:
         out_df.to_excel(w, sheet_name=sheet_name, index=False)
 
     print(f"✅ 生成完成：{out_path}")
 
+
 if __name__ == "__main__":
-    main()
+    generate_shoe_hscode()

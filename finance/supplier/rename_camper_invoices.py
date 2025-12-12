@@ -183,7 +183,7 @@ def _build_filename(order: Optional[str], invoice: Optional[str],
     return "_".join(parts) + ".pdf"
 
 
-def rename_invoices(input_dir: str, output_dir: str) -> Tuple[int, int, str]:
+def rename_camper_invoices(input_dir: str, output_dir: str) -> Tuple[int, int, str]:
     """读取 input_dir 下所有 PDF，重命名后移动到 output_dir。
     返回: (total, renamed, log_path)
     """
