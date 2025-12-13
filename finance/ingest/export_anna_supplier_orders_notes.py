@@ -53,28 +53,39 @@ def fetch_order_poe_data(conn, start_date: dt.date, end_date: dt.date) -> pd.Dat
     return df
 
 
-def build_anna_note_for_group(order_no: str,
-                              supplier_name: str,
-                              poe_rows: pd.DataFrame) -> str:
+def build_anna_note_for_group(
+    order_no: str,
+    supplier_name: str,
+    poe_rows: pd.DataFrame,
+    total_cost_gbp: Optional[float] = None,
+) -> str:
     """
     为某个 supplier_order_no + supplier_name 生成 ANNA Note 文本。
 
-    poe_rows 至少包含列：poe_id, poe_date, skuid, quantity
+    poe_rows 至少包含列：poe_id, poe_date, skuid, quantity, purchase_unit_cost_gbp
 
-    逻辑：
-    - 按 (poe_id, poe_date) 分组；
-    - 每个 POE 汇总：
-      - 包含的 SKUID 列表（去重）
-      - 总件数 Items（sum(quantity)）
-    - 不再出现 shipment_id。
+    新增：
+    - 在 supplier 行后面显示该订单的总金额 total_cost_gbp；
+    - 在每个 POE 的 SKUID 列表中，附带显示该 SKUID 的 purchase_unit_cost_gbp 单价。
     """
     import datetime as _dt
 
     lines = []
     # 第一行：订单号
     lines.append(f"order number：{order_no}")
-    # 第二行：供应商
-    lines.append(f"supplier：{supplier_name}")
+
+    # 第二行：供应商 + 总金额（如果有）
+    if total_cost_gbp is not None:
+        try:
+            total_cost_gbp = float(total_cost_gbp)
+            lines.append(
+                f"supplier：{supplier_name}，Total Purchase Cost (GBP)：{total_cost_gbp:.2f}"
+            )
+        except Exception:
+            # 万一转换失败，就退回到只显示 supplier
+            lines.append(f"supplier：{supplier_name}")
+    else:
+        lines.append(f"supplier：{supplier_name}")
 
     poe_rows_clean = poe_rows.dropna(subset=["poe_id"]).copy()
 
@@ -107,16 +118,32 @@ def build_anna_note_for_group(order_no: str,
             except Exception:
                 poe_date_str = str(poe_date)
 
-        # 汇总 SKUID 列表
-        skuids = (
-            sub_df["skuid"]
-            .dropna()
-            .astype(str)
-            .sort_values()
-            .unique()
+        # === 新逻辑：汇总 SKUID + 单价 ===
+        # 保证有 skuid 和 purchase_unit_cost_gbp
+        sku_price_df = (
+            sub_df[["skuid", "purchase_unit_cost_gbp"]]
+            .dropna(subset=["skuid"])
+            .copy()
         )
-        if len(skuids) > 0:
-            skuid_str = ", ".join(skuids)
+        if not sku_price_df.empty:
+            sku_price_df["skuid"] = sku_price_df["skuid"].astype(str)
+            # 同一个 SKUID 只保留一条记录
+            sku_price_df = sku_price_df.sort_values(["skuid"])
+            sku_price_df = sku_price_df.drop_duplicates(subset=["skuid"], keep="first")
+
+            skuid_parts = []
+            for _, row in sku_price_df.iterrows():
+                sk = row["skuid"]
+                price_val = row["purchase_unit_cost_gbp"]
+                try:
+                    price_float = float(price_val)
+                    price_str = f"£{price_float:.2f}"
+                except Exception:
+                    price_str = str(price_val)
+                # 形如：26176998(£79.20)
+                skuid_parts.append(f"{sk} ({price_str})")
+
+            skuid_str = ", ".join(skuid_parts)
         else:
             skuid_str = ""
 
@@ -133,7 +160,7 @@ def build_anna_note_for_group(order_no: str,
         except Exception:
             total_qty_int = total_qty
 
-        # 行内容：POE + SKUID + 件数 + CI + 日期
+        # 行内容：POE + SKUID(带单价) + 件数 + CI + 日期
         line = (
             f"{idx}， POE: {poe_id}，"
             f"SKUID: {skuid_str}，"
@@ -208,16 +235,24 @@ def generate_supplier_orders_excel(
             continue
 
         # 总采购成本：所有行的 purchase_unit_cost_gbp 求和
+        # 这里保持与你之前的逻辑一致
         total_cost = group["purchase_unit_cost_gbp"].sum()
 
         # 总件数：sum(quantity)
         items_count = int(group["quantity"].astype(float).sum())
 
-        # 生成 ANNA Note 文本（传入 POE + SKUID + quantity）
+        # 生成 ANNA Note 文本（传入 POE + SKUID + quantity + 单价 + 总金额）
         anna_note = build_anna_note_for_group(
             order_no=order_no,
             supplier_name=supplier_name,
-            poe_rows=group[["poe_id", "poe_date", "skuid", "quantity"]],
+            poe_rows=group[[
+                "poe_id",
+                "poe_date",
+                "skuid",
+                "quantity",
+                "purchase_unit_cost_gbp",
+            ]],
+            total_cost_gbp=float(total_cost),
         )
 
         # 为该订单计算一个汇总 POE 日期（取最早的 POE 日期）

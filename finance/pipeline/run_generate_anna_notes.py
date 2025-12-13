@@ -1,37 +1,20 @@
 import os
-from finance.ingest.generate_anna_notes import make_anna_notes_with_auto_po
+import datetime as dt
 
-def main():
-    supplier = "EMINZORA"          # 公司简称；也可作为 company_short
-    brand = "camper"
-    output_dir = r"D:\OneDrive\CrossBorderDocs\03_Purchase_Records\PO\202510"
-    # shipment_ids = ["78953947914055", "78953105068412"] 
-    shipment_ids = ["78955244653355"] # 多个 shipment_id 用列表传入
-    order_id = "4007467262 "        # 原 order_no -> order_id
-    order_date = "2025-11-06"      # 原 po_date -> order_date (YYYY-MM-DD 或 YYYYMMDD)
+# from config import TOOL_OUTPUT_DIR  # 比如你自定义的输出目录
+from finance.ingest.export_anna_supplier_orders_notes import generate_supplier_orders_excel
 
-    os.makedirs(output_dir, exist_ok=True)
 
-    # 先生成 Anna 备注（不传 output_txt）
-    po_number, notes, not_found = make_anna_notes_with_auto_po(
-        supplier=supplier,
-        brand=brand,
-        shipment_ids=shipment_ids,
-        order_date=order_date,
-        order_id=order_id,
-        company_short=supplier
-    )
+def run_supplier_orders_notes_pipeline():
+    # 示例：本月
+    start_date = dt.date(2025, 9, 1)
+    end_date = dt.date(2025, 12, 31)
 
-    # 再用 po_number 拼文件名
-    output_txt = os.path.join(output_dir, f"{po_number}.txt")
-    with open(output_txt, "w", encoding="utf-8") as f:
-        for line in notes:
-            f.write(line + "\n")
+    filename = f"supplier_orders_notes_{start_date}_{end_date}.xlsx"
+    output_path = os.path.join(r"C:\Users\martin\Desktop", filename)
 
-    print("PO Number:", po_number)
-    print("Notes file:", output_txt)
-    if not_found:
-        print("未在数据库找到的 shipment_id:", not_found)
+    generate_supplier_orders_excel(start_date, end_date, output_path)
+
 
 if __name__ == "__main__":
-    main()
+    run_supplier_orders_notes_pipeline()
