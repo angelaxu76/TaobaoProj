@@ -2,7 +2,7 @@ from pathlib import Path
 from common_taobao.core.price_utils import calculate_jingya_prices
 
 def main():
-    untaxed, retail = calculate_jingya_prices(91,7,9.7)
+    untaxed, retail = calculate_jingya_prices(113,7,9.7)
 
 
     print(f"📂 鲸芽价格: \n{untaxed}")

@@ -338,7 +338,7 @@ def process_product_url_with_driver(driver, product_url: str):
 # =========================
 # v3 Entry: safe single-thread (driver reuse + auto rebuild)
 # =========================
-def camper_fetch_product_info_v3(product_urls_file: Optional[str] = None,
+def camper_fetch_product_info(product_urls_file: Optional[str] = None,
                                 login_wait_seconds: int = LOGIN_WAIT_SECONDS):
     if product_urls_file is None:
         product_urls_file = PRODUCT_URLS_FILE
@@ -389,4 +389,4 @@ def camper_fetch_product_info_v3(product_urls_file: Optional[str] = None,
 
 
 if __name__ == "__main__":
-    camper_fetch_product_info_v3()
+    camper_fetch_product_info()
