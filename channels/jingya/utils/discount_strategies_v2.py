@@ -56,10 +56,9 @@ def strategy_min_price_times_ratio(o, d, brand):
     """
 
     # 转成 float，防止 None 或字符串
-    try:
-        o = float(o) if o is not None else 0.0
-    except:
-        o = 0.0
+    o = _to_float(o)
+    d = _to_float(d)
+
 
     try:
         d = float(d) if d is not None else 0.0
@@ -97,17 +96,18 @@ def strategy_discount_or_original_ratio(o, d, brand):
     """
 
     # 安全转换为 float
-    try:
-        o = float(o) if o is not None else 0.0
-    except:
-        o = 0.0
+    o = _to_float(o)
+    d = _to_float(d)
+
 
     try:
         d = float(d) if d is not None else 0.0
     except:
         d = 0.0
 
-    ratio = float(BRAND_DISCOUNT.get(brand.lower(), 1.0))
+    brand_key = str(brand).lower()
+    ratio = float(BRAND_DISCOUNT.get(brand_key, 1.0))
+
 
     # 1) 折扣价不存在 → 原价 × ratio
     if d == 0:
@@ -129,17 +129,18 @@ def strategy_discount_priority(o, d, brand):
     """
 
     # 安全 float 转换
-    try:
-        o = float(o) if o is not None else 0.0
-    except:
-        o = 0.0
+    o = _to_float(o)
+    d = _to_float(d)
+
 
     try:
         d = float(d) if d is not None else 0.0
     except:
         d = 0.0
 
-    ratio = float(BRAND_DISCOUNT.get(brand.lower(), 1.0))
+    brand_key = str(brand).lower()
+    ratio = float(BRAND_DISCOUNT.get(brand_key, 1.0))
+
 
     # 如果有折扣价 → 直接用折扣价（优先级最高）
     if d > 0:
