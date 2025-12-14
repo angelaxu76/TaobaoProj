@@ -13,7 +13,7 @@
 from typing import Tuple
 
 from config import BRAND_STRATEGY  # 品牌 -> 策略名
-from channels.jingya.utils.discount_strategies_v2 import STRATEGY_MAP  # 策略名 -> 策略函数
+from channels.jingya.pricing.discount_strategies_v2 import STRATEGY_MAP  # 策略名 -> 策略函数
 
 
 def _safe_float(x) -> float:

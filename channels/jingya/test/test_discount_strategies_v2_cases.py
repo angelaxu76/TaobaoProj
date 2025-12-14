@@ -6,12 +6,12 @@ from __future__ import annotations
 from typing import Any, Dict, List, Tuple
 
 # 这里按你的项目结构导入
-# 如果你现在是 v2 文件：channels/jingya/utils/discount_strategies_v2.py
+# 如果你现在是 v2 文件：channels/jingya/pricing/discount_strategies_v2.py
 # 就用下面这一行（推荐）
-from channels.jingya.utils.discount_strategies_v2 import STRATEGY_MAP
+from channels.jingya.pricing.discount_strategies_v2 import STRATEGY_MAP
 
 # 如果你当前还是老文件名（discount_strategies.py），改成：
-# from channels.jingya.utils.discount_strategies import STRATEGY_MAP
+from channels.jingya.pricing.discount_strategies import STRATEGY_MAP
 
 
 def fmt(x: Any) -> str:

@@ -4,7 +4,7 @@ from pathlib import Path
 from psycopg2.extras import execute_batch
 from config import BRAND_CONFIG, BRAND_DISCOUNT
 from common_taobao.ingest.txt_parser import jingya_parse_txt_file
-from channels.jingya.utils.brand_price_rules import compute_brand_base_price
+from channels.jingya.pricing.brand_price_rules import compute_brand_base_price
 try:
     from common_taobao.core.price_utils import calculate_jingya_prices
 except Exception:

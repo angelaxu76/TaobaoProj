@@ -10,7 +10,7 @@ from config import BRAND_DISCOUNT
 
 # 阶梯配置（独立文件，方便找和改）
 try:
-    from channels.jingya.utils.discount_ladder_config import (
+    from channels.jingya.pricing.discount_ladder_config import (
         DEFAULT_DISCOUNT_LADDER,
         DEFAULT_MIN_APPLY_DISCOUNT,
         BRAND_DISCOUNT_LADDER,
