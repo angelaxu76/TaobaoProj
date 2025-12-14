@@ -1,5 +1,5 @@
 from config import ECCO,TAOBAO_STORES,BRAND_CONFIG
-from common_taobao.pricing.generate_discount_price_excel import export_discount_price_with_skuids
+from channels.jingya.pricing.generate_discount_price_excel import export_discount_price_with_skuids
 from common_taobao.publication.export_skuid_stock import export_skuid_stock_excel
 from common_taobao.ingest.import_txt_to_db import import_txt_to_db
 from common_taobao.publication.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
@@ -8,7 +8,7 @@ from brands.ecco.collect_product_links import ecco_get_links
 from brands.ecco.fetch_product_info import ecco_fetch_info
 from common_taobao.publication.mark_offline_products_from_store_excels import mark_offline_products_from_store_excels
 from common_taobao.publication.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk, generate_stock_excels_bulk
-from common_taobao.pricing.export_taobao_sku_price_stock_excels import export_shop_sku_price_excels, export_shop_sku_stock_excels
+from channels.jingya.pricing.export_taobao_sku_price_stock_excels import export_shop_sku_price_excels, export_shop_sku_stock_excels
 #
 
 def main():
