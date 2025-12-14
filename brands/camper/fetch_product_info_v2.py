@@ -16,7 +16,7 @@ from common_taobao.ingest.txt_writer import format_txt
 from common_taobao.core.category_utils import infer_style_category
 from common_taobao.core.selenium_utils import get_driver, quit_all_drivers
 
-
+DEBUG_ENABLED = False   # True=开启 debug，False=关闭 debug
 # =========================
 # Config
 # =========================
@@ -39,6 +39,10 @@ LOGIN_COOKIES: list[dict] = []
 # Debug dump
 # =========================
 def dump_debug_page(driver, product_code: str, base_dir=DEBUG_DIR):
+
+    if not DEBUG_ENABLED:
+        return
+
     debug_dir = Path(base_dir) / str(product_code)
     debug_dir.mkdir(parents=True, exist_ok=True)
 
