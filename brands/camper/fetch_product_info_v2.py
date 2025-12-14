@@ -354,7 +354,7 @@ def process_product_url(product_url: str):
             pass
 
 
-def camper_fetch_product_info_v2_2(product_urls_file=None, max_workers=MAX_WORKERS, login_wait_seconds: int = 30):
+def camper_fetch_product_info(product_urls_file=None, max_workers=MAX_WORKERS, login_wait_seconds: int = 30):
     if product_urls_file is None:
         product_urls_file = PRODUCT_URLS_FILE
 
@@ -374,4 +374,4 @@ def camper_fetch_product_info_v2_2(product_urls_file=None, max_workers=MAX_WORKE
 
 
 if __name__ == "__main__":
-    camper_fetch_product_info_v2_2()
+    camper_fetch_product_info()
