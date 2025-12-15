@@ -4,6 +4,7 @@ from channels.jingya.export.export_channel_price_excel_jingya import export_jian
 from channels.jingya.maintenance.disable_low_stock_products import disable_low_stock_products
 from channels.jingya.export.export_gender_split_excel import export_gender_split_excel
 from channels.jingya.export.generate_publication_excel import generate_publication_excels
+from channels.jingya.pricing.generate_discount_excel_for_taobao import generate_discount_excel
 from common_taobao.publication.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
 from common_taobao.publication.export_low_stock_products import export_low_stock_for_brand
 
@@ -41,7 +42,14 @@ def main():
         blacklist_excel_file=r"D:\TB\Products\camper\document\camper_blacklist_excel.xlsx" # 不丢行，查不到的价格留空
     )
 
-    print("\n✅ CAMPER pipeline 完成")
+
+    # generate_discount_excel(
+    # brand="camper",
+    # output_excel_path=r"D:\TB\Products\camper\repulibcation\camper_discount_export.xlsx",
+    # blacklist_excel_file=r"D:\TB\Products\camper\document\camper_blacklist_excel.xlsx"
+    # )
+
+    # print("\n✅ CAMPER pipeline 完成")
 
 if __name__ == "__main__":
     main()
