@@ -49,8 +49,8 @@ PG = BRAND_CONFIG["barbour"]["PGSQL_CONFIG"]
 WAIT_HYDRATE_SECONDS = 22
 DEFAULT_DELAY = 0.0
 MAX_WORKERS_DEFAULT = 1  # 默认串行；并发请传入 max_workers > 1
-MIN_SCORE = 0.72
-MIN_LEAD = 0.04
+MIN_SCORE = 0.66
+MIN_LEAD = 0.03
 NAME_WEIGHT = 0.75
 COLOR_WEIGHT = 0.25
 
@@ -978,10 +978,10 @@ def parse_info_new(html: str, url: str, conn) -> Dict[str, Any]:
             name_weight=NAME_WEIGHT,
             color_weight=COLOR_WEIGHT,
             type_weight=(1.0 - NAME_WEIGHT - COLOR_WEIGHT),
-            topk=5,
+            topk=20,
             recall_limit=2000,
-            min_name=0.92,
-            min_color=0.85,
+            min_name=0.86,
+            min_color=0.75,
             require_color_exact=False,
             require_type=False,
         )
