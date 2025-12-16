@@ -4,7 +4,7 @@
 -- =========================================================
 
 -- ========== 1. 删除旧表（按依赖顺序） ==========
-
+DROP TABLE IF EXISTS keyword_lexicon;
 DROP TABLE IF EXISTS barbour_offers;
 DROP TABLE IF EXISTS barbour_inventory;
 DROP TABLE IF EXISTS barbour_supplier_map;
@@ -23,6 +23,27 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
+
+
+
+CREATE TABLE IF NOT EXISTS keyword_lexicon (
+  id           bigserial PRIMARY KEY,
+  brand        text NOT NULL,          -- 'barbour'
+  level        smallint NOT NULL,       -- 1=L1, 2=L2
+  keyword      text NOT NULL,           -- 规范化后的词（小写、只字母）
+  category     text,                    -- L2 可选：material/season/style/function/category...
+  weight       numeric DEFAULT 1.0,     -- 预留：不同词权重
+  is_active    boolean DEFAULT true,
+  created_at   timestamptz DEFAULT now(),
+  UNIQUE(brand, level, keyword)
+);
+
+CREATE INDEX IF NOT EXISTS idx_keyword_lexicon_brand_level
+ON keyword_lexicon(brand, level);
+
+CREATE INDEX IF NOT EXISTS idx_keyword_lexicon_keyword
+ON keyword_lexicon(keyword);
 
 
 -- ========== 3.1 barbour_color_map：颜色简码映射表 ==========
@@ -93,7 +114,8 @@ CREATE TABLE barbour_products (
     category     VARCHAR(100),              -- Jacket / Coat / Shirt / Bag ...
     title        VARCHAR(255),              -- 完整商品名
     product_description TEXT,               -- 描述
-    match_keywords     TEXT[],              -- 匹配关键词
+    match_keywords_l1      TEXT[],              -- 匹配关键词
+    match_keywords_l2      TEXT[],              -- 匹配关键词
 
     -- 数据来源追踪
     source_site  VARCHAR(100),              -- barbour / O&C / PMD / manual

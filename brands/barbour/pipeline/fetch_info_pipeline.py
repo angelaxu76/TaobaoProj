@@ -8,7 +8,8 @@ from brands.barbour.supplier.outdoorandcountry_get_links import outdoorandcountr
 from brands.barbour.supplier.allweathers_get_links import allweathers_get_links
 from brands.barbour.supplier.allweathers_fetch_info import allweathers_fetch_info
 from brands.barbour.supplier.houseoffraser_get_links import houseoffraser_get_links
-from brands.barbour.supplier.houseoffraser_new_fetch_info import houseoffraser_fetch_info
+# from brands.barbour.supplier.houseoffraser_new_fetch_info import houseoffraser_fetch_info
+from brands.barbour.supplier.houseoffraser_new_fetch_info_v3 import houseoffraser_fetch_info
 from brands.barbour.supplier.very_get_links import very_get_links
 from brands.barbour.supplier.very_fetch_info import very_fetch_info
 from brands.barbour.supplier.terraces_fetch_info import terraces_fetch_info
@@ -32,14 +33,14 @@ def barbour_database_import_pipleline():
     # barbour_get_links()
     # outdoorandcountry_fetch_and_save_links()
     # allweathers_get_links()
-    houseoffraser_get_links()
+    # houseoffraser_get_links()
     # very_get_links()
     # collect_terraces_links()
     # philipmorris_get_links()
     # cho_get_links()
 
     print("步骤 2：抓取商品信息并存为TXT")
-    barbour_fetch_info()
+    # barbour_fetch_info()
     # outdoorandcountry_fetch_info(max_workers=15)
     # allweathers_fetch_info(7)
     houseoffraser_fetch_info(max_workers=15, headless=False)

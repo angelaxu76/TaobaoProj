@@ -1,6 +1,6 @@
 # from barbour.supplier.terraces_fetch_info import terraces_fetch_info
 from config import BARBOUR
-from brands.barbour.common.barbour_import_to_barbour_products import batch_import_txt_to_barbour_product
+from brands.barbour.common.barbour_import_to_barbour_products_v2 import batch_import_txt_to_barbour_product
 from brands.barbour.common.import_supplier_to_db_offers import import_txt_for_supplier
 from brands.barbour.jingya.insert_jingyaid_mapping import insert_jingyaid_to_db,clear_barbour_inventory,insert_missing_products_with_zero_stock
 from brands.barbour.common.fill_supplier_jingya_map import fill_supplier_map,apply_barbour_supplier_overrides,export_supplier_stock_price_report,reassign_low_stock_suppliers
@@ -13,7 +13,6 @@ def barbour_database_import_pipleline():
     batch_import_txt_to_barbour_product("barbour")
     batch_import_txt_to_barbour_product("outdoorandcountry")
     batch_import_txt_to_barbour_product("allweathers")
-
 
     # batch_import_txt_to_barbour_product("houseoffraser")
 
