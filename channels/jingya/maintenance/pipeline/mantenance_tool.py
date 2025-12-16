@@ -33,6 +33,14 @@ def main():
     max_allowed_size_count=2,  # 默认就是 2，不写也可以
     )
 
+    export_low_stock_channel_products(
+    brand="barbour",
+    stock_threshold=7,
+    output_excel_path=r"C:\Users\martin\Desktop\remove_barbour.xlsx",
+    max_allowed_size_count=2,  # 默认就是 2，不写也可以
+    )
+
+
 
 
     print(f"output complete..........")
