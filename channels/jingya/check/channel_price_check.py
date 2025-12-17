@@ -248,60 +248,107 @@ def _fetch_brand_inventory_for_taobao(brand: str) -> pd.DataFrame:
     return df_db
 
 
+
 def _read_taobao_excel(
     taobao_excel_path: str,
     excel_spec_col: str = "sku规格",
     excel_price_col: str = "sku销售价",
     excel_title_col: Optional[str] = None,
+    # 兼容“宝贝维度”导出（只有商家编码 + 一口价）
+    excel_code_col: str = "商家编码",
+    excel_item_price_col: str = "一口价",
 ) -> pd.DataFrame:
     """
-    读取淘宝导出的SKU表：
-    - sku规格: 'LQU1849SG71,4,' -> product_code='LQU1849SG71', size='4'
-    - sku销售价: 当前淘宝售价
-    - (可选)商品标题列：补title用
+    读取淘宝导出的价格表（支持两种格式）：
+
+    A) SKU维度（旧格式/精确匹配）：
+       - sku规格: 'LQU1849SG71,4,' -> product_code='LQU1849SG71', size='4'
+       - sku销售价: 当前淘宝售价
+       - (可选)商品标题列：补title用
+
+    B) 宝贝维度（你当前这份Excel：宝贝标题/宝贝ID/商家编码/一口价）：
+       - 商家编码: product_code
+       - 一口价: 作为该商品所有尺码的统一售价
+       - (可选)宝贝标题列：补title用
+
+    返回统一结构：product_code, size(可为空), taobao_price_excel, taobao_excel_title
     """
-    df_tb = pd.read_excel(taobao_excel_path)
+    df_raw = pd.read_excel(taobao_excel_path)
 
-    cols_norm = {c: str(c).strip() for c in df_tb.columns}
-    df_tb.rename(columns=cols_norm, inplace=True)
+    # 规范列名（去空格）
+    cols_norm = {c: str(c).strip() for c in df_raw.columns}
+    df_raw = df_raw.rename(columns=cols_norm)
 
-    if excel_spec_col not in df_tb.columns:
-        raise KeyError(f"淘宝Excel缺少列 {excel_spec_col}")
-    if excel_price_col not in df_tb.columns:
-        raise KeyError(f"淘宝Excel缺少列 {excel_price_col}")
+    has_spec = excel_spec_col in df_raw.columns and excel_price_col in df_raw.columns
+    has_item = excel_code_col in df_raw.columns and excel_item_price_col in df_raw.columns
 
-    use_cols = [excel_spec_col, excel_price_col]
-    if excel_title_col and excel_title_col in df_tb.columns:
-        use_cols.append(excel_title_col)
+    if not has_spec and not has_item:
+        raise KeyError(
+            f"淘宝Excel缺少列："
+            f"要么包含[{excel_spec_col}, {excel_price_col}]（SKU维度），"
+            f"要么包含[{excel_code_col}, {excel_item_price_col}]（宝贝维度）"
+        )
 
-    df_tb = df_tb[use_cols].copy()
+    if has_spec:
+        # ---- SKU维度 ----
+        use_cols = [excel_spec_col, excel_price_col]
+        if excel_title_col and excel_title_col in df_raw.columns:
+            use_cols.append(excel_title_col)
 
-    def parse_spec(raw: str):
-        # 'LQU1849SG71,4,' -> ['LQU1849SG71','4']
-        if pd.isna(raw):
-            return "", ""
-        s = str(raw).strip().strip(",")
-        parts = [p.strip() for p in s.split(",") if p.strip() != ""]
-        if len(parts) == 0:
-            return "", ""
-        if len(parts) == 1:
-            return parts[0], ""
-        return parts[0], parts[1]
+        df_tb = df_raw[use_cols].copy()
 
-    df_tb["product_code"], df_tb["size"] = zip(*df_tb[excel_spec_col].map(parse_spec))
+        def parse_spec(raw: str):
+            # 'LQU1849SG71,4,' -> ['LQU1849SG71','4']
+            if pd.isna(raw):
+                return "", ""
+            s = str(raw).strip().strip(",")
+            parts = [p.strip() for p in s.split(",") if p.strip() != ""]
+            if len(parts) == 0:
+                return "", ""
+            if len(parts) == 1:
+                return parts[0], ""
+            return parts[0], parts[1]
 
-    df_tb["product_code"] = df_tb["product_code"].astype(str).str.strip()
-    df_tb["size"] = df_tb["size"].astype(str).str.strip()
-    df_tb["taobao_price_excel"] = pd.to_numeric(df_tb[excel_price_col], errors="coerce")
+        df_tb["product_code"], df_tb["size"] = zip(*df_tb[excel_spec_col].map(parse_spec))
+        df_tb["product_code"] = df_tb["product_code"].astype(str).str.strip()
+        df_tb["size"] = df_tb["size"].astype(str).str.strip()
+        df_tb["taobao_price_excel"] = pd.to_numeric(df_tb[excel_price_col], errors="coerce")
 
-    if excel_title_col and excel_title_col in df_tb.columns:
-        df_tb["taobao_excel_title"] = df_tb[excel_title_col].fillna("").astype(str).str.strip()
+        if excel_title_col and excel_title_col in df_tb.columns:
+            df_tb["taobao_excel_title"] = df_tb[excel_title_col].fillna("").astype(str).str.strip()
+        else:
+            df_tb["taobao_excel_title"] = ""
+
+        df_tb = df_tb[["product_code", "size", "taobao_price_excel", "taobao_excel_title"]]
+        df_tb = df_tb[(df_tb["product_code"] != "")]
+        df_tb = df_tb.dropna(subset=["taobao_price_excel"])
+
+        return df_tb
+
+    # ---- 宝贝维度 ----
+    use_cols = [excel_code_col, excel_item_price_col]
+    # 常见标题列：优先使用显式传入，否则尝试“宝贝标题”
+    title_col = None
+    if excel_title_col and excel_title_col in df_raw.columns:
+        title_col = excel_title_col
+    elif "宝贝标题" in df_raw.columns:
+        title_col = "宝贝标题"
+
+    if title_col:
+        use_cols.append(title_col)
+
+    df_tb = df_raw[use_cols].copy()
+    df_tb["product_code"] = df_tb[excel_code_col].fillna("").astype(str).str.strip()
+    df_tb["size"] = ""  # 宝贝维度：对所有尺码通用
+    df_tb["taobao_price_excel"] = pd.to_numeric(df_tb[excel_item_price_col], errors="coerce")
+
+    if title_col:
+        df_tb["taobao_excel_title"] = df_tb[title_col].fillna("").astype(str).str.strip()
     else:
         df_tb["taobao_excel_title"] = ""
 
     df_tb = df_tb[["product_code", "size", "taobao_price_excel", "taobao_excel_title"]]
-
-    df_tb = df_tb[(df_tb["product_code"] != "") & (df_tb["size"] != "")]
+    df_tb = df_tb[(df_tb["product_code"] != "")]
     df_tb = df_tb.dropna(subset=["taobao_price_excel"])
 
     return df_tb
@@ -361,7 +408,44 @@ def check_taobao_margin_safety(
         excel_title_col=excel_title_col,
     )
 
-    merged = df_db.merge(df_tb, on=["product_code", "size"], how="inner")
+    # 兼容两种淘宝Excel：
+    # - SKU维度：可按 product_code+size 精确匹配
+    # - 宝贝维度：size为空，按 product_code 匹配并应用到该商品所有尺码
+    df_tb = df_tb.copy()
+    df_tb["size"] = df_tb["size"].fillna("").astype(str).str.strip()
+
+    df_tb_sku = df_tb[df_tb["size"] != ""].copy()
+    df_tb_item = df_tb[df_tb["size"] == ""].copy()
+
+    merged = df_db.merge(df_tb_sku, on=["product_code", "size"], how="left")
+
+    # 对于SKU没匹配到的行，用宝贝维度价格补齐
+    if not df_tb_item.empty:
+        merged_item = df_db.merge(
+            df_tb_item[["product_code", "taobao_price_excel", "taobao_excel_title"]],
+            on=["product_code"],
+            how="left",
+        )
+        # 仅在SKU价格缺失时填充
+        merged["taobao_price_excel"] = merged["taobao_price_excel"].fillna(merged_item["taobao_price_excel"])
+        # title 同理：只有当前为空时才补
+        if "taobao_excel_title" not in merged.columns:
+            merged["taobao_excel_title"] = ""
+
+        # 用 position 对齐，避免 boolean mask 因 index 不一致触发 AssertionError
+        merged = merged.reset_index(drop=True)
+        merged_item = merged_item.reset_index(drop=True)
+
+        merged["taobao_excel_title"] = merged["taobao_excel_title"].fillna("").astype(str)
+        fill_mask = merged["taobao_excel_title"].astype(str).str.strip() == ""
+        if "taobao_excel_title" in merged_item.columns:
+            merged.loc[fill_mask, "taobao_excel_title"] = (
+                merged_item["taobao_excel_title"]
+                .fillna("")
+                .astype(str)
+                .to_numpy()[fill_mask.to_numpy()]
+            )
+
 
     merged["safe_min_price"] = merged["jingya_untaxed_price"] * safety_multiplier
     merged["gap"] = merged["safe_min_price"] - merged["taobao_price_excel"]
