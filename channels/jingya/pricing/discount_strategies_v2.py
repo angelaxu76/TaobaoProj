@@ -27,6 +27,51 @@ except Exception:
     DEFAULT_MAX_REASONABLE_DISCOUNT = 0.80
     BRAND_MAX_REASONABLE_DISCOUNT = {}
 
+from channels.jingya.pricing.discount_ladder_config_v2 import (
+    DEFAULT_DISCOUNT_LADDER,
+    DEFAULT_MIN_APPLY_DISCOUNT,
+    DEFAULT_MAX_REASONABLE_DISCOUNT,
+    BRAND_DISCOUNT_LADDER,
+    BRAND_MIN_APPLY_DISCOUNT,
+    BRAND_MAX_REASONABLE_DISCOUNT,
+)
+
+
+def strategy_ladder_clawback_ratio(o: float, d: float, brand: str) -> float:
+    """
+    阶梯回收型折扣策略：
+    - 折扣 >= 阈值 → 回收固定比例
+    - 折扣 < MIN_APPLY → 不处理
+    """
+    if o <= 0 or d <= 0:
+        return max(o, d)
+
+    actual_discount = 1 - d / o  # 例如 0.65
+
+    # 极端折扣保护
+    max_reasonable = BRAND_MAX_REASONABLE_DISCOUNT.get(
+        brand, DEFAULT_MAX_REASONABLE_DISCOUNT
+    )
+    if actual_discount >= max_reasonable:
+        return d
+
+    min_apply = BRAND_MIN_APPLY_DISCOUNT.get(
+        brand, DEFAULT_MIN_APPLY_DISCOUNT
+    )
+    if actual_discount < min_apply:
+        return d
+
+    ladder = BRAND_DISCOUNT_LADDER.get(
+        brand, DEFAULT_DISCOUNT_LADDER
+    )
+
+    for threshold, clawback in ladder:
+        if actual_discount >= threshold:
+            final_discount = max(0.0, actual_discount - clawback)
+            return o * (1 - final_discount)
+
+    return d
+
 
 def _to_float(x) -> float:
     """最大化兼容：None/空字符串/£xx 之类都尽量转成 float，失败返回 0.0"""
@@ -269,6 +314,7 @@ STRATEGY_MAP = {
     "min_price_times_ratio": strategy_min_price_times_ratio,
     "discount_or_original_ratio": strategy_discount_or_original_ratio,
     "discount_priority": strategy_discount_priority,
+    "ladder_clawback_ratio": strategy_ladder_clawback_ratio,  # 👈 新增
 
     # v2 wrapper（先阶梯抬价，再走 v1）
     "ladder_wrap_min_price_times_ratio": strategy_ladder_wrap_min_price_times_ratio,
