@@ -96,6 +96,48 @@ def _load_blacklist_codes(blacklist_excel_file: str | None) -> set[str]:
     print(f"[BLACKLIST] 读取到 {len(blacklist)} 个黑名单商品编码")
     return blacklist
 
+import logging
+from pathlib import Path
+
+def _get_logger(name: str = "price_export"):
+    logger = logging.getLogger(name)
+    if not logger.handlers:
+        logger.setLevel(logging.INFO)
+        h = logging.StreamHandler()
+        fmt = logging.Formatter("[%(levelname)s] %(message)s")
+        h.setFormatter(fmt)
+        logger.addHandler(h)
+    return logger
+
+from datetime import datetime
+import pandas as pd
+from pathlib import Path
+
+def _flush_filtered(output_dir: Path, input_file: str, logger=None):
+    global filtered_rows
+    if not filtered_rows:
+        return
+    temp_dir = Path(output_dir) / "temp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+
+    stem = Path(input_file).stem
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    out_xlsx = temp_dir / f"{stem}_filtered_reasons_{ts}.xlsx"
+
+    df_log = pd.DataFrame(filtered_rows)
+    if "filter_reason" in df_log.columns:
+        df_log = df_log.sort_values(["filter_reason"])
+
+    with pd.ExcelWriter(out_xlsx, engine="openpyxl") as w:
+        df_log.to_excel(w, index=False, sheet_name="filtered_rows")
+        summary = df_log.groupby("filter_reason").size().reset_index(name="count")
+        summary.to_excel(w, index=False, sheet_name="summary")
+
+    if logger:
+        logger.info(f"过滤原因明细已写入: {out_xlsx}")
+    else:
+        print(f"[LOG] 过滤原因明细已写入: {out_xlsx}")
+
 
 
 import psycopg2
@@ -470,6 +512,45 @@ def _clean_spec_key(spec_val):
     return v if v else None
 
 
+from datetime import datetime
+
+# === 过滤原因记录器 ===
+filtered_rows = []  # list[dict]
+
+def _add_filtered(df_part, reason: str, extra: dict | None = None, limit: int | None = None):
+    """
+    df_part: 被过滤掉的 DataFrame（或一行转成 dict 也行）
+    reason: 过滤原因
+    extra: 额外字段
+    limit: 限制记录条数，避免极端情况下文件太大（None=不限制）
+    """
+    if df_part is None:
+        return
+    if isinstance(df_part, dict):
+        row = dict(df_part)
+        row["filter_reason"] = reason
+        if extra: row.update(extra)
+        filtered_rows.append(row)
+        return
+
+    if df_part.empty:
+        return
+
+    cols_keep = [c for c in ["item_id", "skuid", "sku_spec", "code_part", "size_part", "spec_key"] if c in df_part.columns]
+    sub = df_part[cols_keep].copy()
+    sub["filter_reason"] = reason
+    if extra:
+        for k, v in extra.items():
+            sub[k] = v
+    if limit is not None:
+        sub = sub.head(limit)
+    filtered_rows.extend(sub.to_dict("records"))
+
+
+
+
+
+
 def _generate_price_excel_from_file(
     file_path: str,
     output_dir: str,
@@ -478,163 +559,178 @@ def _generate_price_excel_from_file(
     blacklist_excel_file: str | None,
     table_name: str = "barbour_inventory",
 ):
-    print(f"\n[START] 正在处理文件: {file_path}")
+    """
+    生成价格导入表：宝贝id | skuid | 调整后价格
+    额外能力：
+      - 用 logger 打关键统计
+      - 过滤掉的行写入 output_dir/temp/*_filtered_reasons_*.xlsx 方便排查
+    """
+    import pandas as pd
+    import psycopg2
+    from pathlib import Path
 
-    # 1. 黑名单
+    logger = _get_logger(f"price_export.{brand}")
+    logger.info(f"开始处理: {file_path}")
+
+    # 每个文件重新清空过滤记录（你原本是全局列表）
+    global filtered_rows
+    filtered_rows = []
+
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1) 黑名单
     blacklist_codes = _load_blacklist_codes(blacklist_excel_file)
+    logger.info(f"黑名单启用: {'是' if blacklist_codes else '否'} | count={len(blacklist_codes)}")
 
-    # 2. 读输入Excel并标准化列
-    df_raw = pd.read_excel(file_path)
-    print(f"[STATS] 原始Excel行数 df_raw: {len(df_raw)}")
+    # 2) 读输入 Excel + 标准化列
+    df_raw = pd.read_excel(file_path, dtype=object)
+    logger.info(f"原始行数 df_raw: {len(df_raw)}")
 
-    df_norm = _normalize_input_columns(df_raw)
-    # 期望: item_id, skuid, sku_spec
-    print(f"[STATS] 规范化后 df_norm(初始) 行数: {len(df_norm)}")
+    df_norm = _normalize_input_columns(df_raw)   # -> item_id, skuid, sku_spec
+    logger.info(f"标准化后 df_norm: {len(df_norm)} | columns={list(df_norm.columns)}")
 
-    # 2.1 按excel结构向下填充宝贝ID
+    # 2.1 宝贝id 向下填充（淘宝导出常见结构）
     df_norm["item_id"] = df_norm["item_id"].ffill()
 
-    # 2.2 把 item_id 转成字符串，避免科学计数法
+    # 2.2 item_id 字符串化（防止科学计数）
     def _item_id_to_str(val):
         if pd.isna(val):
             return ""
-        if isinstance(val, (int, float)):
-            ival = int(val)
-            return str(ival)
+        if isinstance(val, (int, float)) and not isinstance(val, bool):
+            return str(int(val))
         return str(val).strip()
 
     df_norm["item_id"] = df_norm["item_id"].map(_item_id_to_str)
 
-    print(f"[STATS] df_norm(填充宝贝ID+转字符串后) 行数: {len(df_norm)}")
-    print(f"[INFO] 输入列: {list(df_norm.columns)}")
-    print("[INFO] 样例数据 (ffill+字符串化后):")
-    print(df_norm.head(10))
-
-    # 3. sku_spec -> code_part / size_part
+    # 3) sku_spec -> code_part / size_part
     pairs = df_norm["sku_spec"].map(_split_spec_value)
     df_norm["code_part"] = [p[0] for p in pairs]
     df_norm["size_part"] = [normalize_size_for_taobao(p[1]) for p in pairs]
 
-    df_norm["spec_key"]  = df_norm["sku_spec"].map(_clean_spec_key)
-
-    before_drop = len(df_norm)
+    # 3.1 drop 掉 code/size 缺失行（并记录原因）
+    before = len(df_norm)
+    dropped = df_norm[df_norm[["code_part", "size_part"]].isna().any(axis=1)].copy()
+    _add_filtered(dropped, "dropna_code_or_size")
     df_norm = df_norm.dropna(subset=["code_part", "size_part"])
-    after_drop = len(df_norm)
-    print(f"[STATS] dropna(code_part/size_part): {before_drop} -> {after_drop}")
+    logger.info(f"dropna(code/size): {before} -> {len(df_norm)}")
 
-    # 4. 黑名单过滤：整款不要
-    if len(blacklist_codes) > 0:
-        before_blk = len(df_norm)
+    # 4) 黑名单过滤（整款过滤）
+    if blacklist_codes:
+        before = len(df_norm)
+        blocked = df_norm[df_norm["code_part"].isin(blacklist_codes)].copy()
+        _add_filtered(blocked, "blacklist_filtered")
         df_norm = df_norm[~df_norm["code_part"].isin(blacklist_codes)]
-        after_blk = len(df_norm)
-        print(f"[STATS] 黑名单过滤: {before_blk} -> {after_blk}")
-    else:
-        print("[STATS] 黑名单未启用，跳过过滤")
+        logger.info(f"blacklist过滤: {before} -> {len(df_norm)}")
 
-    # 5. 展开 skuid
-    # skuid 有可能是 "111,222,333" 这种复合，也可能本来就一行一个
+    # 5) 展开 skuid（可能是一格多个）
     rows = []
+    empty_sku_cnt = 0
+
     for _, r in df_norm.iterrows():
-        this_item_id = r["item_id"]        # 已经 ffill + str
-        this_code    = r["code_part"]
-        this_size    = r["size_part"]
-        skus_raw     = r["skuid"]
-        sku_list     = _split_skuids(skus_raw)
+        item_id = r["item_id"]
+        code = r["code_part"]
+        size = r["size_part"]
+        skus_raw = r["skuid"]
+        sku_list = _split_skuids(skus_raw)
 
-        # debug: 看看有没有行根本解析不出 skuid
         if not sku_list:
-            # 打印一次，这行没有有效 skuid，会被丢
-            # （注意别打太多，只打前10个）
-            if len(rows) < 10:
-                print(f"[WARN] 空SKU行? item_id={this_item_id}, code={this_code}, size={this_size}, raw_skuid={skus_raw}")
+            empty_sku_cnt += 1
+            _add_filtered(
+                {
+                    "item_id": item_id,
+                    "skuid": skus_raw,
+                    "sku_spec": r.get("sku_spec", None),
+                    "code_part": code,
+                    "size_part": size,
+                },
+                "empty_sku_list"
+            )
+            continue
 
-        for one_sku in sku_list:
-            if one_sku:
+        for sid in sku_list:
+            if sid:
                 rows.append({
-                    "item_id":   this_item_id,
-                    "skuid":     one_sku,
-                    "code_part": this_code,
-                    "size_part": this_size,
+                    "item_id": item_id,
+                    "skuid": sid,
+                    "code_part": code,
+                    "size_part": size,
                 })
 
-    df_expanded = pd.DataFrame(
-        rows,
-        columns=["item_id", "skuid", "code_part", "size_part"]
-    )
-    print(f"[STATS] 展开后 df_expanded 行数: {len(df_expanded)}")
-    if not df_expanded.empty:
-        print(df_expanded.head(10))
-    else:
-        print(f"[WARN] {file_path} 经过拆分后没有任何有效 SKU 行，跳过")
+    df_expanded = pd.DataFrame(rows, columns=["item_id", "skuid", "code_part", "size_part"])
+    logger.info(f"展开SKU后 df_expanded: {len(df_expanded)} | empty_sku_rows={empty_sku_cnt}")
+
+    if df_expanded.empty:
+        logger.warning("展开后无有效SKU行，终止该文件。")
+        _flush_filtered(out_dir, file_path, logger=logger)
         return
 
-    # 6. 批量查价格 (code_part + size_part)
+    # 6) 批量查价
+    pairs_for_price = list(zip(df_expanded["code_part"], df_expanded["size_part"]))
+    uniq_pairs = len(set(pairs_for_price))
+    logger.info(f"待查价组合: total={len(pairs_for_price)} unique={uniq_pairs} | table={table_name}")
+
     conn = psycopg2.connect(**pgsql_config)
     try:
-        pairs_for_price = list(zip(df_expanded["code_part"], df_expanded["size_part"]))
-        print(f"[STATS] 需要查价的唯一(code_part,size_part)组合数量: {len(set(pairs_for_price))}")
-        df_price = _fetch_prices_by_code_and_size_bulk(
-            conn,
-            table_name,
-            pairs_for_price
-        )
+        df_price = _fetch_prices_by_code_and_size_bulk(conn, table_name, pairs_for_price)
     finally:
         conn.close()
 
-    print(f"[STATS] df_price(数据库返回价格) 行数: {len(df_price)}")
-    if not df_price.empty:
-        print(df_price.head(10))
+    logger.info(f"数据库返回 df_price 行数: {len(df_price)}")
+    if df_price.empty:
+        # 全都没价格，直接输出过滤原因
+        _add_filtered(df_expanded, "missing_db_price_all_empty_price_table")
+        _flush_filtered(out_dir, file_path, logger=logger)
+        logger.warning("df_price 为空：该文件无法生成价格表。")
+        return
 
-    # 7. 合并价格
+    # 7) 合并价格
     df_merged = df_expanded.merge(
         df_price,
         left_on=["code_part", "size_part"],
         right_on=["product_code", "size"],
         how="left"
     )
-    print(f"[STATS] 合并后 df_merged 行数: {len(df_merged)}")
-    # 统计一下多少没有价
-    missing_price_mask = df_merged["taobao_store_price"].isna()
-    missing_cnt = int(missing_price_mask.sum())
-    have_cnt = len(df_merged) - missing_cnt
-    print(f"[STATS] df_merged 中有价 {have_cnt} 行 / 无价 {missing_cnt} 行")
+    logger.info(f"合并后 df_merged: {len(df_merged)}")
 
-    # 你当前要求：无价行必须丢掉，不允许空价格出现在输出Excel
+    # 7.1 记录缺价行
+    miss = df_merged[df_merged["taobao_store_price"].isna()].copy()
+    _add_filtered(miss, "missing_db_price")
+
     df_merged = df_merged.dropna(subset=["taobao_store_price"])
-    print(f"[STATS] 丢掉无价后 df_merged 行数: {len(df_merged)}")
+    logger.info(f"丢掉无价后 df_merged: {len(df_merged)}")
 
-    # 8. 选出最终三列
+    if df_merged.empty:
+        _flush_filtered(out_dir, file_path, logger=logger)
+        logger.warning("全部行都缺价，未生成价格Excel。")
+        return
+
+    # 8) 导出三列
     df_final = df_merged[["item_id", "skuid", "taobao_store_price"]].copy()
-    print(f"[STATS] df_final(初选三列) 行数: {len(df_final)}")
-
     df_final = df_final.rename(columns={
         "item_id": "宝贝id",
         "skuid": "skuid",
         "taobao_store_price": "调整后价格",
     })
 
-    # 9. 去重 skuid
-    before_dedup = len(df_final)
+    # 9) 去重 skuid
+    before = len(df_final)
     df_final = df_final.drop_duplicates(subset=["skuid"], keep="first")
-    after_dedup = len(df_final)
-    print(f"[STATS] 去重skuid: {before_dedup} -> {after_dedup}")
+    logger.info(f"去重skuid: {before} -> {len(df_final)}")
 
-    # 10. 再保险：宝贝id 导出时是字符串
+    # 10) 宝贝id 强制字符串
     df_final["宝贝id"] = df_final["宝贝id"].astype(str)
 
-    print("[INFO] df_final 预览:")
-    print(df_final.head(20))
-
-    # 11. 写excel
-    out_dir = Path(output_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
+    # 11) 写 Excel
     src_name = Path(file_path).stem
     out_path = out_dir / f"{src_name}_price.xlsx"
-
     df_final.to_excel(out_path, index=False)
-    print(f"[DONE] 已生成价格Excel: {out_path}")
-    print(f"[STATS] 写入Excel的最终行数: {len(df_final)}")
+
+    logger.info(f"生成完成: {out_path} | rows={len(df_final)}")
+
+    # 12) 输出过滤原因明细（有就写）
+    _flush_filtered(out_dir, file_path, logger=logger)
+
 
 
 
