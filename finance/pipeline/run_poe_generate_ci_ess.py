@@ -104,10 +104,24 @@ def main():
         out_dir.mkdir(parents=True, exist_ok=True)
 
         print(f"\n[RUN] 生成 CI + EES: {poe_id}")
-        # excel_path, docx_path, pdf_path = generate_poe_invoice_and_report(
-        #     poe_id, str(out_dir)
-        # )
-        # generate_poe_ees_pdf(poe_id, str(out_dir))
+
+        # 1) CI：如果该 POE 没有任何采购成本（旧库存/非ANNA采购），则跳过 CI
+        excel_path = docx_path = pdf_path = None
+        try:
+            excel_path, docx_path, pdf_path = generate_poe_invoice_and_report(
+                poe_id, str(out_dir)
+            )
+            print("[OK] CI 已生成")
+            print("     Excel:", excel_path)
+            print("     DOCX :", docx_path)
+            print("     PDF  :", pdf_path)
+        except ValueError as e:
+            # 你遇到的就是这一类：poe_id 中没有任何填写采购成本的商品 -> 不需要 CI
+            print(f"[SKIP] CI 跳过：{e}")
+
+        # 2) EES：无论是否生成 CI，都要生成（用于证明出口事实）
+        generate_poe_ees_pdf(poe_id, str(out_dir))
+
 
         # -------------------------------
         # 从 HK 目录复制原始 POE PDF

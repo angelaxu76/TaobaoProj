@@ -33,7 +33,7 @@ def barbour_export_price_stock():
     generate_price_excels_bulk(
         brand="barbour",
         input_dir=r"D:\TB\Products\barbour\document\store",
-        output_dir=r"D:\TB\Products\barbour\repulibcation\store_prices\output",
+        output_dir=r"D:\TB\Products\barbour\repulibcation\store_prices",
         suffix="_价格",                # 输出文件后缀
         drop_rows_without_price=False,  # 查不到的价格留空（你可以改成 True 表示丢掉无价的）
         blacklist_excel_file=exclude_xlsx_path  # ✅ 新增参数：传入黑名单文件

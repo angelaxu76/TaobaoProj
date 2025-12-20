@@ -1,3 +1,5 @@
+from pathlib import Path
+
 FINANCE_EES = {
     "exporter": {
         "name": "EMINZORA TRADE LTD",
@@ -10,7 +12,7 @@ FINANCE_EES = {
     },
     "consignee": {
         "name": "HONG KONG ANGEL XUAN TRADING CO., LIMITED",
-        "address": "Rm D07, 8/F, Kai Tak Fty Building, No. 99 King Fuk Street, Sanpokong, Kowloon, Hong Kong",
+        "address": "FLAT/RM D07, 8/F, Kai Tak Fty Building, No. 99 King Fuk Street, Sanpokong, Kowloon, Hong Kong",
         "phone": "+8617741796346",
         "email": "maxiaodan2015@gmail.com",
     },
@@ -20,7 +22,7 @@ FINANCE_EES = {
     },
 
     "bank": {
-        "bank_name": "anna bank",                       # 银行名称（如 Barclays, HSBC）
+        "bank_name": "ANNA Money",                       # 银行名称（如 Barclays, HSBC）
         "account_name": "EMINZORA TRADE LTD",  # 账户名称（一般等于公司名）
         "account_no": "86092219",                      # 银行账号
         "sort_code": "23-11-85",                       # Sort Code（xx-xx-xx）
@@ -34,4 +36,11 @@ FINANCE_EES = {
         "freight documents) is retained for the statutory period, in accordance with "
         "HMRC Notice 703, qualifying this supply for zero-rated VAT treatment."
     ),
+    "signature": {
+        "image_path": Path(
+            r"D:\OneDrive\CrossBorderDocs_UK\00_Templates\signatures\xiaodan_ma_signature.png"
+        ),
+        "sign_name": "XIAODAN MA",
+        "sign_title": "Director, EMINZORA TRADE LTD",
+    },
 }

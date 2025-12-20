@@ -26,6 +26,10 @@ TEXTS_DIRS = {
     "barbour": r"D:\TB\Products\barbour\publication\TXT",
 }
 
+HSCODE_MAP = {
+    "女": "6102300000",
+    "男": "6101909000",
+}
 # 4) 品牌映射：从哪个表取哪些字段
 BRAND_MAP = {
     "barbour": {
@@ -152,13 +156,31 @@ def fetch_price(_: str, __: str, ___: str) -> str:
     # 暂时不取备案价，留空
     return ""
 
+import re
+
+import re
+
 def _normalize_gender(val: str | None) -> str:
     if not val:
         return "男"
+
     s = str(val).strip().lower()
-    if any(k in s for k in ["女", "women", "lady", "ladies", "female", "w"]):
+
+    # ✅ 先判女（避免 women 包含 men 的误判）
+    if ("女款" in s) or ("女" in s):
         return "女"
+    if re.search(r"\b(women|woman|women's|womens|ladies|lady|female|girl|girls)\b", s):
+        return "女"
+
+    # ✅ 再判男
+    if ("男款" in s) or ("男" in s):
+        return "男"
+    if re.search(r"\b(men|man|men's|mens|male|boy|boys)\b", s):
+        return "男"
+
     return "男"
+
+
 
 def _category_from_gender(g: str) -> str:
     return CATEGORY_MAP.get(g, CATEGORY_DEFAULT)
@@ -177,32 +199,39 @@ def build_row(brand: str, goods_id: str) -> dict:
 
     db = fetch_db_row(brand, goods_id)
 
-    # 货号（code）
+    # ① 先从 inventory 拿 product_code（你说这列现在都统一叫 product_code）
     code = first_existing_val(db, fields.get("product_code"))
     if not code:
         code = fetch_fallback_code(brand, db)
 
-    # 性别/类目
-    gender_raw = first_existing_val(db, fields.get("gender"))
+    # ② 用 product_code 去 barbour_products 查商品信息（gender/title/style_category）
+    prod = fetch_product_row_by_code(brand, code or "")
+
+    # ✅ 性别：只信 barbour_products（按你的要求）
+    gender_raw = (prod.get("gender") or "")
     gender_norm = _normalize_gender(gender_raw)
+
+    hscode = HSCODE_MAP.get(gender_norm, HSCODE_MAP["男"])
+
     category = _category_from_gender(gender_norm)
     bracket_label, bracket_value = _gender_label_for_decl(gender_norm)
 
-    # 英文标题
-    title_en = first_existing_val(db, fields.get("title_en"))
+    # ✅ 标题：优先 products，其次 TXT 兜底
+    title_en = (prod.get("product_title") or prod.get("title_en") or prod.get("title") or "")
     if not title_en and code:
         title_en = read_title_from_txt(brand, code)
 
-    # GTIN/EAN
+    # GTIN/EAN（仍从 inventory 拿也行）
     gtin = first_existing_val(db, fields.get("gtin")) or ""
+
+    # # ✅ 按男女分配不同 HS code（你之前的需求）
+    # hscode = "6202309000" if gender_norm == "女" else "6201309000"
 
     # 备案价
     price = fetch_price(brand, code or "", "")
 
-    # 填充物（暂无则空）
     filling = ""
 
-    # 先拼一个申报要素字符串
     declaration = (
         f"类别（{bracket_label}）:{bracket_value}|"
         f"货号:{code or ''}|"
@@ -216,9 +245,12 @@ def build_row(brand: str, goods_id: str) -> dict:
         f"品牌（中文或外文名称）:BARBOUR"
     )
 
-    # 如果没拿到货号，打一个提醒进去（但不要让整行报错）
     if not code:
         declaration = declaration + "|⚠缺少货号"
+
+    # 🔎 自检：product_code 查不到 products 时给警告（这会直接解释为什么全是男）
+    if code and not prod:
+        print(f"⚠ barbour_products 未找到 product_code={code} (goods_id={goods_id})，gender将默认男")
 
     row = {
         '*货品ID': goods_id,
@@ -231,7 +263,7 @@ def build_row(brand: str, goods_id: str) -> dict:
         '*销售单位（枚举值详见:销售单位列表，代码及中文均支持）': UOM1,
         '*前端宝贝链接': '',
         '*商品备案价（元）': price,
-        '*HSCODE(枚举值详见:hscode列表)（海关十位编码）': HSCODE_FIXED,
+        '*HSCODE(枚举值详见:hscode列表)（海关十位编码）': hscode,  # ✅ 改这里
         '*商品类目': category,
         '*第一单位(枚举值详见:hscode列表)（第一单位由hscode决定）（填写文字或代码）': UOM1,
         '*第一数量（请严格对应第一单位要求填写）': QTY1,
@@ -239,8 +271,30 @@ def build_row(brand: str, goods_id: str) -> dict:
         '*第二数量（请严格对应第二单位要求填写）': QTY2,
         '*申报要素(枚举值详见:hscode列表)（要素内容由hscode决定）': declaration
     }
-
     return row
+
+def fetch_product_row_by_code(brand: str, product_code: str) -> dict:
+    """
+    用 inventory 的 product_code 去 barbour_products 找商品信息（gender/title/style_category等）
+    注意：你说已统一列名为 product_code，所以这里按 product_code 精确匹配。
+    """
+    if not product_code:
+        return {}
+
+    b = BRAND_MAP[brand]
+    fb = b.get("fallback") or {}
+    table = fb.get("table") or "barbour_products"
+
+    sql = text(f"""
+        SELECT *
+        FROM {table}
+        WHERE product_code = :code
+        LIMIT 1
+    """)
+    with ENGINE.begin() as conn:
+        row = conn.execute(sql, {"code": str(product_code).strip()}).mappings().first()
+    return dict(row) if row else {}
+
 
 def generate_barbour_hscode(
     input_list: Path | str = INPUT_LIST,
