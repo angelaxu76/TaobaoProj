@@ -69,14 +69,14 @@ def main():
     print("\n🟡 Step: 7️⃣ 为新品生成【鲸芽上新模板】Excel")
     generate_publication_excels("ecco")
 
-    # print("\n🟡 Step: 9️⃣ 生成淘宝店铺价格导入文件（可选，沿用 Camper 的店铺价逻辑）")
-    # generate_price_excels_bulk(
-    #     brand="ecco",
-    #     input_dir=r"D:\TB\Products\ecco\repulibcation\store_prices\input",
-    #     output_dir=r"D:\TB\Products\ecco\repulibcation\store_prices\output",
-    #     suffix="_价格",
-    #     drop_rows_without_price=False
-    # )
+    print("\n🟡 Step: 9️⃣ 生成淘宝店铺价格导入文件（可选，沿用 Camper 的店铺价逻辑）")
+    generate_price_excels_bulk(
+        brand="ecco",
+        input_dir=r"D:\TB\Products\ecco\repulibcation\store_prices\input",
+        output_dir=r"D:\TB\Products\ecco\repulibcation\store_prices\output",
+        suffix="_价格",
+        drop_rows_without_price=False
+    )
 
 
     # # print("\n🟡 Step: 5️⃣ 导出男/女商品列表（可用于手工核对）")
