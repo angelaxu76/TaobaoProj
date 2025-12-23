@@ -41,10 +41,23 @@ def _safe_float(x) -> float:
 #         base_raw = d if d > 0 else o
 #     return base_raw * _brand_discount(brand)
 
+import tempfile
+from datetime import datetime
 def import_txt_to_db_supplier(brand_name: str):
     brand_name = brand_name.lower()
+
     if brand_name not in BRAND_CONFIG:
         raise ValueError(f"❌ 不支持的品牌: {brand_name}")
+
+    # 🧾 创建 debug log 文件（系统 temp 目录）
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_path = Path(tempfile.gettempdir()) / f"price_debug_{brand_name}_{ts}.log"
+    log_fp = log_path.open("w", encoding="utf-8")
+
+    log_fp.write(
+        "brand\tcode\tsize\t"
+        "original_gbp\tdiscount_gbp\tladder_price\tbase_price\tjingya_price\ttaobao_price\n"
+    )
 
     config = BRAND_CONFIG[brand_name]
     txt_dir = config["TXT_DIR"]
@@ -102,21 +115,21 @@ def import_txt_to_db_supplier(brand_name: str):
             untaxed, retail = (None, None)
 
         # ✅ 打印你要的三个价格 + 关键中间值
-        print(
-            f"[{brand_name}] code={product_code} size={size} "
-            f"o={o:.2f} d={d:.2f} "
-            f"d2={(f'{d2:.2f}' if isinstance(d2, (int, float)) and d2 is not None else 'NA')} "
-            f"base={base:.2f} jingya={untaxed} taobao={retail}"
+
+        log_fp.write(
+            f"{brand_name}\t{product_code}\t{size}\t"
+            f"{o:.2f}\t{d:.2f}\t"
+            f"{(f'{d2:.2f}' if isinstance(d2, (int, float)) and d2 is not None else 'NA')}\t"
+            f"{(f'{base:.2f}' if base else 'NA')}\t"
+            f"{untaxed if untaxed is not None else 'NA'}\t"
+            f"{retail if retail is not None else 'NA'}\n"
         )
-
-
-        if base > 0:
-            try:
-                untaxed, retail = calculate_jingya_prices(base, delivery_cost=7, exchange_rate=9.7)
-            except Exception:
-                untaxed, retail = (None, None)
-        else:
-            untaxed, retail = (None, None)
+        # print(
+        #     f"[{brand_name}] code={product_code} size={size} "
+        #     f"o={o:.2f} d={d:.2f} "
+        #     f"d2={(f'{d2:.2f}' if isinstance(d2, (int, float)) and d2 is not None else 'NA')} "
+        #     f"base={base:.2f} jingya={untaxed} taobao={retail}"
+        # )
 
         enriched.append((
             product_code, product_url, size, gender,
