@@ -166,7 +166,7 @@ def get_links_from_page(url):
             if href.count("/") >= 7:
                 links.add(href)
 
-        return list(links)
+    return list(links)
 
 # ========= 主流程：自动翻页，连续空页阈值后切类目 =========
 def camper_get_links():

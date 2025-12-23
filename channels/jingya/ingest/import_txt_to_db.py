@@ -10,6 +10,14 @@ try:
 except Exception:
     from common_taobao.core.price_utils import calculate_jingya_prices  # type: ignore
 
+
+# --- debug ladder ---
+try:
+    from channels.jingya.pricing.discount_strategies_v2 import get_ladder_discount_price
+except Exception:
+    get_ladder_discount_price = None
+
+
 MIN_STOCK_THRESHOLD = 2  # 小于该值的库存将置为0
 
 def _safe_float(x) -> float:
@@ -70,7 +78,37 @@ def import_txt_to_db_supplier(brand_name: str):
         if sc < MIN_STOCK_THRESHOLD:
             sc = 0
 
-        base = compute_brand_base_price(brand_name, original_price_gbp, discount_price_gbp)
+
+        o = _safe_float(original_price_gbp)
+        d = _safe_float(discount_price_gbp)
+
+        # 阶梯修正后的折扣价 d2（用于检查“阶梯抬价”有没有生效）
+        if get_ladder_discount_price is not None:
+            try:
+                d2 = get_ladder_discount_price(o, d, brand_name)
+            except Exception:
+                d2 = None
+        else:
+            d2 = None
+
+        base = compute_brand_base_price(brand_name, o, d)
+
+        if base > 0:
+            try:
+                untaxed, retail = calculate_jingya_prices(base, delivery_cost=7, exchange_rate=9.7)
+            except Exception:
+                untaxed, retail = (None, None)
+        else:
+            untaxed, retail = (None, None)
+
+        # ✅ 打印你要的三个价格 + 关键中间值
+        print(
+            f"[{brand_name}] code={product_code} size={size} "
+            f"o={o:.2f} d={d:.2f} "
+            f"d2={(f'{d2:.2f}' if isinstance(d2, (int, float)) and d2 is not None else 'NA')} "
+            f"base={base:.2f} jingya={untaxed} taobao={retail}"
+        )
+
 
         if base > 0:
             try:
