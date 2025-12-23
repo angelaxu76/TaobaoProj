@@ -15,10 +15,10 @@ from common_taobao.core.generate_missing_links_for_brand import generate_missing
 
 def main():
     # print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    backup_and_clear_brand_dirs(CAMPER)
+    # backup_and_clear_brand_dirs(CAMPER)
 
-    # print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    camper_get_links()
+    # # print("\n🟡 Step: 2️⃣ 抓取商品链接")
+    # camper_get_links()
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
     camper_fetch_product_info()
