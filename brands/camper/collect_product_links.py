@@ -56,9 +56,9 @@ BASE_URLS = [
     "https://www.camper.com/en_GB/women/shoes/all_shoes_lab_women?filter.collection=allabw&sort=default&page={}",
     "https://www.camper.com/en_GB/men/shoes/all_shoes_lab_men?filter.collection=allabm&sort=default&page={}",
 
-    # 新品
-    "https://www.camper.com/en_GB/men/shoes/new_collection?filter.collection=neco&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/new_collection?filter.collection=neco&sort=default&page={}",
+    # # 新品
+    # "https://www.camper.com/en_GB/men/shoes/new_collection?filter.collection=neco&sort=default&page={}",
+    # "https://www.camper.com/en_GB/women/shoes/new_collection?filter.collection=neco&sort=default&page={}",
 
     # 女款细分
     "https://www.camper.com/en_GB/women/shoes/ballerinas?filter.collection=allabw&sort=default&page={}",
