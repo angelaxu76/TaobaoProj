@@ -21,13 +21,22 @@ FINANCE_EES = {
         "route": "UK → China",
     },
 
+    # "bank": {
+    #     "bank_name": "ANNA Money",                       # 银行名称（如 Barclays, HSBC）
+    #     "account_name": "EMINZORA TRADE LTD",  # 账户名称（一般等于公司名）
+    #     "account_no": "86092219",                      # 银行账号
+    #     "sort_code": "23-11-85",                       # Sort Code（xx-xx-xx）
+    #     "iban": "GB26PAYR23118586092219",                            # IBAN（如 GBxx...）
+    #     "swift": "",                           # SWIFT/BIC（如 BUKBGB22）
+    # },    
+
     "bank": {
-        "bank_name": "ANNA Money",                       # 银行名称（如 Barclays, HSBC）
+        "bank_name": "Wise Payments Limited",                       # 银行名称（如 Barclays, HSBC）
         "account_name": "EMINZORA TRADE LTD",  # 账户名称（一般等于公司名）
-        "account_no": "86092219",                      # 银行账号
-        "sort_code": "23-11-85",                       # Sort Code（xx-xx-xx）
-        "iban": "GB26PAYR23118586092219",                            # IBAN（如 GBxx...）
-        "swift": "",                           # SWIFT/BIC（如 BUKBGB22）
+        "account_no": "39155857",                      # 银行账号
+        "sort_code": "60-84-64",                       # Sort Code（xx-xx-xx）
+        "iban": "GB54 TRWI 6084 6439 1558 57",                            # IBAN（如 GBxx...）
+        "swift": "TRWIGB2LXXX",                           # SWIFT/BIC（如 BUKBGB22）
     },    
     "declaration": (
         "I confirm that the goods listed above were exported from the United Kingdom "
