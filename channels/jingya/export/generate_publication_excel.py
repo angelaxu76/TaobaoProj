@@ -56,7 +56,7 @@ def generate_publication_excels(brand: str):
     if brand == "clarks_jingya":
         MIN_TOTAL_STOCK = 11
     elif brand == "camper":
-        MIN_TOTAL_STOCK = 11
+        MIN_TOTAL_STOCK = 35
     elif brand == "geox":
         MIN_TOTAL_STOCK = 11
     else:
