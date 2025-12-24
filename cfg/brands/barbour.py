@@ -1,3 +1,6 @@
+from ..paths import BASE_DIR
+from ..db_config import PGSQL_CONFIG
+
 # === Barbour 品牌路径配置 ===
 BARBOUR_BASE = BASE_DIR / "barbour"
 BARBOUR = {
