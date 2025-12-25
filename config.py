@@ -11,6 +11,8 @@ from cfg.publish_config import (
     PUBLISH_RULES_BASE,
     PUBLISH_RULES_BY_BRAND,
 )
+
+from cfg.size_ranges import SIZE_RANGE_CONFIG
 from cfg.brand_config import BRAND_CONFIG
 
 # ========== backward-compatible aliases ==========

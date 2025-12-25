@@ -22,7 +22,7 @@ BRAND_NAME_MAP = {
 }
 
 BRAND_DISCOUNT = {
-    "camper": 0.73,
+    "camper": 0.71,
     "geox": 1,
     "clarks_jingya": 1.0,
     "ecco": 0.9,
