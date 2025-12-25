@@ -4,7 +4,7 @@ TAOBAO_STORES = ["五小剑", "英国伦敦代购2015"]
 
 BRAND_STRATEGY = {
     "camper": "min_price_times_ratio",
-    "ecco": "discount_priority",
+    "ecco": "discount_or_original_ratio",
     "geox": "discount_priority",
     "clarks_jingya": "discount_priority",
 }
