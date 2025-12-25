@@ -3,10 +3,10 @@
 TAOBAO_STORES = ["五小剑", "英国伦敦代购2015"]
 
 BRAND_STRATEGY = {
-    "camper": "ladder_wrap_min_price_times_ratio",
+    "camper": "min_price_times_ratio",
     "ecco": "discount_priority",
-    "geox": "ladder_wrap_discount_priority",
-    "clarks_jingya": "ladder_clawback_ratio",
+    "geox": "discount_priority",
+    "clarks_jingya": "discount_priority",
 }
 
 BRAND_NAME_MAP = {
@@ -22,8 +22,8 @@ BRAND_NAME_MAP = {
 }
 
 BRAND_DISCOUNT = {
-    "camper": 0.71,
-    "geox": 0.98,
+    "camper": 0.73,
+    "geox": 1,
     "clarks_jingya": 1.0,
     "ecco": 0.9,
 }
