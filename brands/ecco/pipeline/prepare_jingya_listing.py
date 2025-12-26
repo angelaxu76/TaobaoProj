@@ -72,10 +72,11 @@ def main():
     print("\n🟡 Step: 9️⃣ 生成淘宝店铺价格导入文件（可选，沿用 Camper 的店铺价逻辑）")
     generate_price_excels_bulk(
         brand="ecco",
-        input_dir=r"D:\TB\Products\ecco\repulibcation\store_prices\input",
-        output_dir=r"D:\TB\Products\ecco\repulibcation\store_prices\output",
+        input_dir=r"D:\TB\Products\ECCO\document\store_prices",
+        output_dir=r"D:\TB\Products\ecco\repulibcation\store_prices",
         suffix="_价格",
-        drop_rows_without_price=False
+        drop_rows_without_price=False,
+        blacklist_excel_file=r"D:\TB\Products\ecco\document\exclude.xlsx" # 不丢行，查不到的价格留空
     )
 
 
