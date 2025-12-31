@@ -7,11 +7,11 @@ from channels.jingya.cainiao.generate_hscode_excel_shoes import generate_shoe_hs
  
 def pipeline_jingya():
 
-    extract_goods_brand_info(
-        input_dir=r"C:\Users\martin\Downloads",
-        shoes_output=r"D:\TB\taofenxiao\海关备案\shoes.xlsx",
-        barbour_output=r"D:\TB\taofenxiao\海关备案\barbour.xlsx"
-    )
+    # extract_goods_brand_info(
+    #     input_dir=r"C:\Users\martin\Downloads",
+    #     shoes_output=r"D:\TB\taofenxiao\海关备案\shoes.xlsx",
+    #     barbour_output=r"D:\TB\taofenxiao\海关备案\barbour.xlsx"
+    # )
 
     generate_shoe_hscode(
         input_list=r"D:\TB\taofenxiao\海关备案\shoes.xlsx",
@@ -24,11 +24,11 @@ def pipeline_jingya():
     #女装 6102300000 
     #男装 6101909000
 
-    generate_barbour_hscode(
-        input_list=r"D:\TB\taofenxiao\海关备案\barbour.xlsx",
-        output_dir=r"D:\TB\taofenxiao\海关备案",
-        sheet_name="sheet1"
-    )
+    # generate_barbour_hscode(
+    #     input_list=r"D:\TB\taofenxiao\海关备案\barbour.xlsx",
+    #     output_dir=r"D:\TB\taofenxiao\海关备案",
+    #     sheet_name="sheet1"
+    # )
 
 
 if __name__ == "__main__":
