@@ -11,7 +11,7 @@ CREATE TABLE catalog_items (
     brand          VARCHAR(64),
     category       VARCHAR(64),
 
-    publication_date date;
+    publication_date date,
     -- 定价
     list_price     NUMERIC(12,2),            -- 一口价（标价）
 
