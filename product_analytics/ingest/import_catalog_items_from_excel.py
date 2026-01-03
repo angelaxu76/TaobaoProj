@@ -31,6 +31,30 @@ WRITE_COLS = ["product_code", "item_name", "brand", "category", "list_price", "c
 UPDATE_COLS = ["product_code", "item_name", "brand", "category", "list_price", "publication_date"]  # update 时不改 current_item_id
 
 
+# ========= Brand 规范化（入库统一为英文 key） =========
+BRAND_KEY_MAP = {
+    "clarks": "clarks",
+    "camper": "camper",
+    "ecco": "ecco",
+    "geox": "geox",
+    "barbour": "barbour",
+}
+
+def normalize_brand(raw: Any) -> Optional[str]:
+    s = _to_str(raw)
+    if not s:
+        return None
+    # 1) 去空格 + 小写
+    s = s.strip()
+    # 2) 有 / 的取左边（如 "Ecco/爱步" -> "Ecco"）
+    s = s.split("/", 1)[0].strip()
+    s = s.lower()
+
+    # 3) 同义词兜底（可按你数据再加）
+    # 例如有人写成 "geox " / "GEOX鞋" 之类，可在这里扩展规则
+    return BRAND_KEY_MAP.get(s, s)  # 未知就返回清洗后的原值
+
+
 def _is_empty(v: Any) -> bool:
     if v is None:
         return True
@@ -113,7 +137,7 @@ def _normalize_row(row: Dict[str, Any]) -> Dict[str, Any]:
         "current_item_id": _to_int(row.get("current_item_id")),
         "product_code": _to_str(row.get("product_code")),
         "item_name": _to_str(row.get("item_name")),
-        "brand": _to_str(row.get("brand")),
+        "brand": normalize_brand(row.get("brand")),
         "category": _to_str(row.get("category")),
         "list_price": _to_price(row.get("list_price")),
         "publication_date": _to_date(row.get("publication_date")),

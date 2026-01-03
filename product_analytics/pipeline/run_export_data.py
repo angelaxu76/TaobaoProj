@@ -1,13 +1,13 @@
-from product_analytics.ingest.export_brand_bad_products_report import (
+from product_analytics.ingest.export_brand_bad_products_report_v2 import (
     export_brand_bad_products_report, ExportConfig
 )
 
 def product_export():
     export_brand_bad_products_report(
         ExportConfig(
-            brand="camper",
+            brand="ecco",
             days=30,
-            output_path=r"D:\TB\product_analytics\export\CAMPER_bad_products_last30d.xlsx",
+            output_path=r"D:\TB\product_analytics\export\ecco_products_last30d_2026.xlsx",
             split_by_store=False,
             min_publication_date=None,  # 不写也行
         )
