@@ -165,7 +165,7 @@ def enrich_excel(input_path: str, output_path: Optional[str] = None) -> str:
 
 
 def main():
-    enrich_excel(r"D:\OneDrive\Documentation\淘宝会计统计数据\202511.xlsx", r"D:\OneDrive\Documentation\淘宝会计统计数据\202511_enrich.xlsx")
+    enrich_excel(r"D:\OneDrive\Documentation\淘宝会计统计数据\英国伦敦代购\202512.xlsx", r"D:\OneDrive\Documentation\淘宝会计统计数据\英国伦敦代购\202512_enrich.xlsx")
 
 
 if __name__ == "__main__":
