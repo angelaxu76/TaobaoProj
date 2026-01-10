@@ -64,15 +64,15 @@ def main():
     )
 
 
-    # print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
-    # stock_dest_excel_folder = r"D:\TB\Products\clarks_jingya\repulibcation\stock"
-    # export_stock_excel("clarks_jingya",stock_dest_excel_folder)
+    print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
+    stock_dest_excel_folder = r"D:\TB\Products\clarks_jingya\repulibcation\stock"
+    export_stock_excel("clarks_jingya",stock_dest_excel_folder)
 
-    # price_dest_excel = r"D:\TB\Products\clarks_jingya\repulibcation\publication_prices"
-    # export_jiangya_channel_prices("clarks_jingya",price_dest_excel)
+    price_dest_excel = r"D:\TB\Products\clarks_jingya\repulibcation\publication_prices"
+    export_jiangya_channel_prices("clarks_jingya",price_dest_excel)
 
-    # print("\\n🟡 Step: 6️⃣生成发布产品的excel")
-    # generate_publication_excels("clarks_jingya")
+    print("\\n🟡 Step: 6️⃣生成发布产品的excel")
+    generate_publication_excels("clarks_jingya")
 
 if __name__ == "__main__":
     main()
