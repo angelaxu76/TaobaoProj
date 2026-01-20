@@ -476,5 +476,142 @@ def backfill_barbour_inventory_mapped_only():
 
     print(f"✅ 精确匹配完成：命中 {len(hit_ids)} 行。")
 
+import os
+import pandas as pd
+from sqlalchemy import create_engine, text
+from config import BRAND_CONFIG
+from common_taobao.core.price_utils import calculate_jingya_prices
+
+def apply_fixed_prices_from_excel(
+    xlsx_path: str,
+    sheet_name: str | None = None,
+    code_col: str = "product_code",
+    source_price_col: str = "source_price_gbp",
+    discount_price_col: str = "discount_price_gbp",
+    also_set_original_price: bool = True,
+    mark_source: bool = True,
+    dry_run: bool = False,
+):
+    """
+    从 Excel 读取固定价格清单，批量回填到 barbour_inventory（按 product_code 覆盖所有尺码行）。
+
+    Excel 必需列（默认列名，可通过参数改）：
+      - product_code
+      - source_price_gbp
+      - discount_price_gbp
+
+    会更新的字段（默认）：
+      - source_price_gbp
+      - discount_price_gbp
+      - original_price_gbp（可选：also_set_original_price=True 时设置为折扣价）
+      - base_price_gbp（= COALESCE(discount_price_gbp, source_price_gbp)）
+      - jingya_untaxed_price / taobao_store_price（由 calculate_jingya_prices 计算）
+      - last_checked
+      - （可选）source_site/source_offer_url 标记为 manual
+    """
+
+    cfg = BRAND_CONFIG["barbour"]["PGSQL_CONFIG"]
+    engine = create_engine(
+        f"postgresql+psycopg2://{cfg['user']}:{cfg['password']}@{cfg['host']}:{cfg['port']}/{cfg['dbname']}"
+    )
+
+    df = pd.read_excel(xlsx_path, sheet_name=sheet_name)
+
+    # ✅ 兼容：sheet_name=None 时 pandas 返回 dict（所有 sheets）
+    if isinstance(df, dict):
+        if not df:
+            raise ValueError("Excel 里没有任何 sheet。")
+        # 默认取第一个 sheet
+        df = next(iter(df.values()))
+
+    df = df.rename(columns={
+        code_col: "product_code",
+        source_price_col: "source_price_gbp",
+        discount_price_col: "discount_price_gbp",
+    })
+
+    # 基本清洗
+    df["product_code"] = df["product_code"].astype(str).str.strip()
+    df = df[df["product_code"].notna() & (df["product_code"] != "")]
+    df["source_price_gbp"] = pd.to_numeric(df["source_price_gbp"], errors="coerce")
+    df["discount_price_gbp"] = pd.to_numeric(df["discount_price_gbp"], errors="coerce")
+
+    # base_gbp：后续用于 RMB 计算
+    df["base_gbp"] = df["discount_price_gbp"].fillna(df["source_price_gbp"])
+
+    # 计算 RMB 两个价
+    discount = BRAND_CONFIG["barbour"].get("TAOBAO_STORE_DISCOUNT", 1.0)
+    jy_list, tb_list = [], []
+    for v in df["base_gbp"].tolist():
+        if pd.isna(v) or v is None:
+            jy_list.append(None)
+            tb_list.append(None)
+            continue
+        untaxed, retail = calculate_jingya_prices(float(v))
+        jy_list.append(round(float(untaxed), 2) if untaxed is not None else None)
+        tb = round(float(retail) * float(discount), 2) if retail is not None else None
+        tb_list.append(tb)
+
+    df["jingya_untaxed_price"] = jy_list
+    df["taobao_store_price"] = tb_list
+
+    # 准备更新 payload
+    src_tag = "manual_excel"
+    offer_tag = f"excel:{os.path.basename(xlsx_path)}"
+    payload = []
+    for r in df.to_dict("records"):
+        payload.append({
+            "product_code": r["product_code"],
+            "source_price_gbp": None if pd.isna(r["source_price_gbp"]) else float(r["source_price_gbp"]),
+            "discount_price_gbp": None if pd.isna(r["discount_price_gbp"]) else float(r["discount_price_gbp"]),
+            "original_price_gbp": None if (not also_set_original_price or pd.isna(r["discount_price_gbp"])) else float(r["discount_price_gbp"]),
+            "base_price_gbp": None if pd.isna(r["base_gbp"]) else float(r["base_gbp"]),
+            "jingya_untaxed_price": r["jingya_untaxed_price"],
+            "taobao_store_price": r["taobao_store_price"],
+            "source_site": src_tag,
+            "source_offer_url": offer_tag,
+        })
+
+    if dry_run:
+        print(f"[DryRun] 将覆盖 {len(payload)} 个 product_code 的 inventory 价格（所有尺码行）。示例前5行：")
+        for x in payload[:5]:
+            print(x)
+        return
+
+    with engine.begin() as conn:
+        if mark_source:
+            sql = text("""
+                UPDATE barbour_inventory
+                SET
+                    source_price_gbp     = :source_price_gbp,
+                    original_price_gbp   = COALESCE(:original_price_gbp, original_price_gbp),
+                    discount_price_gbp   = :discount_price_gbp,
+                    base_price_gbp       = :base_price_gbp,
+                    jingya_untaxed_price = :jingya_untaxed_price,
+                    taobao_store_price   = :taobao_store_price,
+                    source_site          = :source_site,
+                    source_offer_url     = :source_offer_url,
+                    last_checked         = NOW()
+                WHERE product_code = :product_code
+            """)
+        else:
+            sql = text("""
+                UPDATE barbour_inventory
+                SET
+                    source_price_gbp     = :source_price_gbp,
+                    original_price_gbp   = COALESCE(:original_price_gbp, original_price_gbp),
+                    discount_price_gbp   = :discount_price_gbp,
+                    base_price_gbp       = :base_price_gbp,
+                    jingya_untaxed_price = :jingya_untaxed_price,
+                    taobao_store_price   = :taobao_store_price,
+                    last_checked         = NOW()
+                WHERE product_code = :product_code
+            """)
+
+        conn.execute(sql, payload)
+
+    print(f"✅ 固定价格已回填到 barbour_inventory：{len(payload)} 个 product_code（覆盖所有尺码行）。")
+
+
 if __name__ == "__main__":
     backfill_barbour_inventory_mapped_only()

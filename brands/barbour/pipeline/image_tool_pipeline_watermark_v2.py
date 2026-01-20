@@ -22,9 +22,9 @@ def main():
     # split_image_by_size(CUTTER_FOLDER,SPLIT_FOLDER,1900)
 
     process_images(
-        input_dir=r"C:\Users\martin\Downloads",
+        input_dir=r"C:\Users\angel\Downloads",
         output_dir=r"D:\TB\Products\barbour\images",
-        product_code="MWX1106",
+        product_code="MCA0976BE51",
         defend=True,
         watermark=False, 
     )

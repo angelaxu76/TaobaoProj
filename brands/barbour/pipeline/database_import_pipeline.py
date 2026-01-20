@@ -83,6 +83,7 @@ from brands.barbour.common.fill_supplier_jingya_map import (
 from brands.barbour.jingya.merge_offer_into_inventory import (
     backfill_barbour_inventory_single_supplier,
     merge_band_stock_into_inventory,
+    apply_fixed_prices_from_excel,
 )
 
 # 配置文件路径（你可以按需要改到 config.py 里去）
@@ -115,6 +116,12 @@ def _rebuild_inventory_from_jingya(merge_band: bool = True):
         print(">>> 按 10% 价格带合并多站点库存（只影响 stock_count，不动价格）...")
         merge_band_stock_into_inventory(band_ratio=0.10)
 
+    apply_fixed_prices_from_excel(
+    code_col="商品编码",
+    sheet_name=0,
+    xlsx_path=r"D:\TB\Products\barbour\document\barbour_exclude_list.xlsx",
+    dry_run=False
+    )
     print(">>> barbour_inventory 回填完成。")
 
 
@@ -130,13 +137,13 @@ def scenario_full_rebuild():
 
     # 1) 先根据 offers / products 重新计算供应商映射（强制重算）
     print(">>> 重新计算 barbour_supplier_map（force_refresh=True）...")
-    # fill_supplier_map(
-    #     force_refresh=True,
-    #     exclude_xlsx=EXCLUDE_LIST_XLSX,
-    # )
     fill_supplier_map(
         force_refresh=True,
+        exclude_xlsx=EXCLUDE_LIST_XLSX,
     )
+    # fill_supplier_map(
+    #     force_refresh=True,
+    # )
 
     # 2) 再重建 inventory（基于新的 supplier_map）
     _rebuild_inventory_from_jingya(merge_band=True)
@@ -261,4 +268,4 @@ if __name__ == "__main__":
     #   - 真正执行低库存换供应商：mode = "reassign_low_stock_apply"
     #   - 用 Excel 强制覆盖供应商：mode = "supplier_overrides"
 
-    barbour_database_import_pipeline(mode="full_rebuild")
+    barbour_database_import_pipeline(mode="after_new_publish")
