@@ -1,6 +1,6 @@
 # config/db_config.py
 PGSQL_CONFIG = {
-    "host": "192.168.5.243",
+    "host": "192.168.5.254",
     "port": 5432,
     "user": "postgres",
     "password": "516518",

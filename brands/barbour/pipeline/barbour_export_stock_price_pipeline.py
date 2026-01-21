@@ -24,6 +24,8 @@ def barbour_export_price_stock():
     
     print("导出excel 用于更新鲸芽价格=====商品级别"    )
     price_dest_excel_path = r"D:\TB\Products\barbour\repulibcation\publication_prices"
+
+    
     export_jiangya_channel_prices(
     brand="barbour",
     output_dir=price_dest_excel_path

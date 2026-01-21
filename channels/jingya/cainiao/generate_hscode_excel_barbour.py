@@ -349,7 +349,7 @@ def generate_barbour_hscode(
     # ---- mkdir 不再报错，因为 output_dir 已是 Path ----
     output_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_path = output_dir / f"备案导入_{ts}.xlsx"
+    out_path = output_dir / f"备案导入_barbour_{ts}.xlsx"
 
     with pd.ExcelWriter(out_path, engine="openpyxl") as w:
         out_df.to_excel(w, sheet_name=sheet_name, index=False)

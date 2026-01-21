@@ -324,7 +324,7 @@ def generate_shoe_hscode(
     # ✅ 这里就安全了，一定是 Path 对象
     output_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_path = output_dir / f"备案导入_{ts}.xlsx"
+    out_path = output_dir / f"备案导入_shoe_{ts}.xlsx"
 
     with pd.ExcelWriter(out_path, engine="openpyxl") as w:
         out_df.to_excel(w, sheet_name=sheet_name, index=False)
