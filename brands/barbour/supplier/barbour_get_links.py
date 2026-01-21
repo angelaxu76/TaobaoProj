@@ -11,16 +11,30 @@ HEADERS = {
 }
 
 CATEGORY_URLS = {
+    # Jackets
     "mens-jackets": "https://www.barbour.com/gb/mens/jackets",
     "womens-jackets": "https://www.barbour.com/gb/womens/jackets",
-    "mens-internaltion-jackets": "https://www.barbour.com/gb/barbour-international/mens",
-    "womens-internaltion-jackets": "https://www.barbour.com/gb/barbour-international/womens",
-    "paul-smith": "https://www.barbour.com/gb/all-collaborations/paul-smith-loves-barbour",
-    "margaret": "https://www.barbour.com/gb/all-collaborations/barbour-for-margaret-howell",
-    "barbour-farm-rio": "https://www.barbour.com/gb/womens/collaborations/barbour-farm-rio",
-    "wsunshine": "https://www.barbour.com/gb/all-collaborations/barbour-x-kaptain-sunshine-",
-}
+    "mens-international-jackets": "https://www.barbour.com/gb/barbour-international/mens",
+    "womens-international-jackets": "https://www.barbour.com/gb/barbour-international/womens",
 
+    # Collaborations
+    "paul-smith": "https://www.barbour.com/gb/all-collaborations/paul-smith-loves-barbour",
+    "margaret-howell": "https://www.barbour.com/gb/all-collaborations/barbour-for-margaret-howell",
+    "farm-rio": "https://www.barbour.com/gb/womens/collaborations/barbour-farm-rio",
+    "kaptain-sunshine": "https://www.barbour.com/gb/all-collaborations/barbour-x-kaptain-sunshine-",
+    "feng-chen-wang": "https://www.barbour.com/gb/all-collaborations/barbour-x-feng-chen-wang",
+    "levis": "https://www.barbour.com/gb/all-collaborations/barbour-x-levis%C2%AE",
+    "sorel": "https://www.barbour.com/gb/mens/mens-collaborations/sorel-x-barbour",
+    "baracuta": "https://www.barbour.com/gb/mens/collaborations/baracuta",
+
+    # Clothing
+    "mens-clothing": "https://www.barbour.com/gb/mens/clothing",
+    "womens-clothing": "https://www.barbour.com/gb/womens/clothing",
+
+    # Accessories
+    "mens-accessories": "https://www.barbour.com/gb/mens/accessories",
+    "womens-accessories": "https://www.barbour.com/gb/womens/accessories",
+}
 # CATEGORY_URLS = {
 #     "paul-smith": "https://www.barbour.com/gb/all-collaborations/paul-smith-loves-barbour",
 #     "margaret": "https://www.barbour.com/gb/all-collaborations/barbour-for-margaret-howell",
