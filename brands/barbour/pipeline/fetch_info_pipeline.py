@@ -25,29 +25,29 @@ from brands.barbour.common.fill_supplier_jingya_map import fill_supplier_map,app
 from brands.barbour.jingya.merge_offer_into_inventory import backfill_barbour_inventory_single_supplier
 
 def barbour_database_import_pipleline():
-    # print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    # backup_and_clear_brand_dirs(BARBOUR)
+    print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
+    backup_and_clear_brand_dirs(BARBOUR)
 
 
     print("步骤 1：获取商品链接")
-    # barbour_get_links()
-    # outdoorandcountry_fetch_and_save_links()
-    # allweathers_get_links()
-    # houseoffraser_get_links()
-    # very_get_links()
-    # collect_terraces_links()
-    # philipmorris_get_links()
-    # cho_get_links()
+    barbour_get_links()
+    outdoorandcountry_fetch_and_save_links()
+    allweathers_get_links()
+    houseoffraser_get_links()
+    very_get_links()
+    collect_terraces_links()
+    philipmorris_get_links()
+    cho_get_links()
 
     print("步骤 2：抓取商品信息并存为TXT")
-    # barbour_fetch_info()
-    # outdoorandcountry_fetch_info(max_workers=15)
-    # allweathers_fetch_info(7)
+    barbour_fetch_info()
+    outdoorandcountry_fetch_info(max_workers=15)
+    allweathers_fetch_info(7)
     houseoffraser_fetch_info(max_workers=15, headless=False)
-    # very_fetch_info(max_workers=15)
-    # terraces_fetch_info(max_workers=15)
-    # philipmorris_fetch_info(max_workers=15)
-    # cho_fetch_info(max_workers=15)
+    very_fetch_info(max_workers=15)
+    terraces_fetch_info(max_workers=15)
+    philipmorris_fetch_info_v3(max_workers=15)
+    cho_fetch_info(max_workers=15)
 
 
     

@@ -20,19 +20,19 @@ def run_script(filename: str):
     subprocess.run(["python", path], check=True)
 
 def main():
-    print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    backup_and_clear_brand_dirs(GEOX)
+    # print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
+    # backup_and_clear_brand_dirs(GEOX)
 
-    print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    collect_all_product_links()
+    # print("\n🟡 Step: 2️⃣ 抓取商品链接")
+    # collect_all_product_links()
 
-    print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    fetch_all_product_info()
+    # print("\n🟡 Step: 3️⃣ 抓取商品信息")
+    # fetch_all_product_info()
 
-    print("\n🟡 Step: 3️⃣ 将鲸牙存在但TXT中不存在的商品抓一遍")
-    missing_product_link = r"D:\TB\Products\geox\publication\missing_product_links.txt";
-    generate_missing_links_for_brand("geox",missing_product_link )
-    fetch_all_product_info(missing_product_link )
+    # print("\n🟡 Step: 3️⃣ 将鲸牙存在但TXT中不存在的商品抓一遍")
+    # missing_product_link = r"D:\TB\Products\geox\publication\missing_product_links.txt";
+    # generate_missing_links_for_brand("geox",missing_product_link )
+    # fetch_all_product_info(missing_product_link )
 
 
 
