@@ -13,7 +13,7 @@ def main():
     code_file_path = r"D:\TB\Products\barbour\repulibcation\publication_codes.txt"
 
 
-    excel_path = r"D:\TB\Products\barbour\document\publication\barbour_publication_20251226_203136.xlsx"
+    excel_path = r"D:\TB\Products\barbour\document\publication\barbour_publication_20260119_220115.xlsx"
     images_root = r"D:\TB\Products\barbour\images"
     target_root = r"D:\TB\Products\barbour\repulibcation\images_selected"
     flat_images_dir = r"D:\TB\Products\barbour\repulibcation\images_flat"

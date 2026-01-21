@@ -18,7 +18,7 @@ CATEGORY_URLS = {
     "paul-smith": "https://www.barbour.com/gb/all-collaborations/paul-smith-loves-barbour",
     "margaret": "https://www.barbour.com/gb/all-collaborations/barbour-for-margaret-howell",
     "barbour-farm-rio": "https://www.barbour.com/gb/womens/collaborations/barbour-farm-rio",
-    "wsunshine": "https://www.barbour.com/gb/all-collaborations/barbour-x-kaptain-sunshine-"
+    "wsunshine": "https://www.barbour.com/gb/all-collaborations/barbour-x-kaptain-sunshine-",
 }
 
 # CATEGORY_URLS = {
