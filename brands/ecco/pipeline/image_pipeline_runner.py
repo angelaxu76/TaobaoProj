@@ -5,7 +5,7 @@ from common_taobao.publication.generate_html import generate_html_from_codes_fil
 from common_taobao.publication.generate_html_FristPage import generate_first_page_from_codes_files
 from helper.html.html_to_png_multithread import convert_html_to_images
 from helper.image.trim_sides_batch import trim_sides_batch
-from brands.ecco.download_product_images import download_images_by_code_file
+from brands.ecco.download_product_images_v2 import download_images_by_code_file
 from config import ECCO
 
 
