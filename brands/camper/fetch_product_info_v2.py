@@ -1,53 +1,28 @@
-# fetch_product_info_v3.py
-import os
+# camper_fetch_product_info_fast.py
 import re
-import time
 import json
+import time
+import threading
 from pathlib import Path
-from typing import List, Dict, Tuple, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import requests
 from bs4 import BeautifulSoup
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 
 from config import CAMPER, SIZE_RANGE_CONFIG
-from common_taobao.ingest.txt_writer import format_txt
+from common_taobao.txt_writer import format_txt
 from common_taobao.core.category_utils import infer_style_category
-from common_taobao.core.selenium_utils import get_driver
 
-# =========================
-# Config
-# =========================
-HOME_URL = "https://www.camper.com/en_GB"
+PRODUCT_URLS_FILE = Path(CAMPER["LINKS_FILE"])
+SAVE_PATH = Path(CAMPER["TXT_DIR"])
+SAVE_PATH.mkdir(parents=True, exist_ok=True)
 
-PRODUCT_URLS_FILE = CAMPER["LINKS_FILE"]
-SAVE_PATH = CAMPER["TXT_DIR"]
+# requests 并发推荐 8~16；如果你网络不稳可以先 8
+MAX_WORKERS = 12
 
-MAX_WORKERS = 1  # v3 默认单线程最稳
-LOGIN_WAIT_SECONDS = 30
-
-DEBUG_ENABLED = False  # True 开启页面 dump
-DEBUG_DIR = str(Path(SAVE_PATH).resolve().parent / "debug_camper")
-Path(DEBUG_DIR).mkdir(parents=True, exist_ok=True)
-
-os.makedirs(SAVE_PATH, exist_ok=True)
-
-# 全局 cookies（登录后赋值）
-LOGIN_COOKIES: List[Dict] = []
-
-
-# =========================
-# Utils
-# =========================
-def _safe_float(v) -> float:
-    try:
-        if v is None:
-            return 0.0
-        return float(v)
-    except Exception:
-        return 0.0
-
+# ---------------------------
+# 工具函数
+# ---------------------------
 
 def infer_gender_from_url(url: str) -> str:
     u = url.lower()
@@ -60,332 +35,263 @@ def infer_gender_from_url(url: str) -> str:
     return "未知"
 
 
-def is_driver_connection_error(e: Exception) -> bool:
-    msg = str(e)
-    return (
-        "WinError 10061" in msg
-        or "Max retries exceeded" in msg
-        or "NewConnectionError" in msg
-        or "Failed to establish a new connection" in msg
-        or ("localhost" in msg and "/session/" in msg)
-    )
+def _num_from_any(x) -> float:
+    """把 '£145'、'145.00'、145 转成 float；失败返回 0.0"""
+    if x is None:
+        return 0.0
+    if isinstance(x, (int, float)):
+        return float(x)
+    s = str(x).strip()
+    if not s:
+        return 0.0
+    # 去掉货币符号、空格等
+    s = s.replace(",", "")
+    m = re.search(r"(\d+(\.\d+)?)", s)
+    return float(m.group(1)) if m else 0.0
 
 
-def dump_debug_page(driver, name: str):
-    if not DEBUG_ENABLED:
-        return
-
-    safe = re.sub(r"[^\w\-\.]+", "_", name)[:120]
-    d = Path(DEBUG_DIR) / safe
-    d.mkdir(parents=True, exist_ok=True)
-
-    # HTML
-    with open(d / "page.html", "w", encoding="utf-8") as f:
-        f.write(driver.page_source)
-
-    # NEXT_DATA
-    soup = BeautifulSoup(driver.page_source, "html.parser")
-    tag = soup.find("script", {"id": "__NEXT_DATA__"})
-    if tag and tag.string:
-        try:
-            j = json.loads(tag.string)
-            with open(d / "next_data.json", "w", encoding="utf-8") as f:
-                json.dump(j, f, indent=2, ensure_ascii=False)
-        except Exception as ex:
-            with open(d / "next_data_error.txt", "w", encoding="utf-8") as f:
-                f.write(str(ex))
-
-    # cookies
-    try:
-        with open(d / "cookies.json", "w", encoding="utf-8") as f:
-            json.dump(driver.get_cookies(), f, indent=2, ensure_ascii=False)
-    except Exception:
-        pass
-
-    # meta
-    try:
-        lower = driver.page_source.lower()
-        meta = [
-            f"URL: {driver.current_url}",
-            f"Cookies count: {len(driver.get_cookies())}",
-            f"voucherPrices: {'FOUND' if (tag and tag.string and 'voucherPrices' in tag.string) else 'NOT_FOUND'}",
-            "login_hint: " + ("maybe_logged_in" if ("logout" in lower or "my account" in lower) else "unknown"),
-        ]
-        with open(d / "meta.txt", "w", encoding="utf-8") as f:
-            f.write("\n".join(meta))
-    except Exception:
-        pass
-
-
-def pick_prices_from_product_sheet(product_sheet: dict) -> Tuple[float, float, str]:
+def extract_prices(product_sheet: dict) -> tuple[float, float]:
     """
-    优先级：
-    1) prices.voucherPrices（登录后 private discount）
-    2) sizes[].voucherPrices（有些折扣只挂在尺码上）
-    3) prices.previous/current（公开折扣）
-    4) prices.current（未打折兜底）
+    输出 (original_price, discount_price)
+    兼容不同字段结构，尽量保证折扣价/原价正确。
     """
     prices = product_sheet.get("prices") or {}
 
-    def pick_from_voucher_dict(voucher_prices: dict) -> Optional[Tuple[float, float, str]]:
-        best = None
-        if not isinstance(voucher_prices, dict):
-            return None
-        for key, vp in voucher_prices.items():
-            if not isinstance(vp, dict):
-                continue
-            v_cur = _safe_float(vp.get("current"))
-            v_prev = _safe_float(vp.get("previous"))
-            if v_cur > 0 and v_prev > 0 and v_cur < v_prev:
-                cand = (v_prev, v_cur, f"voucher:{key}")
-                if best is None or (cand[0] - cand[1]) > (best[0] - best[1]):
-                    best = cand
-        return best
+    # 常见：{"previous": 170, "current": 119}
+    prev = _num_from_any(prices.get("previous"))
+    curr = _num_from_any(prices.get("current"))
 
-    top = pick_from_voucher_dict(prices.get("voucherPrices") or {})
-    if top:
-        return top[0], top[1], top[2]
+    if curr or prev:
+        # 如果只有 current，没有 previous：把 current 当成交价，原价=成交价
+        if curr and not prev:
+            return curr, curr
+        # 如果只有 previous，没有 current：把 previous 当作原价，成交价=原价
+        if prev and not curr:
+            return prev, prev
+        return prev, curr
 
-    sizes = product_sheet.get("sizes") or []
-    best = None
-    for s in sizes:
-        if not isinstance(s, dict):
-            continue
-        cand = pick_from_voucher_dict(s.get("voucherPrices") or {})
-        if cand:
-            if best is None or (cand[0] - cand[1]) > (best[0] - best[1]):
-                best = cand
-    if best:
-        return best[0], best[1], best[2] + "__from_size"
+    # 兼容：可能是 {"price": {"value":..}, "sale": {"value":..}} 或类似命名
+    candidates = [
+        ("was", "now"),
+        ("original", "current"),
+        ("regular", "current"),
+        ("price", "sale"),
+        ("list", "sale"),
+        ("rrp", "sale"),
+    ]
+    for a, b in candidates:
+        a_obj = prices.get(a)
+        b_obj = prices.get(b)
+        a_val = _num_from_any(a_obj.get("value") if isinstance(a_obj, dict) else a_obj)
+        b_val = _num_from_any(b_obj.get("value") if isinstance(b_obj, dict) else b_obj)
+        if a_val or b_val:
+            if b_val and not a_val:
+                return b_val, b_val
+            if a_val and not b_val:
+                return a_val, a_val
+            return a_val, b_val
 
-    cur = _safe_float(prices.get("current"))
-    prev = _safe_float(prices.get("previous"))
-    if cur > 0 and prev > 0 and cur < prev:
-        return prev, cur, "public"
+    # 兜底：有些站点把价格塞在别处（比如 product_sheet["price"]）
+    for key in ["price", "currentPrice", "salePrice", "finalPrice"]:
+        v = _num_from_any(product_sheet.get(key))
+        if v:
+            return v, v
 
-    if cur > 0:
-        return cur, cur, "no_discount"
-
-    return 0.0, 0.0, "no_price"
-
-
-def apply_cookies_to_driver(driver, cookies: List[Dict]):
-    if not cookies:
-        return
-
-    driver.get(HOME_URL)
-    WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, "body")))
-
-    for c in cookies:
-        if not isinstance(c, dict):
-            continue
-        c2 = dict(c)
-        c2.pop("sameSite", None)
-        if "expiry" in c2 and c2["expiry"] is not None:
-            try:
-                c2["expiry"] = int(c2["expiry"])
-            except Exception:
-                c2.pop("expiry", None)
-        try:
-            driver.add_cookie(c2)
-        except Exception:
-            pass
-
-    driver.get(HOME_URL)
-    WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, "body")))
+    return 0.0, 0.0
 
 
-def init_camper_login_cookies(wait_seconds: int = LOGIN_WAIT_SECONDS):
-    global LOGIN_COOKIES
-
-    print("=" * 80)
-    print("🔐 [Camper Login] 将打开官网首页，请在浏览器里手动完成登录。")
-    print(f"⏳ 你有 {wait_seconds} 秒完成登录。")
-    print("✅ 登录完成后不需要点任何按钮，脚本会自动继续并共享 cookie。")
-    print("=" * 80)
-
-    driver = None
-    try:
-        driver = get_driver(name="camper_login", headless=False)
-        driver.get(HOME_URL)
-        WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.CSS_SELECTOR, "body")))
-        time.sleep(wait_seconds)
-        LOGIN_COOKIES = driver.get_cookies() or []
-        print(f"🍪 已获取 cookies 数量: {len(LOGIN_COOKIES)}")
-    finally:
-        try:
-            if driver:
-                driver.quit()
-        except Exception:
-            pass
-
-
-# =========================
-# Core: parse one url with existing driver
-# =========================
-def process_product_url_with_driver(driver, product_url: str):
-    print(f"\n🔍 正在访问: {product_url}")
-    driver.get(product_url)
-    WebDriverWait(driver, 25).until(EC.presence_of_element_located((By.CSS_SELECTOR, "body")))
-    time.sleep(1.2)
-
-    dump_debug_page(driver, "PRE__" + product_url[-80:])
-
-    soup = BeautifulSoup(driver.page_source, "html.parser")
-
-    # title
-    title_tag = soup.find("title")
-    product_title = (
-        re.sub(r"\s*[-–—].*", "", title_tag.text.strip())
-        if title_tag and title_tag.text
-        else "Unknown Title"
-    )
-
-    # next_data
-    script_tag = soup.find("script", {"id": "__NEXT_DATA__", "type": "application/json"})
-    if not script_tag or not script_tag.string:
-        dump_debug_page(driver, "NO_NEXT_DATA")
-        raise RuntimeError("未找到 __NEXT_DATA__")
-
-    json_data = json.loads(script_tag.string)
-    product_sheet = (
-        json_data.get("props", {})
-        .get("pageProps", {})
-        .get("productSheet")
-    )
-    if not product_sheet:
-        dump_debug_page(driver, "NO_PRODUCT_SHEET")
-        raise RuntimeError("未找到 productSheet")
-
-    data = product_sheet
-    product_code = data.get("code", "Unknown_Code")
-    dump_debug_page(driver, product_code)
-
-    description = data.get("description", "")
-    original_price, discount_price, price_src = pick_prices_from_product_sheet(data)
-
-    color_data = data.get("color", "")
-    color = color_data.get("name", "") if isinstance(color_data, dict) else str(color_data)
-
-    # features
-    features_raw = data.get("features") or []
+def extract_features_and_upper(product_sheet: dict) -> tuple[str, str]:
+    features_raw = product_sheet.get("features") or []
     feature_texts = []
+    upper_material = "No Data"
+
     for f in features_raw:
-        value_html = (f.get("value") or "")
+        if not isinstance(f, dict):
+            continue
+
+        # Feature 文本
+        value_html = f.get("value") or ""
         clean_text = BeautifulSoup(value_html, "html.parser").get_text(strip=True)
         if clean_text:
             feature_texts.append(clean_text)
+
+        # Upper 材质
+        name = (f.get("name") or "").lower()
+        if upper_material == "No Data" and "upper" in name:
+            upper_material = clean_text or "No Data"
+
     feature_str = " | ".join(feature_texts) if feature_texts else "No Data"
+    return feature_str, upper_material
 
-    # upper material
-    upper_material = "No Data"
-    for feature in features_raw:
-        name = (feature.get("name") or "").lower()
-        if "upper" in name:
-            raw_html = feature.get("value") or ""
-            upper_material = BeautifulSoup(raw_html, "html.parser").get_text(strip=True)
-            break
 
-    # sizes
+def extract_sizes(product_sheet: dict) -> tuple[dict, dict]:
     size_map = {}
     size_detail = {}
-    for s in data.get("sizes", []):
-        value = (s.get("value", "") or "").strip()
-        available = bool(s.get("available", False))
-        quantity = s.get("quantity", 0)
-        ean = s.get("ean", "")
+
+    for size in (product_sheet.get("sizes") or []):
+        if not isinstance(size, dict):
+            continue
+
+        value = (size.get("value") or "").strip()
+        if not value:
+            continue
+
+        available = bool(size.get("available", False))
+        quantity = int(size.get("quantity", 0) or 0)
+
+        # ean 可能为空
+        ean = size.get("ean") or ""
+
         size_map[value] = "有货" if available else "无货"
-        size_detail[value] = {"stock_count": quantity, "ean": ean}
+        size_detail[value] = {
+            "stock_count": quantity,
+            "ean": ean,
+        }
 
-    gender = infer_gender_from_url(product_url)
-
-    # fill missing sizes
-    standard_sizes = SIZE_RANGE_CONFIG.get("camper", {}).get(gender, [])
-    if standard_sizes:
-        missing = [x for x in standard_sizes if x not in size_detail]
-        for x in missing:
-            size_map[x] = "无货"
-            size_detail[x] = {"stock_count": 0, "ean": ""}
-        if missing:
-            print(f"⚠️ {product_code} 补全尺码: {', '.join(missing)}")
-
-    style_category = infer_style_category(description)
-
-    info = {
-        "Product Code": product_code,
-        "Product Name": product_title,
-        "Product Description": description,
-        "Product Gender": gender,
-        "Product Color": color,
-
-        "Product Price": str(original_price),
-        "Adjusted Price": str(discount_price),
-
-        "Product Material": upper_material,
-        "Style Category": style_category,
-        "Feature": feature_str,
-        "SizeMap": size_map,
-        "SizeDetail": size_detail,
-        "Source URL": product_url,
-        "Price Source": price_src,  # 便于你排查
-    }
-
-    out_path = Path(SAVE_PATH) / f"{product_code}.txt"
-    format_txt(info, out_path, brand="camper")
-    print(f"✅ 完成 TXT: {out_path.name}  (src={price_src}, P={original_price}, D={discount_price})")
+    return size_map, size_detail
 
 
-# =========================
-# v3 Entry: safe single-thread (driver reuse + auto rebuild)
-# =========================
-def camper_fetch_product_info(product_urls_file: Optional[str] = None,
-                                login_wait_seconds: int = LOGIN_WAIT_SECONDS):
-    if product_urls_file is None:
-        product_urls_file = PRODUCT_URLS_FILE
+# thread-local requests Session（requests.Session 不是严格线程安全，别全局共享一个）
+thread_local = threading.local()
 
-    print(f"📄 使用链接文件: {product_urls_file}")
-    with open(product_urls_file, "r", encoding="utf-8") as f:
-        urls = [line.strip() for line in f if line.strip()]
+def get_http_session() -> requests.Session:
+    if not hasattr(thread_local, "sess") or thread_local.sess is None:
+        s = requests.Session()
+        s.headers.update({
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-GB,en;q=0.9",
+            "Connection": "keep-alive",
+        })
+        thread_local.sess = s
+    return thread_local.sess
 
-    # login once
-    init_camper_login_cookies(wait_seconds=login_wait_seconds)
 
-    def build_driver():
-        d = get_driver(name="camper_v3_safe", headless=True)
-        if LOGIN_COOKIES:
-            apply_cookies_to_driver(d, LOGIN_COOKIES)
-        return d
+def fetch_next_data(url: str, timeout=20, retry=2) -> tuple[str, dict] | tuple[str, None]:
+    """
+    返回 (title, product_sheet)；失败返回 (title/空, None)
+    """
+    sess = get_http_session()
+    last_err = None
 
-    driver = None
-    try:
-        driver = build_driver()
-
-        for url in urls:
-            for attempt in range(2):  # 一条链接最多重试一次（重建 driver 后）
-                try:
-                    process_product_url_with_driver(driver, url)
-                    break
-                except Exception as e:
-                    if is_driver_connection_error(e) and attempt == 0:
-                        print(f"⚠️ driver 掉线(10061)，重建后重试: {url}")
-                        try:
-                            driver.quit()
-                        except Exception:
-                            pass
-                        time.sleep(1.0)
-                        driver = build_driver()
-                        continue
-
-                    # 非连接类错误 or 重试仍失败
-                    print(f"❌ 错误: {url} - {e}")
-                    break
-
-    finally:
+    for i in range(retry + 1):
         try:
-            if driver:
-                driver.quit()
-        except Exception:
-            pass
+            r = sess.get(url, timeout=timeout)
+            r.raise_for_status()
+
+            soup = BeautifulSoup(r.text, "html.parser")
+            title_tag = soup.find("title")
+            title_text = title_tag.get_text(strip=True) if title_tag else ""
+
+            script_tag = soup.select_one("script#__NEXT_DATA__")
+            if not script_tag or not script_tag.string:
+                return title_text, None
+
+            data = json.loads(script_tag.string)
+
+            product_sheet = (
+                data.get("props", {})
+                    .get("pageProps", {})
+                    .get("productSheet")
+            )
+            return title_text, product_sheet
+
+        except Exception as e:
+            last_err = e
+            # 简单退避
+            time.sleep(0.6 * (i + 1))
+
+    return "", None
+
+
+def process_product_url(url: str) -> tuple[bool, str, str]:
+    try:
+        print(f"\n🔍 正在访问: {url}")
+        title_text, product_sheet = fetch_next_data(url)
+
+        if not product_sheet:
+            return False, url, "未获取到 productSheet（可能页面结构变化/跳转）"
+
+        # title 去掉后缀
+        product_title = re.sub(r"\s*[-–—].*", "", (title_text or "").strip()) or "Unknown Title"
+
+        product_code = product_sheet.get("code", "Unknown_Code")
+        description = product_sheet.get("description", "") or ""
+
+        original_price, discount_price = extract_prices(product_sheet)
+
+        color_data = product_sheet.get("color", "")
+        color = color_data.get("name", "") if isinstance(color_data, dict) else str(color_data)
+
+        feature_str, upper_material = extract_features_and_upper(product_sheet)
+        size_map, size_detail = extract_sizes(product_sheet)
+
+        gender = infer_gender_from_url(url)
+
+        # 尺码补全（保留你的逻辑）
+        standard_sizes = SIZE_RANGE_CONFIG.get("camper", {}).get(gender, [])
+        if standard_sizes:
+            missing_sizes = [s for s in standard_sizes if s not in size_detail]
+            for s in missing_sizes:
+                size_map[s] = "无货"
+                size_detail[s] = {"stock_count": 0, "ean": ""}
+            if missing_sizes:
+                print(f"⚠️ {product_code} 补全尺码: {', '.join(missing_sizes)}")
+
+        style_category = infer_style_category(description)
+
+        info = {
+            "Product Code": product_code,
+            "Product Name": product_title,
+            "Product Description": description,
+            "Product Gender": gender,
+            "Product Color": color,
+
+            # ✅ 价格：原价/折扣价（最新版正确逻辑的稳健版）
+            "Product Price": str(original_price),
+            "Adjusted Price": str(discount_price),
+
+            "Product Material": upper_material,
+            "Style Category": style_category,
+            "Feature": feature_str,
+
+            "SizeMap": size_map,
+            "SizeDetail": size_detail,
+
+            "Source URL": url,
+        }
+
+        filepath = SAVE_PATH / f"{product_code}.txt"
+        format_txt(info, filepath, brand="camper")
+        print(f"✅ 完成 TXT: {filepath.name} | 原价={original_price} 折扣价={discount_price}")
+        return True, url, ""
+
+    except Exception as e:
+        return False, url, str(e)
+
+
+def camper_fetch_product_info(max_workers=MAX_WORKERS):
+    urls = []
+    with open(PRODUCT_URLS_FILE, "r", encoding="utf-8") as f:
+        for line in f:
+            u = line.strip()
+            if u:
+                urls.append(u)
+
+    ok_cnt = 0
+    fail_cnt = 0
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(process_product_url, u) for u in urls]
+        for fut in as_completed(futures):
+            ok, url, msg = fut.result()
+            if ok:
+                ok_cnt += 1
+            else:
+                fail_cnt += 1
+                print(f"❌ 失败: {url} | {msg}")
+
+    print(f"\n✅ 完成：成功 {ok_cnt}，失败 {fail_cnt}，输出目录：{SAVE_PATH}")
 
 
 if __name__ == "__main__":
