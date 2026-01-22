@@ -10,7 +10,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from config import CAMPER, SIZE_RANGE_CONFIG
-from common_taobao.txt_writer import format_txt
+from common_taobao.ingest.txt_writer import format_txt
 from common_taobao.core.category_utils import infer_style_category
 
 PRODUCT_URLS_FILE = Path(CAMPER["LINKS_FILE"])
@@ -270,19 +270,36 @@ def process_product_url(url: str) -> tuple[bool, str, str]:
         return False, url, str(e)
 
 
-def camper_fetch_product_info(max_workers=MAX_WORKERS):
-    urls = []
-    with open(PRODUCT_URLS_FILE, "r", encoding="utf-8") as f:
-        for line in f:
-            u = line.strip()
-            if u:
-                urls.append(u)
+from pathlib import Path
+from typing import Optional, List
+
+def camper_fetch_product_info(
+    links_file: Optional[str] = None,
+    urls: Optional[List[str]] = None,
+    max_workers: int = MAX_WORKERS
+):
+    # ✅ 防呆：避免把路径字符串误当 max_workers
+    if not isinstance(max_workers, int):
+        raise TypeError(f"max_workers must be int, got {type(max_workers)}: {max_workers!r}")
+
+    # 1) 优先用 urls（来自 DB）
+    if urls is not None:
+        url_list = [u.strip() for u in urls if u and u.strip()]
+        source = "urls(list)"
+    else:
+        # 2) 其次用 links_file（比如 missing_product_links.txt）
+        lf = Path(links_file) if links_file else PRODUCT_URLS_FILE
+        with open(lf, "r", encoding="utf-8") as f:
+            url_list = [line.strip() for line in f if line.strip()]
+        source = str(lf)
+
+    print(f"📄 使用链接来源: {source} | 共 {len(url_list)} 条 | MAX_WORKERS={max_workers}")
 
     ok_cnt = 0
     fail_cnt = 0
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [executor.submit(process_product_url, u) for u in urls]
+        futures = [executor.submit(process_product_url, u) for u in url_list]
         for fut in as_completed(futures):
             ok, url, msg = fut.result()
             if ok:
@@ -292,6 +309,7 @@ def camper_fetch_product_info(max_workers=MAX_WORKERS):
                 print(f"❌ 失败: {url} | {msg}")
 
     print(f"\n✅ 完成：成功 {ok_cnt}，失败 {fail_cnt}，输出目录：{SAVE_PATH}")
+
 
 
 if __name__ == "__main__":
