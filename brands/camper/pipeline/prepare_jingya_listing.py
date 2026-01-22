@@ -28,7 +28,7 @@ def main():
     print("\n🟡 Step: 3️⃣ 将鲸牙存在但TXT中不存在的商品抓一遍")
     missing_product_link = r"D:\TB\Products\camper\publication\missing_product_links.txt";
     generate_missing_links_for_brand("camper",missing_product_link )
-    camper_fetch_product_info(missing_product_link )
+    camper_fetch_product_info(links_file=missing_product_link )
 
     print("\n🟡 Step: 4️⃣ TXT导入数据库 -----将各个商品的TXT中信息导入到数据库中")
     import_txt_to_db_supplier("camper")  
