@@ -267,7 +267,7 @@ def download_images_from_soup(soup: BeautifulSoup, formatted_code: str | None):
     """
     seen_basenames = set()
 
-    for raw_url in _iter_image_candidate_urls_v2(soup):
+    for raw_url in _iter_image_candidate_urls(soup):
         if not raw_url:
             continue
 
