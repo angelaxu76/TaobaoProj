@@ -100,49 +100,64 @@ def _extract_urls_from_style(style_text: str):
             yield u
 
 
-def _iter_image_candidate_urls_v2(soup: BeautifulSoup):
+def _fix_url(u: str) -> str | None:
+    """补全协议、过滤空值"""
+    if not u:
+        return None
+    u = u.strip()
+    if not u:
+        return None
+    if u.startswith("//"):
+        return "https:" + u
+    return u
+
+
+def _looks_like_image_url(u: str) -> bool:
+    """只接受图片链接（含查询参数也行）"""
+    if not u:
+        return False
+    lu = u.lower()
+    return any(ext in lu for ext in (".png", ".webp", ".jpg", ".jpeg"))
+
+
+def _iter_image_candidate_urls(soup: BeautifulSoup):
     """
-    更全面的图片URL抓取：
-    - img[src/srcset/data-src/data-original/data-srcset]
-    - source[srcset/data-srcset]
-    - a[href] 指向图片
-    - style background-image url(...)
+    遍历页面中可能的商品图 URL，优先取 srcset 的最大尺寸。
+    V2增强：兼容 data-srcset、a[href] 图片直链、协议省略 //cdn...
     """
-    # 1) <img>
+    # ---------- <img> ----------
     for img in soup.find_all("img"):
-        # srcset / data-srcset
+        # srcset / data-srcset 优先取最大
         for k in ("srcset", "data-srcset"):
             srcset = img.get(k)
             if srcset:
                 best = _pick_largest_from_srcset(srcset)
-                if best:
+                best = _fix_url(best)
+                if best and _looks_like_image_url(best):
                     yield best
-        # 直接 src
-        for key in ("src", "data-src", "data-original"):
-            if img.get(key):
-                yield img.get(key)
 
-    # 2) <source>
+        # src / data-src / data-original
+        for k in ("src", "data-src", "data-original"):
+            u = _fix_url(img.get(k))
+            if u and _looks_like_image_url(u):
+                yield u
+
+    # ---------- <source> ----------
     for tag in soup.find_all("source"):
         for k in ("srcset", "data-srcset"):
             srcset = tag.get(k)
             if srcset:
                 best = _pick_largest_from_srcset(srcset)
-                if best:
+                best = _fix_url(best)
+                if best and _looks_like_image_url(best):
                     yield best
 
-    # 3) <a href="...jpg/png/webp">
+    # ✅ ---------- <a href>（新版 eCom 经常在这里） ----------
     for a in soup.find_all("a"):
-        href = a.get("href")
-        if href:
+        href = _fix_url(a.get("href"))
+        if href and _looks_like_image_url(href):
             yield href
 
-    # 4) background-image: url(...)
-    for tag in soup.find_all(True):
-        style = tag.get("style")
-        if style and "url(" in style.lower():
-            for u in _extract_urls_from_style(style):
-                yield u
 
 
 def _parse_code_view_from_filename(url: str) -> tuple[str | None, str | None, str | None, str]:
