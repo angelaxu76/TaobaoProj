@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 # === 配置项 ===
-IMAGE_DIR = Path(r"D:\TB\Products\barbour\document\images")  # 替换为你的目录
+IMAGE_DIR = Path(r"G:\temp\1")  # 替换为你的目录
 MAX_WIDTH = 1500
 
 def resize_image(image_path: Path):

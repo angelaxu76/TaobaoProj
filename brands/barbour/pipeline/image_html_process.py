@@ -13,19 +13,19 @@ def main():
     code_file_path = r"D:\TB\Products\barbour\repulibcation\publication_codes.txt"
 
 
-    excel_path = r"D:\TB\Products\barbour\document\publication\barbour_publication_20260119_220115.xlsx"
-    images_root = r"D:\TB\Products\barbour\images"
+    excel_path = r"D:\TB\Products\barbour\document\publication\barbour_publication_20260126_125930.xlsx"
+    images_root = r"D:\TB\Products\barbour\images_download"
     target_root = r"D:\TB\Products\barbour\repulibcation\images_selected"
     flat_images_dir = r"D:\TB\Products\barbour\repulibcation\images_flat"
 
 
-    # ok, miss, miss_list = copy_barbour_images_from_excel(
-    #     excel_path, images_root, target_root,
-    #     verbose=True,
-    # )
+    ok, miss, miss_list = copy_barbour_images_from_excel(
+        excel_path, images_root, target_root,
+        verbose=True,
+    )
 
-    # print(">>> target_root =", target_root)
-    # print(f">>> copy done: ok={ok}, missing={miss}")
+    print(">>> target_root =", target_root)
+    print(f">>> copy done: ok={ok}, missing={miss}")
     
     # rebuild_all_products_images(target_root, verbose=True)
 

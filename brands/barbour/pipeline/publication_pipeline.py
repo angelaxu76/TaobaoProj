@@ -15,13 +15,13 @@ def pipeline_barbour():
 
     # excel_path = export_barbour_discounts_excel_multi(0, 3, "LWX,LSP,LWX,LWB,LCA,LOL")
 
-    excel_path = export_barbour_discounts_excel_multi(0, 3, "MWX,MQU,MOL,MWB,MFL,MOS")
-    print(excel_path)
+    # excel_path = export_barbour_discounts_excel_multi(0, 3, "MWX,MQU,MOL,MWB,MFL,MOS")
+    # print(excel_path)
 
     # 步骤 1：将产品的编码放到D:\TB\Products\barbour\repulibcation\codes.txt
     # 步骤 2：生成发布产品的excel
-    # print("\n🌐 步骤 1：抓取商品链接")
-    # generate_publication_excel()
+    print("\n🌐 步骤 1：抓取商品链接")
+    generate_publication_excel()
 
 
 
