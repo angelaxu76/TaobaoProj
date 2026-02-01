@@ -9,7 +9,7 @@ from cfg.taobao_title_keyword_config import (
     SHOE_TYPE_MAP, FEATURE_MAP,
     FEATURE_MERGE_RULES, FEATURE_FORCE_FIRST, MAX_FEATURES,
     BRAND_SHORT_CODE_RULE, SHORT_CODE_JOIN_WITH_SPACE,
-    FILLER_WORDS,
+    FILLER_WORDS,MAX_SHOE_TYPES
 )
 
 # =========================
@@ -181,7 +181,9 @@ def truncate_to_max_bytes(text: str, max_bytes: int) -> str:
 def scan_keywords(title: str, content: str) -> dict:
     text = (title or "") + " " + (content or "")
 
-    shoe_type = match_first_from_map(text, SHOE_TYPE_MAP)
+    shoe_types = match_many_from_map(text, SHOE_TYPE_MAP)
+    shoe_types = shoe_types[:MAX_SHOE_TYPES]
+
     material = match_first_from_map(text, MATERIAL_CANON_MAP)
     features = match_many_from_map(text, FEATURE_MAP)
 
@@ -200,7 +202,7 @@ def scan_keywords(title: str, content: str) -> dict:
     features = features[:MAX_FEATURES]
 
     return {
-        "shoe_type": shoe_type,
+        "shoe_type": shoe_types,
         "material": material,
         "features": features
     }
@@ -238,7 +240,9 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
 
     # 5) 扫关键词（鞋型/材质/特性）
     kw = scan_keywords(title_en, content)
-    shoe_type = kw["shoe_type"] or "休闲鞋"
+    shoe_types = kw.get("shoe_types") or []
+    shoe_type_str = "".join(shoe_types) if shoe_types else "休闲鞋" 
+
     material_cn = kw["material"]  # 若扫不到就空
     features_str = "".join(kw["features"])
 
@@ -247,7 +251,7 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
         brand_full,
         gender_str,
         style_name,
-        shoe_type,
+        shoe_type_str,
         color_cn,
         material_cn,
         features_str
