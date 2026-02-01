@@ -1,26 +1,27 @@
 {
     "sqltools.connections": [
         {
+            "ssh": "Disabled",
             "previewLimit": 50,
-            "server": "192.168.5.9",
+            "server": "192.168.1.44",
             "port": 5432,
             "driver": "PostgreSQL",
-            "name": "mydb",
+            "name": "taobao_inventory_db",
             "database": "taobao_inventory_db",
             "username": "postgres",
-            "password": "516518",
-            "connectionTimeout": 50
+            "password": "516518"
         },
         {
             "ssh": "Disabled",
             "previewLimit": 50,
-            "server": "192.168.5.243",
+            "server": "192.168.1.44",
             "port": 5432,
             "driver": "PostgreSQL",
-            "name": "dbserver",
-            "database": "taobao_inventory_db",
+            "name": "eminzora_inventory_db",
+            "database": "eminzora_inventory_db",
             "username": "postgres",
-            "password": "516518"
+            "password": "516518",
+            "connectionTimeout": 50
         }
     ],
 
