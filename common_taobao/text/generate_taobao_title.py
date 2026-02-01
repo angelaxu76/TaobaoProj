@@ -407,7 +407,7 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
     if (brand_key or "").lower() in ["camper", "clarks_jingya", "ecco"]:
         short_code = extract_short_code(product_code, brand_key=brand_key)
         if short_code:
-            base_title = f"{base_title} {short_code}"
+            base_title = f"{base_title}{short_code}"
 
 
     # 清理异常符号重复
@@ -418,7 +418,7 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
         core = "".join([p for p in [brand_full, gender_str, style_name, color_cn, material_cn] if p])
         base_title = _fix_english_spacing(core)
         if short_code:
-            base_title = _fix_english_spacing(f"{base_title} {short_code}")
+            base_title = _fix_english_spacing(f"{base_title}{short_code}")
         if get_byte_length(base_title) > 60:
             base_title = truncate_to_max_bytes(base_title, 60)
 
