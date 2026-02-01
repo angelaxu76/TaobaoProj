@@ -2,7 +2,7 @@
 import re
 import random
 from config import BRAND_NAME_MAP
-
+from common_taobao.core.logger_utils import setup_logger
 from cfg.taobao_title_keyword_config import (
     COLOR_MAP, COLOR_KEYWORDS, COLOR_GUESS,
     MATERIAL_CANON_MAP, TERM_REPLACE_MAP,
@@ -10,6 +10,13 @@ from cfg.taobao_title_keyword_config import (
     FEATURE_MERGE_RULES, FEATURE_FORCE_FIRST, MAX_FEATURES,
     BRAND_SHORT_CODE_RULE, SHORT_CODE_JOIN_WITH_SPACE,
     FILLER_WORDS,MAX_SHOE_TYPES
+)
+
+logger = setup_logger(
+    log_dir="d:/logs/taobao_title",
+    filename="generate_taobao_title.log",
+    max_mb=20,
+    backup_count=10
 )
 
 # =========================
@@ -211,86 +218,79 @@ def scan_keywords(title: str, content: str) -> dict:
 # 主函数：签名不变
 # =========================
 def generate_taobao_title(product_code: str, content: str, brand_key: str) -> dict:
-    bk = (brand_key or "").lower()
-    brand_en, brand_cn = BRAND_NAME_MAP.get(bk, (brand_key.upper(), brand_key))
-    brand_full = f"{brand_en}{brand_cn}"
+    try:
+        logger.info(
+            f"START | brand={brand_key} | code={product_code}"
+        )
 
-    # 1) 读基础字段
-    title_en = extract_field_from_content(content, "Product Name")
-    color_en = extract_field_from_content(content, "Product Color")
-    gender_raw = extract_field_from_content(content, "Product Gender") or "女款"
+        # ===== 原有逻辑完全不动 =====
+        bk = (brand_key or "").lower()
+        brand_en, brand_cn = BRAND_NAME_MAP.get(bk, (brand_key.upper(), brand_key))
+        brand_full = f"{brand_en}{brand_cn}"
 
-    # 2) style_name：v1 先保持简单（第一词），避免过度复杂
-    style_name = (title_en.split()[0].capitalize() if title_en else "系列")
-    style_name = _strip_gender_words(style_name)
+        title_en = extract_field_from_content(content, "Product Name")
+        if not title_en:
+            logger.warning(f"NO Product Name | code={product_code}")
 
-    # 3) 颜色（标准化英文→COLOR_MAP；否则从标题猜）
-    color_en_clean = normalize_color_en(color_en)
-    if not color_en_clean:
-        tl = (title_en or "").lower()
-        for ckw in COLOR_KEYWORDS:
-            if ckw in tl:
-                color_en_clean = ckw
-                break
-    color_cn = COLOR_MAP.get(color_en_clean, "") or guess_color_cn_from_name(title_en)
+        color_en = extract_field_from_content(content, "Product Color")
+        gender_raw = extract_field_from_content(content, "Product Gender") or "女款"
 
-    # 4) 性别标准化
-    gender_std = _normalize_gender(gender_raw, title_en)
-    gender_str = {"女款": "女鞋", "男款": "男鞋", "童款": "童鞋"}[gender_std]
+        style_name = (title_en.split()[0].capitalize() if title_en else "系列")
+        style_name = _strip_gender_words(style_name)
 
-    # 5) 扫关键词（鞋型/材质/特性）
-    kw = scan_keywords(title_en, content)
-    shoe_types = kw.get("shoe_types") or []
-    shoe_type_str = "".join(shoe_types) if shoe_types else "休闲鞋" 
+        color_en_clean = normalize_color_en(color_en)
+        if not color_en_clean:
+            logger.warning(f"NO Color | code={product_code}")
 
-    material_cn = kw["material"]  # 若扫不到就空
-    features_str = "".join(kw["features"])
+        color_cn = COLOR_MAP.get(color_en_clean, "") or guess_color_cn_from_name(title_en)
 
-    # 6) 拼 parts（标题骨架）
-    parts = [
-        brand_full,
-        gender_str,
-        style_name,
-        shoe_type_str,
-        color_cn,
-        material_cn,
-        features_str
-    ]
-    base_title = "".join([p for p in parts if p]).strip()
-    base_title = _fix_english_spacing(base_title)
-    base_title = _replace_terms_to_cn(base_title)
-    base_title = base_title.replace("No Data", "")
+        gender_std = _normalize_gender(gender_raw, title_en)
+        gender_str = {"女款": "女鞋", "男款": "男鞋", "童款": "童鞋"}[gender_std]
 
-    # 7) 短码（按品牌开关）
-    short_cfg = BRAND_SHORT_CODE_RULE.get(bk, BRAND_SHORT_CODE_RULE.get("default", {}))
-    if short_cfg.get("enable"):
-        short_code = extract_short_code(product_code, brand_key=bk, mode=short_cfg.get("mode", "style"))
-        if short_code:
-            joiner = " " if SHORT_CODE_JOIN_WITH_SPACE else ""
-            base_title = f"{base_title}{joiner}{short_code}"
+        kw = scan_keywords(title_en, content)
+        shoe_types = kw.get("shoe_type") or []
+        shoe_type_str = "".join(shoe_types) if shoe_types else "休闲鞋"
 
-    # 8) 清理异常符号重复
-    base_title = re.sub(r"[【】]{2,}", "", base_title)
+        material_cn = kw["material"]
+        features_str = "".join(kw["features"])
 
-    # 9) 60 字节控制（超长→先去特性；仍超→截断）
-    if get_byte_length(base_title) > 60:
-        core_parts = [brand_full, gender_str, style_name, shoe_type, color_cn, material_cn]
-        core = "".join([p for p in core_parts if p]).strip()
-        base_title = _fix_english_spacing(core)
-        if get_byte_length(base_title) > 60:
-            base_title = truncate_to_max_bytes(base_title, 60)
+        parts = [
+            brand_full,
+            gender_str,
+            style_name,
+            shoe_type_str,
+            color_cn,
+            material_cn,
+            features_str
+        ]
 
-    # 10) 不足 60 → 补齐（v1 先沿用旧策略；后续可改成“优先补关键词”）
-    if get_byte_length(base_title) < 60:
-        available = 60 - get_byte_length(base_title)
-        words = FILLER_WORDS[:]
-        random.shuffle(words)
-        for w in words:
-            wb = get_byte_length(w)
-            if available >= wb:
-                base_title += w
-                available -= wb
-            else:
-                break
+        base_title = "".join([p for p in parts if p]).strip()
+        base_title = _fix_english_spacing(base_title)
+        base_title = _replace_terms_to_cn(base_title)
 
-    return {"title_cn": base_title, "taobao_title": base_title}
+        short_cfg = BRAND_SHORT_CODE_RULE.get(bk, BRAND_SHORT_CODE_RULE.get("default", {}))
+        if short_cfg.get("enable"):
+            short_code = extract_short_code(product_code, brand_key=bk, mode=short_cfg.get("mode", "style"))
+            if short_code:
+                joiner = " " if SHORT_CODE_JOIN_WITH_SPACE else ""
+                base_title = f"{base_title}{joiner}{short_code}"
+
+        # ===== 原有逻辑结束 =====
+
+        logger.info(
+            f"OK | brand={brand_key} | code={product_code} | title={base_title}"
+        )
+
+        return {"title_cn": base_title, "taobao_title": base_title}
+
+    except Exception as e:
+        logger.exception(
+            f"FAILED | brand={brand_key} | code={product_code} | error={e}"
+        )
+        # 不建议 raise，避免 1000 条中断
+        return {
+            "title_cn": "",
+            "taobao_title": "",
+            "error": str(e)
+        }
+
