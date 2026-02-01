@@ -5,7 +5,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 from config import BRAND_CONFIG, SETTINGS
 from common_taobao.core.price_utils import calculate_jingya_prices
-from common_taobao.text.generate_taobao_title_v1 import generate_taobao_title
+from common_taobao.text.generate_taobao_title import generate_taobao_title
 
 # ==== 固定参数 ====
 上市季节 = "2025春季"
@@ -27,8 +27,7 @@ from common_taobao.text.generate_taobao_title_v1 import generate_taobao_title
 内底长度 = "27"
 
 # 条件参数（可调）
-MIN_SIZES = 4         # 最少尺码数量
-MIN_TOTAL_STOCK = 20  # 最少总库存
+MIN_SIZES = 2         # 最少尺码数量
 
 
 
@@ -56,7 +55,7 @@ def generate_publication_excels(brand: str):
     if brand == "clarks_jingya":
         MIN_TOTAL_STOCK = 11
     elif brand == "camper":
-        MIN_TOTAL_STOCK = 35
+        MIN_TOTAL_STOCK = 11
     elif brand == "geox":
         MIN_TOTAL_STOCK = 11
     else:
