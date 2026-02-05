@@ -24,7 +24,7 @@ def main():
     process_images(
         input_dir=r"C:\Users\angel\Downloads",
         output_dir=r"D:\TB\Products\barbour\images",
-        product_code="MQU1844NY71",
+        product_code="MQU1638NY71",
         defend=True,
         watermark=False, 
     )

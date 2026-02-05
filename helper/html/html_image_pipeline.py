@@ -16,8 +16,8 @@ def main():
     process_html_folder(HTML_FOLDER, OUTPUT_FOLDER, GECKODRIVER_PATH)
 
     result = trim_sides_batch(
-        input_dir=r"D:\TB\HTMLToImage\output",
-        output_dir=r"D:\TB\HTMLToImage\cutter"
+        input_dir=r"D:/TB/HTMLToImage/output",
+        output_dir=r"D:/TB/HTMLToImage/cutter"
     )
 
     # 方案1：自动角标（推荐做主图）
