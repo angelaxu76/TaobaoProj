@@ -5,7 +5,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 from config import BRAND_CONFIG, SETTINGS
 from common_taobao.core.price_utils import calculate_jingya_prices
-from common_taobao.text.generate_taobao_title import generate_taobao_title
+from common_taobao.text.generate_taobao_title_v1 import generate_taobao_title
 
 # ==== 固定参数 ====
 上市季节 = "2025春季"

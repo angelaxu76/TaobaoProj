@@ -1,8 +1,12 @@
-# generate_taobao_title_v2.py
 import re
 import random
+
 from config import BRAND_NAME_MAP
 from common_taobao.core.logger_utils import setup_logger
+
+# ✅ 新增：款式名提取策略（按品牌）
+from common_taobao.text.style_extractors import extract_style_name
+
 from cfg.taobao_title_keyword_config import (
     COLOR_MAP, COLOR_KEYWORDS, COLOR_GUESS,
     MATERIAL_CANON_MAP, TERM_REPLACE_MAP,
@@ -257,8 +261,8 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
         color_en = extract_field_from_content(content, "Product Color")
         gender_raw = extract_field_from_content(content, "Product Gender") or "女款"
 
-        style_name = (title_en.split()[0].capitalize() if title_en else "系列")
-        style_name = _strip_gender_words(style_name)
+        # ✅ v2.1：按品牌提取款式名（Camper/ECCO/GEOX/Clarks...）
+        style_name = extract_style_name(bk, title_en, content)
 
         color_en_clean = normalize_color_en(color_en)
         if not color_en_clean:
