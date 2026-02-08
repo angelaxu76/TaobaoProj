@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Camper 商品链接抓取（增强版）
-变化点：
-1）自动翻页：从第 1 页开始，只要能抓到商品就继续；连续 3 页为空就切到下一个类别。
-2）更健壮的选择器：兼容多个卡片结构，尽量从 <a> 提取链接。
-3）修复 BASE_URLS 少逗号导致的 format IndexError。
-4）抓到的链接去重、排序后落盘。
+Camper 商品链接抓取（增强版 - 修复无限翻页）
+修复点（针对你现在“每页固定 8 条，永远不空，停不下来”的问题）：
+1）新增停止条件：连续 NO_NEW_LIMIT 页“无新增链接” -> 切换下一个入口
+2）新增停止条件：页面签名重复 PAGE_REPEAT_LIMIT 次 -> 切换下一个入口
+3）仍保留原逻辑：连续 MAX_EMPTY_PAGES 页为空 -> 切换下一个入口
+4）抓到的链接全局去重后落盘
 """
 import requests
 from bs4 import BeautifulSoup
@@ -14,13 +14,20 @@ from pathlib import Path
 from config import CAMPER  # ✅ 根据品牌切换
 import sys
 import re
+
 sys.stdout.reconfigure(encoding='utf-8')
 
 # ========= 参数配置 =========
 LINKS_FILE = CAMPER["LINKS_FILE"]
 WAIT = 1.0                      # 每页抓取间隔（秒）
-MAX_EMPTY_PAGES = 3             # 连续多少页无数据就换类目
+MAX_EMPTY_PAGES = 3             # 连续多少页无数据就换类目（保留原逻辑）
 LINK_PREFIX = "https://www.camper.com"
+
+# ✅ 新增：连续无新增页数限制（解决“每页都有8条但都是重复/推荐位”）
+NO_NEW_LIMIT = 2                # 连续 2 页无新增 -> 停止该入口（你想更保守可改 3）
+
+# ✅ 新增：页面内容重复限制（同一批链接反复出现）
+PAGE_REPEAT_LIMIT = 1           # 页面签名重复 1 次即认为卡死（可改 2 更宽松）
 
 # ✅ 类目入口（注意每一行末尾都有逗号！）
 BASE_URLS = [
@@ -28,7 +35,6 @@ BASE_URLS = [
     "https://www.camper.com/en_GB/men/shoes?sort=default&page={}",
     "https://www.camper.com/en_GB/women/shoes?sort=default&page={}",
     "https://www.camper.com/en_GB/kids/shoes?sort=default&page={}",
-
 
     "https://www.camper.com/en_GB/women/shoes/casual?filter.typology=_CST_T01&sort=default&page={}",
     "https://www.camper.com/en_GB/women/shoes?sort=default&page={}",
@@ -39,26 +45,20 @@ BASE_URLS = [
     "https://www.camper.com/en_GB/women/shoes/heels?filter.typology=_CST_T07&sort=default&page={}",
     "https://www.camper.com/en_GB/women/shoes/casual?filter.typology=_CST_T01&sort=default&page={}",
     "https://www.camper.com/en_GB/women/shoes/formal_shoes?filter.typology=_CST_T05&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/fall_winter?filter.collection=fw&sort=default&page={}",
     "https://www.camperlab.com/en_GB/women/shoes/all_shoes_lab_women?filter.collection=allabw&sort=default&page={}",
     "https://www.camper.com/en_GB/men/shoes/fall_winter?filter.collection=fw&sort=default&page={}",
     "https://www.camperlab.com/en_GB/men/shoes/all_shoes_lab_men?filter.collection=allabm&sort=default&page={}",
     "https://www.camper.com/en_GB/men/shoes/fall_winter?filter.collection=fw&sort=default&page={}",
-    
+
     "https://www.camper.com/en_GB/men/shoes/ankle_boots?filter.typology=_CST_T09&sort=default&page={}",
     "https://www.camper.com/en_GB/men/shoes/sneakers?filter.typology=_CST_T04&sort=default&page={}",
     "https://www.camper.com/en_GB/men/shoes/formal_shoes?filter.typology=_CST_T05&sort=default&page={}",
     "https://www.camper.com/en_GB/men/shoes/casual?filter.typology=_CST_T01&sort=default&page={}",
     "https://www.camper.com/en_GB/men/shoes/loafers?page={}",
-    
 
     # LAB/ALL 系列
     "https://www.camper.com/en_GB/women/shoes/all_shoes_lab_women?filter.collection=allabw&sort=default&page={}",
     "https://www.camper.com/en_GB/men/shoes/all_shoes_lab_men?filter.collection=allabm&sort=default&page={}",
-
-    # # 新品
-    # "https://www.camper.com/en_GB/men/shoes/new_collection?filter.collection=neco&sort=default&page={}",
-    # "https://www.camper.com/en_GB/women/shoes/new_collection?filter.collection=neco&sort=default&page={}",
 
     # 女款细分
     "https://www.camper.com/en_GB/women/shoes/ballerinas?filter.collection=allabw&sort=default&page={}",
@@ -96,16 +96,11 @@ def normalize_link(href: str) -> str:
     if not href:
         return ""
 
-    # 相对路径转绝对
     if href.startswith("/"):
         href = LINK_PREFIX + href
 
-    # 去掉 URL 参数（?size=41 之类）
     href = href.split("?", 1)[0]
-
-    # 可选：去掉末尾斜杠，避免 ...001 和 ...001/ 算两条
     href = href.rstrip("/")
-
     return href
 
 
@@ -115,7 +110,6 @@ def parse_pagination_spec(url: str):
     - page={}        -> (base_url, start=1, end=None)   自动模式
     - page={20}      -> (base_url, start=1, end=20)     1..20
     - page={3-12}    -> (base_url, start=3, end=12)     3..12
-    解析后把 {...} 统一替换回 {} 供 format 使用
     """
     m = re.search(r"page=\{(\d+)(?:-(\d+))?\}", url)
     if m:
@@ -124,11 +118,9 @@ def parse_pagination_spec(url: str):
         base_url = re.sub(r"\{(\d+)(?:-(\d+))?\}", "{}", url)
         return base_url, start, end
     else:
-        # 没写数字范围，保持原样作为自动模式
         return url, 1, None
 
 
-# ========= 带重试的请求 =========
 def fetch_with_retry(url, retries=3, timeout=20):
     for attempt in range(1, retries + 1):
         try:
@@ -141,14 +133,13 @@ def fetch_with_retry(url, retries=3, timeout=20):
                 time.sleep(2 * attempt)
     return None
 
-# ========= 解析页面提取链接 =========
+
 def get_links_from_page(url):
     html = fetch_with_retry(url)
     if not html:
         return []
 
     soup = BeautifulSoup(html, "html.parser")
-
     links = set()
 
     # 选择器 1
@@ -168,29 +159,62 @@ def get_links_from_page(url):
 
     return list(links)
 
-# ========= 主流程：自动翻页，连续空页阈值后切类目 =========
+
+def _page_signature(links):
+    """把本页链接做成稳定签名，用于检测重复页面内容"""
+    uniq = sorted(set([normalize_link(x) for x in links if x]))
+    return "|".join(uniq)
+
+
 def camper_get_links():
     all_links = set()
 
     for spec in BASE_URLS:
-        # 关键：先解析 {N} / {A-B} / {} 这三种写法
         base_url, start, end = parse_pagination_spec(spec)
 
         empty_pages = 0
+        consecutive_no_new = 0
+        page_repeat_count = 0
+
+        seen_page_sigs = set()
+
         page = start
         print(f"\n▶️ 入口：{base_url}（页数范围: {start} → {end or 'auto'}）")
+
         while True:
-            url = base_url.format(page)  # 现在 base_url 已是标准 ...page={}
+            url = base_url.format(page)
             print(f"🌐 抓取: {url}")
             links = get_links_from_page(url)
+
+            # ---- 新增：页面签名重复检测（解决：每页都有 8 条但其实是同一批）----
+            sig = _page_signature(links)
+            if sig and sig in seen_page_sigs:
+                page_repeat_count += 1
+                print(f"⚠️ 第 {page} 页页面内容重复（重复计数 {page_repeat_count}/{PAGE_REPEAT_LIMIT}）")
+                if page_repeat_count >= PAGE_REPEAT_LIMIT and end is None:
+                    print("⏹️ 页面内容重复，判定进入兜底/推荐循环页，切换下一个入口")
+                    break
+            else:
+                if sig:
+                    seen_page_sigs.add(sig)
+                page_repeat_count = 0
 
             if links:
                 print(f"✅ 第 {page} 页: {len(links)} 条链接")
                 before = len(all_links)
                 all_links.update(links)
                 added = len(all_links) - before
+
                 if added > 0:
                     print(f"   ↳ 新增 {added} 条（去重后累计 {len(all_links)}）")
+                    consecutive_no_new = 0
+                else:
+                    consecutive_no_new += 1
+                    print(f"   ↳ 本页无新增（连续 {consecutive_no_new}/{NO_NEW_LIMIT}）")
+                    if consecutive_no_new >= NO_NEW_LIMIT and end is None:
+                        print(f"⏹️ 连续 {NO_NEW_LIMIT} 页无新增链接，切换下一个入口")
+                        break
+
                 empty_pages = 0
             else:
                 print(f"⚠️ 第 {page} 页无链接或抓取失败")
@@ -214,6 +238,7 @@ def camper_get_links():
             f.write(link + "\n")
 
     print(f"\n🎉 共抓取链接: {len(all_links)}，已保存到: {LINKS_FILE}")
+
 
 if __name__ == "__main__":
     camper_get_links()
