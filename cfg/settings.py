@@ -9,4 +9,5 @@ SETTINGS = {
     "DEFAULT_STOCK_COUNT": 3,
 }
 
-GLOBAL_CHROMEDRIVER_PATH = r"C:\chromedriver\chromedriver.exe"
+#
+GLOBAL_CHROMEDRIVER_PATH = r"D:\chromedriver\chromedriver.exe"
