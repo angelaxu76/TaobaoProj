@@ -6,13 +6,8 @@ import os
 import threading
 from pathlib import Path
 from typing import Dict, Optional
+from cfg.settings import GLOBAL_CHROMEDRIVER_PATH
 
-# 优先尝试 undetected_chromedriver，没有的话自动回退到普通 webdriver
-try:
-    import undetected_chromedriver as uc
-    _USE_UC = True
-except ImportError:
-    _USE_UC = False
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -28,27 +23,36 @@ _ENV_DRIVER_KEY = "CHROMEDRIVER_PATH"
 
 def _resolve_driver_path() -> Optional[Path]:
     """
-    按优先级自动检查 chromedriver 路径：
-    1) 环境变量 CHROMEDRIVER_PATH
-    2) config.py 中的 GLOBAL_CHROMEDRIVER_PATH
-    3) 找不到则返回 None → 自动回退到 Selenium Manager
+    chromedriver 路径来源（稳定、可控）：
+    1) settings.py 中的 GLOBAL_CHROMEDRIVER_PATH（主配置）
+    2) 环境变量 CHROMEDRIVER_PATH（可选覆盖）
     """
 
-    # 1) 检查环境变量
+    # 1️⃣ 优先使用 settings.py（你锁死的路径）
+    if GLOBAL_CHROMEDRIVER_PATH:
+        p = Path(GLOBAL_CHROMEDRIVER_PATH)
+        if p.is_file():
+            return p
+        else:
+            raise RuntimeError(
+                f"❌ settings.py 中的 GLOBAL_CHROMEDRIVER_PATH 不存在：{p}"
+            )
+
+    # 2️⃣ 可选：环境变量兜底（如果你想保留）
     env_path = os.getenv(_ENV_DRIVER_KEY)
-    if env_path and Path(env_path).is_file():
-        return Path(env_path)
+    if env_path:
+        p = Path(env_path)
+        if p.is_file():
+            return p
+        else:
+            raise RuntimeError(
+                f"❌ 环境变量 {_ENV_DRIVER_KEY} 指向的 chromedriver 不存在：{env_path}"
+            )
 
-    # 2) 检查 config.GLOBAL_CHROMEDRIVER_PATH
-    try:
-        from config import GLOBAL_CHROMEDRIVER_PATH  # type: ignore
-        if GLOBAL_CHROMEDRIVER_PATH and Path(GLOBAL_CHROMEDRIVER_PATH).is_file():  # type: ignore
-            return Path(GLOBAL_CHROMEDRIVER_PATH)  # type: ignore
-    except Exception:
-        pass
-
-    # 找不到 → 返回 None
-    return None
+    # 都没有就直接失败（不允许 Selenium Manager）
+    raise RuntimeError(
+        "❌ 未配置 chromedriver，请在 config/settings.py 中设置 GLOBAL_CHROMEDRIVER_PATH"
+    )
 
 
 def _make_key(name: str) -> str:
@@ -98,16 +102,6 @@ def get_driver(
     headless: bool = True,
     window_size: str = "1200,2000",
 ):
-    """
-    ✅ 保持原函数签名完全一致，不修改任何参数结构。
-    所有现有脚本都可无缝继续调用。
-
-    升级点：
-    - 多线程安全：同一个 name 在不同线程会拿到不同 driver，互不干扰
-    - 优先使用 undetected_chromedriver（如果已安装），更抗封锁
-    - 找不到 uc 时，使用本地 chromedriver（环境变量 / GLOBAL_CHROMEDRIVER_PATH）
-      再不行才走 Selenium Manager（可能会慢）
-    """
     global _DRIVERS
 
     key = _make_key(name)
@@ -116,28 +110,22 @@ def get_driver(
         if key in _DRIVERS:
             return _DRIVERS[key]
 
-        options = _build_chrome_options(headless=headless, window_size=window_size)
+        options = _build_chrome_options(
+            headless=headless,
+            window_size=window_size
+        )
 
-        if _USE_UC:
-            # ⭐ 使用 undetected_chromedriver，适合有 Cloudflare / 反爬的网站
-            print(f"🚗 [get_driver] 使用 undetected_chromedriver (key={key})")
-            driver = uc.Chrome(options=options, headless=headless)
-        else:
-            # 走本地 chromedriver → 避免 Selenium Manager 卡死
-            driver_path = _resolve_driver_path()
-            if driver_path:
-                print(f"🚗 [get_driver] 使用本地 chromedriver: {driver_path} (key={key})")
-                service = Service(str(driver_path))
-                driver = webdriver.Chrome(service=service, options=options)
-            else:
-                print(
-                    f"⚠️ [get_driver] 未检测到本地 chromedriver，"
-                    f"回退 Selenium Manager（可能卡住）(key={key})"
-                )
-                driver = webdriver.Chrome(options=options)
+        # ⭐ 核心：只从 settings.py / env 取 driver
+        driver_path = _resolve_driver_path()
+
+        print(f"🚗 [get_driver] 使用本地 chromedriver: {driver_path} (key={key})")
+
+        service = Service(str(driver_path))
+        driver = webdriver.Chrome(service=service, options=options)
 
         _DRIVERS[key] = driver
         return driver
+
 
 
 def quit_driver(name: str = "default"):
