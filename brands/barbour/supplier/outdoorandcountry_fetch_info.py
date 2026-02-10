@@ -37,6 +37,7 @@ from brands.barbour.supplier.outdoorandcountry_parse_offer_info import parse_off
 
 # ✅ 统一 TXT 写入（与其它站点一致）
 from common_taobao.ingest.txt_writer import format_txt
+from common_taobao.core.selenium_utils import get_driver, quit_all_drivers
 
 # ✅ 尺码清洗（保守：识别不了就原样返回）
 from common_taobao.core.size_utils import clean_size_for_barbour  # 见你上传的实现
@@ -445,21 +446,21 @@ def _ensure_detail_from_size(info: dict):
 # ========== 主流程 ==========
 
 # ========== 多线程 Chrome driver 管理（v2） ==========
-_thread_local_driver = threading.local()
-_all_drivers = set()
-_drivers_lock = threading.Lock()
+# ========== 多线程 Chrome driver 管理（v3：改用 selenium_utils，仍然多线程） ==========
+import threading
+from common_taobao.core.selenium_utils import get_driver as _get_driver_v2
+from common_taobao.core.selenium_utils import quit_all_drivers as _quit_all_drivers_v2
 
+_thread_local_driver = threading.local()
 
 def create_driver(headless: bool = False):
-    options = uc.ChromeOptions()
-    options.add_argument("--start-maximized")
-    if headless:
-        options.add_argument("--headless=new")
-    driver = uc.Chrome(options=options)
-    with _drivers_lock:
-        _all_drivers.add(driver)
-    return driver
-
+    # 仍然返回一个 driver；实际创建交给 selenium_utils
+    # name 固定即可；selenium_utils 内部会自动带线程 id，确保每个线程一个 driver
+    return _get_driver_v2(
+        name="outdoorandcountry",
+        headless=headless,
+        window_size="1920,1080",
+    )
 
 def get_driver(headless: bool = False):
     driver = getattr(_thread_local_driver, "driver", None)
@@ -468,20 +469,15 @@ def get_driver(headless: bool = False):
         _thread_local_driver.driver = driver
     return driver
 
-
 def shutdown_all_drivers():
-    with _drivers_lock:
-        for d in list(_all_drivers):
-            try:
-                d.quit()
-            except Exception:
-                pass
-        _all_drivers.clear()
+    # 关闭所有线程的 driver
+    _quit_all_drivers_v2()
 
 
 def process_url(url, output_dir):
-    driver = get_driver()
+    
     try:
+        driver = get_driver()
         print(f"\n🌐 正在抓取: {url}")
         driver.get(url)
         accept_cookies(driver)
@@ -569,8 +565,8 @@ def outdoorandcountry_fetch_info(max_workers=3):
     try:
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [executor.submit(process_url, url, output_dir) for url in urls]
-            for _ in as_completed(futures):
-                pass
+            for fut in as_completed(futures):
+                fut.result()
     finally:
         shutdown_all_drivers()
 

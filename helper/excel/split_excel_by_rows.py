@@ -3,9 +3,9 @@ import math
 from pathlib import Path
 
 # ======== 参数配置 ========
-input_file = Path(r"D:\TEMP1\Export.xlsx")  # 输入文件路径
-output_dir = Path(r"D:\TEMP1\split_excel")  # 输出目录
-num_parts = 4  # 分成几份（整数）
+input_file = Path(r"C:\Users\angel\Downloads\batchDistributeTemplate.xlsx")  # 输入文件路径
+output_dir = Path(r"g:\TEMP\split_excel")  # 输出目录
+num_parts = 5  # 分成几份（整数）
 
 # 创建输出目录
 output_dir.mkdir(parents=True, exist_ok=True)
