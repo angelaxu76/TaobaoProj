@@ -3,7 +3,7 @@ from config import BARBOUR
 from common_taobao.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 from brands.barbour.supplier.barbour_get_links import barbour_get_links
 from brands.barbour.supplier.barbour_fetch_info import barbour_fetch_info
-from brands.barbour.supplier.outdoorandcountry_fetch_info import outdoorandcountry_fetch_info
+from brands.barbour.supplier.outdoorandcountry_fetch_info_v2 import outdoorandcountry_fetch_info
 from brands.barbour.supplier.outdoorandcountry_get_links import outdoorandcountry_fetch_and_save_links
 from brands.barbour.supplier.allweathers_get_links import allweathers_get_links
 from brands.barbour.supplier.allweathers_fetch_info import allweathers_fetch_info
@@ -41,7 +41,7 @@ def barbour_database_import_pipleline():
 
     # print("步骤 2：抓取商品信息并存为TXT")
     # barbour_fetch_info()
-    outdoorandcountry_fetch_info(max_workers=1)
+    outdoorandcountry_fetch_info(max_workers=15)
     # allweathers_fetch_info(7)
     # houseoffraser_fetch_info(max_workers=15, headless=False)
     # very_fetch_info(max_workers=15)
