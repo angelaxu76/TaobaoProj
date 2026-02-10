@@ -244,10 +244,13 @@ def _build_sizes_from_offers(offers, gender: str):
 
 
 # ========== 多线程 driver 管理（接口不变） ==========
+# ========== 多线程 driver 管理（v4.1：定期重启，防止越跑越慢） ==========
 _thread_local_driver = threading.local()
 
+# 每个线程跑多少个页面就重启一次 driver（建议 30~80 之间）
+_RESTART_EVERY = 50
+
 def create_driver(headless: bool = False):
-    # v4：强制无头 + 小窗口更快（你可改回 headless=headless）
     return _get_driver_v2(
         name="outdoorandcountry",
         headless=True,
@@ -255,14 +258,30 @@ def create_driver(headless: bool = False):
     )
 
 def get_driver(headless: bool = False):
-    driver = getattr(_thread_local_driver, "driver", None)
-    if driver is None:
-        driver = create_driver(headless=headless)
-        _thread_local_driver.driver = driver
-    return driver
+    d = getattr(_thread_local_driver, "driver", None)
+    n = getattr(_thread_local_driver, "count", 0)
+
+    # 如果没有 driver，或到达重启阈值，则重建
+    if d is None or n >= _RESTART_EVERY:
+        try:
+            if d is not None:
+                d.quit()
+        except Exception:
+            pass
+
+        d = create_driver(headless=headless)
+        _thread_local_driver.driver = d
+        _thread_local_driver.count = 0
+        return d
+
+    return d
+
+def mark_driver_used():
+    _thread_local_driver.count = getattr(_thread_local_driver, "count", 0) + 1
 
 def shutdown_all_drivers():
     _quit_all_drivers_v2()
+
 
 
 # ========== v4：挑战页检测 + 轻量重试 ==========
@@ -360,6 +379,8 @@ def process_url(url, output_dir):
 
     except Exception as e:
         print(f"❌ 处理失败: {url}\n    {repr(e)}", flush=True)
+    finally:
+        mark_driver_used()
 
 
 def outdoorandcountry_fetch_info(max_workers=3):
