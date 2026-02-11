@@ -27,7 +27,7 @@ def run_color_map_learning():
             conn,
             rows,
             source="learned_from_products",
-            dry_run=True,
+            dry_run=False,
         )
 
         # 可选：打印冲突色
