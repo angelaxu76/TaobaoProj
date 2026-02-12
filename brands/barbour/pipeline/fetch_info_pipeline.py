@@ -33,7 +33,7 @@ def barbour_database_import_pipleline():
     # barbour_get_links()
     # outdoorandcountry_fetch_and_save_links()
     # allweathers_get_links()
-    # houseoffraser_get_links()
+    houseoffraser_get_links()
     # very_get_links()
     # collect_terraces_links()
     # philipmorris_get_links()
@@ -43,10 +43,10 @@ def barbour_database_import_pipleline():
     # barbour_fetch_info()
     # outdoorandcountry_fetch_info(max_workers=15)
     # allweathers_fetch_info(7)
-    # houseoffraser_fetch_info(max_workers=15, headless=False)
+    houseoffraser_fetch_info(max_workers=15, headless=False)
     # very_fetch_info(max_workers=15)
     # terraces_fetch_info(max_workers=15)
-    philipmorris_fetch_info_v2(max_workers=10)
+    # philipmorris_fetch_info_v2(max_workers=10)
     # cho_fetch_info(max_workers=15)
 
 

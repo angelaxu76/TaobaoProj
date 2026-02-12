@@ -396,6 +396,7 @@ def fetch_one_product(url: str, idx: int, total: int):
         txt_path = TXT_DIR / f"{safe_code}.txt"
 
         format_txt(info, txt_path, brand="Barbour")
+        print(f"✅ 写入 TXT: {txt_path.name} | {url}")
         return (url, "✅ 成功")
     except Exception as e:
         return (url, f"❌ 失败: {e}")

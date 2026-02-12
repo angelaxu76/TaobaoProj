@@ -203,16 +203,26 @@ def houseoffraser_get_links():
 
     driver = get_driver()
 
-    # ✅ 只在首次加载第一个分类前停留 10 秒手动点击 Cookie（后续复用同一实例）
-    print("🕒 已打开浏览器，将打开首分类第1页。请在 10 秒内手动点击 Cookie 的 'Allow all' 按钮...")
-    driver.get(BASE_URLS[0])
-    time.sleep(10)
-    print("✅ 已等待 10 秒，开始正式抓取")
+    try:
+        # ✅ 只在首次加载第一个分类前停留 10 秒手动点击 Cookie（后续复用同一实例）
+        print("🕒 已打开浏览器，将打开首分类第1页。请在 10 秒内手动点击 Cookie 的 'Allow all' 按钮...")
+        driver.get(BASE_URLS[0])
+        time.sleep(10)
+        print("✅ 已等待 10 秒，开始正式抓取")
 
-    all_links = set()
+        all_links = set()
 
-    # 先抓第一个分类（当前已在它的第1页，_crawl_category 内会从头开始处理）
-    print(f"\n===== 🧭 当前分类：{BASE_URLS[0]} =====")
-    _crawl_category(driver, BASE_URLS[0], all_links)
+        # ✅ 依次抓取两个分类（Barbour / Barbour International）
+        for base_url in BASE_URLS:
+            print(f"\n===== 🧭 当前分类：{base_url} =====")
+            _crawl_category(driver, base_url, all_links)
 
-    # 切换第二个分类
+        # ✅ 写入 txt（覆盖写）
+        links_sorted = sorted(all_links)
+        OUTPUT_PATH.write_text("\n".join(links_sorted), encoding="utf-8")
+
+        print(f"\n✅ 抓取完成：共 {len(links_sorted)} 条链接")
+        print(f"📝 已写入: {OUTPUT_PATH}")
+
+    finally:
+        quit_driver(driver)
