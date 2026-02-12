@@ -18,17 +18,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import re
 import json
 import unicodedata
-import undetected_chromedriver as uc
 from bs4 import BeautifulSoup
 from selenium.webdriver.common.by import By
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Connection
+from common_taobao.core.selenium_utils import get_driver, quit_driver
 
 # ---- 项目内模块（保持不变）----
 from config import BARBOUR, BRAND_CONFIG, SETTINGS
 from brands.barbour.core.site_utils import assert_site_or_raise as canon
 from common_taobao.core.size_utils import clean_size_for_barbour as _norm_size  # 尺码清洗
-from common_taobao.core.driver_auto import build_uc_driver  # 目前没用，但保留以兼容原代码
 
 DEFAULT_STOCK_COUNT = SETTINGS.get("DEFAULT_STOCK_COUNT", 3)
 
@@ -525,19 +524,7 @@ def _dump_debug(html: str, url: str, tag: str = "debug_new"):
 # ================== driver / fetch（保留你原逻辑；这里提供兜底） ==================
 _DRIVER_LOCK = threading.Lock()
 
-def get_driver(headless: bool = False):
-    options = uc.ChromeOptions()
-    if headless:
-        options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    # 每线程独立 profile（你原来就是这个思路）
-    user_data_dir = tempfile.mkdtemp(prefix="hof_profile_")
-    options.add_argument(f"--user-data-dir={user_data_dir}")
-    driver = uc.Chrome(options=options)
-    driver.set_page_load_timeout(60)
-    return driver
+
 
 
 def fetch_html_with_driver(driver, url: str) -> str:
@@ -702,7 +689,11 @@ def houseoffraser_fetch_info(
     try:
         first_processed = False
         if urls:
-            driver = get_driver(headless=headless)
+            driver = get_driver(
+                name="houseoffraser",
+                headless=headless,
+                window_size="1200,2000",
+            )
             first_url = urls[0]
             print("🕒 将打开首个商品页。请在 10 秒内手动点击 Cookie 的 'Allow all' 按钮.")
             driver.get(first_url)
@@ -722,7 +713,7 @@ def houseoffraser_fetch_info(
                     fail += 1
 
             try:
-                driver.quit()
+                quit_driver("houseoffraser")
             except Exception:
                 pass
 
@@ -734,14 +725,18 @@ def houseoffraser_fetch_info(
             return
 
         def _worker(u: str):
-            d = get_driver(headless=headless)
+            d = get_driver(
+                name="houseoffraser",
+                headless=headless,
+                window_size="1200,2000",
+            )
             try:
                 with engine.begin() as conn:
                     print(f"[启动] {u}")
                     return process_url_with_driver(d, u, conn=conn, delay=delay)
             finally:
                 try:
-                    d.quit()
+                    quit_driver("houseoffraser")
                 except Exception:
                     pass
 
