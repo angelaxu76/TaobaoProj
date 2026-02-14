@@ -305,7 +305,7 @@ def outdoorandcountry_fetch_info(
     """
     setup_logging()
 
-    effective = min(int(max_workers), EFFECTIVE_MAX_WORKERS)
+    effective = int(max_workers)
     print(f"🔄 Outdoor&Country v3: 请求并发 {max_workers}, 有效并发 {effective}", flush=True)
 
     fetcher = OutdoorAndCountryFetcher(
