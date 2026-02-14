@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(wc:*)",
+      "Bash(python -c:*)",
+      "Bash(python -m brands.barbour.supplier.test_refactored_fetchers:*)",
+      "Bash(python -u -m brands.barbour.supplier.test_refactored_fetchers)",
+      "Bash(iconv:*)"
+    ]
+  }
+}

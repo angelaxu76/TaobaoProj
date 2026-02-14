@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Read(//d/Projects/VS-TaobaoProj/TaobaoProj/**)"
+    ]
+  }
+}

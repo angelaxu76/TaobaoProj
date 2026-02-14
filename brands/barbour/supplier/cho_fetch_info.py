@@ -152,23 +152,43 @@ def _load_product_jsonld(soup: BeautifulSoup) -> dict:
 
 def _extract_code_from_description(desc: str) -> str:
     """
-    从 description 末尾提取 Barbour 编码，如 MQU0281NY71。
-    一般在最后一行。
+    从 description 末尾提取 Barbour 编码.
+    完整格式: MQU0281NY71 (11字符: 3字母+4数字+2字母+2数字)
+    截断格式: LCA0362     (7字符: 3字母+4数字, CHO 常见)
+    优先匹配完整格式, 其次匹配截断格式.
     """
     if not desc:
         return "No Data"
-    # 先按行拆分，取最后一个非空行
+
+    FULL_PAT = r"\b[A-Z]{2,3}\d{4}[A-Z]{2}\d{2}\b"
+    SHORT_PAT = r"\b[A-Z]{2,3}\d{4}\b"
+
     lines = [l.strip() for l in desc.splitlines() if l.strip()]
+
+    # 1) 最后一行找完整格式
     if lines:
         last = lines[-1]
-        m = re.search(r"\b[A-Z0-9]{3}\d{4}[A-Z0-9]{2}\d{2}\b", last)
+        m = re.search(FULL_PAT, last)
         if m:
             return m.group(0)
 
-    # 全文兜底：取最后一个匹配
-    m_all = list(re.finditer(r"\b[A-Z0-9]{3}\d{4}[A-Z0-9]{2}\d{2}\b", desc))
+    # 2) 全文找完整格式
+    m_all = list(re.finditer(FULL_PAT, desc))
     if m_all:
         return m_all[-1].group(0)
+
+    # 3) 最后一行找截断格式
+    if lines:
+        last = lines[-1]
+        m = re.search(SHORT_PAT, last)
+        if m:
+            return m.group(0)
+
+    # 4) 全文找截断格式
+    m_all = list(re.finditer(SHORT_PAT, desc))
+    if m_all:
+        return m_all[-1].group(0)
+
     return "No Data"
 
 

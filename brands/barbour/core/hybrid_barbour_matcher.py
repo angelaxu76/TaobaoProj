@@ -29,9 +29,15 @@ try:
 except Exception:
     _normalize_color = None
 
+# --- 复用：简单颜色清洗（跨站点比较用） ---
+try:
+    from brands.barbour.core.color_norm import norm_color as _norm_color
+except Exception:
+    _norm_color = None
+
 # --- 复用：通用颜色+名称 resolver（你已有，里面会调用 match_resolver）---
 try:
-    from common_taobao.matching.color_code_resolver import find_color_code_by_keywords
+    from brands.barbour.core.color_code_resolver import find_color_code_by_keywords
 except Exception:
     find_color_code_by_keywords = None
 
@@ -93,6 +99,98 @@ def normalize_color_for_site(color: str) -> str:
         except Exception:
             return c.lower()
     return c.lower()
+
+
+def resolve_by_partial_code(
+    raw_conn,
+    partial_code: str,
+    scraped_color: str,
+    products_table: str = "barbour_products",
+) -> Tuple[Optional[str], Dict[str, Any]]:
+    """
+    当网站只提供截断编码（如 LQU0475，7 位无颜色后缀）时：
+    1. SELECT product_code, color FROM barbour_products WHERE product_code ILIKE 'LQU0475%'
+    2. 用 norm_color 对比颜色，精确匹配对应色号的完整编码
+    3. 如果只有一个候选，直接返回（无需颜色比较）
+
+    Returns:
+        (product_code 或 None, debug_dict)
+    """
+    dbg: Dict[str, Any] = {
+        "stage": "partial_code",
+        "partial_code": partial_code,
+        "scraped_color": scraped_color,
+        "candidates": [],
+        "reason": "",
+    }
+
+    if not partial_code or len(partial_code) < 7:
+        dbg["reason"] = "SKIP_TOO_SHORT"
+        return None, dbg
+
+    tbl = _sql_ident(products_table) or "barbour_products"
+
+    # 查询所有以 partial_code 为前缀的 product_code
+    sql = f"""
+        SELECT DISTINCT product_code, color
+        FROM {tbl}
+        WHERE product_code ILIKE %s
+    """
+    try:
+        with raw_conn.cursor() as cur:
+            cur.execute(sql, (f"{partial_code}%",))
+            rows = cur.fetchall()
+    except Exception as e:
+        dbg["reason"] = f"DB_ERROR: {e}"
+        try:
+            raw_conn.rollback()
+        except Exception:
+            pass
+        return None, dbg
+
+    if not rows:
+        dbg["reason"] = "NO_CANDIDATES"
+        return None, dbg
+
+    # 去重：按 product_code 分组
+    candidates = {}
+    for code, color in rows:
+        if code not in candidates:
+            candidates[code] = color or ""
+
+    dbg["candidates"] = [{"code": c, "color": clr} for c, clr in candidates.items()]
+
+    # 只有一个候选 → 直接返回
+    if len(candidates) == 1:
+        code = next(iter(candidates))
+        dbg["reason"] = "UNIQUE_MATCH"
+        return code, dbg
+
+    # 多个候选 → 用颜色比较
+    norm_func = _norm_color or (lambda x: (x or "").strip().lower().split("/")[0].split()[0] if x else "")
+    scraped_norm = norm_func(scraped_color)
+
+    if not scraped_norm:
+        dbg["reason"] = "NO_COLOR_TO_COMPARE"
+        return None, dbg
+
+    matched = []
+    for code, db_color in candidates.items():
+        db_norm = norm_func(db_color)
+        if scraped_norm == db_norm:
+            matched.append(code)
+
+    if len(matched) == 1:
+        dbg["reason"] = "COLOR_MATCHED"
+        return matched[0], dbg
+
+    if len(matched) > 1:
+        # 多个颜色匹配（不应该发生，但兜底取第一个）
+        dbg["reason"] = "MULTI_COLOR_MATCH"
+        return matched[0], dbg
+
+    dbg["reason"] = "COLOR_MISMATCH"
+    return None, dbg
 
 
 def load_lexicon_set(raw_conn, brand: str, level: int) -> set[str]:
@@ -281,6 +379,7 @@ def resolve_product_code(
     scraped_title: str,
     scraped_color: str,
     sku_guess: Optional[str],
+    partial_code: Optional[str] = None,    # ★ 截断编码 (如 LQU0475)
     products_table: str = "barbour_products",
     offers_table: Optional[str] = None,   # 站点脚本可不用传
     url_code_cache: Optional[Dict[str, str]] = None,
@@ -325,6 +424,26 @@ def resolve_product_code(
             trace["final"] = {"code": cached, "by": "url_cache"}
             return cached, trace
         trace["steps"].append({"stage": "url_cache", "status": "miss"})
+
+    # 1.5) ★ 截断编码 + 颜色匹配（如 LQU0475 → LQU0475OL71）
+    if partial_code and len(partial_code) >= 7:
+        try:
+            pc_result, pc_dbg = resolve_by_partial_code(
+                raw_conn,
+                partial_code=partial_code,
+                scraped_color=scraped_color or "",
+                products_table=products_table,
+            )
+            trace["steps"].append({
+                "stage": "partial_code",
+                "status": "hit" if pc_result else "miss",
+                "detail": pc_dbg,
+            })
+            if pc_result:
+                trace["final"] = {"code": pc_result, "by": "partial_code"}
+                return pc_result, trace
+        except Exception as e:
+            trace["steps"].append({"stage": "partial_code", "status": "error", "error": str(e)})
 
     # 2) 颜色+标题模糊匹配（优先用你已有的 color_code_resolver，它内部有详细 debug）
     if find_color_code_by_keywords:
