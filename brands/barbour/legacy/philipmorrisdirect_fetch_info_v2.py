@@ -1,24 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Philip Morris Direct | Barbour 商品抓取（v2 增强版）
+Philip Morris Direct | Barbour 商品抓取（v2：增加 DB 兜底匹配）
 
-在原版基础上增强点：
-1. 更强的完整商品编码提取能力：
-   - 支持 MPN: XXXXXX, YYYYYY
-   - 支持 MANUFACTURER'S CODESXXXXXX...
-   - 支持全文兜底匹配 XXX0000YY00 结构
-2. 多颜色页面：
-   - 先从整页提取所有完整 MPN
-   - 再按款式 + 颜色码，给每个颜色匹配独立的编码
-   - 每个颜色写一个 TXT（库存/价格按该颜色实际数据）
-3. 单色页面：
-   - 如果找到完整 MPN（例如 DAC0004BR15），直接用这个编码写 TXT
-   - 找不到才走 style + color → color_map + DB 的兜底逻辑
-4. 保留原有：
-   - 多线程抓取
-   - driver 自动重建
-   - TXT / TXT.problem 分流
-   - unknown_colors.csv / problem_summary.csv 记录
+在 v1 基础上增强点：
+1. 保留 v1 的 MPN 提取逻辑 (basic)，新增 PLUS 版本做兜底，不影响原有成功案例。
+2. PLUS 版本额外支持：
+   - MPN: <span>MSH5303PI51, MSH5303BL32</span> 这类带标签形式
+   - JSON-LD 里包含 \u00a0 的 "MPN: ..." 字符串
+   - MANUFACTURER'S CODESDAC0004BR15 这类紧挨着的文本
+3. 多颜色页面：依然逐色点击获取库存/价格，并利用 MPN + 颜色码为每个颜色选择正确的编码 → 多个 TXT。
+4. 单色页面：如果有完整 MPN（含 DAC0004BR15 这种），直接用 MPN 写 TXT，不依赖 DB。
+5. 若所有网页方法都失败，再使用款式 + 颜色 → color_map + barbour_products 的兜底方案。
 """
 
 import re
@@ -61,7 +53,6 @@ LINKS_FILE: Path = BARBOUR["LINKS_FILES"]["philipmorris"]
 TXT_DIR: Path = BARBOUR["TXT_DIRS"]["philipmorris"]
 SITE_NAME = "Philip Morris"
 PGSQL_CONFIG = BARBOUR["PGSQL_CONFIG"]
-COLOR_CODE_MAP = BARBOUR["BARBOUR_COLOR_CODE_MAP"]
 
 TXT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -95,7 +86,7 @@ def create_driver(headless: bool = True):
     chrome_options.add_argument("user-agent=Mozilla/5.0")
     chrome_options.add_argument("--blink-settings=imagesEnabled=false")
 
-    print("🚗 [get_driver] 创建新的 Chrome driver (PhilipMorris v2)")
+    print("🚗 [get_driver] 创建新的 Chrome driver (PhilipMorris v3)")
     driver = webdriver.Chrome(options=chrome_options)
 
     try:
@@ -169,7 +160,7 @@ def accept_cookies(driver, timeout: int = 5):
 
 
 def sanitize_filename(name: str) -> str:
-    return re.sub(r"[\\/:*?\"<>|'\\s]+", "_", (name or "")).strip("_")
+    return re.sub(r"[\\/:*?\"<>|\s]+", "_", (name or "")).strip("_")
 
 
 #########################################
@@ -182,9 +173,6 @@ _COLOR_MAP_LOCK = threading.Lock()
 
 
 def _normalize_color_tokens(s: str) -> List[str]:
-    """
-    把颜色名统一成单词列表，用来做“完全同一组单词”的匹配。
-    """
     if not s:
         return []
     s = s.lower()
@@ -298,16 +286,13 @@ def record_problem_item(style, color, product_code, reason, url):
 
 
 #########################################
-# 商品编码提取（MPN / MANUFACTURER'S CODES）
+# 商品编码提取：basic + PLUS
 #########################################
 
-def extract_all_mpns(html: str) -> List[str]:
+def extract_all_mpns_basic(html: str) -> List[str]:
     """
-    提取网页所有可能出现的 Barbour 完整 MPN。
-    例如：
-      - MPN: MQU0888SG91, MQU0888NY91
-      - MANUFACTURER'S CODESDAC0004BR15
-      - 任意 HTML 中的 XXX0000YY00 结构
+    v2 原有逻辑：提取网页所有可能出现的 Barbour 完整 MPN。
+    保持不变，作为 basic 版本。
     """
     if not html:
         return []
@@ -327,8 +312,7 @@ def extract_all_mpns(html: str) -> List[str]:
                     seen.add(token)
                     results.append(token)
 
-    # 2) 匹配 MANUFACTURER'S CODES 段
-    #    兼容 MANUFACTURERS / MANUFACTURER'S / CODE / CODES 等写法
+    # 2) MANUFACTURER'S CODES 段
     for m in re.finditer(
         r"MANUFACTURER'?S\s+CODE\S*([A-Z]{3}\d{4}[A-Z]{2}\d{2,4})",
         text,
@@ -339,36 +323,127 @@ def extract_all_mpns(html: str) -> List[str]:
             seen.add(token)
             results.append(token)
 
-    # 3) 全文兜底匹配（无 \b，能匹配 CODESDAC0004BR15 这种）
+    # 3) 全文兜底匹配
     for token in re.findall(r"([A-Z]{3}\d{4}[A-Z]{2}\d{2,4})", text):
         token = token.upper()
         if token not in seen:
             seen.add(token)
             results.append(token)
 
-    if results:
-        print(f"🔍 extract_all_mpns: {results}")
     return results
 
 
-def extract_full_mpn(html: str) -> Optional[str]:
+def extract_all_mpns_plus(html: str) -> List[str]:
     """
-    兼容旧接口：只取第一个完整 MPN。
+    PLUS 版：在 basic 结果基础上，额外处理：
+      - MPN: <span>XXXX, YYYY</span>
+      - JSON-LD 里的 "MPN:\u00a0XXXX"
+      - MANUFACTURER'S CODESDAC0004BR15 这类紧挨着的情况
     """
-    mpns = extract_all_mpns(html)
+    if not html:
+        return []
+
+    # 先拿 basic 结果
+    base = extract_all_mpns_basic(html)
+    seen = set(base)
+    results = list(base)
+
+    # 规范化文本：处理 \u00a0 / &nbsp;
+    text_norm = (
+        html.replace("\\u00a0", " ")
+        .replace("&nbsp;", " ")
+    )
+
+    # 1) MPN: <span>XXX, YYY</span>
+    m = re.search(
+        r"MPN:\s*(?:<[^>]*>)*\s*([A-Z0-9,\s]+)</",
+        text_norm,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        raw = m.group(1)
+        for token in re.split(r"[,\s]+", raw):
+            token = token.strip().upper()
+            if re.match(r"^[A-Z]{3}\d{4}[A-Z]{2}\d{2,4}$", token):
+                if token not in seen:
+                    seen.add(token)
+                    results.append(token)
+
+    # 2) JSON-LD 里或文本中：MPN: XXX, YYY Colour: ...
+    m = re.search(r"MPN:\s*([A-Z0-9,\s]+)", text_norm, re.I)
+    if m:
+        raw = m.group(1)
+        for token in re.split(r"[,\s]+", raw):
+            token = token.strip().upper()
+            if re.match(r"^[A-Z]{3}\d{4}[A-Z]{2}\d{2,4}$", token):
+                if token not in seen:
+                    seen.add(token)
+                    results.append(token)
+
+    # 3) MANUFACTURER'S CODES 紧挨着
+    for m in re.finditer(
+        r"MANUFACTURER'?S\s+CODE\S*([A-Z]{3}\d{4}[A-Z]{2}\d{2,4})",
+        text_norm,
+        flags=re.IGNORECASE,
+    ):
+        token = m.group(1).upper()
+        if re.match(r"^[A-Z]{3}\d{4}[A-Z]{2}\d{2,4}$", token):
+            if token not in seen:
+                seen.add(token)
+                results.append(token)
+
+    # 4) 再做一次全局兜底（在规范化文本上）
+    for token in re.findall(r"([A-Z]{3}\d{4}[A-Z]{2}\d{2,4})", text_norm):
+        token = token.upper()
+        if token not in seen:
+            seen.add(token)
+            results.append(token)
+
+    if results:
+        print(f"🔍 extract_all_mpns_plus: {results}")
+    return results
+
+
+# v3 对外统一使用 PLUS 版本
+def extract_all_mpns(html: str) -> List[str]:
+    return extract_all_mpns_plus(html)
+
+
+def extract_full_mpn_basic(html: str) -> Optional[str]:
+    """
+    兼容旧接口：basic 版本，仅使用 v2 的逻辑。
+    """
+    mpns = extract_all_mpns_basic(html)
+    return mpns[0] if mpns else None
+
+
+def extract_full_mpn_plus(html: str) -> Optional[str]:
+    """
+    PLUS 版本：基于 extract_all_mpns_plus。
+    """
+    mpns = extract_all_mpns_plus(html)
     return mpns[0] if mpns else None
 
 
 def extract_style_code(html: str) -> Optional[str]:
     """
     提取 7 位款式编码（不含颜色/尺码，例如 MCA1053 / DAC0004）。
-    优先从完整 MPN 截取前 7 位；不行再用原来的兜底逻辑。
+
+    优先级：
+      1）extract_full_mpn_basic
+      2）extract_full_mpn_plus
+      3）原有兜底逻辑（保持兼容）
     """
     text = html or ""
 
-    full_mpn = extract_full_mpn(text)
+    full_mpn = extract_full_mpn_basic(text)
+    if not full_mpn:
+        full_mpn = extract_full_mpn_plus(text)
+
     if full_mpn:
         return full_mpn[:7]
+
+    # 下面是 v2 的兜底逻辑
 
     mpn = re.search(r"MPN:\s*([A-Z0-9,\s]+)", text, re.I)
     if mpn:
@@ -461,12 +536,75 @@ def build_size_str(sizes):
 # 数据库匹配
 #########################################
 
+
 def find_product_code_in_db(style: str, color: str, conn, url: str):
     """
     通过 款式编码 + 颜色英文，从 barbour_products 中找到真正的 product_code。
+
+    v2 新增：DB 兜底匹配
+    - 默认路径：style + (color_map 映射的 2 位颜色码) 前缀匹配 product_code
+    - 兜底路径：若默认路径失败（或 color_map 没有该颜色），则用 style + 颜色文本直接在 barbour_products 中匹配
+      例如：style='MWX0017', color='Bark' 可命中 product_code='MWX0017BE51...'（只要表里存在）
     """
     if not style or not color or not conn:
         return None
+
+    style_u = style.strip().upper()
+    color_s = (color or "").strip()
+
+    sql_prefix = """
+        SELECT product_code
+        FROM barbour_products
+        WHERE product_code ILIKE %s
+        ORDER BY product_code
+        LIMIT 1
+    """
+
+    sql_fallback = """
+        SELECT product_code
+        FROM barbour_products
+        WHERE SUBSTRING(product_code, 1, 7) = %s
+          AND (
+                LOWER(TRIM(color)) = LOWER(TRIM(%s))
+                OR color ILIKE %s
+          )
+        ORDER BY product_code
+        LIMIT 1
+    """
+
+    color_codes = map_color_to_codes(color_s) or []
+
+    with conn.cursor() as cur:
+        # A) 默认：style + code2 前缀查找
+        if color_codes:
+            for abbr in color_codes:
+                prefix = f"{style_u}{abbr}"
+                cur.execute(sql_prefix, (prefix + "%",))
+                row = cur.fetchone()
+                if row and row[0]:
+                    return row[0]
+
+            # 特例：Sage SG → GN（历史兼容）
+            if color_s.lower() == "sage" and "SG" in color_codes and "GN" not in color_codes:
+                alt_prefix = f"{style_u}GN"
+                cur.execute(sql_prefix, (alt_prefix + "%",))
+                row = cur.fetchone()
+                if row and row[0]:
+                    return row[0]
+        else:
+            # 颜色未映射：先记录，但不要直接失败，继续走兜底
+            print(f"⚠️ 未找到颜色简写映射（将走 DB 兜底）：{style_u} / {color_s}")
+            record_unknown_color(style_u, color_s, url)
+
+        # B) 兜底：style + 颜色文本直接匹配 barbour_products.color
+        cur.execute(sql_fallback, (style_u, color_s, f"%{color_s}%"))
+        row = cur.fetchone()
+        if row and row[0]:
+            print(f"✅ DB 兜底匹配成功：{style_u} / {color_s} -> {row[0]}")
+            return row[0]
+
+    print(f"⚠️ 数据库未匹配到：{style_u} / {color_s} / codes={color_codes}")
+    return None
 
     color_codes = map_color_to_codes(color)
     if not color_codes:
@@ -502,7 +640,7 @@ def find_product_code_in_db(style: str, color: str, conn, url: str):
 
 
 #########################################
-# 根据颜色在 MPN 列表中选择对应编码（多颜色场景）
+# 多颜色页面：颜色 → MPN 选择
 #########################################
 
 def choose_mpn_for_color(
@@ -532,9 +670,7 @@ def choose_mpn_for_color(
     for mpn in all_mpns:
         if not mpn.startswith(style):
             continue
-        # Barbour 一般是 3字母 + 4数字 + 2字母 + 2数字
-        # color_code 基本在第 7~8 位（索引 7:9）
-        color_code_part = mpn[len(style) : len(style) + 2]
+        color_code_part = mpn[len(style): len(style) + 2]
         if color_code_part in codes_for_color:
             candidates.append(mpn)
 
@@ -556,12 +692,11 @@ def process_url(url: str, output_dir: Path):
     """
     处理单个 URL（含自动重试 2 次）
     """
-
     for attempt in range(2):
         driver = get_driver(headless=True)
 
         try:
-            print(f"\n🌐 抓取({attempt+1}/2): {url}")
+            print(f"\n🌐 [v2] 抓取({attempt+1}/2): {url}")
             driver.get(url)
             accept_cookies(driver)
             time.sleep(2)
@@ -569,7 +704,7 @@ def process_url(url: str, output_dir: Path):
             html = driver.page_source
             soup = BeautifulSoup(html, "html.parser")
 
-            # 提取款式名/描述/价格（页面层面）
+            # 基础信息
             style = extract_style_code(html) or ""
             name = soup.find("h1", class_="productView-title")
             product_name = name.text.strip() if name else "No Data"
@@ -579,15 +714,15 @@ def process_url(url: str, output_dir: Path):
 
             base_orig, base_sale = extract_prices(soup)
 
-            # 提取整页所有 MPN（可能多色）
+            # 整页所有 MPN（可能多色）
             all_mpns = extract_all_mpns(html)
 
-            # 颜色按钮（如有）
+            # 颜色按钮
             color_elems = driver.find_elements(By.CSS_SELECTOR, "label.form-option.label-img")
             variants = []
 
             if color_elems:
-                # 多颜色：依然按颜色逐个点击，分别抓库存/价格
+                # 多颜色：逐个点击颜色
                 for idx in range(len(color_elems)):
                     color_elems = driver.find_elements(
                         By.CSS_SELECTOR, "label.form-option.label-img"
@@ -628,7 +763,7 @@ def process_url(url: str, output_dir: Path):
                         }
                     )
             else:
-                # 无颜色按钮 → 单色商品
+                # 单色
                 print("⚠️ 无颜色选项 → 视为单色")
                 color = "No Data"
                 sizes = extract_sizes(html)
@@ -671,21 +806,19 @@ def process_url(url: str, output_dir: Path):
                 reason = ""
                 codes_for_color: List[str] = []
 
-                # ========== A) 优先用网页上的完整编码 ==========
+                # A) 优先使用网页上能拿到的完整编码
                 if single_color_mode and all_mpns:
-                    # 单色页面：直接用第一个 MPN（典型如 DAC0004BR15）
+                    # 单色：直接用第一个 MPN
                     product_code = all_mpns[0]
                     print(f"  ✅ 单色页面使用完整 MPN: {product_code}")
                 elif all_mpns:
-                    # 多颜色页面：尝试按颜色选择对应 MPN
+                    # 多颜色：按颜色选对应 MPN
                     mpn_for_color = choose_mpn_for_color(style, color, all_mpns)
                     if mpn_for_color:
                         product_code = mpn_for_color
-                        print(
-                            f"  ✅ 多颜色页面：为 {color} 选择 MPN {product_code}"
-                        )
+                        print(f"  ✅ 多颜色页面：为 {color} 选择 MPN {product_code}")
 
-                # ========== B) A 失败 → 用款式 + 颜色 + DB ==========
+                # B) A 失败 → 款式 + 颜色 + DB
                 if not product_code:
                     if conn:
                         codes_for_color = map_color_to_codes(color)
@@ -693,11 +826,9 @@ def process_url(url: str, output_dir: Path):
                         codes_for_color = []
 
                     if style and conn:
-                        product_code = find_product_code_in_db(
-                            style, color, conn, url
-                        )
+                        product_code = find_product_code_in_db(style, color, conn, url)
 
-                # ========== C) 根据是否拿到完整编码决定 TXT 目录 ==========
+                # C) 根据是否拿到完整编码决定 TXT 目录
                 if product_code:
                     target_dir = TXT_DIR
                     info["Product Code"] = product_code
@@ -746,7 +877,7 @@ def process_url(url: str, output_dir: Path):
 
 
 #########################################
-# 批量入口（v2）
+# 批量入口（v3）
 #########################################
 
 def philipmorris_fetch_info_v2(max_workers: int = 3):
@@ -775,6 +906,6 @@ def philipmorris_fetch_info_v2(max_workers: int = 3):
 
 
 if __name__ == "__main__":
-    # 你可以先在命令行用 v2 单独跑：
+    # 建议先单测少量链接，再跑全量：
     #   python philipmorrisdirect_fetch_info_v2.py
     philipmorris_fetch_info_v2(max_workers=10)

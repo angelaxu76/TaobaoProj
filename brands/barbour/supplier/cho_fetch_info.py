@@ -1,102 +1,63 @@
-# brands/barbour/supplier/cho_fetch_info.py
 # -*- coding: utf-8 -*-
+"""
+CHO (Country House Outdoor) 采集器 - 重构版
 
+修复:
+- JSON-LD: 用 demjson3 解析 (兼容 Shopify 非标 JSON)
+- 尺码/颜色: 从 hasVariant name 解析 (格式: "Name - Color / Size")
+- 价格: DOM .price__sale / .price__regular 提取
+- Driver: 每线程独立 (线程安全)
+- 字段名: 与 format_txt 对齐 (Product Price / Adjusted Price)
+- 性别: 中文输出 (男款/女款)
+
+使用方式:
+    python -m brands.barbour.supplier.cho_fetch_info_v2
 """
-CHO | Barbour 商品抓取脚本
-- 解析 Shopify JSON-LD ProductGroup + DOM 价格区
-- TXT 输出模板与 Outdoor / Allweathers 完全一致（使用 format_txt）
-"""
+
+from __future__ import annotations
 
 import re
 import time
-import tempfile
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Tuple
-
+import threading
+from typing import Dict, Any, Optional, Tuple
 from bs4 import BeautifulSoup
-from selenium import webdriver
-
+import psycopg2
 import demjson3
 
-from brands.barbour.core.site_utils import assert_site_or_raise as canon
+from brands.barbour.core.hybrid_barbour_matcher import resolve_product_code
 
-# 统一 TXT 写入
-from common_taobao.ingest.txt_writer import format_txt
-from config import BARBOUR, BRAND_CONFIG, SETTINGS
+# 导入基类和工具
+from brands.barbour.core.base_fetcher import BaseFetcher, setup_logging
+
+# 导入通用模块
+from common_taobao.core.selenium_utils import get_driver, quit_driver
+
+# 配置
+from config import BARBOUR, SETTINGS, PGSQL_CONFIG
+
+SITE_NAME = "cho"
+LINKS_FILE = BARBOUR["LINKS_FILES"].get("cho", "")
+OUTPUT_DIR = BARBOUR["TXT_DIRS"].get("cho", "")
 DEFAULT_STOCK_COUNT = SETTINGS.get("DEFAULT_STOCK_COUNT", 3)
-# 可选 stealth
-try:
-    from selenium_stealth import stealth
-except ImportError:
-    def stealth(*args, **kwargs):
-        return
 
-# 可选：Barbour 性别修正（根据编码前缀等）
-try:
-    from common_taobao.core.size_normalizer import infer_gender_for_barbour
-except Exception:
-    infer_gender_for_barbour = None
-
-# ========== 全局配置 ==========
-
-CANON_SITE = canon("cho")  # 确保在 site_utils 里有映射
-LINK_FILE = BARBOUR["LINKS_FILES"]["cho"]
-TXT_DIR = BARBOUR["TXT_DIRS"]["cho"]
-TXT_DIR.mkdir(parents=True, exist_ok=True)
-
-MAX_WORKERS = 4
+# 判断编码是否为完整 11 位格式 (如 LQU0475OL71)
+_FULL_CODE_RE = re.compile(r"^[A-Z]{2,3}\d{4}[A-Z]{2}\d{2}$")
 
 
-# ========== Selenium Driver ==========
-
-def get_driver():
-    """
-    简单版 driver；如果你后面统一改成 selenium_utils，这里直接替换即可。
-    """
-    temp_profile = tempfile.mkdtemp()
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless=new")
-    options.add_argument(f"--user-data-dir={temp_profile}")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-
-    driver = webdriver.Chrome(options=options)
-    try:
-        stealth(
-            driver,
-            languages=["en-GB", "en-US", "en"],
-            vendor="Google Inc.",
-            platform="Win32",
-            webgl_vendor="Intel Inc.",
-            renderer="Intel Iris OpenGL Engine",
-            fix_hairline=True,
-        )
-    except Exception:
-        # 没有 stealth 也不影响
-        pass
-    return driver
+def _is_partial_code(code: str) -> bool:
+    """判断编码是否为截断格式 (7位, 如 LQU0475, 无颜色后缀)"""
+    if not code or code == "No Data":
+        return False
+    return len(code) <= 8 and not _FULL_CODE_RE.match(code)
 
 
-# ========== 工具函数（与 Allweathers 同风格） ==========
+# ================== 辅助函数 ==================
 
 def _clean_text(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "").strip())
 
 
-def _infer_gender_from_title(title_or_name: str) -> str:
-    t = (title_or_name or "").lower()
-    if re.search(r"\b(women|woman|women's|ladies)\b", t):
-        return "女款"
-    if re.search(r"\b(men|men's|man)\b", t):
-        return "男款"
-    if re.search(r"\b(kids?|boys?|girls?)\b", t):
-        return "童款"
-    return "未知"
-
-
-def _to_float(x: str) -> float | None:
+def _to_float(x: str) -> Optional[float]:
     if not x:
         return None
     try:
@@ -106,16 +67,15 @@ def _to_float(x: str) -> float | None:
         return None
 
 
-def _extract_price_pair_from_dom_cho(soup: BeautifulSoup) -> Tuple[float | None, float | None]:
+def _extract_price_pair_from_dom_cho(soup: BeautifulSoup) -> Tuple[Optional[float], Optional[float]]:
     """
     从 CHO DOM 中抓取 (original_price, current_price)
-    - 打折时：
+    - 打折:
         .price__sale .price-item--sale        => 现价
         .savings-price .price-item--regular   => 原价
-    - 无打折：
+    - 无打折:
         .price__regular .price-item--regular  => 原价 == 现价
     """
-    # 有打折
     sale_span = soup.select_one(".price__sale .price-item--sale")
     was_span = soup.select_one(".price__sale .savings-price .price-item--regular")
     sale_price = _to_float(sale_span.get_text(" ", strip=True)) if sale_span else None
@@ -124,7 +84,6 @@ def _extract_price_pair_from_dom_cho(soup: BeautifulSoup) -> Tuple[float | None,
     if sale_price is not None and was_price is not None:
         return was_price, sale_price  # (原价, 折后价)
 
-    # 无打折 → 直接用 regular 价
     reg_span = soup.select_one(".price__regular .price-item--regular")
     reg_price = _to_float(reg_span.get_text(" ", strip=True)) if reg_span else None
     if reg_price is not None:
@@ -134,9 +93,7 @@ def _extract_price_pair_from_dom_cho(soup: BeautifulSoup) -> Tuple[float | None,
 
 
 def _load_product_jsonld(soup: BeautifulSoup) -> dict:
-    """
-    返回 JSON-LD 中的 ProductGroup / Product 节点（CHO 用 ProductGroup）
-    """
+    """返回 JSON-LD 中的 ProductGroup / Product 节点 (用 demjson3 兼容非标 JSON)"""
     for tag in soup.find_all("script", {"type": "application/ld+json"}):
         txt = (tag.string or tag.text or "").strip()
         if not txt:
@@ -160,19 +117,21 @@ def _extract_code_from_description(desc: str) -> str:
     if not desc:
         return "No Data"
 
+    # 正则: 完整 11 字符格式
     FULL_PAT = r"\b[A-Z]{2,3}\d{4}[A-Z]{2}\d{2}\b"
+    # 正则: 截断 7 字符格式 (CHO 常用, 无颜色后缀)
     SHORT_PAT = r"\b[A-Z]{2,3}\d{4}\b"
 
     lines = [l.strip() for l in desc.splitlines() if l.strip()]
 
-    # 1) 最后一行找完整格式
+    # 1) 先在最后一行找完整格式
     if lines:
         last = lines[-1]
         m = re.search(FULL_PAT, last)
         if m:
             return m.group(0)
 
-    # 2) 全文找完整格式
+    # 2) 全文找完整格式 (取最后一个)
     m_all = list(re.finditer(FULL_PAT, desc))
     if m_all:
         return m_all[-1].group(0)
@@ -184,7 +143,7 @@ def _extract_code_from_description(desc: str) -> str:
         if m:
             return m.group(0)
 
-    # 4) 全文找截断格式
+    # 4) 全文找截断格式 (取最后一个)
     m_all = list(re.finditer(SHORT_PAT, desc))
     if m_all:
         return m_all[-1].group(0)
@@ -200,248 +159,185 @@ def _strip_code_from_description(desc: str, code: str) -> str:
     return _clean_text(desc.replace(code, "")).strip(" -–|,")
 
 
-# ========== 尺码处理（直接复用 Allweathers 逻辑） ==========
+# ================== 采集器实现 ==================
 
-WOMEN_ORDER = ["4", "6", "8", "10", "12", "14", "16", "18", "20"]
-MEN_ALPHA_ORDER = ["2XS", "XS", "S", "M", "L", "XL", "2XL", "3XL"]
-MEN_NUM_ORDER = [str(n) for n in range(30, 52, 2)]  # 30..50（不含52）
-
-ALPHA_MAP = {
-    "XXXS": "2XS", "2XS": "2XS",
-    "XXS": "XS",  "XS": "XS",
-    "S": "S", "SMALL": "S",
-    "M": "M", "MEDIUM": "M",
-    "L": "L", "LARGE": "L",
-    "XL": "XL", "X-LARGE": "XL",
-    "XXL": "2XL", "2XL": "2XL",
-    "XXXL": "3XL", "3XL": "3XL",
-}
-
-
-def _choose_full_order_for_gender(gender: str, present: set[str]) -> list[str]:
-    """与 Allweathers 保持一致：男款在【字母系】与【数字系】二选一；女款固定 4–20。"""
-    g = (gender or "").lower()
-    if "女" in g:
-        return WOMEN_ORDER[:]
-
-    has_num = any(k in MEN_NUM_ORDER for k in present)
-    has_alpha = any(k in MEN_ALPHA_ORDER for k in present)
-    if has_num and not has_alpha:
-        return MEN_NUM_ORDER[:]
-    if has_alpha and not has_num:
-        return MEN_ALPHA_ORDER[:]
-    if has_num or has_alpha:
-        num_count = sum(1 for k in present if k in MEN_NUM_ORDER)
-        alpha_count = sum(1 for k in present if k in MEN_ALPHA_ORDER)
-        return MEN_NUM_ORDER[:] if num_count >= alpha_count else MEN_ALPHA_ORDER[:]
-    return MEN_ALPHA_ORDER[:]
-
-
-def _normalize_size(token: str, gender: str) -> str | None:
+class CHOFetcher(BaseFetcher):
     """
-    与 Allweathers 一致的归一化逻辑：
-    - 女款：4–20 数字
-    - 男款：30–50 偶数 或 2XS..3XL
+    CHO 采集器 - 与 v1 逻辑完全对齐
+
+    重写:
+    - parse_detail_page: 从 hasVariant 解析尺码/颜色, DOM 解析价格
+    - _fetch_html: 每线程独立 driver
+    - 截断编码自动通过 DB 匹配补全
     """
-    s = (token or "").strip().upper()
-    s = s.replace("UK ", "").replace("EU ", "").replace("US ", "")
-    s = re.sub(r"\s*\(.*?\)\s*", "", s)
-    s = re.sub(r"\s+", " ", s)
 
-    # 数字优先
-    m = re.findall(r"\d{1,3}", s)
-    if m:
-        n = int(m[0])
-        if gender == "女款" and n in {4, 6, 8, 10, 12, 14, 16, 18, 20}:
-            return str(n)
-        if gender == "男款":
-            if 30 <= n <= 50 and n % 2 == 0:
-                return str(n)
-            if 28 <= n <= 54:
-                cand = n if n % 2 == 0 else n - 1
-                cand = max(30, min(50, cand))
-                return str(cand)
-        return None
+    
 
-    key = s.replace("-", "").replace(" ", "")
-    return ALPHA_MAP.get(key)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._db_conn = None
 
+    def _get_db_conn(self):
+        """懒加载 DB 连接 (用于 partial_code 查询)"""
+        if self._db_conn is None or self._db_conn.closed:
+            try:
+                self._db_conn = psycopg2.connect(**PGSQL_CONFIG)
+                self.logger.info("🔗 DB 连接已建立 (用于编码补全)")
+            except Exception as e:
+                self.logger.warning(f"DB 连接失败, 跳过编码补全: {e}")
+                return None
+        return self._db_conn
 
-def _build_size_lines_from_sizedetail(size_detail: dict, gender: str) -> tuple[str, str]:
-    """
-    输入：SizeDetail = { raw_size: {stock_count:int, ean:str}, ... }
-    输出：
-      Product Size        = "M:有货;L:无货;..."
-      Product Size Detail = "M:3:000...;L:0:000...;..."
-    """
-    bucket_status: dict[str, str] = {}
-    bucket_stock: dict[str, int] = {}
+    def _fetch_html(self, url: str) -> str:
+        """覆盖基类: 每线程独立 driver"""
+        tid = threading.current_thread().ident
+        driver_name = f"{self.site_name}_{tid}"
+        driver = get_driver(
+            name=driver_name,
+            headless=self.headless,
+            window_size="1920,1080",
+        )
+        try:
+            driver.get(url)
+            time.sleep(self.wait_seconds)
+            return driver.page_source
+        finally:
+            quit_driver(driver_name)
 
-    # 1) 汇总页面出现的尺码
-    for raw_size, meta in (size_detail or {}).items():
-        norm = _normalize_size(raw_size, gender or "男款")
-        if not norm:
-            continue
-        stock = int(meta.get("stock_count", 0) or 0)
-        status = "有货" if stock > 0 else "无货"
-        prev = bucket_status.get(norm)
-        if prev is None or (prev == "无货" and status == "有货"):
-            bucket_status[norm] = status
-            bucket_stock[norm] = DEFAULT_STOCK_COUNT if stock > 0 else 0
+    def parse_detail_page(self, html: str, url: str) -> Dict[str, Any]:
+        """解析 CHO 商品详情页 - 与 v1 逻辑完全对齐"""
+        soup = BeautifulSoup(html, "html.parser")
 
-    # 2) 选择单一尺码系
-    present_keys = set(bucket_status.keys())
-    full_order = _choose_full_order_for_gender(gender or "男款", present_keys)
+        # 1. JSON-LD (ProductGroup)
+        data = _load_product_jsonld(soup)
+        name = data.get("name") or (soup.title.get_text(strip=True) if soup.title else "No Data")
+        desc = data.get("description") or ""
+        desc = desc.replace("\\n", "\n")
+        desc = desc.replace("<br>", "\n").replace("<br/>", "\n").replace("<br />", "\n")
 
-    # 2.5) 清除不在该体系内的尺码
-    for k in list(bucket_status.keys()):
-        if k not in full_order:
-            bucket_status.pop(k, None)
-            bucket_stock.pop(k, None)
+        # 2. Product Code (从 description 末尾提取)
+        product_code = _extract_code_from_description(desc)
+        description = _strip_code_from_description(desc, product_code)
 
-    # 3) 补齐未出现的尺码为无货/0
-    for size in full_order:
-        if size not in bucket_status:
-            bucket_status[size] = "无货"
-            bucket_stock[size] = 0
+        # 3. 从 hasVariant 提取尺码/颜色/库存
+        variants = data.get("hasVariant", [])
+        if isinstance(variants, dict):
+            variants = [variants]
+        if not variants:
+            raise ValueError("未找到 hasVariant 变体数据")
 
-    ordered = list(full_order)
-    ps = ";".join(f"{k}:{bucket_status[k]}" for k in ordered)
-    psd = ";".join(f"{k}:{bucket_stock[k]}:0000000000000" for k in ordered)
-    return ps, psd
+        size_detail = {}
+        color = "No Data"
 
+        for v in variants:
+            v_name = v.get("name") or ""
+            # name 形如: Barbour Powell Mens Quilted Jacket - Navy - Navy / L
+            tail = v_name.split(" - ")[-1] if " - " in v_name else v_name
+            if " / " in tail:
+                c_txt, sz_txt = [p.strip() for p in tail.split(" / ", 1)]
+            else:
+                c_txt, sz_txt = (tail.strip() or "No Data"), "Unknown"
+            if color == "No Data":
+                color = c_txt or "No Data"
 
-# ========== 解析详情页 ==========
+            offers = v.get("offers") or {}
+            avail = (offers.get("availability") or "").lower()
+            in_stock = "instock" in avail
 
-def parse_detail_page(html: str, url: str) -> dict:
-    soup = BeautifulSoup(html, "html.parser")
+            size_detail[sz_txt] = {
+                "stock_count": DEFAULT_STOCK_COUNT if in_stock else 0,
+                "ean": v.get("gtin") or v.get("sku") or "0000000000000",
+            }
 
-    data = _load_product_jsonld(soup)
-    name = data.get("name") or (soup.title.get_text(strip=True) if soup.title else "No Data")
-    desc = data.get("description") or ""
-    desc = desc.replace("\\n", "\n")
-    desc = desc.replace("<br>", "\n").replace("<br/>", "\n").replace("<br />", "\n")
+        # 3.5 截断编码补全: 如 LQU0475 → 查 DB 匹配颜色 → LQU0475OL71
+        if _is_partial_code(product_code):
+            conn = self._get_db_conn()
+            if conn:
+                try:
+                    full_code, trace = resolve_product_code(
+                        conn,
+                        site_name=SITE_NAME,
+                        url=url,
+                        scraped_title=name,
+                        scraped_color=color,
+                        sku_guess=product_code,
+                        partial_code=product_code,
+                    )
+                    if full_code and full_code != "No Data":
+                        self.logger.info(
+                            f"🔗 编码补全: {product_code} → {full_code} "
+                            f"(by={trace.get('final', {}).get('by', '?')})"
+                        )
+                        product_code = full_code
+                except Exception as e:
+                    self.logger.warning(f"编码补全失败 ({product_code}): {e}")
 
-    product_code = _extract_code_from_description(desc)
-    description = _strip_code_from_description(desc, product_code)
+        # 4. 性别 (中文, 与 size_normalizer / format_txt 一致)
+        gender = self.infer_gender(
+            text=name,
+            url=url,
+            product_code=product_code,
+            output_format="cn",
+        )
 
-    # 尺码/库存
-    variants = data.get("hasVariant", [])
-    if isinstance(variants, dict):
-        variants = [variants]
-    if not variants:
-        raise ValueError("未找到 hasVariant 变体数据")
+        # 5. 价格: DOM 优先
+        original_price, current_price = _extract_price_pair_from_dom_cho(soup)
 
-    size_detail = {}
-    color = "No Data"
+        # 6. 尺码行
+        ps, psd = self.build_size_lines(size_detail, gender)
 
-    for v in variants:
-        v_name = v.get("name") or ""
-        # name 形如：Barbour Powell Mens Quilted Jacket - Navy - Navy / L
-        tail = v_name.split(" - ")[-1] if " - " in v_name else v_name
-        if " / " in tail:
-            c_txt, sz_txt = [p.strip() for p in tail.split(" / ", 1)]
-        else:
-            c_txt, sz_txt = (tail.strip() or "No Data"), "Unknown"
-        if color == "No Data":
-            color = c_txt or "No Data"
-
-        offers = v.get("offers") or {}
-        avail = (offers.get("availability") or "").lower()
-        in_stock = "instock" in avail
-
-        size_detail[sz_txt] = {
-            "stock_count": DEFAULT_STOCK_COUNT if in_stock else 0,
-            "ean": v.get("gtin") or v.get("sku") or "0000000000000",
+        # 7. 返回 - 字段名与 format_txt 对齐
+        return {
+            "Product Code": product_code or "No Data",
+            "Product Name": name,
+            "Product Description": description or "No Data",
+            "Product Gender": gender,
+            "Product Color": color or "No Data",
+            "Product Price": original_price,
+            "Adjusted Price": current_price,
+            "Product Material": "No Data",
+            "Feature": "No Data",
+            "Product Size": ps,
+            "Product Size Detail": psd,
         }
 
-    gender_guess = _infer_gender_from_title(name)
-
-    # 价格：DOM 优先（原价/折后价）
-    original_price, current_price = _extract_price_pair_from_dom_cho(soup)
-
-    info = {
-        "Product Code": product_code or "No Data",
-        "Product Name": name,
-        "Product Description": description or "No Data",
-        "Product Gender": gender_guess,
-        "Product Color": color or "No Data",
-        "Product Price": original_price,
-        "Adjusted Price": current_price,
-        "Product Material": "No Data",
-        "Feature": "No Data",
-        "SizeDetail": size_detail,
-        "Source URL": url,
-        "Site Name": CANON_SITE,
-    }
-    return info
-
-
-# ========== 抓取 & 写 TXT ==========
-
-def fetch_one_product(url: str, idx: int, total: int):
-    print(f"[{idx}/{total}] 抓取: {url}")
-    try:
-        driver = get_driver()
-        driver.get(url)
-        time.sleep(2.5)
-        html = driver.page_source
-        driver.quit()
-
-        info = parse_detail_page(html, url)
-
-        # 基础字段补齐
-        info.setdefault("Brand", "Barbour")
-        info.setdefault("Site Name", CANON_SITE)
-        info.setdefault("Source URL", url)
-
-        # 性别修正：优先根据 Barbour 编码
-        if infer_gender_for_barbour:
-            info["Product Gender"] = infer_gender_for_barbour(
-                product_code=info.get("Product Code"),
-                title=info.get("Product Name"),
-                description=info.get("Product Description"),
-                given_gender=info.get("Product Gender"),
-            ) or info.get("Product Gender") or "男款"
-
-        # SizeDetail → Product Size / Product Size Detail
-        if info.get("SizeDetail") and (not info.get("Product Size") or not info.get("Product Size Detail")):
-            ps, psd = _build_size_lines_from_sizedetail(info["SizeDetail"], info.get("Product Gender", "男款"))
-            info["Product Size"] = info.get("Product Size") or ps
-            info["Product Size Detail"] = info.get("Product Size Detail") or psd
-
-        # 文件名：使用 Product Code
-        code = info.get("Product Code") or "NoData"
-        safe_code = re.sub(r"[^A-Za-z0-9_-]+", "_", code)
-        txt_path = TXT_DIR / f"{safe_code}.txt"
-
-        format_txt(info, txt_path, brand="Barbour")
-        print(f"✅ 写入 TXT: {txt_path.name} | {url}")
-        return (url, "✅ 成功")
-    except Exception as e:
-        return (url, f"❌ 失败: {e}")
-
-
-def cho_fetch_info(max_workers: int = MAX_WORKERS):
-    print(f"🚀 启动 CHO 多线程商品详情抓取（线程数: {max_workers}）")
-    links = LINK_FILE.read_text(encoding="utf-8").splitlines()
-    links = [u.strip() for u in links if u.strip()]
-    total = len(links)
-    if total == 0:
-        print("⚠ 链接文件为空")
-        return
-
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [
-            executor.submit(fetch_one_product, url, idx + 1, total)
-            for idx, url in enumerate(links)
+    def _validate_info(self, info: Dict[str, Any], url: str) -> None:
+        """覆盖基类: 使用与 v1 一致的字段名验证"""
+        required_fields = [
+            "Product Code",
+            "Product Name",
+            "Product Gender",
+            "Product Description",
+            "Product Size",
+            "Product Size Detail",
         ]
-        for future in as_completed(futures):
-            url, status = future.result()
-            print(f"{status} - {url}")
+        for field in required_fields:
+            if field not in info:
+                raise ValueError(f"缺失必填字段: {field} (URL: {url})")
 
-    print("\n✅ CHO 商品抓取完成")
+
+# ================== 主入口 ==================
+
+def cho_fetch_info(
+    max_workers: int = 4,
+    headless: bool = False,
+):
+    """主函数 - 兼容旧版接口"""
+    setup_logging()
+
+    fetcher = CHOFetcher(
+        site_name=SITE_NAME,
+        links_file=LINKS_FILE,
+        output_dir=OUTPUT_DIR,
+        max_workers=max_workers,
+        max_retries=3,
+        wait_seconds=2.5,
+        headless=headless,
+    )
+
+    success, fail = fetcher.run_batch()
+    print(f"\n✅ CHO 抓取完成: 成功 {success}, 失败 {fail}")
 
 
 if __name__ == "__main__":
-    cho_fetch_info(max_workers=10)
+    cho_fetch_info(max_workers=4, headless=False)
