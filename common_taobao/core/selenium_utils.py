@@ -130,20 +130,19 @@ def get_driver(
 
 def quit_driver(name: str = "default"):
     """
-    保持原接口：按 name 关闭 driver。
-    内部会把 【同名 + 不同线程】的所有 driver 都关掉。
+    关闭【当前线程】的同名 driver，不影响其他线程。
     """
     global _DRIVERS
-    prefix = f"{name}__"
+    key = _make_key(name)
 
     with _DRIVERS_LOCK:
-        to_close = {k: d for k, d in _DRIVERS.items() if k.startswith(prefix)}
-        for k, driver in to_close.items():
-            try:
-                driver.quit()
-            except Exception:
-                pass
-            _DRIVERS.pop(k, None)
+        driver = _DRIVERS.pop(key, None)
+
+    if driver is not None:
+        try:
+            driver.quit()
+        except Exception:
+            pass
 
 
 def quit_all_drivers():

@@ -39,6 +39,9 @@ LINKS_FILE = BARBOUR["LINKS_FILES"][SITE_NAME]
 OUTPUT_DIR = BARBOUR["TXT_DIRS"][SITE_NAME]
 DEFAULT_STOCK_COUNT = SETTINGS.get("DEFAULT_STOCK_COUNT", 3)
 
+# Outdoor 强风控站点：有效并发上限（与 v2 一致）
+EFFECTIVE_MAX_WORKERS = 2
+
 
 # ================== 采集器实现 ==================
 
@@ -302,11 +305,14 @@ def outdoorandcountry_fetch_info(
     """
     setup_logging()
 
+    effective = min(int(max_workers), EFFECTIVE_MAX_WORKERS)
+    print(f"🔄 Outdoor&Country v3: 请求并发 {max_workers}, 有效并发 {effective}", flush=True)
+
     fetcher = OutdoorAndCountryFetcher(
         site_name=SITE_NAME,
         links_file=LINKS_FILE,
         output_dir=OUTPUT_DIR,
-        max_workers=max_workers,
+        max_workers=effective,
         max_retries=3,
         wait_seconds=2.0,
         headless=headless,

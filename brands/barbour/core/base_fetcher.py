@@ -49,7 +49,7 @@ from brands.barbour.core.text_utils import (
 )
 
 # 导入通用模块
-from common_taobao.core.selenium_utils import get_driver, quit_driver
+from common_taobao.core.selenium_utils import get_driver, quit_driver, quit_all_drivers
 from common_taobao.ingest.txt_writer import format_txt
 
 # 配置
@@ -246,6 +246,9 @@ class BaseFetcher(ABC):
         """
         获取HTML - 默认实现(Selenium)，子类可覆盖
 
+        复用同线程 driver（由 selenium_utils 按 thread-id 隔离），
+        不再每次请求都创建/销毁 Chrome 进程。
+
         Args:
             url: 商品URL
 
@@ -253,12 +256,9 @@ class BaseFetcher(ABC):
             HTML源码
         """
         driver = self.get_driver()
-        try:
-            driver.get(url)
-            time.sleep(self.wait_seconds)  # 等待渲染
-            return driver.page_source
-        finally:
-            self.quit_driver()
+        driver.get(url)
+        time.sleep(self.wait_seconds)  # 等待渲染
+        return driver.page_source
 
     def _validate_info(self, info: Dict[str, Any], url: str) -> None:
         """
@@ -334,18 +334,22 @@ class BaseFetcher(ABC):
         self.logger.info(f"📄 共 {total} 个商品待抓取 (并发度: {self.max_workers})")
 
         # 并发抓取
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            futures = {
-                executor.submit(self.fetch_one_product, url, idx + 1, total): url
-                for idx, url in enumerate(urls)
-            }
+        try:
+            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                futures = {
+                    executor.submit(self.fetch_one_product, url, idx + 1, total): url
+                    for idx, url in enumerate(urls)
+                }
 
-            for future in as_completed(futures):
-                url = futures[future]
-                try:
-                    future.result()
-                except Exception as e:
-                    self.logger.error(f"任务异常: {url} - {e}")
+                for future in as_completed(futures):
+                    url = futures[future]
+                    try:
+                        future.result()
+                    except Exception as e:
+                        self.logger.error(f"任务异常: {url} - {e}")
+        finally:
+            quit_all_drivers()
+            self.logger.info("🧹 已清理所有 driver")
 
         # 统计
         success = self._success_count
