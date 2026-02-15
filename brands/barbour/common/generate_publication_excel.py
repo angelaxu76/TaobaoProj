@@ -9,7 +9,7 @@ import openpyxl
 from sqlalchemy import create_engine, text
 
 from config import BRAND_CONFIG, BARBOUR, SETTINGS
-from brands.barbour.common.generate_barbour_taobao_title import generate_barbour_taobao_title
+from brands.barbour.common.generate_taobao_title import generate_barbour_taobao_title
 from common_taobao.core.price_utils import calculate_jingya_prices
 from datetime import datetime
 from brands.barbour.core.site_utils import canonical_site

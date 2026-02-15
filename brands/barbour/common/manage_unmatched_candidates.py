@@ -1,22 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-barbour_import_candidates.py
+manage_unmatched_candidates.py
 集中式候选池/回填/导入工具（供 pipeline 调用）
 
 子命令：
-  1)  python barbour_import_candidates.py import-from-txt [supplier]
+  1)  python manage_unmatched_candidates.py import-from-txt [supplier]
       - 扫描 BARBOUR['TXT_DIRS'][supplier] 下的 TXT
       - 有编码 -> 写 barbour_products（source_rank=1）
       - 无编码 -> 写 barbour_product_candidates
 
-  2)  python barbour_import_candidates.py export-excel --out D:\TB\Products\barbour\output\barbour_candidates.xlsx
+  2)  python manage_unmatched_candidates.py export-excel --out D:\TB\Products\barbour\output\barbour_candidates.xlsx
       - 导出 barbour_product_candidates 为 Excel，首列留空 product_code 供人工填写
 
-  3)  python barbour_import_candidates.py import-codes --in D:\TB\Products\barbour\output\barbour_candidates.xlsx
+  3)  python manage_unmatched_candidates.py import-codes --in D:\TB\Products\barbour\output\barbour_candidates.xlsx
       - 读取 Excel，把编码以 source_rank=2 回填至 barbour_products，并删除候选
 
   4)  可供抓取脚本调用：
-      from barbour_import_candidates import find_code_by_site_url
+      from manage_unmatched_candidates import find_code_by_site_url
       code = find_code_by_site_url(conn, "very", url)
 
 依赖：psycopg2、pandas、openpyxl
@@ -33,7 +33,7 @@ import pandas as pd
 # === 复用你项目里的配置 & 工具 ===
 from config import PGSQL_CONFIG, BARBOUR
 # 直接复用你现有的解析/清洗方法，避免两份逻辑漂移
-from brands.barbour.common.barbour_import_to_barbour_products import (
+from brands.barbour.common.import_txt_to_products import (
     _extract_field, _extract_multiline_field,
     _parse_sizes_from_size_detail_line,
     extract_match_keywords, enrich_record_optional

@@ -1,5 +1,5 @@
-from brands.barbour.common.barbour_import_candidates import import_from_txt, export_candidates_excel, import_codes_from_excel
-from brands.barbour.common.fill_codes_into_txt import backfill_product_codes_to_txt
+from brands.barbour.common.manage_unmatched_candidates import import_from_txt, export_candidates_excel, import_codes_from_excel
+from brands.barbour.common.backfill_product_codes_to_txt import backfill_product_codes_to_txt
 
 
 def pipeline_barbour():

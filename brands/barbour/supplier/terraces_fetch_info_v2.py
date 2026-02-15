@@ -22,17 +22,19 @@ from __future__ import annotations
 
 import re
 import json
-import time
-import hashlib
+import threading
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from bs4 import BeautifulSoup
 
 # 导入基类和工具
 from brands.barbour.core.base_fetcher import BaseFetcher, setup_logging
 
-# 导入数据库匹配模块
-from brands.barbour.core.sim_matcher import match_product, choose_best
+# 导入统一匹配器
+from brands.barbour.core.hybrid_barbour_matcher import resolve_product_code
+
+# SQLAlchemy
+from sqlalchemy import create_engine
 
 # 配置
 from config import BARBOUR, BRAND_CONFIG, SETTINGS
@@ -44,6 +46,7 @@ DEFAULT_STOCK_COUNT = SETTINGS.get("DEFAULT_STOCK_COUNT", 3)
 
 # 数据库配置
 PRODUCTS_TABLE = BRAND_CONFIG.get("barbour", {}).get("PRODUCTS_TABLE", "barbour_products")
+OFFERS_TABLE = BRAND_CONFIG.get("barbour", {}).get("OFFERS_TABLE")
 PG = BRAND_CONFIG["barbour"]["PGSQL_CONFIG"]
 
 # 尺码常量
@@ -70,108 +73,68 @@ class TerracesFetcher(BaseFetcher):
     Terraces Menswear 采集器
 
     特点:
-    - 使用 undetected_chromedriver (UC 驱动)
-    - 标题包含颜色信息
-    - 需要数据库匹配获取 Product Code
+    - 使用 selenium_utils 管理驱动（per-thread 复用）
+    - hybrid_barbour_matcher 多级匹配
+    - 断点续传（自动跳过已完成的 URL）
     """
 
     def __init__(self, *args, **kwargs):
-        """初始化 + 数据库连接"""
+        """初始化 + 数据库引擎 + 进度文件"""
         super().__init__(*args, **kwargs)
 
-        # 初始化数据库连接
-        from sqlalchemy import create_engine
+        # 创建数据库引擎
         engine_url = (
             f"postgresql+psycopg2://{PG['user']}:{PG['password']}"
             f"@{PG['host']}:{PG['port']}/{PG['dbname']}"
         )
-        self._engine = create_engine(engine_url)
+        self._engine = create_engine(engine_url, pool_size=self.max_workers + 2)
 
-    def get_driver(self):
-        """
-        覆盖基类方法 - 使用 undetected_chromedriver
+        # 断点续传：进度文件
+        self._progress_file = Path(self.output_dir) / ".done_urls.txt"
+        self._done_urls = self._load_done_urls()
+        self._progress_lock = threading.Lock()
 
-        Terraces 需要 UC 驱动绕过检测
-        """
-        import undetected_chromedriver as uc
+    # ================== 断点续传 ==================
 
+    def _load_done_urls(self) -> set:
+        """加载已完成的 URL 集合"""
+        if not self._progress_file.exists():
+            return set()
         try:
-            return uc.Chrome(
-                options=self._make_uc_options(),
-                headless=self.headless,
-                use_subprocess=True,
-            )
+            lines = self._progress_file.read_text(encoding="utf-8").splitlines()
+            done = {line.strip() for line in lines if line.strip()}
+            self.logger.info(f"📋 已完成 {len(done)} 个，自动跳过")
+            return done
         except Exception:
-            # 尝试指定 Chrome 版本
-            vm = self._get_chrome_major_version()
-            if vm:
-                return uc.Chrome(
-                    options=self._make_uc_options(),
-                    headless=self.headless,
-                    use_subprocess=True,
-                    version_main=vm,
-                )
-            raise
+            return set()
 
-    def _make_uc_options(self):
-        """创建 UC 驱动选项"""
-        import undetected_chromedriver as uc
-
-        opts = uc.ChromeOptions()
-        if self.headless:
-            opts.add_argument("--headless=new")
-        opts.add_argument("--disable-blink-features=AutomationControlled")
-        opts.add_argument("--start-maximized")
-        opts.add_argument("--disable-gpu")
-        opts.add_argument("--no-sandbox")
-        return opts
-
-    def _get_chrome_major_version(self) -> Optional[int]:
-        """获取本地 Chrome 主版本号"""
-        import sys
-        import shutil
-        import subprocess
-
-        try:
-            import winreg
-        except Exception:
-            winreg = None
-
-        # Windows 注册表
-        if winreg is not None and sys.platform.startswith("win"):
-            reg_paths = [
-                (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Google\Chrome\BLBeacon"),
-                (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Google\Chrome\BLBeacon"),
-                (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Google\Chrome\BLBeacon"),
-            ]
-            for hive, path in reg_paths:
-                try:
-                    with winreg.OpenKey(hive, path) as k:
-                        ver, _ = winreg.QueryValueEx(k, "version")
-                        m = re.search(r"^(\d+)\.", ver)
-                        if m:
-                            return int(m.group(1))
-                except OSError:
-                    pass
-
-        # 命令行
-        for exe in ["chrome", r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-                    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"]:
-            path = shutil.which(exe) or exe
+    def _mark_done(self, url: str) -> None:
+        """记录已完成的 URL（线程安全、追加写入）"""
+        with self._progress_lock:
+            self._done_urls.add(url)
             try:
-                out = subprocess.check_output(
-                    [path, "--version"],
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                    timeout=3
-                )
-                m = re.search(r"(\d+)\.\d+\.\d+\.\d+", out)
-                if m:
-                    return int(m.group(1))
+                with open(self._progress_file, "a", encoding="utf-8") as f:
+                    f.write(url + "\n")
             except Exception:
-                continue
+                pass
 
-        return None
+    def _load_urls(self) -> List[str]:
+        """重写：加载链接并过滤掉已完成的"""
+        all_urls = super()._load_urls()
+        before = len(all_urls)
+        urls = [u for u in all_urls if u not in self._done_urls]
+        skipped = before - len(urls)
+        if skipped > 0:
+            self.logger.info(f"⏭️ 跳过已完成 {skipped} 个，剩余 {len(urls)} 个待抓取")
+        return urls
+
+    def fetch_one_product(self, url: str, idx: int, total: int):
+        """重写：成功后记录进度"""
+        result = super().fetch_one_product(url, idx, total)
+        url_out, success = result
+        if success:
+            self._mark_done(url_out)
+        return result
 
     def parse_detail_page(self, html: str, url: str) -> Dict[str, Any]:
         """
@@ -243,7 +206,7 @@ class TerracesFetcher(BaseFetcher):
         # 5. 提取描述和特征
         description, features = self._extract_description_and_features(soup, html)
 
-        # 6. 数据库匹配 Product Code
+        # 6. hybrid_barbour_matcher 多级匹配 Product Code
         product_code = self._match_product_code(name, color, url)
 
         # 7. 返回标准化字典
@@ -497,31 +460,28 @@ class TerracesFetcher(BaseFetcher):
         return description or "No Data", feature_join
 
     def _match_product_code(self, name: str, color: str, url: str) -> Optional[str]:
-        """数据库匹配 Product Code"""
+        """使用 hybrid_barbour_matcher 多级匹配 Product Code"""
         try:
-            raw_conn = self._engine.raw_connection()
+            with self._engine.begin() as conn:
+                try:
+                    raw_conn = conn.connection
+                except Exception:
+                    raw_conn = conn.connection.connection
 
-            results = match_product(
-                raw_conn,
-                scraped_title=name,
-                scraped_color=color,
-                table=PRODUCTS_TABLE,
-                name_weight=0.72,
-                color_weight=0.18,
-                type_weight=0.10,
-                topk=5,
-                recall_limit=2000,
-                min_name=0.92,
-                min_color=0.85,
-                require_color_exact=False,
-                require_type=False,
-            )
+                code, debug_trace = resolve_product_code(
+                    raw_conn,
+                    site_name=SITE_NAME,
+                    url=url,
+                    scraped_title=name or "",
+                    scraped_color=color or "",
+                    sku_guess=None,
+                    products_table=PRODUCTS_TABLE,
+                    offers_table=OFFERS_TABLE,
+                    brand="barbour",
+                )
 
-            code = choose_best(results)
-
-            self.logger.debug(f"匹配调试: title={name}, color={color}, code={code}")
-
-            return code
+            self.logger.debug(f"匹配: title={name}, color={color}, code={code}")
+            return code if code and code != "No Data" else None
 
         except Exception as e:
             self.logger.error(f"数据库匹配失败: {e}")

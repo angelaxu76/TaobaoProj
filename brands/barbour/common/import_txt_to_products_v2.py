@@ -1,4 +1,4 @@
-# barbour_import_to_barbour_products.py
+# import_txt_to_products_v2.py
 # -*- coding: utf-8 -*-
 """
 V3: 导入统一模板 TXT 到 barbour_products（兼容旧模板）
@@ -20,7 +20,7 @@ from config import PGSQL_CONFIG, BARBOUR
 
 # —— 可选：标题生成（存在则用，不存在忽略）——
 try:
-    from generate_barbour_taobao_title import generate_barbour_taobao_title
+    from generate_taobao_title import generate_barbour_taobao_title
 except Exception:
     generate_barbour_taobao_title = None  # 没有也不影响
 

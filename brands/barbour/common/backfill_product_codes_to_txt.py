@@ -2,7 +2,7 @@
 """
 将编码写回 TXT 并重命名为 {product_code}.txt
 用法（在 pipeline 中）：
-    from barbour.common.fill_codes_into_txt import backfill_product_codes_to_txt
+    from barbour.common.backfill_product_codes_to_txt import backfill_product_codes_to_txt
     summary = backfill_product_codes_to_txt("very")  # 只传 supplier 名称
 """
 from __future__ import annotations

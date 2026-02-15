@@ -3,7 +3,7 @@ from common_taobao.publication.generate_taobao_store_price_for_import_excel impo
     generate_price_excels_bulk,
 )
 from common_taobao.maintenance.backup_and_clear import backup_and_clear_brand_dirs
-from brands.barbour.common.barbour_import_to_barbour_products import (
+from brands.barbour.common.import_txt_to_products import (
     batch_import_txt_to_barbour_product,
 )
 from brands.barbour.common.import_supplier_to_db_offers import import_txt_for_supplier
@@ -12,7 +12,7 @@ from brands.barbour.jingya.insert_jingyaid_mapping import (
     clear_barbour_inventory,
     insert_missing_products_with_zero_stock,
 )
-from brands.barbour.common.fill_supplier_jingya_map import (
+from brands.barbour.common.build_supplier_jingya_mapping import (
     fill_supplier_map,
     apply_barbour_supplier_overrides,
     export_supplier_stock_price_report,

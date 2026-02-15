@@ -366,7 +366,7 @@ def export_supplier_stock_price_report(min_sizes_ok: int = 1, output_path: str |
         # 当前映射
         map_df = pd.read_sql("SELECT product_code, site_name FROM barbour_supplier_map", conn)
 
-        # 聚合各站点表现（和 fill_supplier_jingya_map 内部 SQL 口径一致）
+        # 聚合各站点表现（和 build_supplier_jingya_mapping 内部 SQL 口径一致）
         sql = f"""
         WITH base AS (
           SELECT

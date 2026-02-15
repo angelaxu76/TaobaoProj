@@ -6,7 +6,9 @@
       "Bash(python -c:*)",
       "Bash(python -m brands.barbour.supplier.test_refactored_fetchers:*)",
       "Bash(python -u -m brands.barbour.supplier.test_refactored_fetchers)",
-      "Bash(iconv:*)"
+      "Bash(iconv:*)",
+      "Bash(git mv:*)",
+      "Bash(git add:*)"
     ]
   }
 }

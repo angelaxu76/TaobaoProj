@@ -5,7 +5,7 @@ common_taobao/matching/hybrid_barbour_matcher.py
 目标：把“匹配决策过程”独立成可复用模块，供 HOF / OutdoorAndCountry / Allweathers / PMD 等站点共用。
 
 匹配顺序（可调）：
-  0) manual mapping（可选：barbour_import_candidates.find_code_by_site_url）
+  0) manual mapping（可选：manage_unmatched_candidates.find_code_by_site_url）
   1) URL→Code cache（可选：由站点脚本构建）
   2) 颜色+标题模糊匹配（match_resolver / sim_matcher）
   3) L1/L2 词库匹配（keyword_lexicon + barbour_products.match_keywords_l1/l2）
@@ -51,7 +51,7 @@ except Exception:
 
 # --- 可选：人工映射 ---
 try:
-    from brands.barbour.common.barbour_import_candidates import find_code_by_site_url
+    from brands.barbour.common.manage_unmatched_candidates import find_code_by_site_url
 except Exception:
     find_code_by_site_url = None
 

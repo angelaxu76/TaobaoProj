@@ -13,7 +13,7 @@ from pathlib import Path
 # === [F5 默认配置] ===
 # 处理的目标文件（可多个）
 DEFAULT_TARGETS = [
-    r"barbour\common\import_supplier_missing_code_to_Db_offers.py",
+    r"barbour\common\import_uncoded_supplier_to_db_offers.py",
 ]
 # manifest 输出/校验路径
 DEFAULT_MANIFEST = r"barbour\common\manifest.json"

@@ -1,7 +1,7 @@
 from pathlib import Path
 from config import BARBOUR
-from brands.barbour.common.generate_barbour_publication_excel import generate_publication_excel
-from brands.barbour.common.export_barbour_discounts import export_barbour_discounts_excel,export_barbour_discounts_excel_multi
+from brands.barbour.common.generate_publication_excel import generate_publication_excel
+from brands.barbour.common.export_discounts import export_barbour_discounts_excel,export_barbour_discounts_excel_multi
 
 def pipeline_barbour():
     print("\n🚀 启动 Barbour - House of Fraser 全流程抓取")

@@ -4,7 +4,7 @@ import psycopg2
 from config import PGSQL_CONFIG
 
 
-from brands.barbour.core.learn_color_map_from_products import (
+from brands.barbour.tools.learn_color_map_from_products import (
     fetch_best_mappings,
     upsert,
     show_conflicts,
