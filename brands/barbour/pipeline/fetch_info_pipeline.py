@@ -23,33 +23,37 @@ from brands.barbour.common.import_supplier_to_db_offers import import_txt_for_su
 from brands.barbour.jingya.insert_jingyaid_mapping import insert_jingyaid_to_db,clear_barbour_inventory,insert_missing_products_with_zero_stock
 from brands.barbour.common.build_supplier_jingya_mapping import fill_supplier_map,apply_barbour_supplier_overrides,export_supplier_stock_price_report,reassign_low_stock_suppliers
 from brands.barbour.jingya.merge_offer_into_inventory import backfill_barbour_inventory_single_supplier
-
+from brands.barbour.tools.move_non_barbour_files import move_non_barbour_files
 def barbour_database_import_pipleline():
     # print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    # backup_and_clear_brand_dirs(BARBOUR)
+    backup_and_clear_brand_dirs(BARBOUR)
 
 
-    # print("步骤 1：获取商品链接")
-    # barbour_get_links()
-    # outdoorandcountry_fetch_and_save_links()
-    # allweathers_get_links()
-    # houseoffraser_get_links()
+    print("步骤 1：获取商品链接")
+    barbour_get_links()
+    outdoorandcountry_fetch_and_save_links()
+    allweathers_get_links()
+    houseoffraser_get_links()
     # very_get_links()
-    # collect_terraces_links()
-    # philipmorris_get_links()
-    # cho_get_links()
+    collect_terraces_links()
+    philipmorris_get_links()
+    cho_get_links()
 
-    # print("步骤 2：抓取商品信息并存为TXT")
-    # barbour_fetch_info()
-    # outdoorandcountry_fetch_info(max_workers=15)
-    # allweathers_fetch_info(7)
+    print("步骤 2：抓取商品信息并存为TXT")
+    barbour_fetch_info()
+    outdoorandcountry_fetch_info(max_workers=15)
+    allweathers_fetch_info(7)
     houseoffraser_fetch_info(max_workers=15, headless=False)
     # very_fetch_info(max_workers=15)
-    # terraces_fetch_info(max_workers=15)
-    # philipmorris_fetch_info(max_workers=10)
-    # cho_fetch_info(max_workers=15)
+    terraces_fetch_info(max_workers=15)
+    philipmorris_fetch_info(max_workers=10)
+    cho_fetch_info(max_workers=15)
 
-
+    print("步骤 3：move no barbour code file")
+    move_non_barbour_files(r"D:\TB\Products\barbour\publication\houseoffraser\TXT"r"D:\TB\Products\barbour\publication\houseoffraser\TXT.bk")
+    move_non_barbour_files(r"D:\TB\Products\barbour\publication\cho\TXT"r"D:\TB\Products\barbour\publication\cho\TXT.bk")
+    move_non_barbour_files(r"D:\TB\Products\barbour\publication\philipmorris\TXT"r"D:\TB\Products\barbour\publication\philipmorris\TXT.bk")
+    move_non_barbour_files(r"D:\TB\Products\barbour\publication\terraces\TXT"r"D:\TB\Products\barbour\publication\terraces\TXT.bk")
     
 if __name__ == "__main__":
     barbour_database_import_pipleline()
