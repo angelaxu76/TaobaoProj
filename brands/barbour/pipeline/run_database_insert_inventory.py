@@ -12,8 +12,9 @@ from brands.barbour.jingya.insert_jingyaid_mapping import (
     clear_barbour_inventory,
     insert_missing_products_with_zero_stock,
 )
-from brands.barbour.common.build_supplier_jingya_mapping import (
+from brands.barbour.common.build_supplier_jingya_mapping_v2 import (
     fill_supplier_map,
+    BandStockStrategy,
     apply_barbour_supplier_overrides,
     export_supplier_stock_price_report,
     reassign_low_stock_suppliers,
@@ -48,7 +49,7 @@ def _rebuild_inventory_from_jingya(merge_band: bool = True):
     #     force_refresh=True,
     #     exclude_xlsx=EXCLUDE_LIST_XLSX,
     # )
-    fill_supplier_map(force_refresh=True)
+    fill_supplier_map(strategy=BandStockStrategy(min_sizes=3, band_ratio=0.20))
 
     print(">>> 根据 barbour_supplier_map 用单一供货商回填价格 + 主库存...")
     backfill_barbour_inventory_single_supplier()
