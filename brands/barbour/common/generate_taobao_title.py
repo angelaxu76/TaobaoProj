@@ -75,24 +75,75 @@ def detect_by_code_prefix(code: str) -> Tuple[str, str]:
     return "","夹克"
 
 # ==== 系列提取（可沿用你之前的更完整版本）====
+# ==== 系列提取（升级版：白名单 + 黑名单）====
+
 SERIES_WHITELIST = {
     "ashby","bedale","beaufort","liddesdale","annandale","deveron","lowerdale",
-    "border","bristol","duke","dukeley","sapper","international",
+    "border","bristol","duke","dukeley","sapper",
+    # ⚠️ 如果你不想要 International 当系列词，建议从白名单移除
+    # "international",
     "royston","rectifier","sanderling","workers","tracker","tyne","durham","endurance","utility"
 }
-NOISE = {"barbour","casual","jacket","coat","gilet","vest","liner","parka",
-         "harrington","cotton","summer","wash","re-engineered","reengineered","chore","overshirt"}
+
+# 这些词无论如何都不能作为“系列词”
+SERIES_BLACKLIST = {
+    # 性别/人群
+    "mens","men","women","womens","lady","ladies","kids","kid","boys","girls","child","children",
+    # 常见副标题/集合词（很容易被误当系列）
+    "international","heritage","original","classic","essential","icon","icons","collection","range",
+    "limited","edition","new","seasonal","core",
+}
+
+# 原 NOISE 继续保留（用于“兜底挑第一个有效词”时过滤）
+NOISE = {
+    "barbour","casual","jacket","coat","gilet","vest","liner","parka",
+    "harrington","cotton","summer","wash","re-engineered","reengineered","chore","overshirt"
+}
+
+def _normalize_token(t: str) -> str:
+    """
+    把 "Men's" / "Men’s" -> "mens"，并去掉末尾 's。
+    """
+    if not t:
+        return ""
+    t = t.strip().lower().replace("’", "'")
+    if t.endswith("'s"):
+        t = t[:-2]
+    return t
 
 def detect_series(style_name_en: str) -> str:
     s = nfkc(style_name_en)
-    tokens = [t.lower() for t in re.findall(r"[A-Za-z][A-Za-z'-]+", s)]
-    for t in tokens:
+
+    tokens_raw = re.findall(r"[A-Za-z][A-Za-z'-]+", s)
+    tokens = [_normalize_token(t) for t in tokens_raw]
+
+    # 0) 黑名单优先：如果 token 命中黑名单，就跳过（不作为系列候选）
+    # 1) 先走白名单（但黑名单覆盖白名单）
+    for t_raw, t in zip(tokens_raw, tokens):
+        if t in SERIES_BLACKLIST:
+            continue
         if t in SERIES_WHITELIST:
-            return t.capitalize()
-    for t in tokens:
-        if t not in NOISE:
-            return t.capitalize()
+            # 返回原始 token 的“展示形式”，同时去掉可能的 's
+            disp = t_raw.replace("’", "'")
+            if disp.lower().endswith("'s"):
+                disp = disp[:-2]
+            return disp.capitalize()
+
+    # 2) 再兜底：挑第一个“有意义”的词（排除 NOISE + 黑名单）
+    for t_raw, t in zip(tokens_raw, tokens):
+        if t in SERIES_BLACKLIST:
+            continue
+        if t in NOISE:
+            continue
+        if len(t) <= 2:
+            continue
+        disp = t_raw.replace("’", "'")
+        if disp.lower().endswith("'s"):
+            disp = disp[:-2]
+        return disp.capitalize()
+
     return ""
+
 
 # ==== 核心：严格按你给的拼接与补齐逻辑 ====
 def generate_barbour_taobao_title(code: str, style_name_en: str, color_en: str, brand_key="barbour") -> dict:

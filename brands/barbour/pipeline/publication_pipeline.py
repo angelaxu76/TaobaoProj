@@ -20,7 +20,7 @@ def pipeline_barbour():
 
     # 步骤 1：将产品的编码放到D:\TB\Products\barbour\repulibcation\codes.txt
     # 步骤 2：生成发布产品的excel
-    print("\n🌐 步骤 1：抓取商品链接")
+    # print("\n🌐 步骤 1：抓取商品链接")
     generate_publication_excel()
 
 
