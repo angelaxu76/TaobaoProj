@@ -13,6 +13,8 @@ def barbour_database_import_pipleline():
     batch_import_txt_to_barbour_product("barbour")
     batch_import_txt_to_barbour_product("outdoorandcountry")
     batch_import_txt_to_barbour_product("allweathers")
+    batch_import_txt_to_barbour_product("philipmorris")
+    batch_import_txt_to_barbour_product("cho")
 
     # batch_import_txt_to_barbour_product("houseoffraser")
 
@@ -24,6 +26,7 @@ def barbour_database_import_pipleline():
     # import_txt_for_supplier("very",False)
     # import_txt_for_supplier("terraces",False)
     # import_txt_for_supplier("philipmorris",False)
+    import_txt_for_supplier("cho",False)
     
 if __name__ == "__main__":
     barbour_database_import_pipleline()

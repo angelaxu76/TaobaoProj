@@ -13,10 +13,10 @@ def main():
     code_file_path = r"D:\TB\Products\barbour\repulibcation\publication_codes.txt"
 
 
-    excel_path = r"D:\TB\Products\barbour\document\publication\barbour_publication_20260126_125930.xlsx"
-    images_root = r"D:\TB\Products\barbour\images_download"
+    excel_path = r"D:\TB\Products\barbour\document\publication\barbour_publication_20260215_144753.xlsx"
+    images_root = r"D:\TB\Products\barbour\images"
     target_root = r"D:\TB\Products\barbour\repulibcation\images_selected"
-    flat_images_dir = r"D:\TB\Products\barbour\repulibcation\images_flat"
+    flat_images_dir = r"D:\TB\Products\barbour\images_download"
 
 
     ok, miss, miss_list = copy_barbour_images_from_excel(
@@ -45,18 +45,18 @@ def main():
     # print("将图片merge到一张图片中")
     # batch_merge_images(BARBOUR["IMAGE_PROCESS"],BARBOUR["MERGED_DIR"], width=750)
 
-    print("生成产品详情卡HTML")
-    generate_html_from_codes_files("barbour",code_file_path,max_workers=2)
-    generate_first_page_from_codes_files("barbour",code_file_path)
+    # print("生成产品详情卡HTML")
+    # generate_html_from_codes_files("barbour",code_file_path,max_workers=2)
+    # generate_first_page_from_codes_files("barbour",code_file_path)
 
-    # GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径
-    print("生成产品详情卡图片")
-    convert_html_to_images(BARBOUR["HTML_DIR_DES"], BARBOUR["HTML_IMAGE_DES"],"",6)
-    trim_sides_batch(BARBOUR["HTML_IMAGE_DES"],BARBOUR["HTML_CUTTER_DES"])
+    # # GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径
+    # print("生成产品详情卡图片")
+    # convert_html_to_images(BARBOUR["HTML_DIR_DES"], BARBOUR["HTML_IMAGE_DES"],"",6)
+    # trim_sides_batch(BARBOUR["HTML_IMAGE_DES"],BARBOUR["HTML_CUTTER_DES"])
 
-    print("生成产品首页图片")
-    convert_html_to_images(BARBOUR["HTML_DIR_FIRST_PAGE"], BARBOUR["HTML_IMAGE_FIRST_PAGE"],"",6)
-    trim_sides_batch(BARBOUR["HTML_IMAGE_FIRST_PAGE"],BARBOUR["HTML_CUTTER_FIRST_PAGE"])
+    # print("生成产品首页图片")
+    # convert_html_to_images(BARBOUR["HTML_DIR_FIRST_PAGE"], BARBOUR["HTML_IMAGE_FIRST_PAGE"],"",6)
+    # trim_sides_batch(BARBOUR["HTML_IMAGE_FIRST_PAGE"],BARBOUR["HTML_CUTTER_FIRST_PAGE"])
 
 
 

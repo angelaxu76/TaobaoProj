@@ -22,7 +22,7 @@ BRAND_MAP  = {
     "clarks": "clarks其乐",
     "ecco": "ecco爱步",
     "geox": "geox健乐士",
-    "barbour": "barbour巴伯尔",
+    "barbour": "Barbour",
 }
 
 # 鞋类风格映射（保持原样）

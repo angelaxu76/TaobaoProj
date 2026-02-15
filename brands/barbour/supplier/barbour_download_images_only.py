@@ -3,11 +3,33 @@ import os
 import re
 import json
 import time
+import logging
+import argparse
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urlparse, urljoin, parse_qs
+from urllib.parse import urlparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from config import BARBOUR
 from PIL import Image
+
+# ========== logging ==========
+logger = logging.getLogger(__name__)
+# 确保被 import 调用时也有输出（不依赖调用方配置 logging）
+if not logger.handlers and not logging.root.handlers:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
+def setup_logging(debug=False):
+    level = logging.DEBUG if debug else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%H:%M:%S",
+        force=True,
+    )
 
 # ========== 可调参数 ==========
 HEADERS = {
@@ -16,52 +38,10 @@ HEADERS = {
 TIMEOUT = 20
 RETRY = 3
 
-# 你给的 Salsify 模板（把 picture_name 放进去）
 SALSIFY_TMPL = (
     "https://images.salsify.com/image/upload/"
     "s--i74AAA0n--/c_fill,w_1000,h_1334,f_auto/{name}.jpg"
 )
-
-
-from concurrent.futures import ThreadPoolExecutor, as_completed
-
-def worker(url, image_folder):
-    """每个线程独立运行，不共享 session。"""
-    try:
-        code, name = extract_code_and_name(url)
-        with requests.Session() as session:
-            saved = download_images_for_page(session, url, image_folder, code, name)
-        return (url, saved, None)
-    except Exception as e:
-        return (url, 0, str(e))
-
-
-def download_barbour_images_multi(max_workers=6):
-    links_file = BARBOUR["LINKS_FILE"]
-    image_folder = BARBOUR["IMAGE_DOWNLOAD"]
-    os.makedirs(image_folder, exist_ok=True)
-
-    with open(links_file, "r", encoding="utf-8") as f:
-        urls = [line.strip() for line in f if line.strip()]
-
-    print(f"📦 共 {len(urls)} 个商品链接，开启 {max_workers} 线程并发下载...")
-
-    results = []
-    with ThreadPoolExecutor(max_workers=max_workers) as exe:
-        futures = {exe.submit(worker, url, image_folder): url for url in urls}
-
-        for fut in as_completed(futures):
-            url = futures[fut]
-            try:
-                u, saved, err = fut.result()
-                if err:
-                    print(f"❌ 失败: {url} 错误: {err}")
-                else:
-                    print(f"✅ 完成: {url}  下载 {saved} 张")
-            except Exception as e:
-                print(f"🔴 异常线程: {url} -> {e}")
-
-    print("🎯 并发下载全部完成！")
 
 
 # ========== 工具函数 ==========
@@ -70,13 +50,15 @@ def extract_code_and_name(url: str):
     输入: https://www.barbour.com/gb/zola-quilted-jacket-LQU1822CR11.html
     输出: ("LQU1822CR11", "zola-quilted-jacket")
     """
-    filename = os.path.basename(urlparse(url).path)  # zola-quilted-jacket-LQU1822CR11.html
+    filename = os.path.basename(urlparse(url).path)
     if filename.endswith(".html"):
         filename = filename[:-5]
     parts = filename.split("-")
     code = parts[-1]
     name = "-".join(parts[:-1])
+    logger.debug("extract_code_and_name: url=%s -> code=%s, name=%s", url, code, name)
     return code, name
+
 
 def _expand_srcset(srcset: str):
     """解析 srcset -> [(url, width_int)]，按宽度降序"""
@@ -97,6 +79,7 @@ def _expand_srcset(srcset: str):
     items.sort(key=lambda x: x[1], reverse=True)
     return items
 
+
 def _basename_no_ext(path: str) -> str:
     """
     取不带扩展名的basename，并去掉 _001/_002 之类尾缀。
@@ -108,9 +91,11 @@ def _basename_no_ext(path: str) -> str:
     base = re.sub(r"_(\d{3})$", "", base)
     return base
 
+
 def _is_hash_like(name: str) -> bool:
     """是否像加密名（较长的字母数字/下划线/短横线串）"""
     return bool(re.fullmatch(r"[A-Za-z0-9_-]{20,}", name))
+
 
 def _uniq_keep_order(seq):
     seen, out = set(), []
@@ -120,39 +105,50 @@ def _uniq_keep_order(seq):
             out.append(x)
     return out
 
+
+def _strip_query(url: str) -> str:
+    return url.split("?", 1)[0]
+
+
+def _is_salsify(url: str) -> bool:
+    return "images.salsify.com" in url.lower()
+
+
 # ========== 提取图片链接 ==========
 def extract_image_urls_ldjson(page_content: str):
-    """保持原逻辑：只从 JSON-LD 的 image 数组取图"""
+    """从 JSON-LD 的 image 数组取图"""
     soup = BeautifulSoup(page_content, "html.parser")
     script_tag = soup.find("script", type="application/ld+json")
     if not script_tag or not script_tag.string:
+        logger.debug("JSON-LD: 未找到 script[type=application/ld+json]")
         return []
     try:
         data = json.loads(script_tag.string.strip())
         images = data.get("image", [])
+        if isinstance(images, str):
+            images = [images]
         if isinstance(images, list):
+            logger.debug("JSON-LD: 找到 %d 张图", len(images))
             return images
-        elif isinstance(images, str):
-            return [images]
     except Exception as e:
-        print(f"[解析失败] JSON-LD 错误: {e}")
+        logger.warning("JSON-LD 解析失败: %s", e)
     return []
+
 
 def extract_picture_hash_urls(page_content: str):
     """
-    新增逻辑：从 <picture>/<img>/<source> 抓到 webp 的“哈希名”，
-    拼成 Salsify URL: SALSIFY_TMPL.format(name=<hash>)
+    从 <picture>/<img>/<source> 抓到 webp 的"哈希名"，
+    拼成 Salsify URL
     """
     soup = BeautifulSoup(page_content, "html.parser")
     urls = []
 
-    # 主图区域
     pictures = soup.select(".picture__wrapper picture")
     if not pictures:
-        pictures = soup.find_all("picture")  # 兜底
+        pictures = soup.find_all("picture")
+    logger.debug("picture_hash: 找到 %d 个 <picture> 标签", len(pictures))
 
     for pic in pictures:
-        # 优先 <img src>
         img = pic.find("img")
         if img:
             for attr in ("src", "data-src"):
@@ -163,7 +159,6 @@ def extract_picture_hash_urls(page_content: str):
                         urls.append(SALSIFY_TMPL.format(name=name))
                     break
 
-        # 再看 <source srcset> 最大图
         for source in pic.find_all("source"):
             srcset = source.get("srcset") or source.get("data-srcset") or ""
             if srcset:
@@ -174,7 +169,7 @@ def extract_picture_hash_urls(page_content: str):
                     if _is_hash_like(name):
                         urls.append(SALSIFY_TMPL.format(name=name))
 
-    # 可选：散落 img 兜底
+    # 兜底：散落 img
     if not urls:
         for img in soup.find_all("img"):
             for attr in ("srcset", "data-srcset"):
@@ -192,82 +187,10 @@ def extract_picture_hash_urls(page_content: str):
                         urls.append(SALSIFY_TMPL.format(name=name))
                         break
 
-    return _uniq_keep_order(urls)
+    result = _uniq_keep_order(urls)
+    logger.debug("picture_hash: 提取到 %d 个 Salsify URL", len(result))
+    return result
 
-# ========== “图片唯一标识” 生成规则 ==========
-def image_identity(url: str) -> str:
-    """
-    用于去重的“唯一标识”：
-    1) Salsify：最后一段 basename（不带扩展名），去掉 _001 等后缀
-    2) media.barbour.com/i/barbour/<id>：用 <id>（去掉参数、扩展名、_001）
-    3) 其它：如果 basename 像哈希则用哈希；否则回退到完整 URL（避免误合并）
-    """
-    parsed = urlparse(url)
-    path = parsed.path
-    host = (parsed.netloc or "").lower()
-
-    base_no_ext = _basename_no_ext(path)
-
-    # Salsify：/image/upload/.../<hash>.jpg
-    if "images.salsify.com" in host:
-        return base_no_ext
-
-    # Barbour Scene7：/i/barbour/<id>...
-    if "media.barbour.com" in host and path.startswith("/i/"):
-        # 取 /i/barbour/<id> 的 <id> 部分
-        segs = path.split("/")
-        # 安全判断
-        if len(segs) >= 4 and segs[2] == "barbour":
-            return _basename_no_ext(segs[3])
-
-    # 其它：如果像哈希，就用哈希；否则用完整 URL
-    if _is_hash_like(base_no_ext):
-        return base_no_ext
-
-    return url  # 保守：以完整 URL 为标识，避免误合并
-
-# ========== 下载部分 ==========
-def _get_with_retry(session: requests.Session, url: str):
-    last_err = None
-    for _ in range(RETRY):
-        try:
-            r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-            r.raise_for_status()
-            return r
-        except Exception as e:
-            last_err = e
-            time.sleep(0.8)
-    raise last_err
-
-def collect_all_image_urls(html: str, product_code: str | None = None):
-    """
-    汇总：JSON-LD + <picture>(哈希名) + <picture>(含商品编码)
-    返回按出现顺序的列表（不去重）
-    """
-    urls = []
-    urls += extract_image_urls_ldjson(html)       # 先 JSON-LD（你原逻辑）
-    urls += extract_picture_hash_urls(html)       # 再补 <picture> 的哈希名（Salsify）
-    if product_code:
-        urls += extract_picture_urls_by_code(html, product_code)  # <picture> 中含编码的静态图
-    return [u for u in urls if u]
-
-
-
-def dedupe_by_identity(urls):
-    """
-    按“图片唯一标识”去重，保持首次出现顺序。
-    返回：[(identity, url)] 只保留每个 identity 的第一条 URL
-    """
-    first_index = {}
-    first_url = {}
-    for idx, u in enumerate(urls):
-        ident = image_identity(u)
-        if ident not in first_index:
-            first_index[ident] = idx
-            first_url[ident] = u
-    # 按首次出现顺序排序
-    ordered_ids = sorted(first_index.items(), key=lambda x: x[1])
-    return [(ident, first_url[ident]) for ident, _ in ordered_ids]
 
 def extract_picture_urls_by_code(page_content: str, product_code: str):
     """
@@ -280,69 +203,123 @@ def extract_picture_urls_by_code(page_content: str, product_code: str):
     def add(u: str):
         if not u:
             return
-        base = u.split("?")[0].split("#")[0]  # 归一化去掉查询串与 # 片段
+        base = u.split("?")[0].split("#")[0]
         if product_code in base and base not in seen:
             seen.add(base)
             urls.append(base)
 
     for pic in soup.find_all("picture"):
         for tag in pic.find_all(["img", "source"]):
-            # 直接链接
             for attr in ("src", "data-src"):
                 add(tag.get(attr))
-            # srcset 里可能有多尺寸，多条逗号分隔
             for attr in ("srcset", "data-srcset"):
                 srcset = tag.get(attr)
                 if srcset:
                     for part in srcset.split(","):
                         add(part.strip().split(" ")[0])
 
+    logger.debug("picture_by_code(%s): 找到 %d 个含编码的链接", product_code, len(urls))
     return urls
 
 
+# ========== "图片唯一标识" 生成规则 ==========
+def image_identity(url: str) -> str:
+    parsed = urlparse(url)
+    path = parsed.path
+    host = (parsed.netloc or "").lower()
+    base_no_ext = _basename_no_ext(path)
 
-def download_images_for_page(session: requests.Session, page_url: str, out_dir: str, code: str, name: str):
-    """
-    1) 收集全部候选链接到变量
-    2) 基于“加密名/唯一标识”去重
-    3) 按顺序下载并按 {code}-{name}_{i}.jpg 命名
-    """
-    html_resp = _get_with_retry(session, page_url)
-    html = html_resp.text
+    if "images.salsify.com" in host:
+        return base_no_ext
 
-    # 1) 收集（你想看也可以 print 出来）
-    # 1) 收集（你想看也可以 print 出来）
-    candidates = collect_all_image_urls(html, code)
+    if "media.barbour.com" in host and path.startswith("/i/"):
+        segs = path.split("/")
+        if len(segs) >= 4 and segs[2] == "barbour":
+            return _basename_no_ext(segs[3])
+
+    if _is_hash_like(base_no_ext):
+        return base_no_ext
+
+    return url
 
 
-    # 🔍 新增过滤逻辑：只保留含商品编码的静态图 + 保留 Salsify 哈希图
-    def _strip_q(u: str) -> str:
-        return u.split("?", 1)[0]
+# ========== 收集 & 去重 ==========
+def collect_all_image_urls(html: str, product_code: str | None = None):
+    """汇总：JSON-LD + <picture>(哈希名) + <picture>(含商品编码)"""
+    urls = []
+    urls += extract_image_urls_ldjson(html)
+    urls += extract_picture_hash_urls(html)
+    if product_code:
+        urls += extract_picture_urls_by_code(html, product_code)
+    result = [u for u in urls if u]
+    logger.debug("collect_all: 共收集到 %d 个候选 URL", len(result))
+    return result
 
-    def _is_salsify(u: str) -> bool:
-        return "images.salsify.com" in u.lower()
 
+def dedupe_by_identity(urls):
+    """按"图片唯一标识"去重，保持首次出现顺序。"""
+    first_index = {}
+    first_url = {}
+    for idx, u in enumerate(urls):
+        ident = image_identity(u)
+        if ident not in first_index:
+            first_index[ident] = idx
+            first_url[ident] = u
+    ordered_ids = sorted(first_index.items(), key=lambda x: x[1])
+    result = [(ident, first_url[ident]) for ident, _ in ordered_ids]
+    logger.debug("dedupe: %d -> %d 张（去重后）", len(urls), len(result))
+    return result
+
+
+def filter_candidates(candidates, code):
+    """只保留含商品编码的静态图 + Salsify 哈希图"""
     filtered = []
     for u in candidates:
-        u0 = _strip_q(u)
-        # Salsify 哈希图保留
+        u0 = _strip_query(u)
         if _is_salsify(u0):
             filtered.append(u0)
-        # 静态图中含商品编码（如 LQU1834BK11）才保留
         elif code.upper() in u0.upper():
             filtered.append(u0)
 
-    # 若过滤完为空，则回退到原 candidates（保证不影响已有逻辑）
-    candidates = filtered or candidates
+    if filtered:
+        logger.debug("filter: %d -> %d 张（过滤后）", len(candidates), len(filtered))
+        return filtered
 
-    # 2) 去重（基于 identity）
+    logger.debug("filter: 过滤后为空，回退到全部 %d 张", len(candidates))
+    return candidates
+
+
+# ========== 下载部分 ==========
+def _get_with_retry(session: requests.Session, url: str):
+    last_err = None
+    for attempt in range(1, RETRY + 1):
+        try:
+            r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
+            r.raise_for_status()
+            return r
+        except Exception as e:
+            last_err = e
+            logger.debug("请求失败 (第%d次): %s -> %s", attempt, url[:80], e)
+            time.sleep(0.8)
+    raise last_err
+
+
+def download_images_for_page(session: requests.Session, page_url: str, out_dir: str, code: str, name: str):
+    """收集 -> 过滤 -> 去重 -> 下载"""
+    logger.info("正在处理: %s (code=%s)", page_url, code)
+
+    html_resp = _get_with_retry(session, page_url)
+    logger.debug("页面获取成功, HTTP %d, 长度 %d", html_resp.status_code, len(html_resp.text))
+    html = html_resp.text
+
+    candidates = collect_all_image_urls(html, code)
+    candidates = filter_candidates(candidates, code)
     unique_list = dedupe_by_identity(candidates)
 
     if not unique_list:
-        print(f"⚠️ 未发现图片: {page_url}")
+        logger.warning("未发现图片: %s", page_url)
         return 0
 
-    # 3) 下载
     count = 0
     for i, (ident, img_url) in enumerate(unique_list, 1):
         filename = f"{code}-{name}_{i}.jpg"
@@ -351,32 +328,23 @@ def download_images_for_page(session: requests.Session, page_url: str, out_dir: 
             img_resp = _get_with_retry(session, img_url)
             with open(save_path, "wb") as f:
                 f.write(img_resp.content)
-
-            # 下载后把图片补成正方形（白底居中）
             make_square_image(save_path, save_path)
-
             count += 1
-            print(f"✅ 已保存: {filename}  <- {ident}")
+            logger.info("已保存: %s <- %s", filename, ident[:60])
         except Exception as e:
-            print(f"❌ 下载失败: {img_url} -> {filename}，错误: {e}")
+            logger.error("下载失败: %s -> %s, 错误: %s", img_url[:80], filename, e)
     return count
 
 
-
 def make_square_image(img_path: str, out_path: str, fill_color=(255, 255, 255)):
-    """
-    将图片扩展为正方形，保持原图居中，空白部分用 fill_color（默认白色）填充。
-    不缩放原图，只在短边补白。
-    """
+    """将图片扩展为正方形，保持原图居中，空白部分用白色填充。"""
     try:
         with Image.open(img_path) as img:
             img = img.convert("RGB")
             w, h = img.size
             if w == h:
-                # 已经正方形，直接保存回去（也可跳过保存）
                 img.save(out_path, quality=90)
                 return
-
             size = max(w, h)
             canvas = Image.new("RGB", (size, size), fill_color)
             paste_x = (size - w) // 2
@@ -384,27 +352,111 @@ def make_square_image(img_path: str, out_path: str, fill_color=(255, 255, 255)):
             canvas.paste(img, (paste_x, paste_y))
             canvas.save(out_path, quality=90)
     except Exception as e:
-        print(f"⚠️ 方形化失败: {img_path}，错误: {e}")
+        logger.error("方形化失败: %s, 错误: %s", img_path, e)
 
-# ========== 主流程 ==========
-def download_barbour_images():
+
+# ========== 多线程入口 ==========
+def worker(url, image_folder):
+    """每个线程独立运行，不共享 session。"""
+    try:
+        code, name = extract_code_and_name(url)
+        with requests.Session() as session:
+            saved = download_images_for_page(session, url, image_folder, code, name)
+        return (url, saved, None)
+    except Exception as e:
+        logger.error("worker 异常: %s -> %s", url, e)
+        return (url, 0, str(e))
+
+
+def download_barbour_images_multi(max_workers=6):
     links_file = BARBOUR["LINKS_FILE"]
     image_folder = BARBOUR["IMAGE_DOWNLOAD"]
+
+    logger.info("配置: LINKS_FILE=%s", links_file)
+    logger.info("配置: IMAGE_DOWNLOAD=%s", image_folder)
+
+    if not os.path.exists(links_file):
+        logger.error("链接文件不存在: %s", links_file)
+        return
+
     os.makedirs(image_folder, exist_ok=True)
 
     with open(links_file, "r", encoding="utf-8") as f:
         urls = [line.strip() for line in f if line.strip()]
 
-    print(f"📦 共 {len(urls)} 个商品链接，开始依次下载...")
+    if not urls:
+        logger.warning("链接文件为空: %s", links_file)
+        return
+
+    logger.info("共 %d 个商品链接，开启 %d 线程并发下载...", len(urls), max_workers)
+
+    with ThreadPoolExecutor(max_workers=max_workers) as exe:
+        futures = {exe.submit(worker, url, image_folder): url for url in urls}
+
+        for fut in as_completed(futures):
+            url = futures[fut]
+            try:
+                _, saved, err = fut.result()
+                if err:
+                    logger.error("失败: %s 错误: %s", url, err)
+                else:
+                    logger.info("完成: %s  下载 %d 张", url, saved)
+            except Exception as e:
+                logger.error("异常线程: %s -> %s", url, e)
+
+    logger.info("并发下载全部完成！")
+
+
+# ========== 单线程入口（保留兼容） ==========
+def download_barbour_images():
+    links_file = BARBOUR["LINKS_FILE"]
+    image_folder = BARBOUR["IMAGE_DOWNLOAD"]
+
+    logger.info("配置: LINKS_FILE=%s", links_file)
+    logger.info("配置: IMAGE_DOWNLOAD=%s", image_folder)
+
+    if not os.path.exists(links_file):
+        logger.error("链接文件不存在: %s", links_file)
+        return
+
+    os.makedirs(image_folder, exist_ok=True)
+
+    with open(links_file, "r", encoding="utf-8") as f:
+        urls = [line.strip() for line in f if line.strip()]
+
+    if not urls:
+        logger.warning("链接文件为空: %s", links_file)
+        return
+
+    logger.info("共 %d 个商品链接，开始依次下载...", len(urls))
 
     with requests.Session() as session:
         for idx, url in enumerate(urls, 1):
             try:
                 code, name = extract_code_and_name(url)
                 saved = download_images_for_page(session, url, image_folder, code, name)
-                print(f"👉 [{idx}/{len(urls)}] {url} 下载张数: {saved}")
+                logger.info("[%d/%d] %s 下载张数: %d", idx, len(urls), url, saved)
             except Exception as e:
-                print(f"❌ [{idx}/{len(urls)}] 失败: {url}，错误: {e}")
+                logger.error("[%d/%d] 失败: %s, 错误: %s", idx, len(urls), url, e)
 
-    print("🎯 所有图片处理完毕。")
+    logger.info("所有图片处理完毕。")
 
+
+# ========== 命令行入口 ==========
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Barbour 商品图片下载器")
+    parser.add_argument("--debug", action="store_true", help="开启 DEBUG 日志")
+    parser.add_argument("--workers", type=int, default=6, help="并发线程数 (默认 6)")
+    parser.add_argument("--single", action="store_true", help="使用单线程模式")
+    args = parser.parse_args()
+
+    setup_logging(debug=args.debug)
+
+    logger.info("========== Barbour 图片下载 启动 ==========")
+    logger.info("LINKS_FILE = %s", BARBOUR.get("LINKS_FILE", "未配置"))
+    logger.info("IMAGE_DOWNLOAD = %s", BARBOUR.get("IMAGE_DOWNLOAD", "未配置"))
+
+    if args.single:
+        download_barbour_images()
+    else:
+        download_barbour_images_multi(max_workers=args.workers)

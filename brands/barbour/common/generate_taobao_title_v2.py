@@ -319,7 +319,7 @@ def _dedupe_material(type_str: str, material_cn: str) -> str:
 # ==== 核心：生成淘宝标题（V2.1）====
 def generate_barbour_taobao_title(code: str, style_name_en: str, color_en: str, brand_key="barbour") -> dict:
     brand_en, brand_cn = BRAND_NAME_MAP.get(brand_key.lower(), (brand_key.upper(), brand_key))
-    brand_full = f"{brand_en}{brand_cn}"
+    brand_full = f"{brand_en}"
 
     gender_str, type_str = detect_by_code_prefix(code)
 
