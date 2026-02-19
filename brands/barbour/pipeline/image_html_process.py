@@ -1,5 +1,5 @@
 from pathlib import Path
-from brands.barbour.image.copy_images_by_excel import copy_barbour_images_from_excel,rebuild_all_products_images,collect_all_images_to_flat_dir,watermark_index_0_9_inplace
+from brands.barbour.image.copy_images_by_excel import prepare_images_for_publication,rebuild_all_products_images,collect_all_images_to_flat_dir,watermark_index_0_9_inplace
 from cfg.brands.barbour import BARBOUR
 from common_taobao.publication.generate_html import generate_html_from_codes_files
 from common_taobao.publication.generate_html_FristPage import generate_first_page_from_codes_files
@@ -14,18 +14,21 @@ def main():
 
 
     excel_path = r"D:\TB\Products\barbour\document\publication\barbour_publication_20260215_144753.xlsx"
-    images_root = r"D:\TB\Products\barbour\images"
-    target_root = r"D:\TB\Products\barbour\repulibcation\images_selected"
-    flat_images_dir = r"D:\TB\Products\barbour\images_download"
+    downloaded_dir = r"D:\TB\Products\barbour\images_download"
+    processed_dir = r"D:\TB\Products\barbour\images"
+    publish_ready_dir = r"D:\TB\Products\barbour\repulibcation\images_selected"
+    publish_need_process_dir = r"D:\TB\Products\barbour\repulibcation\need_edit"
+    missing_txt_path = r"D:\TB\Products\barbour\repulibcation\missing_codes.txt"
 
-
-    ok, miss, miss_list = copy_barbour_images_from_excel(
-        excel_path, images_root, target_root,
+    ready, need_edit, missing = prepare_images_for_publication(
+        excel_path=excel_path,
+        downloaded_dir=downloaded_dir,
+        processed_dir=processed_dir,
+        publish_ready_dir=publish_ready_dir,
+        publish_need_process_dir=publish_need_process_dir,
+        missing_txt_path=missing_txt_path,
         verbose=True,
     )
-
-    print(">>> target_root =", target_root)
-    print(f">>> copy done: ok={ok}, missing={miss}")
     
     # rebuild_all_products_images(target_root, verbose=True)
 
