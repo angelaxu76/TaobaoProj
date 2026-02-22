@@ -69,7 +69,7 @@ def main():
     export_stock_excel("clarks_jingya",stock_dest_excel_folder)
 
     price_dest_excel = r"D:\TB\Products\clarks_jingya\repulibcation\publication_prices"
-    export_jiangya_channel_prices("clarks_jingya",price_dest_excel)
+    export_jiangya_channel_prices("clarks_jingya",price_dest_excel,chunk_size=200)
 
     print("\\n🟡 Step: 6️⃣生成发布产品的excel")
     generate_publication_excels("clarks_jingya")
