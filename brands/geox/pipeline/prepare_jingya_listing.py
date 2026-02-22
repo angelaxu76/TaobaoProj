@@ -36,38 +36,38 @@ def main():
 
 
 
-    print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
-    import_txt_to_db_supplier("geox")  # ✅ 新逻辑
+    # print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
+    # import_txt_to_db_supplier("geox")  # ✅ 新逻辑
 
-    print("\n🟡 Step: 5️⃣ 绑定渠道 SKU 信息（淘经销 Excel）将鲸芽那边的货品ID等输入到数据库")
-    insert_jingyaid_to_db("geox")
+    # print("\n🟡 Step: 5️⃣ 绑定渠道 SKU 信息（淘经销 Excel）将鲸芽那边的货品ID等输入到数据库")
+    # insert_jingyaid_to_db("geox")
 
-    print("\n🟡 Step: 5️⃣ 将最新TXT中没有的产品，说明刚商品已经下架，但鲸芽这边没办法删除，全部补库存为0")
-    insert_missing_products_with_zero_stock("geox")
+    # print("\n🟡 Step: 5️⃣ 将最新TXT中没有的产品，说明刚商品已经下架，但鲸芽这边没办法删除，全部补库存为0")
+    # insert_missing_products_with_zero_stock("geox")
 
 
-    # print("\\n🟡 Step: 6️⃣生成发布产品的excel")
-    generate_publication_excels("geox")
+    # # print("\\n🟡 Step: 6️⃣生成发布产品的excel")
+    # generate_publication_excels("geox")
 
     print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
     stock_dest_excel_folder = r"D:\TB\Products\geox\repulibcation\stock"
     export_stock_excel("geox",stock_dest_excel_folder)
 
-    print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
-    price_dest_excel = r"D:\TB\Products\geox\repulibcation\publication_prices"
-    exclude_exccel = r"D:\TB\Products\geox\document\exclude.xlsx"
-    # export_jiangya_channel_prices("geox",price_dest_excel,exclude_exccel)
-    export_jiangya_channel_prices("geox",price_dest_excel)
+    # print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
+    # price_dest_excel = r"D:\TB\Products\geox\repulibcation\publication_prices"
+    # exclude_exccel = r"D:\TB\Products\geox\document\exclude.xlsx"
+    # # export_jiangya_channel_prices("geox",price_dest_excel,exclude_exccel)
+    # export_jiangya_channel_prices("geox",price_dest_excel)
 
 
-    generate_price_excels_bulk(
-        brand="geox",
-        input_dir=r"D:\TB\Products\geox\document\store_prices",
-        output_dir=r"D:\TB\Products\geox\repulibcation\store_prices\output",
-        suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
-        drop_rows_without_price=False,
-        blacklist_excel_file=r"D:\TB\Products\geox\document\exclude.xlsx" # 不丢行，查不到的价格留空
-    )
+    # generate_price_excels_bulk(
+    #     brand="geox",
+    #     input_dir=r"D:\TB\Products\geox\document\store_prices",
+    #     output_dir=r"D:\TB\Products\geox\repulibcation\store_prices\output",
+    #     suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
+    #     drop_rows_without_price=False,
+    #     blacklist_excel_file=r"D:\TB\Products\geox\document\exclude.xlsx" # 不丢行，查不到的价格留空
+    # )
 
 
 if __name__ == "__main__":

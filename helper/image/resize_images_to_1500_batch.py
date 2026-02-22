@@ -3,8 +3,8 @@ import os
 from pathlib import Path
 
 # === 配置项 ===
-IMAGE_DIR = Path(r"D:\images\clarks\image_cutter")  # 替换为你的目录
-MAX_WIDTH = 1500
+IMAGE_DIR = Path(r"G:\temp\target")  # 替换为你的目录
+MAX_WIDTH = 1000
 
 def resize_image(image_path: Path):
     try:
