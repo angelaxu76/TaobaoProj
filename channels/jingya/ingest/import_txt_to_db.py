@@ -43,7 +43,7 @@ def _safe_float(x) -> float:
 
 import tempfile
 from datetime import datetime
-def import_txt_to_db_supplier(brand_name: str):
+def import_txt_to_db_supplier(brand_name: str, exchange_rate: float = 9.7, delivery_cost: float = 7):
     brand_name = brand_name.lower()
 
     if brand_name not in BRAND_CONFIG:
@@ -108,7 +108,7 @@ def import_txt_to_db_supplier(brand_name: str):
 
         if base > 0:
             try:
-                untaxed, retail = calculate_jingya_prices(base, delivery_cost=7, exchange_rate=9.7)
+                untaxed, retail = calculate_jingya_prices(base, delivery_cost=delivery_cost, exchange_rate=exchange_rate)
             except Exception:
                 untaxed, retail = (None, None)
         else:
