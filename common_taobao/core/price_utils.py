@@ -68,9 +68,17 @@ from math import floor
 
 from math import floor
 
-def calculate_jingya_prices(base_price: float, delivery_cost=7, exchange_rate=9.7):
+def calculate_jingya_prices(
+    base_price: float,
+    delivery_cost=7,
+    exchange_rate=9.7,
+    untaxed_margin=1.13,
+    retail_margin=1.43,
+):
     """
-    接收 base_price（已考虑品牌折扣），返回未税价格与零售价
+    接收 base_price（已考虑品牌折扣），返回未税价格与零售价。
+    untaxed = (base_price + delivery_cost) * untaxed_margin * exchange_rate
+    retail  = untaxed * retail_margin
     """
     from math import floor
 
@@ -80,13 +88,13 @@ def calculate_jingya_prices(base_price: float, delivery_cost=7, exchange_rate=9.
     if base_price < 30:
         base_price = base_price + 7
     elif 30 < base_price < 40:
-        base_price = base_price+5
+        base_price = base_price + 5
 
     try:
-        untaxed = (base_price + delivery_cost) * 1.13 * exchange_rate
+        untaxed = (base_price + delivery_cost) * untaxed_margin * exchange_rate
         untaxed = floor(untaxed / 10) * 10
 
-        retail = untaxed * 1.43
+        retail = untaxed * retail_margin
         retail = floor(retail / 10) * 10
 
         return untaxed, retail

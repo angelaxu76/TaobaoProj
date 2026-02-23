@@ -96,6 +96,9 @@ def export_jiangya_channel_prices(
     exclude_excel_file: Optional[str] = None,
     chunk_size: int = 400,
     exchange_rate: float = 9.6,
+    delivery_cost: float = 7,
+    untaxed_margin: float = 1.13,
+    retail_margin: float = 1.43,
 ) -> str:
     """
     通用鲸芽渠道价格导出。
@@ -172,7 +175,7 @@ def export_jiangya_channel_prices(
         base = base_raw * _brand_discount(brand_l)
         if not _is_valid_price(base):
             return 0.0, 0.0
-        return calculate_jingya_prices(base, delivery_cost=7, exchange_rate=exchange_rate)
+        return calculate_jingya_prices(base, delivery_cost=delivery_cost, exchange_rate=exchange_rate, untaxed_margin=untaxed_margin, retail_margin=retail_margin)
 
     prices = df_grp.apply(_pick_prices, axis=1)
     expanded = prices.apply(pd.Series)
