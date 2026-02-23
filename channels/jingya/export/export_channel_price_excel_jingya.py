@@ -93,8 +93,9 @@ def _write_one_excel(df_chunk: pd.DataFrame, file_path: Path):
 def export_jiangya_channel_prices(
     brand: str,
     output_dir: Optional[str] = None,
-    exclude_excel_file: Optional[str] = None,  # ⭐ 新增参数
+    exclude_excel_file: Optional[str] = None,
     chunk_size: int = 400,
+    exchange_rate: float = 9.6,
 ) -> str:
     """
     通用鲸芽渠道价格导出。
@@ -171,7 +172,7 @@ def export_jiangya_channel_prices(
         base = base_raw * _brand_discount(brand_l)
         if not _is_valid_price(base):
             return 0.0, 0.0
-        return calculate_jingya_prices(base, delivery_cost=7, exchange_rate=9.6)
+        return calculate_jingya_prices(base, delivery_cost=7, exchange_rate=exchange_rate)
 
     prices = df_grp.apply(_pick_prices, axis=1)
     expanded = prices.apply(pd.Series)
