@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-"""
-MS 服装（外套/针织/上衣/连衣裙等）统一解析脚本
-使用 Selenium + __NEXT_DATA__ 解析全量信息
-使用 format_txt 写入“鲸芽标准格式” TXT
-"""
+# MS 服装（外套/针织/上衣/连衣裙等）统一解析脚本
+# 使用 Selenium + __NEXT_DATA__ 解析全量信息
+# 使用 format_txt 写入鲸芽标准格式 TXT
+from __future__ import annotations
 
 import json
 import re
@@ -57,8 +56,12 @@ def _apply_size_range_completion(size_map: dict, detail: dict, gender: str | Non
     base_sizes: list[str] = []
 
     if g_is_female:
-        # 判断现有尺码是否是“数字系”
+        # 判断现有尺码是否是"数字系"
         has_digit = any(re.search(r"\d", s) for s in size_map.keys())
+
+        # 只有尺码本身全部是数字（如 6, 8, 10）才算数字系；
+        # 含字母的尺码（2XL, 3XL）不应触发数字模式
+        has_digit = any(re.fullmatch(r"\d+", s) for s in size_map.keys())
 
         if has_digit:
             # 女款数字尺码：6 - 24，步长 2
@@ -75,7 +78,7 @@ def _apply_size_range_completion(size_map: dict, detail: dict, gender: str | Non
         # 童款 / 未知性别：不做补码
         return size_map, detail
 
-    # 对于范围内每个尺码，若不存在则补一条“无货，库存 0”
+    # 对于范围内每个尺码，若不存在则补一条"无货，库存 0"
     for sz in base_sizes:
         if sz in size_map:
             continue
@@ -125,7 +128,7 @@ def _normalize_size_label(label: str) -> str:
     - Extra Small -> XS, Medium -> M 等
     - 如果包含数字（8, 10, 12, 8-10 之类），视为数字尺码，原样保留
     - 年龄尺码 16YRS / 13YRS → 16Y / 13Y
-    - “PRODUCT NAME IS ...” 等异常文本 → ONE_SIZE
+    - "PRODUCT NAME IS ..." 等异常文本 → ONE_SIZE
     """
     if label is None:
         return label
@@ -213,13 +216,40 @@ def _normalize_color_code(color: str) -> str:
 
 
 
+def _extract_jsonld_breadcrumbs(soup: BeautifulSoup) -> list[str]:
+    """
+    从页面 JSON-LD BreadcrumbList 提取面包屑文本和路径。
+    例: ["Home", "/", "Men", "/c/men", "Men's Knitwear", "/l/men/mens-knitwear"]
+    用于 _infer_gender 判断性别。
+    """
+    results: list[str] = []
+    for tag in soup.find_all("script", {"type": "application/ld+json"}):
+        try:
+            data = _load_json_safe(tag.string)
+        except Exception:
+            continue
+        if not isinstance(data, dict):
+            continue
+        if data.get("@type") != "BreadcrumbList":
+            continue
+        for item in (data.get("itemListElement") or []):
+            inner = item.get("item") or {}
+            name = inner.get("name") or ""
+            path = inner.get("@id") or ""
+            if name:
+                results.append(name)
+            if path:
+                results.append(path)
+    return results
+
+
 def _extract_product_sheet(soup: BeautifulSoup):
     """
     从 <script id="__NEXT_DATA__"> 中取商品核心信息
 
     优先使用旧结构的 pageProps.productSheet；
     若不存在，则适配新结构的 pageProps.productDetails，
-    构造一个“仿 productSheet”的 dict，让后续解析逻辑复用。
+    构造一个"仿 productSheet"的 dict，让后续解析逻辑复用。
     """
     tag = soup.find("script", {"id": "__NEXT_DATA__", "type": "application/json"})
     if not tag:
@@ -306,10 +336,25 @@ def _extract_product_sheet(soup: BeautifulSoup):
         })
 
     # ---------- color: 适配成原先 sheet['color'] 的结构 ----------
-    colour_name = first_variant.get("colour") if isinstance(first_variant, dict) else None
+    colour_name = first_variant.get("colour")
     color = {"name": colour_name} if colour_name else None
 
-    # ---------- 拼成“仿 productSheet”的 dict ----------
+    # ---------- department（用于性别判断）----------
+    department = (
+        attrs.get("department")
+        or attrs.get("gender")
+        or attrs.get("targetGender")
+        or ""
+    )
+
+    # ---------- breadcrumbs（用于性别判断的备用信息）----------
+    breadcrumbs_raw = page_props.get("breadcrumbs") or pd.get("breadcrumbs") or []
+    breadcrumb_labels = [
+        (b.get("label") or b.get("name") or b.get("text") or "")
+        for b in breadcrumbs_raw if isinstance(b, dict)
+    ]
+
+    # ---------- 拼成"仿 productSheet"的 dict ----------
     sheet_new = {
         "name": sheet_name,
         "code": attrs.get("strokeId") or pd.get("productExternalId") or pd.get("id"),
@@ -318,6 +363,8 @@ def _extract_product_sheet(soup: BeautifulSoup):
         "prices": prices,
         "sizes": sizes,
         "color": color,
+        "department": department,
+        "breadcrumbs": breadcrumb_labels,
     }
 
     return sheet_new
@@ -445,7 +492,7 @@ def _extract_sizes(sheet: dict, gender: str | None = None):
                 "ean": ean,
             }
 
-    # ⚠️ 在这里进行“补码补 0”逻辑
+    # ⚠️ 在这里进行"补码补 0"逻辑
     size_map, detail = _apply_size_range_completion(size_map, detail, gender)
 
     return size_map, detail
@@ -471,10 +518,25 @@ def _extract_color(sheet: dict, url: str):
 
 def _infer_gender(name: str, sheet: dict, url: str):
     l = name.lower()
-    if "men" in l or "/men/" in url:
-        return "男款"
-    if any(k in l for k in ["girl", "boys", "kids"]) or "/kids/" in url:
+    u = url.lower()
+
+    # 童款优先判断
+    if any(k in l for k in ["girl", "boys", "kids"]) or "/kids/" in u:
         return "童款"
+
+    # 从 JSON 里取 department 和 breadcrumbs（最可靠，不依赖 URL 结构）
+    dept = str(sheet.get("department") or "").lower()
+    crumbs = " ".join(str(c) for c in (sheet.get("breadcrumbs") or [])).lower()
+
+    # 用词边界匹配 "men"，避免 "women" 误命中
+    # 检查顺序：department → breadcrumbs → 商品名 → URL 路径
+    for text in (dept, crumbs, l):
+        if re.search(r"\bmen\b", text) and "women" not in text:
+            return "男款"
+
+    if re.search(r"/men[s]?/", u):
+        return "男款"
+
     return "女款"
 
 
@@ -513,6 +575,11 @@ def extract_page(url: str) -> dict:
     sheet = _extract_product_sheet(soup)
     if not sheet:
         raise Exception("没有找到 productSheet")
+
+    # 用 JSON-LD BreadcrumbList 补充面包屑（包含 "Men"/"Women" 等路径，比 __NEXT_DATA__ 更可靠）
+    jsonld_crumbs = _extract_jsonld_breadcrumbs(soup)
+    if jsonld_crumbs:
+        sheet["breadcrumbs"] = (sheet.get("breadcrumbs") or []) + jsonld_crumbs
 
     name = _clean(sheet.get("name") or title)
 

@@ -8,7 +8,10 @@
       "Bash(python -u -m brands.barbour.supplier.test_refactored_fetchers)",
       "Bash(iconv:*)",
       "Bash(git mv:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "WebFetch(domain:www.marksandspencer.com)",
+      "Bash(python -m py_compile:*)",
+      "Bash(python:*)"
     ]
   }
 }

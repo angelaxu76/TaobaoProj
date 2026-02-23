@@ -54,10 +54,10 @@ SLEEP_SECONDS = 1.0
 # ----------------------------------------------------------------------
 BASE_URLS = [
     # ✅ 你提供的：女款 M&S 品牌开衫
-    "https://www.marksandspencer.com/l/women/knitwear/cardigans?filter=Brand%253DM%2526S&page={}",
+    # "https://www.marksandspencer.com/l/women/knitwear/cardigans?filter=Brand%253DM%2526S&page={}",
 
     # TODO：后续可以加 jumpers / 所有针织等
-    # "https://www.marksandspencer.com/l/women/knitwear/jumpers?filter=Brand%253DM%2526S&page={}",
+    "https://www.marksandspencer.com/l/women/knitwear/jumpers?filter=Brand%253DM%2526S&page={}",
     # "https://www.marksandspencer.com/l/women/knitwear?filter=Brand%253DM%2526S&page={}",
 ]
 
