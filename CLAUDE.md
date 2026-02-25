@@ -35,7 +35,7 @@ TaobaoProj/
 │   └── stock/      库存相关操作
 ├── analytics/      数据分析流水线
 ├── finance/        财务数据处理
-├── helper/         一次性辅助脚本（Excel/HTML/图片/TXT）
+├── helper/         底层工具脚本（图片处理/HTML转图/通用Excel工具）
 ├── research/       生意参谋数据研究
 ├── test/           测试脚本
 └── _legacy/        旧代码存档（不维护）
@@ -145,8 +145,9 @@ from config import BRAND_CONFIG, BRAND_NAME_MAP, PGSQL_CONFIG
 
 精雅渠道（`channels/jingya/`）按操作类型分：
 - `ingest/`：导入 TXT/Excel 到数据库
-- `export/`：生成各类 Excel（发布、价格、SKU）
-- `pricing/`：定价策略与折扣计算
+- `export/`：生成各类 Excel（发布、价格、SKU、宝贝ID）
+- `pricing/`：定价策略、折扣计算、折扣候选商品导出
+- `check/`：价格校验、鲸芽数据解析、商家编码重复检查
 - `cainiao/`：菜鸟仓储绑货相关
 - `maintenance/`：库存维护、下架操作
 
@@ -164,6 +165,25 @@ from config import BRAND_CONFIG, BRAND_NAME_MAP, PGSQL_CONFIG
 
 ---
 
+## helper/ 与 channels/ 的边界
+
+`helper/` 只放**底层工具**，不含业务逻辑：
+- `helper/image/`：图片格式转换、裁剪、水印、反指纹等 — 被多个品牌 pipeline import，**不要移动**
+- `helper/html/`：HTML → PNG 转换（Firefox/Selenium）— 同上，被品牌 pipeline import
+- `helper/excel/`：仅保留纯通用工具（`split_excel_by_rows.py` 等）
+- `helper/txt/`：adhoc 文本处理（硬编码路径，一次性用）
+
+**业务相关的 Excel 脚本已归入渠道目录**（2025-02 整理）：
+| 原位置 | 新位置 |
+|--------|--------|
+| `helper/excel/export_discount_candidates_excel.py` | `channels/jingya/pricing/` |
+| `helper/excel/get_taobao_ids_from_discount_list.py` | `channels/jingya/pricing/` |
+| `helper/excel/export_excel_from_jingya_copy.py` | `channels/jingya/check/parse_jingya_copy_to_excel.py` |
+| `helper/excel/find_duplicate_codes_excel.py` | `channels/jingya/check/find_duplicate_item_id_codes.py` |
+| `helper/excel/export_tb_item_ids_from_productCode.py` | `channels/jingya/export/export_item_ids_by_code.py` |
+
+---
+
 ## 关键约定
 
 - Python 3.13，Windows 11，ChromeDriver 路径：`D:\chromedriver\chromedriver.exe`
@@ -171,3 +191,4 @@ from config import BRAND_CONFIG, BRAND_NAME_MAP, PGSQL_CONFIG
 - `_legacy/` 和 `*/legacy/` 目录内的脚本**不维护**，只做参考
 - 品牌 key 统一小写：`"barbour"`, `"camper"`, `"clarks_jingya"`, `"ecco"`, `"geox"`
 - 所有 TXT 商品文件编码为 UTF-8
+- 新增业务脚本优先放 `channels/jingya/` 对应子目录或 `ops/`，不放 `helper/`
