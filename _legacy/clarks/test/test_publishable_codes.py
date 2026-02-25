@@ -1,4 +1,4 @@
-from common_taobao.publication.prepare_utils_extended import get_publishable_product_codes
+from channels.jingya.export.prepare_utils_extended import get_publishable_product_codes
 from config import BRAND_CONFIG
 
 # 设置品牌和店铺

@@ -11,7 +11,7 @@ import psycopg2  # 用于查询数据库
 
 from config import CLARKS_JINGYA
 from channels.jingya.ingest.import_channel_info import insert_jingyaid_to_db, insert_missing_products_with_zero_stock
-from common_taobao.maintenance.backup_and_clear import backup_and_clear_brand_dirs
+from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 from brands.clarks_Jingya.collect_product_links import generate_product_links
 from brands.clarks_Jingya.fetch_product_info import clarks_fetch_info
 from channels.jingya.ingest.import_txt_to_db import import_txt_to_db_supplier

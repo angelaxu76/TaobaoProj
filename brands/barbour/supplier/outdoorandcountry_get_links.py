@@ -4,7 +4,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
 from bs4 import BeautifulSoup
-from common_taobao.core.driver_auto import build_uc_driver
+from common.core.driver_auto import build_uc_driver
 from pathlib import Path
 import time
 from config import BARBOUR
@@ -228,7 +228,7 @@ def outdoorandcountry_fetch_info():
                 urls.add(url)
 
     # ✅ 使用与抓链接完全一样的 uc.Chrome 方式
-    from common_taobao.core.driver_auto import build_uc_driver
+    from common.core.driver_auto import build_uc_driver
 
     driver = build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True)
 
@@ -359,7 +359,7 @@ def outdoorandcountry_fetch_and_save_links():
     DEBUG_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-    from common_taobao.core.driver_auto import build_uc_driver
+    from common.core.driver_auto import build_uc_driver
     driver = build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True)
 
     all_links = set()

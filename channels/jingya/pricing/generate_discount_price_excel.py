@@ -4,7 +4,7 @@ import psycopg2
 import math
 from pathlib import Path
 from config import CLARKS, ECCO, GEOX, CAMPER,BRAND_CONFIG
-from common_taobao.core.price_utils import calculate_discount_price_from_float
+from common.core.price_utils import calculate_discount_price_from_float
 
 
 def export_price_with_itemid(brand: str, store_name: str):

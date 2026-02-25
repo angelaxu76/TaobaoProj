@@ -1,7 +1,7 @@
 import os
 import subprocess
 from config import BIRKENSTOCK,TAOBAO_STORES
-from common_taobao.publication.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
+from channels.jingya.export.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
 
 
 #

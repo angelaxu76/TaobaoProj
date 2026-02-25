@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 from config import SIZE_RANGE_CONFIG
-from common_taobao.core.category_utils import infer_style_category
+from common.core.category_utils import infer_style_category
 
 # ✅ 加入项目根目录
 sys.path.append(str(Path(__file__).resolve().parents[2]))
@@ -11,7 +11,7 @@ import json
 import requests
 from bs4 import BeautifulSoup
 from config import CLARKS_JINGYA
-from common_taobao.ingest.txt_writer import format_txt
+from common.ingest.txt_writer import format_txt
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 LINK_FILE = CLARKS_JINGYA["BASE"] / "publication" / "product_links.txt"

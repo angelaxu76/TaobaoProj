@@ -11,7 +11,13 @@
       "Bash(git add:*)",
       "WebFetch(domain:www.marksandspencer.com)",
       "Bash(python -m py_compile:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(find . -name \"*.py\" -type f -exec grep -l \"insert_missing_products_with_zero_stock\\\\|库存.*=.*0\" {} ;)",
+      "Bash(xargs sed -i 's/common_taobao/common/g')",
+      "Bash(xargs sed -i 's/product_analytics/analytics/g')",
+      "Bash(git rm channels/taobao/utils/prepare_utils_extended.py)",
+      "Bash(xargs sed -i 's/from common\\\\.publication\\\\.export_low_stock_products/from channels.jingya.maintenance.export_low_stock_products/g')",
+      "Bash(git rm common/publication/export_low_stock_products.py)"
     ]
   }
 }

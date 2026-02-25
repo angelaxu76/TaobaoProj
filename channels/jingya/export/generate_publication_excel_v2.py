@@ -15,8 +15,8 @@ from config import (
     PUBLISH_RULES_BY_BRAND,
 )
 
-from common_taobao.core.price_utils import calculate_jingya_prices
-from common_taobao.text.generate_taobao_title import generate_taobao_title
+from common.core.price_utils import calculate_jingya_prices
+from common.text.generate_taobao_title import generate_taobao_title
 
 
 def extract_field(name, content):

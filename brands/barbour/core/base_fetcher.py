@@ -49,8 +49,8 @@ from brands.barbour.core.text_utils import (
 )
 
 # 导入通用模块
-from common_taobao.core.selenium_utils import get_driver, quit_driver, quit_all_drivers
-from common_taobao.ingest.txt_writer import format_txt
+from common.core.selenium_utils import get_driver, quit_driver, quit_all_drivers
+from common.ingest.txt_writer import format_txt
 
 # 配置
 from config import SETTINGS

@@ -1,6 +1,6 @@
 # from barbour.supplier.terraces_fetch_info import terraces_fetch_info
 from config import BARBOUR
-from common_taobao.maintenance.backup_and_clear import backup_and_clear_brand_dirs
+from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 from brands.barbour.supplier.barbour_get_links import barbour_get_links
 from brands.barbour.supplier.barbour_fetch_info import barbour_fetch_info
 from brands.barbour.supplier.outdoorandcountry_fetch_info import outdoorandcountry_fetch_info

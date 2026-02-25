@@ -1,5 +1,5 @@
 from config import CLARKS
-from common_taobao.publication.prepare_utils_extended import get_publishable_product_codes
+from channels.jingya.export.prepare_utils_extended import get_publishable_product_codes
 
 store = "五小剑"  # 或 "五小剑"
 codes = get_publishable_product_codes(CLARKS, store)

@@ -1,4 +1,4 @@
-# common_taobao/selenium_utils.py
+# common/selenium_utils.py
 from __future__ import annotations
 
 import atexit

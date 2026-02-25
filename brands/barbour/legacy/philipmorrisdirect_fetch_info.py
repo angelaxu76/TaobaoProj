@@ -25,7 +25,7 @@ from bs4 import BeautifulSoup
 import psycopg2
 
 from config import BARBOUR
-from common_taobao.ingest.txt_writer import format_txt
+from common.ingest.txt_writer import format_txt
 from typing import List
 # selenium imports
 from selenium import webdriver

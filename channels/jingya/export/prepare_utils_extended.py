@@ -11,13 +11,13 @@ import shutil
 import psycopg2
 
 # ===== 你原有的公共函数（保留） =====
-from common_taobao.core.translate import safe_translate
-from common_taobao.core.txt_parser import extract_product_info
-from common_taobao.core.image_utils import copy_images_by_code
+from common.core.translate import safe_translate
+from common.core.txt_parser import extract_product_info
+from common.core.image_utils import copy_images_by_code
 
 # ===== 替换为你的“最新”脚本 =====
-from common_taobao.core.price_utils import calculate_discount_price            # 最新价格计算（本地文件）
-from common_taobao.text.generate_taobao_title import generate_taobao_title     # 最新淘宝标题（本地文件）
+from common.core.price_utils import calculate_discount_price            # 最新价格计算（本地文件）
+from common.text.generate_taobao_title import generate_taobao_title     # 最新淘宝标题（本地文件）
 
 
 def get_publishable_product_codes(config: dict, store_name: str) -> list:
@@ -216,3 +216,41 @@ def copy_images_for_store(config: dict, store_name: str, code_list: list):
         print(f"⚠️ 缺图商品编码已记录: {missing_file}（共 {len(missing_codes)} 条）")
 
     print(f"✅ 图片拷贝完成，共复制 {copied_count} 张图 → {dst_dir}")
+
+
+def get_publishable_codes_for_supplier(config: dict) -> list:
+    conn = psycopg2.connect(**config["PGSQL_CONFIG"])
+    table = config["TABLE_NAME"]
+    txt_dir = Path(config["TXT_DIR"])
+
+    # 1. 数据库层面筛选：未发布、男女款、有货尺码 ≥4、总库存 >30
+    query = f"""
+        SELECT product_code
+        FROM {table}
+        WHERE gender IN ('男款', '女款')
+          AND is_published = FALSE
+          AND stock_count > 0
+        GROUP BY product_code
+        HAVING COUNT(DISTINCT size) >= 4
+           AND SUM(stock_count) > 30
+    """
+    df = pd.read_sql(query, conn)
+    conn.close()
+    candidate_codes = df["product_code"].unique().tolist()
+
+    # 2. TXT 文件校验：至少有 4 个 ":有货"
+    def txt_has_4_sizes(code: str) -> bool:
+        txt_path = txt_dir / f"{code}.txt"
+        if not txt_path.exists():
+            return False
+        try:
+            lines = txt_path.read_text(encoding="utf-8").splitlines()
+            size_line = next((line for line in lines if line.startswith("Product Size:")), "")
+            return size_line.count(":有货") >= 4
+        except:
+            return False
+
+    valid_codes = [code for code in candidate_codes if txt_has_4_sizes(code)]
+
+    print(f"🟢 Camper 供货商模式下可发布商品数量：{len(valid_codes)}")
+    return valid_codes

@@ -10,7 +10,7 @@ import json
 import requests
 from bs4 import BeautifulSoup
 from config import CLARKS
-from common_taobao.ingest.txt_writer import format_txt
+from common.ingest.txt_writer import format_txt
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 LINK_FILE = CLARKS["BASE"] / "publication" / "product_links.txt"

@@ -1,5 +1,5 @@
 from config import ECCO
-from common_taobao.maintenance.backup_and_clear import backup_and_clear_brand_dirs
+from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 
 # ====== 抓取阶段（沿用 ECCO 原逻辑）======
 from brands.ecco.collect_product_links_v3 import ecco_get_links
@@ -14,8 +14,8 @@ from channels.jingya.ingest.import_channel_info import (
 
 # ====== 风险控管/库存下架（可选，同 Camper）======
 from channels.jingya.maintenance.disable_low_stock_products import disable_low_stock_products
-# from common_taobao.jingya.export_gender_split_excel import export_gender_split_excel
-from common_taobao.publication.export_low_stock_products import export_low_stock_for_brand
+# from common.jingya.export_gender_split_excel import export_gender_split_excel
+from channels.jingya.maintenance.export_low_stock_products import export_low_stock_for_brand
 
 # ====== 导出给鲸芽的库存&价格 ======
 from channels.jingya.export.export_stock_to_excel import export_stock_excel
@@ -25,8 +25,8 @@ from channels.jingya.export.export_channel_price_excel_jingya import export_jian
 from channels.jingya.export.generate_publication_excel import generate_publication_excels
 
 # ====== 给淘宝店铺同步价格（沿用 Camper 通用逻辑，可选保留）======
-from common_taobao.publication.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
-from common_taobao.core.generate_missing_links_for_brand import generate_missing_links_for_brand
+from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
+from channels.jingya.maintenance.generate_missing_links_for_brand import generate_missing_links_for_brand
 
 def main():
     # print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录 (ECCO)")

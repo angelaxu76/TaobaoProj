@@ -11,11 +11,11 @@ from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from config import CAMPER, SIZE_RANGE_CONFIG  # ✅ 引入标准尺码配置
-from common_taobao.ingest.txt_writer import format_txt
-from common_taobao.core.category_utils import infer_style_category
+from common.ingest.txt_writer import format_txt
+from common.core.category_utils import infer_style_category
 from selenium import webdriver
 driver = webdriver.Chrome()
-from common_taobao.core.selenium_utils import get_driver
+from common.core.selenium_utils import get_driver
 
 PRODUCT_URLS_FILE = CAMPER["LINKS_FILE"]
 SAVE_PATH = CAMPER["TXT_DIR"]
@@ -76,7 +76,7 @@ drivers_lock = threading.Lock()
 _all_drivers = set()
 
 thread_local = threading.local()
-# common_taobao/selenium_utils.py
+# common/selenium_utils.py
 
 def get_driver():
     from selenium.webdriver.chrome.service import Service

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-common_taobao/matching/hybrid_barbour_matcher.py
+common/matching/hybrid_barbour_matcher.py
 
 目标：把“匹配决策过程”独立成可复用模块，供 HOF / OutdoorAndCountry / Allweathers / PMD 等站点共用。
 

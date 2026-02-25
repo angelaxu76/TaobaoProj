@@ -1,4 +1,4 @@
-# common_taobao/title/style_extractors.py
+# common/title/style_extractors.py
 import re
 
 def _norm_space(s: str) -> str:

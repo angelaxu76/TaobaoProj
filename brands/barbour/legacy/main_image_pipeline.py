@@ -1,7 +1,7 @@
 from helper.image.trim_sides_batch import trim_sides_batch
 from config import BARBOUR
-from common_taobao.publication.generate_html import generate_html_from_images
-from common_taobao.publication.generate_html_FristPage import generate_first_page_from_images
+from common.publication.generate_html import generate_html_from_images
+from common.publication.generate_html_FristPage import generate_first_page_from_images
 from helper.html.html_to_png_batch import process_html_folder
 
 def main():

@@ -11,8 +11,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from config import SIZE_RANGE_CONFIG, GEOX
-from common_taobao.ingest.txt_writer import format_txt
-from common_taobao.core.category_utils import infer_style_category
+from common.ingest.txt_writer import format_txt
+from common.core.category_utils import infer_style_category
 
 # ===================== 基本配置 =====================
 PRODUCT_LINK_FILE = GEOX["BASE"] / "publication" / "product_links.txt"

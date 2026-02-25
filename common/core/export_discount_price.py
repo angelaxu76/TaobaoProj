@@ -1,4 +1,4 @@
-from common_taobao.core.price_utils import calculate_discount_price
+from common.core.price_utils import calculate_discount_price
 import os
 import pandas as pd
 

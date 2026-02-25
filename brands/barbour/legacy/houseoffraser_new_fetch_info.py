@@ -27,8 +27,8 @@ from sqlalchemy.engine import Connection
 from config import BARBOUR, BRAND_CONFIG
 from brands.barbour.core.site_utils import assert_site_or_raise as canon
 from brands.barbour.core.sim_matcher import match_product, choose_best
-from common_taobao.core.size_utils import clean_size_for_barbour as _norm_size  # 尺码清洗
-from common_taobao.core.driver_auto import build_uc_driver  # 目前没用，但保留以兼容原代码
+from common.core.size_utils import clean_size_for_barbour as _norm_size  # 尺码清洗
+from common.core.driver_auto import build_uc_driver  # 目前没用，但保留以兼容原代码
 from config import BARBOUR, BRAND_CONFIG, SETTINGS
 DEFAULT_STOCK_COUNT = SETTINGS.get("DEFAULT_STOCK_COUNT", 3)
 

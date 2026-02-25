@@ -11,8 +11,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from config import CAMPER, SIZE_RANGE_CONFIG  # ✅ 引入标准尺码配置
-from common_taobao.ingest.txt_writer import format_txt
-from common_taobao.core.category_utils import infer_style_category
+from common.ingest.txt_writer import format_txt
+from common.core.category_utils import infer_style_category
 from selenium import webdriver
 driver = webdriver.Chrome()
 

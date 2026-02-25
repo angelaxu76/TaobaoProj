@@ -26,7 +26,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from config import BRAND_CONFIG
-from common_taobao.ingest.txt_writer import format_txt
+from common.ingest.txt_writer import format_txt
 
 # ============= 常量&品牌配置 =============
 CFG = BRAND_CONFIG["marksandspencer"]

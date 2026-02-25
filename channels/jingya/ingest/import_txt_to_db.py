@@ -3,12 +3,12 @@ import psycopg2
 from pathlib import Path
 from psycopg2.extras import execute_batch
 from config import BRAND_CONFIG, BRAND_DISCOUNT
-from common_taobao.ingest.txt_parser import jingya_parse_txt_file
+from common.ingest.txt_parser import jingya_parse_txt_file
 from channels.jingya.pricing.brand_price_rules import compute_brand_base_price
 try:
-    from common_taobao.core.price_utils import calculate_jingya_prices
+    from common.core.price_utils import calculate_jingya_prices
 except Exception:
-    from common_taobao.core.price_utils import calculate_jingya_prices  # type: ignore
+    from common.core.price_utils import calculate_jingya_prices  # type: ignore
 
 
 # --- debug ladder ---

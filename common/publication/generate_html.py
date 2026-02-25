@@ -2,8 +2,8 @@ import sys
 import re
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from common_taobao.core.translate import safe_translate
-from common_taobao.core.ad_sanitizer import sanitize_text, sanitize_features
+from common.core.translate import safe_translate
+from common.core.ad_sanitizer import sanitize_text, sanitize_features
 from config import BRAND_CONFIG
 
 PLACEHOLDER_IMG = "https://via.placeholder.com/500x500?text=No+Image"

@@ -2,8 +2,8 @@ import shutil
 from config import REISS
 from pathlib import Path
 from brands.camper.helpers_local.ResizeImage import expand_images_in_folder
-from common_taobao.publication.generate_html import generate_html_from_codes_files
-from common_taobao.publication.generate_html_FristPage import generate_first_page_from_codes_files
+from common.publication.generate_html import generate_html_from_codes_files
+from common.publication.generate_html_FristPage import generate_first_page_from_codes_files
 from helper.image.merge_product_images import batch_merge_images
 from helper.html.html_to_png_multithread import convert_html_to_images
 from helper.image.trim_sides_batch import trim_sides_batch

@@ -12,7 +12,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 from config import CAMPER_GLOBAL
-from common_taobao.ingest.txt_writer import format_txt
+from common.ingest.txt_writer import format_txt
 
 CHROMEDRIVER_PATH = CAMPER_GLOBAL["CHROMEDRIVER_PATH"]
 PRODUCT_URLS_FILE = CAMPER_GLOBAL["LINKS_FILE"]

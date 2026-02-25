@@ -1,4 +1,4 @@
-# common_taobao/core/category_utils.py
+# common/core/category_utils.py
 import re
 
 # ===== Barbour 编码前缀 → 类别（尽量用通用英文类别，便于跨品牌复用）=====

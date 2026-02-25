@@ -9,7 +9,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from config import BARBOUR
-from common_taobao.core.selenium_utils import get_driver as get_shared_driver, quit_driver
+from common.core.selenium_utils import get_driver as get_shared_driver, quit_driver
 
 # ✅ 两个入口：Barbour & Barbour International（第1页无参，其余 ?dcp=N）
 BASE_URLS = [
@@ -29,7 +29,7 @@ DCP_IN_HREF = re.compile(r"[?&]dcp=(\d+)")
 
 def get_driver():
     """
-    使用 common_taobao.selenium_utils 提供的共享 driver，
+    使用 common.selenium_utils 提供的共享 driver，
     不再通过 undetected_chromedriver / driver_auto 联网下载。
     """
     return get_shared_driver(

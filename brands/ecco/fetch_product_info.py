@@ -16,7 +16,7 @@ from bs4 import BeautifulSoup
 import json
 
 # ===== 你本地已有的写入器：保持与现有工程兼容 =====
-from common_taobao.ingest.txt_writer import format_txt  # format_txt(info, filepath, brand="clarks_jingya")
+from common.ingest.txt_writer import format_txt  # format_txt(info, filepath, brand="clarks_jingya")
 
 # ===== 路径配置（按需改）=====
 LINKS_FILE = ECCO["LINKS_FILE"]

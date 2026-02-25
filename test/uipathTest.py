@@ -1,5 +1,5 @@
 from pathlib import Path
-from common_taobao.core.price_utils import calculate_jingya_prices
+from common.core.price_utils import calculate_jingya_prices
 
 def main():
     untaxed, retail = calculate_jingya_prices(60,7,9.7)

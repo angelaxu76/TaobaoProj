@@ -3,7 +3,7 @@ import subprocess
 from config import CAMPER_GLOBAL
 from channels.jingya.ingest.import_channel_info import insert_JingyaId_toDB
 from _legacy.camper_global.generate_camper_publish_excel import generate_camper_publish_excel
-from common_taobao.publication.prepare_utils_extended import copy_images_for_store, get_publishable_product_codes
+from channels.jingya.export.prepare_utils_extended import copy_images_for_store, get_publishable_product_codes
 
 
 def run_script(filename: str):

@@ -1,11 +1,11 @@
-# 原始脚本中的业务逻辑将被模块化到 common_taobao 中，当前脚本将作为品牌调用入口
+# 原始脚本中的业务逻辑将被模块化到 common 中，当前脚本将作为品牌调用入口
 
 import os
 import shutil
 import psycopg2
 from config import CLARKS, PGSQL_CONFIG
 from clarks.core.GenerateExcel import generate_excel_from_codes
-from common_taobao.prepare_utils import (
+from common.prepare_utils import (
     get_eligible_products_by_store,
     classify_product,
     get_title_and_description,

@@ -5,7 +5,7 @@ from config import SETTINGS
 
 # —— 仅 Barbour 分支会用到（Camper/Clarks 不触发）——
 try:
-    from common_taobao.core.size_utils import clean_size_for_barbour
+    from common.core.size_utils import clean_size_for_barbour
 except Exception:
     # 若你的工程路径不同，可用本地兜底
     def clean_size_for_barbour(s: str) -> str:

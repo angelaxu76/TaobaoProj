@@ -1,8 +1,8 @@
 from config import BARBOUR
-from common_taobao.publication.generate_taobao_store_price_for_import_excel import (
+from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import (
     generate_price_excels_bulk,
 )
-from common_taobao.maintenance.backup_and_clear import backup_and_clear_brand_dirs
+from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 from brands.barbour.common.import_txt_to_products import (
     batch_import_txt_to_barbour_product,
 )

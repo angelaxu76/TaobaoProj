@@ -23,7 +23,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from config import BARBOUR
-from common_taobao.core.selenium_utils import get_driver, quit_driver
+from common.core.selenium_utils import get_driver, quit_driver
 
 # ========= 类目配置：在这里增删类目链接 =========
 CATEGORY_URLS = [
@@ -38,7 +38,7 @@ OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 def get_cho_driver():
     """
-    统一从 common_taobao.selenium_utils 获取 driver，
+    统一从 common.selenium_utils 获取 driver，
     名字用 'cho'，方便之后关闭或复用。
     """
     return get_driver(

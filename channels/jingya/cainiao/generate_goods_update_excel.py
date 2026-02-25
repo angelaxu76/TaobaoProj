@@ -4,7 +4,7 @@ import pandas as pd
 import psycopg2
 from pathlib import Path
 from config import BRAND_CONFIG
-from common_taobao.core.size_utils import clean_size_for_barbour
+from common.core.size_utils import clean_size_for_barbour
 
 # ======================= ✅【参数配置区】=======================
 BRAND = "barbour"                     # 这里默认做 Barbour 服装

@@ -23,13 +23,13 @@ from bs4 import BeautifulSoup
 
 from config import BARBOUR, SETTINGS
 from brands.barbour.supplier.outdoorandcountry_parse_offer_info import parse_offer_info
-from common_taobao.ingest.txt_writer import format_txt
+from common.ingest.txt_writer import format_txt
 
 # ✅ 使用稳定 driver 池（锁死本地 chromedriver + 线程隔离 key + 禁图）
-from common_taobao.core.selenium_utils import get_driver as _get_driver_v2
-from common_taobao.core.selenium_utils import quit_all_drivers as _quit_all_drivers_v2
+from common.core.selenium_utils import get_driver as _get_driver_v2
+from common.core.selenium_utils import quit_all_drivers as _quit_all_drivers_v2
 
-from common_taobao.core.size_utils import clean_size_for_barbour
+from common.core.size_utils import clean_size_for_barbour
 from brands.barbour.core.site_utils import assert_site_or_raise as canon
 
 CANON_SITE = canon("outdoorandcountry")

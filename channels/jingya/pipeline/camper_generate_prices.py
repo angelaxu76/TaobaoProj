@@ -5,8 +5,8 @@ from channels.jingya.maintenance.disable_low_stock_products import disable_low_s
 from channels.jingya.export.export_gender_split_excel import export_gender_split_excel
 from channels.jingya.export.generate_publication_excel_v2 import generate_publication_excels
 from channels.jingya.pricing.generate_discount_excel_for_taobao import generate_discount_excel
-from common_taobao.publication.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
-from common_taobao.publication.export_low_stock_products import export_low_stock_for_brand
+from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
+from channels.jingya.maintenance.export_low_stock_products import export_low_stock_for_brand
 
 
 def main():

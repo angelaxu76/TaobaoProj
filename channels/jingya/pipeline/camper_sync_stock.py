@@ -11,7 +11,7 @@ import psycopg2  # 用于查询数据库
 
 from config import CAMPER
 from channels.jingya.ingest.import_channel_info import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
-from common_taobao.maintenance.backup_and_clear import backup_and_clear_brand_dirs
+from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 from channels.jingya.ingest.import_txt_to_db import import_txt_to_db_supplier
 from brands.camper.legacy.fetch_product_info import camper_fetch_product_info
 from brands.camper.collect_product_links import camper_get_links

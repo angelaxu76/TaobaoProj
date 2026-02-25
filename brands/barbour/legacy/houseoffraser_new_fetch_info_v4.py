@@ -2,7 +2,7 @@
 """
 House of Fraser | Barbour - PDP 解析（V4）
 V4 目标：
-  1) 把“匹配决策过程”独立出来（common_taobao.matching.hybrid_barbour_matcher）
+  1) 把“匹配决策过程”独立出来（common.matching.hybrid_barbour_matcher）
   2) 每个 URL 输出一份 debug json（可开关），快速定位匹配率低的原因
   3) 颜色匹配/模糊匹配逻辑复用你现有模块（color_code_resolver / sim_matcher）
 
@@ -27,7 +27,7 @@ from sqlalchemy.engine import Connection
 
 from config import BARBOUR, BRAND_CONFIG, SETTINGS
 from brands.barbour.core.site_utils import assert_site_or_raise as canon
-from common_taobao.core.size_utils import clean_size_for_barbour as _norm_size
+from common.core.size_utils import clean_size_for_barbour as _norm_size
 
 # ★ V4：匹配逻辑独立模块
 from brands.barbour.core.hybrid_barbour_matcher import resolve_product_code, dump_debug_trace

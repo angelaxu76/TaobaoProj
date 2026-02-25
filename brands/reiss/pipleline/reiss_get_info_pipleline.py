@@ -3,7 +3,7 @@ from config import REISS
 from brands.reiss.core.reiss_link_collector import reiss_get_links
 from brands.reiss.core.reiss_product_fetcher import reiss_fetch_all
 from channels.jingya.ingest.import_txt_to_db import import_txt_to_db_supplier
-from common_taobao.core.generate_publication_excel_outerwear import generate_publication_excels_clothing
+from channels.jingya.export.generate_publication_excel_outerwear import generate_publication_excels_clothing
 from brands.reiss.core.download_reiss_images import download_reiss_images_from_codes
 
 def main():

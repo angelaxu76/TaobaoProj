@@ -1,9 +1,9 @@
 from config import CAMPER
-from common_taobao.maintenance.backup_and_clear import backup_and_clear_brand_dirs
+from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 from brands.camper.legacy.fetch_product_info import camper_fetch_product_info,camper_retry_missing_once
 from brands.camper.collect_product_links import camper_get_links
-from common_taobao.publication.export_low_stock_products import export_low_stock_for_brand
-from common_taobao.core.generate_missing_links_for_brand import generate_missing_links_for_brand
+from channels.jingya.maintenance.export_low_stock_products import export_low_stock_for_brand
+from channels.jingya.maintenance.generate_missing_links_for_brand import generate_missing_links_for_brand
 
 
 def main():

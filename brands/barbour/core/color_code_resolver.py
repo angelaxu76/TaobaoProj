@@ -1,4 +1,4 @@
-# common_taobao/matching/color_code_resolver.py
+# common/matching/color_code_resolver.py
 # -*- coding: utf-8 -*-
 """
 通用：颜色+款名 → color_code（product_code）解析器入口

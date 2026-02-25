@@ -32,7 +32,7 @@ def export_brand_bad_products_report(cfg: ExportConfig) -> str:
     导出该品牌商品最近 N 天表现（按日表求和）。
     """
     if not cfg.output_path:
-        cfg.output_path = rf"D:\TB\product_analytics\export\{cfg.brand}_bad_products_last{cfg.days}d.xlsx"
+        cfg.output_path = rf"D:\TB\analytics\export\{cfg.brand}_bad_products_last{cfg.days}d.xlsx"
 
     # 时间窗口（严格 N 天）
     # include_today=False: 统计区间 [CURRENT_DATE - N days, CURRENT_DATE)

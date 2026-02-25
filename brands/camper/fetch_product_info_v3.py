@@ -22,9 +22,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from config import CAMPER, SIZE_RANGE_CONFIG
-from common_taobao.ingest.txt_writer import format_txt
-from common_taobao.core.category_utils import infer_style_category
-from common_taobao.core.selenium_utils import get_driver
+from common.ingest.txt_writer import format_txt
+from common.core.category_utils import infer_style_category
+from common.core.selenium_utils import get_driver
 
 # =========================
 # Config

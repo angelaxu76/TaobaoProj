@@ -8,7 +8,7 @@ from helper.image.add_text_watermark import pipeline_text_watermark
 from helper.image.cut_square_white_watermark import batch_process
 from helper.image.avif_to_jpg import avif_to_jpg
 from brands.barbour.supplier.barbour_download_images_only import download_barbour_images,download_barbour_images_multi
-from common_taobao.image.group_images_by_code import group_and_rename_images
+from common.image.group_images_by_code import group_and_rename_images
 from config import BARBOUR
 
 def main():

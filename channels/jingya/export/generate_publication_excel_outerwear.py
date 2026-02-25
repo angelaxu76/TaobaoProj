@@ -31,13 +31,13 @@ def _load_title_func(candidates):
 
 # 外套专用（存在则用；不存在回退到服装通用）
 gen_title_outerwear = _load_title_func([
-    "common_taobao.core.generate_taobao_title_outerwear",
+    "common.core.generate_taobao_title_outerwear",
     "generate_taobao_title_outerwear",
 ])
 
 # 服装通用（裙/衬衫/针织/裤/T恤/连体裤…）
 gen_title_apparel = _load_title_func([
-    "common_taobao.core.generate_taobao_title_apparel",
+    "common.core.generate_taobao_title_apparel",
     "generate_taobao_title_apparel",
 ])
 if gen_title_apparel is None:
@@ -45,7 +45,7 @@ if gen_title_apparel is None:
 
 # ---------- 价格工具 ----------
 try:
-    from common_taobao.core.price_utils import (
+    from common.core.price_utils import (
         calculate_jingya_prices,
         calculate_discount_price_from_float,
     )

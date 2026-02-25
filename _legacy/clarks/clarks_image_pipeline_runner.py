@@ -1,6 +1,6 @@
 from tools import convert_html_to_images
 from tools import trim_images_in_folder
-from common_taobao.publication.generate_html import main as generate_html_main
+from common.publication.generate_html import main as generate_html_main
 from config import CLARKS
 
 

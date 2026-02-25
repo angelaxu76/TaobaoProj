@@ -4,10 +4,10 @@ from pathlib import Path
 from openpyxl import Workbook
 from collections import defaultdict
 from config import BRAND_CONFIG
-from common_taobao.core.translate import safe_translate
-from common_taobao.core.price_utils import calculate_discount_price
-from common_taobao.core.txt_parser import extract_product_info
-from common_taobao.core.image_utils import copy_images_by_code
+from common.core.translate import safe_translate
+from common.core.price_utils import calculate_discount_price
+from common.core.txt_parser import extract_product_info
+from common.core.image_utils import copy_images_by_code
 
 # -------------------- 获取淘宝已发布编码 --------------------
 def get_existing_taobao_codes(store_excel_dir: Path):

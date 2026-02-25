@@ -139,7 +139,7 @@ def export_brand_bad_products_report(cfg: ExportConfig) -> str:
     v3：输出时仅新增一个 promo_score_100（0~100），用于关键词推广选品筛选。
     """
     if not cfg.output_path:
-        cfg.output_path = rf"D:\TB\product_analytics\export\{cfg.brand}_bad_products_last{cfg.days}d.xlsx"
+        cfg.output_path = rf"D:\TB\analytics\export\{cfg.brand}_bad_products_last{cfg.days}d.xlsx"
 
     # 时间窗口（严格 N 天）
     if cfg.include_today:

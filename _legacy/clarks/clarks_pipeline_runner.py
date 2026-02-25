@@ -3,11 +3,11 @@ import shutil
 import subprocess
 from datetime import datetime
 from config import BRAND_CONFIG
-from common_taobao.publication.export_skuid_stock import export_skuid_stock_excel
-from common_taobao.ingest.import_txt_to_db import import_txt_to_db
-from common_taobao.publication.mark_offline_products_from_store_excels import mark_offline_products_from_store_excels
+from channels.jingya.export.export_skuid_stock import export_skuid_stock_excel
+from common.ingest.import_txt_to_db import import_txt_to_db
+from common.publication.mark_offline_products_from_store_excels import mark_offline_products_from_store_excels
 from config import CLARKS
-from common_taobao.maintenance.backup_and_clear import backup_and_clear_brand_dirs  # ✅ 新增导入
+from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs  # ✅ 新增导入
 from pathlib import Path
 
 BASE_DIR = CLARKS["BASE"]

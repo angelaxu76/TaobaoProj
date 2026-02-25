@@ -1,5 +1,5 @@
 import argparse
-from common_taobao.prepare_utils import get_publishable_product_codes
+from common.prepare_utils import get_publishable_product_codes
 from config import BRAND_CONFIG
 
 def main():

@@ -1,4 +1,4 @@
-# common_taobao/core/ad_sanitizer.py
+# common/core/ad_sanitizer.py
 import re
 from pathlib import Path
 from functools import lru_cache
@@ -52,7 +52,7 @@ RE_100 = re.compile(r"\s*100%\s*", flags=re.IGNORECASE)
 RE_SPACES = re.compile(r"\s+")
 
 
-# common_taobao/core/ad_sanitizer.py
+# common/core/ad_sanitizer.py
 
 POSITIVE_MAP = {
     "可回收利用": "环保材质",
@@ -108,7 +108,7 @@ def sanitize_features(features: Iterable[str], **kwargs) -> List[str]:
             cleaned.append(s)
     return cleaned
 
-# common_taobao/core/ad_sanitizer.py
+# common/core/ad_sanitizer.py
 
 POSITIVE_MAP = {
     "可回收利用": "环保材质",

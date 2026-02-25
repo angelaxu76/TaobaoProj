@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 from config import BIRKENSTOCK
-from common_taobao.ingest.txt_writer import format_txt
+from common.ingest.txt_writer import format_txt
 
 # === 配置 ===
 HEADERS = {"User-Agent": "Mozilla/5.0"}

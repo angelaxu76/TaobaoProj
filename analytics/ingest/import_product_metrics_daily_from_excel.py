@@ -239,6 +239,6 @@ def import_product_metrics_daily(excel_path: str) -> int:
 # =========================
 if __name__ == "__main__":
     # 示例（你可删）
-    path = r"D:\TB\product_analytics\input_data\daily_metrics\252506.xlsx"
+    path = r"D:\TB\analytics\input_data\daily_metrics\252506.xlsx"
     n = import_product_metrics_daily(path)
     print(f"✅ 导入完成：{n} 行")

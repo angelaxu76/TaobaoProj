@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# common_taobao/core/size_normalizer.py
+# common/core/size_normalizer.py
 
 import re
 from collections import OrderedDict

@@ -2,10 +2,10 @@ import re
 import random
 
 from config import BRAND_NAME_MAP
-from common_taobao.core.logger_utils import setup_logger
+from common.core.logger_utils import setup_logger
 
 # ✅ 新增：款式名提取策略（按品牌）
-from common_taobao.text.style_extractors import extract_style_name
+from common.text.style_extractors import extract_style_name
 
 from cfg.taobao_title_keyword_config import (
     COLOR_MAP, COLOR_KEYWORDS, COLOR_GUESS,

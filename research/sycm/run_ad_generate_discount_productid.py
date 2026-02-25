@@ -3,7 +3,7 @@ import datetime as dt
 from pathlib import Path
 
 # from config import TOOL_OUTPUT_DIR  # 比如你自定义的输出目录
-from common_taobao.core.brand_discount_candidates import export_discount_itemids_to_ztc_txts
+from channels.jingya.pricing.brand_discount_candidates import export_discount_itemids_to_ztc_txts
 
 
 def generate_discouted_product():

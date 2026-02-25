@@ -505,7 +505,7 @@ class PhilipMorrisFetcher(BaseFetcher):
                             info["Product Code"] = style or "UNKNOWN"
 
                         # 写入文件
-                        from common_taobao.ingest.txt_writer import format_txt
+                        from common.ingest.txt_writer import format_txt
 
                         fname = self._sanitize_filename(info["Product Code"]) + ".txt"
                         fpath = target_dir / fname

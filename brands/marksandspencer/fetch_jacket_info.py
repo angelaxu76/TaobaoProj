@@ -16,8 +16,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from config import MARKSANDSPENCER
-from common_taobao.core.selenium_utils import get_driver
-from common_taobao.ingest.txt_writer import format_txt
+from common.core.selenium_utils import get_driver
+from common.ingest.txt_writer import format_txt
 
 
 CANON_SITE = "Marks & Spencer"
@@ -441,7 +441,7 @@ def _extract_features(sheet: dict):
 def _extract_sizes(sheet: dict, gender: str | None = None):
     """
     返回 SizeMap, SizeDetail（dict）
-    交给 common_taobao.txt_writer.format_txt 去渲染：
+    交给 common.txt_writer.format_txt 去渲染：
       Product Size:        "XS:有货;S:无货;..."
       Product Size Detail: "XS:3:EAN;S:0:EAN;..."
     """
