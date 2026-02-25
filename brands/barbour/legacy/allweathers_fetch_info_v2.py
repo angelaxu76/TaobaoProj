@@ -29,7 +29,7 @@ import demjson3
 from brands.barbour.core.base_fetcher import BaseFetcher, setup_logging
 
 # 导入通用模块
-from common.core.selenium_utils import get_driver, quit_driver
+from common.browser.selenium_utils import get_driver, quit_driver
 
 # 配置
 from config import BARBOUR, SETTINGS

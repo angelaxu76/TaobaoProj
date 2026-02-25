@@ -27,7 +27,7 @@ from sqlalchemy.engine import Connection
 
 from config import BARBOUR, BRAND_CONFIG, SETTINGS
 from brands.barbour.core.site_utils import assert_site_or_raise as canon
-from common.core.size_utils import clean_size_for_barbour as _norm_size
+from common.product.size_utils import clean_size_for_barbour as _norm_size
 
 # ★ V4：匹配逻辑独立模块
 from brands.barbour.core.hybrid_barbour_matcher import resolve_product_code, dump_debug_trace

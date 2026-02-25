@@ -24,7 +24,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 # 统一 Selenium 驱动
-from common.core.selenium_utils import get_driver as selenium_get_driver, quit_driver
+from common.browser.selenium_utils import get_driver as selenium_get_driver, quit_driver
 
 # ===== DB 与项目配置 =====
 from sqlalchemy import create_engine

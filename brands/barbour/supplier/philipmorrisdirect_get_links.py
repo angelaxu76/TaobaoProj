@@ -7,7 +7,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from config import BARBOUR
-from common.core.selenium_utils import get_driver as get_shared_driver, quit_driver
+from common.browser.selenium_utils import get_driver as get_shared_driver, quit_driver
 
 # ====== 多个分类 URL，按需增减 ======
 CATEGORY_URLS = [

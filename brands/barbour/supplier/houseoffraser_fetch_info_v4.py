@@ -389,7 +389,7 @@ class HouseOfFraserFetcher(BaseFetcher):
 
     def _finalize_sizes(self, raw_sizes: list, gender_for_logic: str) -> tuple:
         """格式化尺码"""
-        from common.core.size_utils import clean_size_for_barbour
+        from common.product.size_utils import clean_size_for_barbour
 
         cleaned = []
         for s in raw_sizes or []:

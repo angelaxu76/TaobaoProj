@@ -3,7 +3,7 @@ import psycopg2
 import pandas as pd
 from config import BRAND_CONFIG
 from pathlib import Path
-from common.core.price_utils import calculate_jingya_prices  # ✅ 定价计算核心逻辑
+from common.pricing.price_utils import calculate_jingya_prices  # ✅ 定价计算核心逻辑
 
 # ============ ✅ 品牌折扣配置 =============
 BRAND_DISCOUNT = {

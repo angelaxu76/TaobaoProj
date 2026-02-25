@@ -11,6 +11,6 @@ from channels.jingya.maintenance.zero_stock_by_codes import zero_stock_by_codes
 
 if __name__ == "__main__":
     zero_stock_by_codes(
-        brand_name="camper",                          # 修改为对应品牌
-        input_txt_path=r"D:\temp\offline_codes.txt",  # 修改为实际 TXT 路径
+        brand_name="clarks_jingya",                          # 修改为对应品牌
+        input_txt_path=r"g:\temp\offline_codes.txt",  # 修改为实际 TXT 路径
     )

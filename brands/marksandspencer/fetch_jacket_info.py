@@ -16,7 +16,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from config import MARKSANDSPENCER
-from common.core.selenium_utils import get_driver
+from common.browser.selenium_utils import get_driver
 from common.ingest.txt_writer import format_txt
 
 

@@ -11,12 +11,12 @@ import shutil
 import psycopg2
 
 # ===== 你原有的公共函数（保留） =====
-from common.core.translate import safe_translate
-from common.core.txt_parser import extract_product_info
-from common.core.image_utils import copy_images_by_code
+from common.text.translate import safe_translate
+from common.utils.txt_parser import extract_product_info
+from common.image.image_utils import copy_images_by_code
 
 # ===== 替换为你的“最新”脚本 =====
-from common.core.price_utils import calculate_discount_price            # 最新价格计算（本地文件）
+from common.pricing.price_utils import calculate_discount_price            # 最新价格计算（本地文件）
 from common.text.generate_taobao_title import generate_taobao_title     # 最新淘宝标题（本地文件）
 
 

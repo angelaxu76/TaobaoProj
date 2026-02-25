@@ -4,7 +4,7 @@ from datetime import datetime
 import pandas as pd
 from config import BRAND_CONFIG
 from common.ingest.txt_parser import parse_txt_to_record
-from common.core.price_utils import calculate_discount_price_from_float
+from common.pricing.price_utils import calculate_discount_price_from_float
 
 # —— 品牌基准折扣（对 base_price 先打折；1.0=不打折，0.9=9折 等）——
 BRAND_BASE_DISCOUNT = {

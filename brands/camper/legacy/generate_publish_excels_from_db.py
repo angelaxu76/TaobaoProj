@@ -5,8 +5,8 @@ import pandas as pd
 from pathlib import Path
 from config import CAMPER, API_KEYS,SETTINGS
 from sqlalchemy import create_engine
-from common.core.price_utils import calculate_jingya_prices
-from common.core.translate import safe_translate
+from common.pricing.price_utils import calculate_jingya_prices
+from common.text.translate import safe_translate
 
 # ==== 参数 ====
 txt_folder = CAMPER["TXT_DIR"]

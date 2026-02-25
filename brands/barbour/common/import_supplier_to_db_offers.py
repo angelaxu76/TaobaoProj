@@ -7,7 +7,7 @@ import psycopg2
 import argparse
 from pathlib import Path
 from brands.barbour.core.keyword_mapping import KEYWORD_EQUIVALENTS
-from common.core.size_utils import clean_size_for_barbour  # 旧名保留
+from common.product.size_utils import clean_size_for_barbour  # 旧名保留
 from brands.barbour.core.site_utils import canonical_site, assert_site_or_raise
 from config import BARBOUR  # 已有导入就不要重复
 from brands.barbour.core.supplier_price_rules import (

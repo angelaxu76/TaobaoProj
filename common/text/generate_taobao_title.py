@@ -2,7 +2,7 @@
 import re
 import random
 from config import BRAND_NAME_MAP
-from common.core.logger_utils import setup_logger
+from common.utils.logger_utils import setup_logger
 from cfg.taobao_title_keyword_config import (
     COLOR_MAP, COLOR_KEYWORDS, COLOR_GUESS,
     MATERIAL_CANON_MAP, TERM_REPLACE_MAP,

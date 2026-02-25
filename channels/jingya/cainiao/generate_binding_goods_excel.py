@@ -7,7 +7,7 @@ import pandas as pd
 from pathlib import Path
 from typing import Dict, Tuple
 from config import BRAND_CONFIG, PGSQL_CONFIG
-from common.core.size_utils import clean_size_for_barbour
+from common.product.size_utils import clean_size_for_barbour
 
 # 仅保留模板的 6 列（按你要求的顺序，“*菜鸟货品ID”放最后）
 TEMPLATE_COLUMNS = [

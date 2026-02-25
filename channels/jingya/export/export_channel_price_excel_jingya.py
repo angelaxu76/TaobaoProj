@@ -29,10 +29,10 @@ except Exception:
 
 # 价格工具
 try:
-    from common.core.price_utils import calculate_jingya_prices
+    from common.pricing.price_utils import calculate_jingya_prices
 except Exception:
     # 若你的工程里在其它路径，可替换为实际导入
-    from common.core.price_utils import calculate_jingya_prices  # type: ignore
+    from common.pricing.price_utils import calculate_jingya_prices  # type: ignore
 
 
 # 固定 sheet 与表头

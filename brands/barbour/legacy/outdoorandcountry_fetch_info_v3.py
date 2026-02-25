@@ -280,7 +280,7 @@ class OutdoorAndCountryFetcher(BaseFetcher):
 
     def _clean_size(self, raw: str) -> str:
         """清理尺码"""
-        from common.core.size_utils import clean_size_for_barbour
+        from common.product.size_utils import clean_size_for_barbour
 
         raw = (raw or "").strip()
         if not raw:

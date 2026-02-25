@@ -13,7 +13,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Connection
 
 from config import BRAND_CONFIG
-from common.core.price_utils import calculate_jingya_prices
+from common.pricing.price_utils import calculate_jingya_prices
 
 # —— 尺码归一化：写死一份轻量规则，确保两边一致（不依赖外部包）
 import re
@@ -480,7 +480,7 @@ import os
 import pandas as pd
 from sqlalchemy import create_engine, text
 from config import BRAND_CONFIG
-from common.core.price_utils import calculate_jingya_prices
+from common.pricing.price_utils import calculate_jingya_prices
 
 def apply_fixed_prices_from_excel(
     xlsx_path: str,

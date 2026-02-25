@@ -23,8 +23,8 @@ from selenium.webdriver.support import expected_conditions as EC
 
 from config import CAMPER, SIZE_RANGE_CONFIG
 from common.ingest.txt_writer import format_txt
-from common.core.category_utils import infer_style_category
-from common.core.selenium_utils import get_driver
+from common.product.category_utils import infer_style_category
+from common.browser.selenium_utils import get_driver
 
 # =========================
 # Config

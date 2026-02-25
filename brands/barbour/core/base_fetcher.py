@@ -49,7 +49,7 @@ from brands.barbour.core.text_utils import (
 )
 
 # 导入通用模块
-from common.core.selenium_utils import get_driver, quit_driver, quit_all_drivers
+from common.browser.selenium_utils import get_driver, quit_driver, quit_all_drivers
 from common.ingest.txt_writer import format_txt
 
 # 配置

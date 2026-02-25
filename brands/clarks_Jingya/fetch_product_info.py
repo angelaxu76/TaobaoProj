@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 from config import SIZE_RANGE_CONFIG
-from common.core.category_utils import infer_style_category
+from common.product.category_utils import infer_style_category
 
 # ✅ 加入项目根目录
 sys.path.append(str(Path(__file__).resolve().parents[2]))

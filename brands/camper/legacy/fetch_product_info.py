@@ -12,10 +12,10 @@ from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from config import CAMPER, SIZE_RANGE_CONFIG  # ✅ 引入标准尺码配置
 from common.ingest.txt_writer import format_txt
-from common.core.category_utils import infer_style_category
+from common.product.category_utils import infer_style_category
 from selenium import webdriver
 driver = webdriver.Chrome()
-from common.core.selenium_utils import get_driver
+from common.browser.selenium_utils import get_driver
 
 PRODUCT_URLS_FILE = CAMPER["LINKS_FILE"]
 SAVE_PATH = CAMPER["TXT_DIR"]

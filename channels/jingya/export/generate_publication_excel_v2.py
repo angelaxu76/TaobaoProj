@@ -15,7 +15,7 @@ from config import (
     PUBLISH_RULES_BY_BRAND,
 )
 
-from common.core.price_utils import calculate_jingya_prices
+from common.pricing.price_utils import calculate_jingya_prices
 from common.text.generate_taobao_title import generate_taobao_title
 
 

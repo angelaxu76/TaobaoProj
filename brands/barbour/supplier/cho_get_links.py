@@ -23,7 +23,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from config import BARBOUR
-from common.core.selenium_utils import get_driver, quit_driver
+from common.browser.selenium_utils import get_driver, quit_driver
 
 # ========= 类目配置：在这里增删类目链接 =========
 CATEGORY_URLS = [

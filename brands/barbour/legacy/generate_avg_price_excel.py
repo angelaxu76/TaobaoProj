@@ -20,9 +20,9 @@ import psycopg2
 # ==== 项目配置 ====
 from config import BARBOUR
 try:
-    from common.core.price_utils import calculate_jingya_prices
+    from common.pricing.price_utils import calculate_jingya_prices
 except Exception:
-    from common.core.price_utils import calculate_jingya_prices  # 兜底
+    from common.pricing.price_utils import calculate_jingya_prices  # 兜底
 
 OUTPUT_DIR: Path = BARBOUR["OUTPUT_DIR"]
 PGSQL = BARBOUR["PGSQL_CONFIG"]

@@ -17,7 +17,7 @@ from selenium.common.exceptions import SessionNotCreatedException
 
 from config import SIZE_RANGE_CONFIG, GEOX
 from common.ingest.txt_writer import format_txt
-from common.core.category_utils import infer_style_category
+from common.product.category_utils import infer_style_category
 
 # ===================== 基本配置 =====================
 PRODUCT_LINK_FILE = GEOX["BASE"] / "publication" / "product_links.txt"

@@ -22,12 +22,12 @@ from bs4 import BeautifulSoup
 from selenium.webdriver.common.by import By
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Connection
-from common.core.selenium_utils import get_driver, quit_driver
+from common.browser.selenium_utils import get_driver, quit_driver
 
 # ---- 项目内模块（保持不变）----
 from config import BARBOUR, BRAND_CONFIG, SETTINGS
 from brands.barbour.core.site_utils import assert_site_or_raise as canon
-from common.core.size_utils import clean_size_for_barbour as _norm_size  # 尺码清洗
+from common.product.size_utils import clean_size_for_barbour as _norm_size  # 尺码清洗
 
 DEFAULT_STOCK_COUNT = SETTINGS.get("DEFAULT_STOCK_COUNT", 3)
 

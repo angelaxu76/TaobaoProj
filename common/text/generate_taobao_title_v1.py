@@ -2,7 +2,7 @@ import re
 import random
 
 from config import BRAND_NAME_MAP
-from common.core.logger_utils import setup_logger
+from common.utils.logger_utils import setup_logger
 
 # ✅ 新增：款式名提取策略（按品牌）
 from common.text.style_extractors import extract_style_name

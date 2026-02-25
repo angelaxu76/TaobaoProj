@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from math import ceil
-from common.core.translate import safe_translate
+from common.text.translate import safe_translate
 from config import BRAND_CONFIG
 
 AD_WORDS_FILE = Path(r"D:\TB\Products\config\ad_sensitive_words.txt")
