@@ -137,67 +137,12 @@ def run_channel_product_id_query(
 
 
 # ============================================================
-# 清零库存：将指定 product_code 的所有行 stock_count 设为 0
-# ============================================================
-
-def zero_stock_by_codes(
-    brand_name: str,
-    input_txt_path: str,
-    *,
-    code_column: str = "product_code",
-):
-    """
-    从 input_txt_path 读取 product_code（每行一个），
-    将对应品牌表中所有匹配行的 stock_count 更新为 0。
-    """
-    brand = (brand_name or "").strip().lower()
-    if brand not in BRAND_TABLE:
-        raise ValueError(
-            f"未知品牌 '{brand_name}'，请在 cfg/db_config.py 的 BRAND_TABLE 里添加"
-        )
-
-    with open(input_txt_path, "r", encoding="utf-8-sig") as f:
-        product_codes = [line.strip() for line in f if line.strip()]
-
-    if not product_codes:
-        print("输入文件没有商品编码")
-        return
-
-    uniq_codes = _dedupe_keep_order(product_codes)
-    table = BRAND_TABLE[brand]
-
-    print(f"品牌: {brand_name}")
-    print(f"输入 product_code 数量: {len(product_codes)}（去重后 {len(uniq_codes)} 条）")
-
-    conn = psycopg2.connect(**PGSQL_CONFIG)
-    try:
-        with conn.cursor() as cur:
-            sql = f"""
-                UPDATE {table}
-                SET stock_count = 0
-                WHERE {code_column} = ANY(%s)
-            """
-            cur.execute(sql, (uniq_codes,))
-            affected = cur.rowcount
-        conn.commit()
-    finally:
-        conn.close()
-
-    print(f"已将 {affected} 行的 stock_count 设为 0")
-
-
-# ============================================================
 # 直接运行示例
 # ============================================================
 
 if __name__ == "__main__":
-    # run_channel_product_id_query(
-    #     brand_name="ecco",
-    #     input_txt_path=r"G:\temp\ecco\codes.txt",
-    #     output_txt_path=r"G:\temp\ecco\channel_ids.txt",
-    # )
-
-    zero_stock_by_codes(
-        brand_name="geox",
-        input_txt_path=r"G:\temp\geox\codes.txt",
+    run_channel_product_id_query(
+        brand_name="ecco",
+        input_txt_path=r"G:\temp\ecco\codes.txt",
+        output_txt_path=r"G:\temp\ecco\channel_ids.txt",
     )
