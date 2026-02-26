@@ -128,7 +128,7 @@ from config import BRAND_CONFIG, BRAND_NAME_MAP, PGSQL_CONFIG
 
 ## 数据库
 
-- PostgreSQL，host: `192.168.1.44:5432`，dbname: `eminzora_inventory_db`
+- PostgreSQL，host: `192.168.1.44:5432`，dbname: `taobao_inventory_db`（当前 active）
 - 各品牌独立表：`camper_inventory`、`barbour_inventory`、`clarks_jingya_inventory` 等
 - 连接通过 `psycopg2`，配置见 `cfg/db_config.py`
 
