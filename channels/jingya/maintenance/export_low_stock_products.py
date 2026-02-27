@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-“””
-根据品牌 inventory 表，导出低库存商品清单。提供两个函数：
-- export_low_stock_channel_products()：维护用，双条件过滤（总库存 + 有货尺码数）
-- export_low_stock_for_brand()：Pipeline 用，单阈值过滤，支持绑定表，输出带时间戳文件
-“””
+
+# 根据品牌 inventory 表，导出低库存商品清单。提供两个函数：
+# - export_low_stock_channel_products()：维护用，双条件过滤（总库存 + 有货尺码数）
+# - export_low_stock_for_brand()：Pipeline 用，单阈值过滤，支持绑定表，输出带时间戳文件
 
 import os
 from pathlib import Path
