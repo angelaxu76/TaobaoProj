@@ -18,11 +18,6 @@ from brands.barbour.supplier.philipmorrisdirect_get_links import philipmorris_ge
 from brands.barbour.supplier.cho_get_links import cho_get_links
 from brands.barbour.supplier.cho_fetch_info import cho_fetch_info
 from brands.barbour.supplier.philipmorrisdirect_fetch_info import philipmorris_fetch_info
-from brands.barbour.common.import_txt_to_products import batch_import_txt_to_barbour_product
-from brands.barbour.common.import_supplier_to_db_offers import import_txt_for_supplier
-from brands.barbour.jingya.insert_jingyaid_mapping import insert_jingyaid_to_db,clear_barbour_inventory,insert_missing_products_with_zero_stock
-from brands.barbour.common.build_supplier_jingya_mapping import fill_supplier_map,apply_barbour_supplier_overrides,export_supplier_stock_price_report,reassign_low_stock_suppliers
-from brands.barbour.jingya.merge_offer_into_inventory import backfill_barbour_inventory_single_supplier
 from brands.barbour.tools.move_non_barbour_files import move_non_barbour_files
 def barbour_crawl_import_pipleline():
     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
