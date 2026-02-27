@@ -9,7 +9,7 @@ from brands.barbour.supplier.allweathers_get_links import allweathers_get_links
 from brands.barbour.legacy.allweathers_fetch_info_v2 import allweathers_fetch_info
 from brands.barbour.supplier.houseoffraser_get_links import houseoffraser_get_links
 # from brands.barbour.supplier.houseoffraser_new_fetch_info import houseoffraser_fetch_info
-from brands.barbour.supplier.houseoffraser_fetch_info_v4 import houseoffraser_fetch_info
+from brands.barbour.supplier.houseoffraser_fetch_info import houseoffraser_fetch_info
 from brands.barbour.supplier.very_get_links import very_get_links
 from brands.barbour.supplier.very_fetch_info import very_fetch_info
 from brands.barbour.supplier.terraces_fetch_info import terraces_fetch_info
