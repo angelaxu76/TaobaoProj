@@ -36,13 +36,13 @@ def barbour_crawl_import_pipleline():
 
     print("步骤 2：抓取商品信息并存为TXT")
     barbour_fetch_info()
-    outdoorandcountry_fetch_info(max_workers=15)
+    outdoorandcountry_fetch_info(max_workers=7)
     allweathers_fetch_info(7)
-    houseoffraser_fetch_info(max_workers=15, headless=False)
+    houseoffraser_fetch_info(max_workers=7, headless=False)
     # very_fetch_info(max_workers=15)
-    terraces_fetch_info(max_workers=15)
-    philipmorris_fetch_info(max_workers=10)
-    cho_fetch_info(max_workers=15)
+    terraces_fetch_info(max_workers=7)
+    philipmorris_fetch_info(max_workers=7)
+    cho_fetch_info(max_workers=7)
 
     # print("步骤 3：move no barbour code file")
     move_non_barbour_files(r"D:\TB\Products\barbour\publication\houseoffraser\TXT"r"D:\TB\Products\barbour\publication\houseoffraser\TXT.bk")
