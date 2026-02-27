@@ -1,21 +1,35 @@
 -- =========================================================
--- Barbour 数据库结构重建脚本（精简版）
--- 仅保留主键 & 唯一约束，不建额外索引
+-- Barbour 数据库结构重建脚本
+-- 运行效果：删除所有旧对象 → 重新建立所有表、函数、触发器、索引
 -- =========================================================
 
--- ========== 1. 删除旧表（按依赖顺序） ==========
-DROP TABLE IF EXISTS keyword_lexicon;
-DROP TABLE IF EXISTS barbour_offers;
-DROP TABLE IF EXISTS barbour_inventory;
-DROP TABLE IF EXISTS barbour_supplier_map;
-DROP TABLE IF EXISTS barbour_product_candidates;
-DROP TABLE IF EXISTS barbour_products;
-DROP TABLE IF EXISTS barbour_color_map;
+
+-- =========================================================
+-- SECTION 1：清除旧对象
+-- 顺序：函数（CASCADE 自动连带删除依赖触发器）→ 表
+-- =========================================================
+
+-- 1-a. 删除触发器函数（CASCADE 会自动删除绑定在各表上的触发器）
+DROP FUNCTION IF EXISTS set_updated_at()        CASCADE;
+DROP FUNCTION IF EXISTS barbour_offers_touch()  CASCADE;
+DROP FUNCTION IF EXISTS trg_bpc_touch()         CASCADE;
+
+-- 1-b. 删除表（按外键依赖顺序，CASCADE 处理残余约束）
+DROP TABLE IF EXISTS keyword_lexicon            CASCADE;
+DROP TABLE IF EXISTS barbour_offers             CASCADE;
+DROP TABLE IF EXISTS barbour_inventory          CASCADE;
+DROP TABLE IF EXISTS barbour_supplier_map       CASCADE;
+DROP TABLE IF EXISTS barbour_product_candidates CASCADE;
+DROP TABLE IF EXISTS barbour_products           CASCADE;
+DROP TABLE IF EXISTS barbour_color_map          CASCADE;
 
 
--- ========== 2. 公共更新时间戳函数 ==========
+-- =========================================================
+-- SECTION 2：公共函数
+-- =========================================================
 
-CREATE OR REPLACE FUNCTION set_updated_at()
+-- 通用 updated_at 自动更新函数
+CREATE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at := NOW();
@@ -24,270 +38,185 @@ END;
 $$ LANGUAGE plpgsql;
 
 
+-- =========================================================
+-- SECTION 3：表定义
+-- =========================================================
 
-
-
-CREATE TABLE IF NOT EXISTS keyword_lexicon (
-  id           bigserial PRIMARY KEY,
-  brand        text NOT NULL,          -- 'barbour'
-  level        smallint NOT NULL,       -- 1=L1, 2=L2
-  keyword      text NOT NULL,           -- 规范化后的词（小写、只字母）
-  category     text,                    -- L2 可选：material/season/style/function/category...
-  weight       numeric DEFAULT 1.0,     -- 预留：不同词权重
-  is_active    boolean DEFAULT true,
-  created_at   timestamptz DEFAULT now(),
-  UNIQUE(brand, level, keyword)
+-- ---------- 3-1. keyword_lexicon：关键词词库 ----------
+CREATE TABLE keyword_lexicon (
+    id         BIGSERIAL    PRIMARY KEY,
+    brand      TEXT         NOT NULL,           -- 'barbour'
+    level      SMALLINT     NOT NULL,           -- 1=L1, 2=L2
+    keyword    TEXT         NOT NULL,           -- 规范化后的词（小写、只字母）
+    category   TEXT,                            -- L2 可选：material/season/style/function/category...
+    weight     NUMERIC      DEFAULT 1.0,        -- 预留：不同词权重
+    is_active  BOOLEAN      DEFAULT TRUE,
+    created_at TIMESTAMPTZ  DEFAULT NOW(),
+    UNIQUE (brand, level, keyword)
 );
 
-CREATE INDEX IF NOT EXISTS idx_keyword_lexicon_brand_level
-ON keyword_lexicon(brand, level);
-
-CREATE INDEX IF NOT EXISTS idx_keyword_lexicon_keyword
-ON keyword_lexicon(keyword);
+CREATE INDEX idx_keyword_lexicon_brand_level ON keyword_lexicon (brand, level);
+CREATE INDEX idx_keyword_lexicon_keyword     ON keyword_lexicon (keyword);
 
 
--- ========== 3.1 barbour_color_map：颜色简码映射表 ==========
-
--- 用于维护 “颜色英文名 ↔ 颜色简码（BK/NY/OL 等）” 的标准映射
--- 场景：
---   - 从 barbour_products / 各站点 TXT 中抽取颜色名
---   - 预处理生成 norm_key（单词集合标准化）
---   - 抓取 Philip Morris 等站点时，用 norm_key 精确匹配颜色简码
-
+-- ---------- 3-2. barbour_color_map：颜色简码映射表 ----------
+-- 用途：颜色英文名 ↔ 颜色简码（BK/NY/OL 等）标准映射
 CREATE TABLE barbour_color_map (
-    id           SERIAL PRIMARY KEY,
-
-    -- 颜色简码，例如 'NY', 'OL', 'BK'
-    color_code   VARCHAR(4) NOT NULL,
-
-    -- 原始颜色英文名，例如：
-    -- 'Navy', 'Navy/Classic', 'Oatmeal / Ancient Tartan'
-    raw_name     TEXT NOT NULL,
-
-    -- 标准化后的颜色 key，用于比较：
-    -- 规则（由应用层构造，比如 Python）：
-    --   * 全部转小写
-    --   * 非字母字符全部当成分隔符
-    --   * 拆成单词，去重，排序
-    --   * 用空格拼接
-    -- 例：
-    --   'Oatmeal / Ancient Tartan'    -> 'ancient oatmeal tartan'
-    --   'Tartan Oatmeal - ANCIENT'    -> 'ancient oatmeal tartan'
-    --   'Navy'                        -> 'navy'
-    norm_key     TEXT NOT NULL,
-
-    -- 数据来源：products / config / manual / txt_problem 等
-    source       VARCHAR(50),
-
-    -- 是否经过人工确认（避免误配用）
-    is_confirmed BOOLEAN DEFAULT FALSE,
-
-    -- 时间戳
-    created_at   TIMESTAMP DEFAULT NOW(),
-    updated_at   TIMESTAMP DEFAULT NOW(),
-
-    -- 同一个颜色简码 + 原始名字 只存一条
+    id           SERIAL       PRIMARY KEY,
+    color_code   VARCHAR(4)   NOT NULL,         -- 如 'NY', 'OL', 'BK'
+    raw_name     TEXT         NOT NULL,         -- 原始颜色名，如 'Navy/Classic'
+    -- norm_key 规则（应用层构造）：
+    --   全部小写 → 非字母当分隔符 → 拆词去重排序 → 空格拼接
+    --   例：'Oatmeal / Ancient Tartan' -> 'ancient oatmeal tartan'
+    norm_key     TEXT         NOT NULL,
+    source       VARCHAR(50),                   -- products / config / manual / txt_problem ...
+    is_confirmed BOOLEAN      DEFAULT FALSE,
+    created_at   TIMESTAMP    DEFAULT NOW(),
+    updated_at   TIMESTAMP    DEFAULT NOW(),
     UNIQUE (color_code, raw_name)
 );
 
--- 复用通用的更新时间戳触发器
-DROP TRIGGER IF EXISTS trg_barbour_color_map_updated ON barbour_color_map;
 CREATE TRIGGER trg_barbour_color_map_updated
 BEFORE UPDATE ON barbour_color_map
-FOR EACH ROW
-EXECUTE FUNCTION set_updated_at();
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 
--- ========== 3. barbour_products：产品信息表 ==========
-
+-- ---------- 3-3. barbour_products：产品信息表 ----------
 CREATE TABLE barbour_products (
-    id SERIAL PRIMARY KEY,
-
-    -- Barbour 核心 SKU（商品编码 + 尺码）
-    product_code VARCHAR(50) NOT NULL,      -- 如 MWX0339NY91
-    size         VARCHAR(20) NOT NULL,      -- 如 M / UK 10 / XL
-
-    -- 基础属性
-    style_name   VARCHAR(255) NOT NULL,     -- 款式名，如 Ashby Wax Jacket
-    color        VARCHAR(100) NOT NULL,     -- 颜色，如 Navy
-    gender       VARCHAR(20),               -- Men / Women / Kids
-    category     VARCHAR(100),              -- Jacket / Coat / Shirt / Bag ...
-    title        VARCHAR(255),              -- 完整商品名
-    product_description TEXT,               -- 描述
-    match_keywords_l1      TEXT[],              -- 匹配关键词
-    match_keywords_l2      TEXT[],              -- 匹配关键词
-
-    -- 数据来源追踪
-    source_site  VARCHAR(100),              -- barbour / O&C / PMD / manual
-    source_url   TEXT,                      -- 来源链接
-    source_rank  INT DEFAULT 999,           -- 0=官网,1=有编码,2=人工,999=未知
-
-    -- 时间戳
-    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    -- 每个 SKU 唯一（编码 + 尺码）
-    UNIQUE(product_code, size)
-);
-
--- 自动更新时间戳触发器
-DROP TRIGGER IF EXISTS trg_barbour_products_updated ON barbour_products;
-CREATE TRIGGER trg_barbour_products_updated
-BEFORE UPDATE ON barbour_products
-FOR EACH ROW
-EXECUTE FUNCTION set_updated_at();
-
--- ========== 4. Barbour Offers 表 ==========
-
-CREATE TABLE barbour_offers (
-  id INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-
-  -- 唯一识别：站点 + 链接 + 尺码
-  site_name     VARCHAR(100) NOT NULL,
-  offer_url     TEXT         NOT NULL,
-  size          VARCHAR(20)  NOT NULL,
-
-  -- 商品编码（可空，后续可回填）
-  product_code  VARCHAR(50),
-
-  -- 价格与库存
-  price_gbp            NUMERIC(10,2),          -- TXT 中原价（RRP，Product Price）
-  original_price_gbp   NUMERIC(10,2),          -- TXT 中折扣价（如果有，Adjusted/Now Price）
-  sale_price_gbp       NUMERIC(10,2),          -- 经过策略+运费计算后的“供货基准价”
-  stock_count          INT DEFAULT 0,          -- 数字库存
-
-  -- 维护字段
-  is_active     BOOLEAN   DEFAULT TRUE,
-  first_seen    TIMESTAMP DEFAULT NOW(),
-  last_seen     TIMESTAMP DEFAULT NOW(),
-  last_checked  TIMESTAMP DEFAULT NOW(),
-
-  -- 折扣百分比：相对于原价（price_gbp）折扣多少
-  discount_pct NUMERIC(5,1)
-    GENERATED ALWAYS AS (
-      CASE
-        WHEN price_gbp IS NOT NULL
-         AND sale_price_gbp IS NOT NULL
-         AND sale_price_gbp < price_gbp
-        THEN ROUND(
-               (1 - sale_price_gbp / NULLIF(price_gbp, 0)) * 100,
-               1
-             )
-        ELSE 0
-      END
-    ) STORED,
-
-  -- 唯一约束：同一站点 + URL + 尺码 唯一
-  CONSTRAINT uq_barbour_offer UNIQUE (site_name, offer_url, size),
-
-  -- 合法性检查
-  CONSTRAINT chk_price_nonneg CHECK (
-    (price_gbp IS NULL OR price_gbp >= 0)
-    AND (original_price_gbp IS NULL OR original_price_gbp >= 0)
-    AND (sale_price_gbp IS NULL OR sale_price_gbp >= 0)
-  )
-);
-
--- 时间戳触发器：更新即刷新 last_seen / last_checked
-CREATE OR REPLACE FUNCTION barbour_offers_touch()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  NEW.last_seen := NOW();
-  NEW.last_checked := NOW();
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS trg_barbour_offers_touch ON barbour_offers;
-CREATE TRIGGER trg_barbour_offers_touch
-BEFORE UPDATE ON barbour_offers
-FOR EACH ROW
-EXECUTE FUNCTION barbour_offers_touch();
-
--- ========== 5. Barbour 发布表（对齐 clarks_jingya_inventory） ==========
-
-CREATE TABLE barbour_inventory (
-    id SERIAL PRIMARY KEY,
-
-    -- 基础信息（保持与 clarks_jingya_inventory 一致）
-    product_code VARCHAR(200) NOT NULL,      -- Barbour color_code，如 MWX0339NY91
-    product_url  TEXT NOT NULL,              -- 选源链接或历史链接
-    size         VARCHAR(10) NOT NULL,       -- S/M/L/XL 或 UK 尺码
-    gender       VARCHAR(10),                -- 男款/女款/童款（可空）
-
-    -- 商品补充字段
+    id           SERIAL       PRIMARY KEY,
+    product_code VARCHAR(50)  NOT NULL,         -- 如 MWX0339NY91
+    size         VARCHAR(20)  NOT NULL,         -- 如 M / UK 10 / XL
+    style_name   VARCHAR(255) NOT NULL,
+    color        VARCHAR(100) NOT NULL,
+    gender       VARCHAR(20),                   -- Men / Women / Kids
+    category     VARCHAR(100),                  -- Jacket / Coat / Shirt / Bag ...
+    title        VARCHAR(255),
     product_description TEXT,
-    product_title       TEXT,
-    style_category      VARCHAR(20),
-
-    -- 淘宝&渠道绑定字段
-    channel_product_id  VARCHAR(50),
-    channel_item_id     VARCHAR(50),
-    item_id             VARCHAR(50),
-    skuid               VARCHAR(50),
-    sku_name            VARCHAR(200),
-
-    -- 库存与价格
-    ean                  VARCHAR(50),
-    stock_count          INTEGER DEFAULT 0,
-    original_price_gbp   NUMERIC(10, 2),
-    discount_price_gbp   NUMERIC(10, 2),
-    jingya_untaxed_price NUMERIC(12,2),
-    taobao_store_price   NUMERIC(12,2),
-
-    -- 状态控制
-    last_checked TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    is_published BOOLEAN DEFAULT FALSE,
-
-    -- Barbour 多供应商选源字段
-    source_site        VARCHAR(100),         -- O&C / Allweathers / PMD ...
-    source_offer_url   TEXT,                 -- 选源 URL
-    source_price_gbp   NUMERIC(10, 2),       -- 选源英镑价
-
-    -- 每个商品 + 尺码唯一
+    match_keywords_l1   TEXT[],
+    match_keywords_l2   TEXT[],
+    source_site  VARCHAR(100),                  -- barbour / O&C / PMD / manual
+    source_url   TEXT,
+    source_rank  INT          DEFAULT 999,      -- 0=官网, 1=有编码, 2=人工, 999=未知
+    created_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (product_code, size)
 );
 
--- ========== 6. Barbour supplier 映射关系表 =========
+CREATE TRIGGER trg_barbour_products_updated
+BEFORE UPDATE ON barbour_products
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
+
+-- ---------- 3-4. barbour_offers：供应商报价表 ----------
+CREATE FUNCTION barbour_offers_touch()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    NEW.last_seen    := NOW();
+    NEW.last_checked := NOW();
+    RETURN NEW;
+END;
+$$;
+
+CREATE TABLE barbour_offers (
+    id                   INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    site_name            VARCHAR(100)  NOT NULL,
+    offer_url            TEXT          NOT NULL,
+    size                 VARCHAR(20)   NOT NULL,
+    product_code         VARCHAR(50),            -- 可空，后续回填
+    price_gbp            NUMERIC(10,2),          -- TXT 原价（Product Price）
+    original_price_gbp   NUMERIC(10,2),          -- TXT 折扣价（Adjusted / Now Price）
+    sale_price_gbp       NUMERIC(10,2),          -- 策略+运费计算后的供货基准价
+    stock_count          INT           DEFAULT 0,
+    is_active            BOOLEAN       DEFAULT TRUE,
+    first_seen           TIMESTAMP     DEFAULT NOW(),
+    last_seen            TIMESTAMP     DEFAULT NOW(),
+    last_checked         TIMESTAMP     DEFAULT NOW(),
+    -- 相对于原价的折扣百分比（计算列）
+    discount_pct NUMERIC(5,1) GENERATED ALWAYS AS (
+        CASE
+            WHEN price_gbp IS NOT NULL
+             AND sale_price_gbp IS NOT NULL
+             AND sale_price_gbp < price_gbp
+            THEN ROUND((1 - sale_price_gbp / NULLIF(price_gbp, 0)) * 100, 1)
+            ELSE 0
+        END
+    ) STORED,
+    CONSTRAINT uq_barbour_offer   UNIQUE (site_name, offer_url, size),
+    CONSTRAINT chk_price_nonneg   CHECK  (
+        (price_gbp          IS NULL OR price_gbp          >= 0) AND
+        (original_price_gbp IS NULL OR original_price_gbp >= 0) AND
+        (sale_price_gbp     IS NULL OR sale_price_gbp     >= 0)
+    )
+);
+
+CREATE TRIGGER trg_barbour_offers_touch
+BEFORE UPDATE ON barbour_offers
+FOR EACH ROW EXECUTE FUNCTION barbour_offers_touch();
+
+
+-- ---------- 3-5. barbour_inventory：发布/库存汇总表 ----------
+CREATE TABLE barbour_inventory (
+    id                   SERIAL        PRIMARY KEY,
+    product_code         VARCHAR(200)  NOT NULL,
+    product_url          TEXT          NOT NULL,
+    size                 VARCHAR(10)   NOT NULL,
+    gender               VARCHAR(10),
+    product_description  TEXT,
+    product_title        TEXT,
+    style_category       VARCHAR(20),
+    channel_product_id   VARCHAR(50),
+    channel_item_id      VARCHAR(50),
+    item_id              VARCHAR(50),
+    skuid                VARCHAR(50),
+    sku_name             VARCHAR(200),
+    ean                  VARCHAR(50),
+    stock_count          INTEGER       DEFAULT 0,
+    original_price_gbp   NUMERIC(10,2),
+    discount_price_gbp   NUMERIC(10,2),
+    jingya_untaxed_price NUMERIC(12,2),
+    taobao_store_price   NUMERIC(12,2),
+    last_checked         TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+    is_published         BOOLEAN       DEFAULT FALSE,
+    source_site          VARCHAR(100),
+    source_offer_url     TEXT,
+    source_price_gbp     NUMERIC(10,2),
+    UNIQUE (product_code, size)
+);
+
+
+-- ---------- 3-6. barbour_supplier_map：供应商选源映射 ----------
 CREATE TABLE barbour_supplier_map (
-  product_code VARCHAR(50) PRIMARY KEY,
-  site_name    VARCHAR(100) NOT NULL  -- 与 barbour_offers.site_name 对齐
+    product_code VARCHAR(50)  PRIMARY KEY,
+    site_name    VARCHAR(100) NOT NULL            -- 对齐 barbour_offers.site_name
 );
 
--- ========== 7. Barbour 候选 product 表（匹配清洗用） ==========
 
-CREATE TABLE barbour_product_candidates (
-  id           SERIAL PRIMARY KEY,
-  site_name    VARCHAR(100) NOT NULL,
-  source_url   TEXT NOT NULL,
-  style_name   VARCHAR(255) NOT NULL,
-  color        VARCHAR(100) NOT NULL,
-  size         VARCHAR(20) NOT NULL,
-  gender       VARCHAR(20),
-  category     VARCHAR(100),
-  title        VARCHAR(255),
-  product_description TEXT,
-  match_keywords TEXT[],
-  created_at   TIMESTAMP DEFAULT NOW(),
-  updated_at   TIMESTAMP DEFAULT NOW(),
-
-  UNIQUE (site_name, source_url, size)
-);
-
--- 更新时间戳触发器（候选表）
-CREATE OR REPLACE FUNCTION trg_bpc_touch()
+-- ---------- 3-7. barbour_product_candidates：匹配候选表 ----------
+CREATE FUNCTION trg_bpc_touch()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW.updated_at := NOW();
-  RETURN NEW;
+    NEW.updated_at := NOW();
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS bpc_touch ON barbour_product_candidates;
+CREATE TABLE barbour_product_candidates (
+    id                  SERIAL        PRIMARY KEY,
+    site_name           VARCHAR(100)  NOT NULL,
+    source_url          TEXT          NOT NULL,
+    style_name          VARCHAR(255)  NOT NULL,
+    color               VARCHAR(100)  NOT NULL,
+    size                VARCHAR(20)   NOT NULL,
+    gender              VARCHAR(20),
+    category            VARCHAR(100),
+    title               VARCHAR(255),
+    product_description TEXT,
+    match_keywords      TEXT[],
+    created_at          TIMESTAMP     DEFAULT NOW(),
+    updated_at          TIMESTAMP     DEFAULT NOW(),
+    UNIQUE (site_name, source_url, size)
+);
+
 CREATE TRIGGER bpc_touch
 BEFORE UPDATE ON barbour_product_candidates
-FOR EACH ROW
-EXECUTE FUNCTION trg_bpc_touch();
+FOR EACH ROW EXECUTE FUNCTION trg_bpc_touch();
