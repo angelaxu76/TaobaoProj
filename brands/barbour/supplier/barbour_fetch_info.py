@@ -105,14 +105,17 @@ class BarbourFetcher(BaseFetcher):
         product_size, product_size_detail = self.build_size_lines(size_detail, gender)
 
         # 9. 返回标准化字典
+        price_str = f"{price:.2f}" if price else "0"
         return {
             "Product Code": product_code,
             "Product Name": self.clean_text(name, maxlen=200),
             "Product Color": self.clean_text(color, maxlen=100),
             "Product Gender": self._convert_gender_to_english(gender),
             "Product Description": self.clean_description(description),
-            "Original Price (GBP)": f"{price:.2f}" if price else "No Data",
-            "Discount Price (GBP)": "No Data",  # Barbour 官网一般无折扣
+            "Product Price": price_str,       # txt_writer / DB 导入使用此 key
+            "Adjusted Price": price_str,      # txt_writer / DB 导入使用此 key
+            "Original Price (GBP)": price_str,   # BaseFetcher._validate_info 要求
+            "Discount Price (GBP)": "No Data",   # BaseFetcher._validate_info 要求
             "Product Size": product_size,
             "Product Size Detail": product_size_detail,
         }

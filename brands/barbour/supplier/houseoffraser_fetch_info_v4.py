@@ -234,8 +234,10 @@ class HouseOfFraserFetcher(BaseFetcher):
             "Product Color": self.clean_text(color_guess, maxlen=100),
             "Product Gender": gender_for_logic,
             "Product Description": self.clean_description(desc_guess),
-            "Original Price (GBP)": product_price_str,
-            "Discount Price (GBP)": adjusted_price_str,
+            "Product Price": product_price_str,          # txt_writer / DB 导入使用此 key
+            "Adjusted Price": adjusted_price_str,        # txt_writer / DB 导入使用此 key
+            "Original Price (GBP)": product_price_str,  # BaseFetcher._validate_info 要求
+            "Discount Price (GBP)": adjusted_price_str, # BaseFetcher._validate_info 要求
             "Product Size": product_size_str,
             "Product Size Detail": product_size_detail_str,
         }

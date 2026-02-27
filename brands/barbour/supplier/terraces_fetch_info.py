@@ -216,8 +216,10 @@ class TerracesFetcher(BaseFetcher):
             "Product Color": self.clean_text(color, maxlen=100) if color else "No Data",
             "Product Gender": gender,
             "Product Description": self.clean_description(description),
-            "Original Price (GBP)": product_price,
-            "Discount Price (GBP)": adjusted_price,
+            "Product Price": product_price,          # txt_writer / DB 导入使用此 key
+            "Adjusted Price": adjusted_price,        # txt_writer / DB 导入使用此 key
+            "Original Price (GBP)": product_price,  # BaseFetcher._validate_info 要求
+            "Discount Price (GBP)": adjusted_price, # BaseFetcher._validate_info 要求
             "Product Size": ";".join(sizes) if sizes else "No Data",
             "Product Size Detail": size_detail,
             "Feature": features,

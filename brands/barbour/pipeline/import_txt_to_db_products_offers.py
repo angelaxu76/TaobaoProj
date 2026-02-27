@@ -19,13 +19,13 @@ def barbour_database_import_pipleline():
     # batch_import_txt_to_barbour_product("houseoffraser")
 
     print("步骤 4：将txt中数据导入barbour offers中，成为可以供应的仓库")
-    # import_txt_for_supplier("barbour",False)
-    # import_txt_for_supplier("outdoorandcountry",False)
-    # import_txt_for_supplier("allweathers",False)
-    # import_txt_for_supplier("houseoffraser",False)
-    # import_txt_for_supplier("very",False)
-    # import_txt_for_supplier("terraces",False)
-    # import_txt_for_supplier("philipmorris",False)
+    import_txt_for_supplier("barbour",False)
+    import_txt_for_supplier("outdoorandcountry",False)
+    import_txt_for_supplier("allweathers",False)
+    import_txt_for_supplier("houseoffraser",False)
+    import_txt_for_supplier("very",False)
+    import_txt_for_supplier("terraces",False)
+    import_txt_for_supplier("philipmorris",False)
     import_txt_for_supplier("cho",False)
     
 if __name__ == "__main__":

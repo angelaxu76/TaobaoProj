@@ -112,8 +112,10 @@ class OutdoorAndCountryFetcher(BaseFetcher):
             "Product Color": self.clean_text(color, maxlen=100),
             "Product Gender": gender,
             "Product Description": self.clean_description(description),
-            "Original Price (GBP)": original_price,
-            "Discount Price (GBP)": discount_price,
+            "Product Price": original_price,        # txt_writer / DB 导入使用此 key
+            "Adjusted Price": discount_price,        # txt_writer / DB 导入使用此 key
+            "Original Price (GBP)": original_price,  # BaseFetcher._validate_info 要求
+            "Discount Price (GBP)": discount_price,  # BaseFetcher._validate_info 要求
             "Product Size": "No Data",  # 旧版未使用此字段
             "Product Size Detail": product_size_detail,
             "Feature": features,
