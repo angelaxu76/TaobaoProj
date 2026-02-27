@@ -6,7 +6,7 @@ from brands.barbour.supplier.barbour_fetch_info import barbour_fetch_info
 from brands.barbour.supplier.outdoorandcountry_fetch_info import outdoorandcountry_fetch_info
 from brands.barbour.supplier.outdoorandcountry_get_links import outdoorandcountry_fetch_and_save_links
 from brands.barbour.supplier.allweathers_get_links import allweathers_get_links
-from brands.barbour.legacy.allweathers_fetch_info_v2 import allweathers_fetch_info
+from brands.barbour.supplier.allweathers_fetch_info import allweathers_fetch_info
 from brands.barbour.supplier.houseoffraser_get_links import houseoffraser_get_links
 # from brands.barbour.supplier.houseoffraser_new_fetch_info import houseoffraser_fetch_info
 from brands.barbour.supplier.houseoffraser_fetch_info import houseoffraser_fetch_info
