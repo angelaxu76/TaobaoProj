@@ -1,6 +1,12 @@
 """
-S3 工具：上传本地文件、生成预签名 URL。
+S3 / Cloudflare R2 工具：上传文件或字节流、生成预签名 URL。
+
+R2 与标准 S3 使用相同的 boto3 API，但需要：
+  - endpoint_url: https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+  - 独立的 R2 Access Key ID / Secret Access Key（在 R2 控制台创建）
+  - region_name: "auto"
 """
+import io
 import os
 import boto3
 from botocore.exceptions import ClientError
@@ -31,6 +37,51 @@ def create_presigned_url(bucket_name: str, object_name: str,
     except ClientError as e:
         print(f"[s3_utils] 生成预签名 URL 失败: {e}")
         return None
+
+
+def upload_bytes_to_r2(
+    data: bytes,
+    object_key: str,
+    account_id: str,
+    access_key_id: str,
+    secret_access_key: str,
+    bucket_name: str,
+    content_type: str = "image/jpeg",
+) -> bool:
+    """将字节流直接上传至 Cloudflare R2（无需先落本地磁盘）。
+
+    Args:
+        data:              图片字节内容
+        object_key:        R2 对象 Key，如 "ai_gen/result.jpg"
+        account_id:        Cloudflare Account ID
+        access_key_id:     R2 Access Key ID（R2 控制台创建）
+        secret_access_key: R2 Secret Access Key
+        bucket_name:       R2 存储桶名称
+        content_type:      MIME 类型，默认 image/jpeg
+
+    Returns:
+        成功返回 True，失败返回 False
+    """
+    endpoint = f"https://{account_id}.r2.cloudflarestorage.com"
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=endpoint,
+        aws_access_key_id=access_key_id,
+        aws_secret_access_key=secret_access_key,
+        region_name="auto",
+    )
+    try:
+        s3.upload_fileobj(
+            io.BytesIO(data),
+            bucket_name,
+            object_key,
+            ExtraArgs={"ContentType": content_type},
+        )
+        print(f"[r2] 上传成功: {bucket_name}/{object_key}")
+        return True
+    except ClientError as e:
+        print(f"[r2] 上传失败: {e}")
+        return False
 
 
 def upload_local_file(local_path: str, bucket_name: str, object_name: str = None,

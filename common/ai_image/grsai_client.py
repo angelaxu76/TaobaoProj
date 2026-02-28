@@ -41,21 +41,23 @@ class GrsAIClient:
         model: str = "nano-banana-pro-vt",
         aspect_ratio: str = "3:4",
         image_size: str = "1K",
+        negative_prompt: str | None = None,
     ) -> dict:
         """提交生图任务，立即返回 API 原始响应（含 data.id）。
 
         Args:
-            urls:          图片 URL 列表，**必须长度为 3**：[平铺图, 面料细节图, 模特图]
-            prompt:        英文提示词
-            model:         模型名称
-            aspect_ratio:  图片比例，如 "3:4"
-            image_size:    图片分辨率，如 "1K"
+            urls:             图片 URL 列表，2-5 张，顺序即 img_1…img_n
+            prompt:           英文提示词，用 img_n 指代各图角色
+            model:            模型名称
+            aspect_ratio:     图片比例，如 "3:4"
+            image_size:       图片分辨率，如 "1K" / "2K"
+            negative_prompt:  负向提示词（可选），API 支持时生效
 
         Returns:
             API 原始响应 dict
         """
-        if not isinstance(urls, list) or len(urls) != 3:
-            raise ValueError("urls 必须是长度为 3 的列表：[flat_url, detail_url, model_url]")
+        if not isinstance(urls, list) or len(urls) < 2:
+            raise ValueError("urls 必须是至少 2 张图片的列表")
 
         payload = {
             "model": model,
@@ -66,6 +68,8 @@ class GrsAIClient:
             "webHook": "-1",      # 不用 webhook，改用轮询
             "shutProgress": True,
         }
+        if negative_prompt:
+            payload["negativePrompt"] = negative_prompt
         resp = requests.post(
             f"{self.host}/v1/draw/nano-banana",
             headers=self._headers,
@@ -155,32 +159,33 @@ class GrsAIClient:
         self,
         urls: list[str],
         prompt: str = (
-            "Reference image 1 is the flat garment style, image 2 is the fabric texture "
-            "detail, and image 3 is the target model. Please dress the model in image 3 "
-            "with the clothes from image 1, strictly following the material and pattern "
-            "from image 2. High resolution, realistic fashion photography."
+            "High-fidelity virtual try-on. img_1 is the target model (identity and pose). "
+            "img_2 is the flat garment. img_3 is the fabric texture detail. "
+            "Dress the model with the garment, strictly preserving all structural details."
         ),
         model: str = "nano-banana-pro-vt",
         aspect_ratio: str = "3:4",
         image_size: str = "1K",
+        negative_prompt: str | None = None,
         poll_interval: int = 3,
         max_wait: int = 600,
     ) -> str | None:
         """提交任务并等待完成，返回结果图片 URL。
 
         Args:
-            urls:          图片 URL 列表 [flat_url, detail_url, model_url]
-            prompt:        英文提示词（有默认值）
-            model:         模型名称
-            aspect_ratio:  图片比例
-            image_size:    图片分辨率
-            poll_interval: 快轮阶段间隔（秒）
-            max_wait:      最长等待时间（秒）
+            urls:             图片 URL 列表，顺序即 img_1…img_n
+            prompt:           英文提示词（有默认值）
+            model:            模型名称
+            aspect_ratio:     图片比例
+            image_size:       图片分辨率，如 "1K" / "2K"
+            negative_prompt:  负向提示词（可选）
+            poll_interval:    快轮阶段间隔（秒）
+            max_wait:         最长等待时间（秒）
 
         Returns:
             结果图片 URL，或 None
         """
-        task_res = self.submit(urls, prompt, model, aspect_ratio, image_size)
+        task_res = self.submit(urls, prompt, model, aspect_ratio, image_size, negative_prompt)
 
         if task_res.get("code") != 0:
             print(f"[GrsAI] 提交任务失败: {task_res.get('msg')}")
