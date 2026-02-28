@@ -3,9 +3,9 @@ import math
 from pathlib import Path
 
 # ======== 参数配置 ========
-input_file = Path(r"G:\temp\clarks.xlsx")  # 输入文件路径
+input_file = Path(r"G:\temp\barbour.xlsx")  # 输入文件路径
 output_dir = Path(r"g:\TEMP\split_excel")  # 输出目录
-num_parts = 6  # 分成几份（整数）
+num_parts = 3  # 分成几份（整数）
 
 # 创建输出目录
 output_dir.mkdir(parents=True, exist_ok=True)

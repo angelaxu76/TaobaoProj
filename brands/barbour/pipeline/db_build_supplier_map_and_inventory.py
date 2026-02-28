@@ -132,21 +132,44 @@ def scenario_full_rebuild():
     """
     场景1：数据库数据已在（barbour_products, barbour_offers 已导入），
            需要完全重建 supplier_map + inventory。
+
+    注意：与 after_new_publish 同理，必须先重建 inventory 骨架（让 is_published=TRUE 写入 DB），
+          再调用 fill_supplier_map，否则在全新数据库或 inventory 被清空的情况下，
+          fill_supplier_map 读到的 published 集合为空，所有商品都拿不到供货商（静默失败）。
     """
     print("=== 场景1：Full rebuild（重建 supplier_map + inventory）===")
 
-    # 1) 先根据 offers / products 重新计算供应商映射（强制重算）
-    print(">>> 重新计算 barbour_supplier_map（force_refresh=True）...")
+    # 1) 先重建 inventory 骨架：清空 → 插入所有已发布商品 → 写入 jingya_id / is_published=TRUE
+    print(">>> 清空 barbour_inventory...")
+    clear_barbour_inventory()
+
+    print(">>> 插入鲸芽已发布商品（is_published=FALSE 占位）...")
+    insert_missing_products_with_zero_stock("barbour")
+
+    print(">>> 写入 Jingya ID 映射，将已发布商品标记 is_published=TRUE...")
+    insert_jingyaid_to_db("barbour")
+
+    # 2) 此时 inventory 里所有已发布商品已有 is_published=TRUE，再强制重算 supplier_map
+    print(">>> 强制重算 barbour_supplier_map（force_refresh=True）...")
     fill_supplier_map(
         force_refresh=True,
         exclude_xlsx=EXCLUDE_LIST_XLSX,
     )
-    # fill_supplier_map(
-    #     force_refresh=True,
-    # )
 
-    # 2) 再重建 inventory（基于新的 supplier_map）
-    _rebuild_inventory_from_jingya(merge_band=True)
+    # 3) 根据新的 supplier_map 回填价格 + 库存
+    print(">>> 根据 barbour_supplier_map 用单一供货商回填价格 + 主库存...")
+    backfill_barbour_inventory_single_supplier()
+
+    print(">>> 按 10% 价格带合并多站点库存（只影响 stock_count，不动价格）...")
+    merge_band_stock_into_inventory(band_ratio=0.10)
+
+    apply_fixed_prices_from_excel(
+        code_col="商品编码",
+        sheet_name=0,
+        xlsx_path=r"D:\TB\Products\barbour\document\barbour_exclude_list.xlsx",
+        dry_run=False
+    )
+    print(">>> barbour_inventory 回填完成。")
 
 
 def scenario_refresh_inventory():
@@ -163,18 +186,44 @@ def scenario_after_new_publish():
     场景3：鲸芽发布了新商品，只需要：
            - 为【新商品】建立 supplier_map
            - 并重新生成所有商品的 inventory
+
+    注意：必须先重建 inventory（让新品的 is_published=TRUE 写入 DB），
+          再调用 fill_supplier_map，否则新品在 barbour_inventory 里还不存在，
+          fill_supplier_map 读 WHERE is_published=TRUE 时会漏掉新品，导致无法分配供货商。
     """
     print("=== 场景3：鲸芽发布新品后，增量填充 supplier_map + 重建 inventory ===")
 
-    # 1) 不强制清空 supplier_map，只补充没有 supplier 的编码
+    # 1) 先重建 inventory 骨架：清空 → 插入所有已发布商品 → 写入 jingya_id / is_published=TRUE
+    print(">>> 清空 barbour_inventory...")
+    clear_barbour_inventory()
+
+    print(">>> 插入鲸芽已发布商品（包含新上的，is_published=FALSE 占位）...")
+    insert_missing_products_with_zero_stock("barbour")
+
+    print(">>> 写入 Jingya ID 映射，将已发布商品标记 is_published=TRUE...")
+    insert_jingyaid_to_db("barbour")
+
+    # 2) 此时 barbour_inventory 中新品已有 is_published=TRUE，再填 supplier_map
     print(">>> 为 null supplier 的商品补充供应商映射（force_refresh=False）...")
     fill_supplier_map(
         force_refresh=False,
         exclude_xlsx=EXCLUDE_LIST_XLSX,
     )
 
-    # 2) 重建 inventory
-    _rebuild_inventory_from_jingya(merge_band=True)
+    # 3) 根据最新的 supplier_map 回填价格 + 库存（跳过 clear/insert/jingyaid，直接从回填开始）
+    print(">>> 根据 barbour_supplier_map 用单一供货商回填价格 + 主库存...")
+    backfill_barbour_inventory_single_supplier()
+
+    print(">>> 按 10% 价格带合并多站点库存（只影响 stock_count，不动价格）...")
+    merge_band_stock_into_inventory(band_ratio=0.10)
+
+    apply_fixed_prices_from_excel(
+        code_col="商品编码",
+        sheet_name=0,
+        xlsx_path=r"D:\TB\Products\barbour\document\barbour_exclude_list.xlsx",
+        dry_run=False
+    )
+    print(">>> barbour_inventory 回填完成。")
 
 
 def scenario_reassign_low_stock_preview():
