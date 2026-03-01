@@ -29,8 +29,8 @@ URL_MODE_A_SUFFIXES = {
 #   {code}_flat_2.jpg     正面角度 2
 #   {code}_back.jpg       背面平铺
 URL_MODE_B_SUFFIXES = {
-    "front_1": "_flat_1",
-    "front_2": "_flat_2",
+    "front_1": "_front_1",
+    "front_2": "_front_2",
     "back":    "_back",
 }
 
@@ -44,20 +44,26 @@ IMAGE_EXT = ".jpg"
 #   nano-banana-pro-cl   专用服装生成
 #   nano-banana-pro-vip  VIP 高质量（1K/2K）
 VTON_MODEL        = "nano-banana-2"
-VTON_ASPECT_RATIO = "3:4"
+VTON_ASPECT_RATIO = "1:1"
 VTON_IMAGE_SIZE   = "1K"
 
 # ── 默认款式/领口模式 ──────────────────────────────────────────────────────────
 #   "closed"  — 全闭合：高领、立领、拉链到顶的工装/冲锋衣
 #   "relaxed" — 自然微张：翻领、Polo、卫衣
 #   "layered" — 叠穿外套：开襟夹克/西装，前片自然敞开
-VTON_STYLE_MODE = "relaxed"
+VTON_STYLE_MODE = "closed"
 
 # ── 负向提示词 ─────────────────────────────────────────────────────────────────
 VTON_NEGATIVE_PROMPT = (
     # 幻觉装饰
     "badge on sleeve, arm patch, shoulder logo, embroidery on arm, arm brand label, "
-    "extra pockets, extra zippers, asymmetric details not in reference, "
+    "extra pockets, extra zippers, "
+    # 颜色对称化（最常见的失真来源）
+    "symmetrized color design, mirrored color pattern, equal color halves, "
+    "color normalization, rebalanced color distribution, color blending across panels, "
+    "uniform color on both sides, "
+    # 结构细节幻觉
+    "asymmetric details not in reference, "
     # 领口内里保护
     "inner labels, pattern on inner lining, extra inner buttons, "
     "fused garment layers, messy neckline, "
@@ -71,8 +77,65 @@ VTON_NEGATIVE_PROMPT = (
 
 # ── 默认目标模特图（img_1 固定参考）──────────────────────────────────────────
 VTON_TARGET_MODEL_URL = (
-    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/menmode_1_1.png"
+    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_1.jpg"
 )
 
 # ── 本地输出目录 ───────────────────────────────────────────────────────────────
 VTON_OUTPUT_DIR = r"D:\images\ai_gen\output"
+
+
+# ==============================================================================
+# Face Swap 专用配置（身份替换 + 背景替换，服装 100% 保留）
+# ==============================================================================
+
+# ── 原始拍摄图后缀 ─────────────────────────────────────────────────────────────
+# 换脸任务以原始模特拍摄图作为底图（img_1），格式：{code}<后缀>.jpg
+# 可配置多张原图（按编号顺序，数量由 ops 脚本的 FACESWAP_SHOT_SUFFIXES 决定）
+# 示例：["_1"]          → 只用 {code}_1.jpg
+#        ["_1", "_5"]   → 同一款跑两张图（正面+四分之三侧面）
+FACESWAP_DEFAULT_SHOT_SUFFIXES = ["_front_1"]
+
+# ── Face Swap 生成模型参数 ─────────────────────────────────────────────────────
+FACESWAP_MODEL        = "nano-banana-2"
+FACESWAP_ASPECT_RATIO = "1:1"
+FACESWAP_IMAGE_SIZE   = "2K"    # 2K 保留衣服细节，避免 AI 压缩失真
+
+# ── 目标模特脸部参考图（img_2，只取脸/发型/肤色）────────────────────────────
+FACESWAP_TARGET_FACE_URL = (
+    # "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_2.png"
+    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_1.jpg"
+)
+
+# ── 换脸负向提示词 ─────────────────────────────────────────────────────────────
+FACESWAP_FACE_DETAIL_PROMPT = (
+    "Maintain realistic skin texture with visible pores and natural skin imperfections. "
+    "Do NOT over-smooth or airbrush the face. "
+    "Ensure the jawline and cheekbones keep clear structural shadows and natural facial depth. "
+    "Emphasize realistic eye reflections and catchlights so the eyes look focused and alive. "
+    "Preserve detailed baby hairs and fine hair strands along the hairline with natural shadow transition. "
+    "Use professional studio Rembrandt-style lighting on the face to enhance bone structure "
+    "while still matching the original lighting direction from img_1."
+)
+FACESWAP_NEGATIVE_PROMPT = (
+    # 服装保护（核心）
+    "altered clothing, changed garment texture, missing buttons, modified sleeves, "
+    "extra logos, blurred fabric, distorted outfit, changed collar, different garment, "
+    "re-generated clothes, altered jacket, modified zipper, changed pocket position, "
+    # 颜色/对称幻觉
+    "symmetrized color design, mirrored color pattern, color normalization, "
+    "uniform color on both sides, color blending across panels, "
+    # human face realism
+    "plastic skin, porcelain face, airbrushed face, over-smoothed skin, waxy skin, "
+    "missing skin texture, flat facial shadows, weak jawline, weak cheekbones, "
+    "blurry eyes, empty eyes, lifeless expression, cg-like face, cartoonish face, "
+    "smooth forehead, fake hairline, overly clean hairline, "
+    # 人体结构
+    "bad anatomy, deformed fingers, extra limbs, fused fingers, "
+    # 画质
+    "lowres, blurry, watermark, text, signature, low quality, artifact."
+)
+
+# ── Face Swap 输出目录 ────────────────────────────────────────────────────────
+FACESWAP_OUTPUT_DIR = r"D:\images\ai_gen\faceswap_output"
+
+

@@ -1,12 +1,18 @@
-﻿"""
-批量 AI 虚拟试穿图片生成脚本。
+"""
+批量 AI 换脸 + 换背景脚本（服装 100% 保留）。
+
+原理：以商品原始模特拍摄图为底（img_1），只替换人脸/肤色和背景，
+      服装纹理/颜色/细节完全不重绘。
 
 用法：
   1. 修改下方"本次运行参数"。
   2. 在 INPUT_FILE 指定的 Excel 第一列填入商品编码（可有表头行）。
-  3. 运行：python ops/run_ai_image_generate.py
+  3. 运行：python ops/run_ai_face_swap.py
 
-稳定配置（API Key、模型、后缀名、负向提示词等）统一在 cfg/ai_config.py 修改。
+稳定配置（API Key、模型、负向提示词等）在 cfg/ai_config.py 修改。
+
+输出文件命名：{code}{原图后缀}_faceswap.jpg
+  例：MWX2343BL56_1_faceswap.jpg
 """
 import os
 import sys
@@ -15,11 +21,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import openpyxl
 from common.ai.image import GrsAIClient
-from common.ai.image.vton_pipeline import process_one
+from common.ai.image.faceswap_pipeline import process_one_faceswap
 from config import (
     GRSAI_API_KEY, GRSAI_HOST,
     R2_PUBLIC_PREFIX,
-    VTON_STYLE_MODE, VTON_TARGET_MODEL_URL, VTON_OUTPUT_DIR,
+    FACESWAP_DEFAULT_SHOT_SUFFIXES, FACESWAP_TARGET_FACE_URL,
+    FACESWAP_OUTPUT_DIR,
 )
 
 # ============================================================
@@ -30,21 +37,19 @@ from config import (
 INPUT_FILE  = r"G:\temp\barbour\codes.xlsx"
 HEADER_ROWS = 1         # 跳过的表头行数（0 = 第一行是数据）
 
-# URL 命名模式："A" 或 "B"（后缀规则见 cfg/ai_config.py）
-URL_MODE  = "A"
-SKIP_BACK = False       # True 时强制跳过 back 图
+# 原始拍摄图后缀列表（每个后缀对应一张原图，均会生成一张换脸图）
+#   ["_1"]        → 每款只处理 {code}_1.jpg
+#   ["_1", "_5"]  → 每款处理两张：{code}_1.jpg 和 {code}_5.jpg
+SHOT_SUFFIXES = FACESWAP_DEFAULT_SHOT_SUFFIXES  # 改后缀请去 cfg/ai_config.py 修改
 
-# 款式/领口模式（默认取 cfg 值，如需临时覆盖在此赋值）
-STYLE_MODE = VTON_STYLE_MODE    # "closed" | "relaxed" | "layered"
+# 目标模特脸部参考（默认取 cfg 值，如需临时换模特在此赋值）
+TARGET_FACE_URL = FACESWAP_TARGET_FACE_URL
 
-# 目标模特图（默认取 cfg 值，如需换模特在此赋值）
-TARGET_MODEL_URL = VTON_TARGET_MODEL_URL
-
-# 背景参考图（None = 纯工作室背景）
+# 背景参考图（None = 生成纯净棚拍背景，填 URL 则以该图为背景风格参考）
 BACKGROUND_URL = None
 
-# 本地输出目录（默认取 cfg 值，如需临时输出到其他目录在此赋值）
-OUTPUT_DIR = VTON_OUTPUT_DIR
+# 本地输出目录（默认取 cfg 值）
+OUTPUT_DIR = FACESWAP_OUTPUT_DIR
 
 # ============================================================
 # Main
@@ -73,29 +78,31 @@ def main():
         return
 
     print(f"共读取到 {len(codes)} 个商品编码: {codes}")
+    print(f"每款处理原图后缀: {SHOT_SUFFIXES}  → 共 {len(codes) * len(SHOT_SUFFIXES)} 张")
 
     client = GrsAIClient(api_key=GRSAI_API_KEY, host=GRSAI_HOST)
-    ok_list: list[str] = []
-    fail_list: list[str] = []
+    total_ok = 0
+    fail_codes: list[str] = []
 
     for code in codes:
-        result = process_one(
+        saved = process_one_faceswap(
             code=code,
             client=client,
             r2_prefix=R2_PUBLIC_PREFIX,
             output_dir=OUTPUT_DIR,
-            model_url=TARGET_MODEL_URL,
-            url_mode=URL_MODE,
-            style_mode=STYLE_MODE,
+            target_face_url=TARGET_FACE_URL,
+            shot_suffixes=SHOT_SUFFIXES,
             background_url=BACKGROUND_URL,
-            skip_back=SKIP_BACK,
         )
-        (ok_list if result else fail_list).append(code)
+        if saved:
+            total_ok += len(saved)
+        else:
+            fail_codes.append(code)
 
     print(f"\n{'='*60}")
-    print(f"完成: 成功 {len(ok_list)} / 失败 {len(fail_list)}")
-    if fail_list:
-        print(f"失败编码: {fail_list}")
+    print(f"完成: 成功 {total_ok} 张 / 失败 {len(fail_codes)} 款")
+    if fail_codes:
+        print(f"失败编码: {fail_codes}")
 
 
 if __name__ == "__main__":

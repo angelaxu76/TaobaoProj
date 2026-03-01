@@ -12,7 +12,11 @@ URL 命名模式（url_mode 参数）：
 """
 import os
 import requests
-from cfg.ai_config import URL_MODE_A_SUFFIXES, URL_MODE_B_SUFFIXES, IMAGE_EXT
+from cfg.ai_config import (
+    URL_MODE_A_SUFFIXES, URL_MODE_B_SUFFIXES, IMAGE_EXT,
+    VTON_MODEL, VTON_ASPECT_RATIO, VTON_IMAGE_SIZE,
+    VTON_STYLE_MODE, VTON_NEGATIVE_PROMPT,
+)
 
 
 # ── URL 构建 ───────────────────────────────────────────────────────────────────
@@ -109,7 +113,13 @@ def build_prompt(
         "it MUST be rendered as smooth and plain in the output. "
         "5. Layout Fidelity: Maintain the exact non-uniform spacing of buttons, zippers, "
         f"and pocket positions from {garment_src}. Do NOT auto-align or normalize. "
-        f"6. Texture: Replicate material luster and stitching from {detail_src} "
+        f"6. Color & Asymmetry Fidelity: CRITICAL — reproduce the EXACT color distribution "
+        f"from {garment_src} with zero changes. "
+        "If the left and right panels have DIFFERENT colors or color-blocking, "
+        "this asymmetry MUST be preserved exactly as shown. "
+        "Do NOT mirror, symmetrize, or rebalance the color layout. "
+        "Do NOT blend or average colors across panels. "
+        f"7. Texture: Replicate material luster and stitching from {detail_src} "
         "with pixel-level accuracy. "
         f"7. Background: Professional studio setting{bg_clause} "
         "Output: Ultra-realistic, 8K resolution, e-commerce standard."
@@ -126,10 +136,10 @@ def process_one(
     *,
     model_url: str,
     url_mode: str = "A",
-    style_mode: str = "closed",
-    model: str = "nano-banana-2",
-    aspect_ratio: str = "3:4",
-    image_size: str = "1K",
+    style_mode: str | None = None,
+    model: str | None = None,
+    aspect_ratio: str | None = None,
+    image_size: str | None = None,
     negative_prompt: str | None = None,
     background_url: str | None = None,
     skip_back: bool = False,
@@ -154,6 +164,12 @@ def process_one(
     Returns:
         保存成功时返回本地文件路径，失败返回 None。
     """
+    style_mode      = style_mode      or VTON_STYLE_MODE
+    model           = model           or VTON_MODEL
+    aspect_ratio    = aspect_ratio    or VTON_ASPECT_RATIO
+    image_size      = image_size      or VTON_IMAGE_SIZE
+    negative_prompt = negative_prompt or VTON_NEGATIVE_PROMPT
+
     urls_map = build_image_urls(code, r2_prefix, url_mode)
 
     # 按 img_n 顺序组装 URL 列表
