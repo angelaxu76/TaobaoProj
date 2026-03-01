@@ -26,6 +26,7 @@ from common.ai.image.faceswap_pipeline import process_one_faceswap
 from config import (
     GRSAI_API_KEY, GRSAI_HOST,
     R2_PUBLIC_PREFIX,
+    FACESWAP_R2_SHOT_SUBDIR,
     FACESWAP_DEFAULT_SHOT_SUFFIXES, FACESWAP_TARGET_FACE_URLS,
     FACESWAP_OUTPUT_DIR, FACESWAP_WHITE_BG_REF_URL,
 )
@@ -95,11 +96,13 @@ def main():
     total_ok = 0
     fail_codes: list[str] = []
 
+    r2_shot_prefix = f"{R2_PUBLIC_PREFIX.rstrip('/')}/{FACESWAP_R2_SHOT_SUBDIR}" if FACESWAP_R2_SHOT_SUBDIR else R2_PUBLIC_PREFIX
+
     def _run(code: str) -> tuple[str, list[str]]:
         saved = process_one_faceswap(
             code=code,
             client=client,
-            r2_prefix=R2_PUBLIC_PREFIX,
+            r2_prefix=r2_shot_prefix,
             output_dir=OUTPUT_DIR,
             target_face_url=face_url_for[code],
             shot_suffixes=SHOT_SUFFIXES,

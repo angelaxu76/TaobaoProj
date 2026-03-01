@@ -88,6 +88,14 @@ VTON_OUTPUT_DIR = r"D:\images\ai_gen\output"
 # Face Swap 专用配置（身份替换 + 背景替换，服装 100% 保留）
 # ==============================================================================
 
+# ── 原始拍摄图 R2 路径前缀 ────────────────────────────────────────────────────
+# 原始模特拍摄图所在的 R2 子目录前缀（img_1 底图）
+# 最终 URL = FACESWAP_R2_SHOT_PREFIX + "/{code}{suffix}.jpg"
+# 示例：
+#   "" (空) → https://xxx.r2.dev/{code}_front_1.jpg
+#   "/product_front" → https://xxx.r2.dev/product_front/{code}_front_1.jpg
+FACESWAP_R2_SHOT_SUBDIR = "product_front"
+
 # ── 原始拍摄图后缀 ─────────────────────────────────────────────────────────────
 # 换脸任务以原始模特拍摄图作为底图（img_1），格式：{code}<后缀>.jpg
 # 可配置多张原图（按编号顺序，数量由 ops 脚本的 FACESWAP_SHOT_SUFFIXES 决定）
