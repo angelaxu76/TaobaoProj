@@ -2,15 +2,11 @@
 批量 AI 虚拟试穿图片生成脚本。
 
 用法：
-  1. 在下方 Config 区填写参数。
-  2. 在 INPUT_FILE 指定的 Excel 文件第一列填入商品编码（可有表头行）。
+  1. 修改下方"本次运行参数"。
+  2. 在 INPUT_FILE 指定的 Excel 第一列填入商品编码（可有表头行）。
   3. 运行：python ops/run_ai_image_generate.py
 
-图片命名规则（URL_MODE 参数）：
-  "A" — {code}_flat.jpg / {code}_back.jpg / {code}_detail_1.jpg
-  "B" — {code}_flat_1.jpg / {code}_flat_2.jpg / {code}_back.jpg
-
-输出：OUTPUT_DIR/<code>_generate.jpg
+稳定配置（API Key、模型、后缀名、负向提示词等）统一在 cfg/ai_config.py 修改。
 """
 import os
 import sys
@@ -20,55 +16,40 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import openpyxl
 from common.ai.image import GrsAIClient
 from common.ai.image.vton_pipeline import process_one
+from config import (
+    GRSAI_API_KEY, GRSAI_HOST,
+    R2_PUBLIC_PREFIX,
+    VTON_MODEL, VTON_ASPECT_RATIO, VTON_IMAGE_SIZE,
+    VTON_STYLE_MODE, VTON_NEGATIVE_PROMPT,
+    VTON_TARGET_MODEL_URL, VTON_OUTPUT_DIR,
+)
 
 # ============================================================
-# Config
+# 本次运行参数（按需修改）
 # ============================================================
-
-GRSAI_API_KEY = "sk-cb2fd749b4f749198a491588a87375ed"
-GRSAI_HOST    = "https://grsaiapi.com"
 
 # 商品编码列表 Excel（第一列为编码）
 INPUT_FILE  = r"D:\images\ai_gen\codes.xlsx"
-HEADER_ROWS = 1   # 跳过的表头行数（0 = 第一行是数据）
+HEADER_ROWS = 1         # 跳过的表头行数（0 = 第一行是数据）
 
-# R2 公共前缀（不含尾部斜线）
-R2_PREFIX = "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev"
-
-# URL 命名模式："A" 或 "B"（见模块文档）
+# URL 命名模式："A" 或 "B"（后缀规则见 cfg/ai_config.py）
 URL_MODE  = "A"
-SKIP_BACK = False   # True 时强制跳过 back 图
+SKIP_BACK = False       # True 时强制跳过 back 图
 
-# img_1：目标模特图（决定人脸与姿态）
-TARGET_MODEL_URL = "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/menmode_1_1.png"
+# 款式/领口模式（默认取 cfg 值，如需临时覆盖在此赋值）
+STYLE_MODE = VTON_STYLE_MODE    # "closed" | "relaxed" | "layered"
 
-# 背景参考图（可选，None 为纯工作室背景）
+# 目标模特图（默认取 cfg 值，如需换模特在此赋值）
+TARGET_MODEL_URL = VTON_TARGET_MODEL_URL
+
+# 背景参考图（None = 纯工作室背景）
 BACKGROUND_URL = None
 
-# 款式/领口模式："closed" | "relaxed" | "layered"
-STYLE_MODE = "relaxed"
-
-# AI 生成参数
-MODEL        = "nano-banana-2"
-ASPECT_RATIO = "3:4"
-IMAGE_SIZE   = "1K"
-
-NEGATIVE_PROMPT = (
-    "badge on sleeve, arm patch, shoulder logo, embroidery on arm, arm brand label, "
-    "extra pockets, extra zippers, asymmetric details not in reference, "
-    "inner labels, pattern on inner lining, extra inner buttons, "
-    "fused garment layers, messy neckline, "
-    "evenly spaced buttons, symmetrically aligned buttons, modified collar, "
-    "distorted neckline, "
-    "lowres, blurry, bad anatomy, deformed fingers, extra limbs, "
-    "watermark, text, signature, low quality, artifact."
-)
-
-# 本地输出目录
-OUTPUT_DIR = r"D:\images\ai_gen\output"
+# 本地输出目录（默认取 cfg 值，如需临时输出到其他目录在此赋值）
+OUTPUT_DIR = VTON_OUTPUT_DIR
 
 # ============================================================
-# Helpers
+# Main
 # ============================================================
 
 
@@ -87,17 +68,7 @@ def read_codes_from_excel(path: str, header_rows: int = 1) -> list[str]:
     return codes
 
 
-# ============================================================
-# Main
-# ============================================================
-
-
 def main():
-    if not GRSAI_API_KEY:
-        raise ValueError("请在 GRSAI_API_KEY 中填写 API Key。")
-    if not TARGET_MODEL_URL:
-        raise ValueError("请在 TARGET_MODEL_URL 中填写目标模特图 URL。")
-
     codes = read_codes_from_excel(INPUT_FILE, HEADER_ROWS)
     if not codes:
         print("未读取到任何商品编码，请检查 INPUT_FILE 和 HEADER_ROWS。")
@@ -113,15 +84,15 @@ def main():
         result = process_one(
             code=code,
             client=client,
-            r2_prefix=R2_PREFIX,
+            r2_prefix=R2_PUBLIC_PREFIX,
             output_dir=OUTPUT_DIR,
             model_url=TARGET_MODEL_URL,
             url_mode=URL_MODE,
             style_mode=STYLE_MODE,
-            model=MODEL,
-            aspect_ratio=ASPECT_RATIO,
-            image_size=IMAGE_SIZE,
-            negative_prompt=NEGATIVE_PROMPT,
+            model=VTON_MODEL,
+            aspect_ratio=VTON_ASPECT_RATIO,
+            image_size=VTON_IMAGE_SIZE,
+            negative_prompt=VTON_NEGATIVE_PROMPT,
             background_url=BACKGROUND_URL,
             skip_back=SKIP_BACK,
         )

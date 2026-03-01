@@ -7,17 +7,12 @@
   - process_one()       — 单款：提交生成 → 下载 → 保存到本地目录
 
 URL 命名模式（url_mode 参数）：
-  "A" — 带独立纹理图的款式
-        {code}_flat.jpg       主平铺图（garment 正面）
-        {code}_back.jpg       背面平铺图（可选）
-        {code}_detail_1.jpg   纹理/细节特写
-  "B" — 双角度平铺，无独立细节图
-        {code}_flat_1.jpg     正面平铺角度 1
-        {code}_flat_2.jpg     正面平铺角度 2
-        {code}_back.jpg       背面平铺图
+  "A" — 带独立纹理图的款式（后缀见 cfg/ai_config.py URL_MODE_A_SUFFIXES）
+  "B" — 双角度平铺，无独立细节图（后缀见 cfg/ai_config.py URL_MODE_B_SUFFIXES）
 """
 import os
 import requests
+from cfg.ai_config import URL_MODE_A_SUFFIXES, URL_MODE_B_SUFFIXES, IMAGE_EXT
 
 
 # ── URL 构建 ───────────────────────────────────────────────────────────────────
@@ -35,16 +30,18 @@ def build_image_urls(code: str, r2_prefix: str, url_mode: str = "A") -> dict[str
     """
     base = r2_prefix.rstrip("/")
     if url_mode == "A":
+        s = URL_MODE_A_SUFFIXES
         return {
-            "flat":   f"{base}/{code}_flat.jpg",
-            "back":   f"{base}/{code}_back.jpg",
-            "detail": f"{base}/{code}_detail_1.jpg",
+            "flat":   f"{base}/{code}{s['flat']}{IMAGE_EXT}",
+            "back":   f"{base}/{code}{s['back']}{IMAGE_EXT}",
+            "detail": f"{base}/{code}{s['detail']}{IMAGE_EXT}",
         }
     elif url_mode == "B":
+        s = URL_MODE_B_SUFFIXES
         return {
-            "front_1": f"{base}/{code}_flat_1.jpg",
-            "front_2": f"{base}/{code}_flat_2.jpg",
-            "back":    f"{base}/{code}_back.jpg",
+            "front_1": f"{base}/{code}{s['front_1']}{IMAGE_EXT}",
+            "front_2": f"{base}/{code}{s['front_2']}{IMAGE_EXT}",
+            "back":    f"{base}/{code}{s['back']}{IMAGE_EXT}",
         }
     else:
         raise ValueError(f"不支持的 url_mode: {url_mode!r}，请选择 'A' 或 'B'。")
