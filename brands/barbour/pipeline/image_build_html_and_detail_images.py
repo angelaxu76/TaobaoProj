@@ -13,22 +13,22 @@ def main():
     code_file_path = r"D:\TB\Products\barbour\repulibcation\codes.txt"
 
 
-    # excel_path = r"D:\TB\Products\barbour\document\publication\barbour_publication_20260215_144753.xlsx"
-    # downloaded_dir = r"D:\TB\Products\barbour\images_download"
-    # processed_dir = r"D:\TB\Products\barbour\images"
-    # publish_ready_dir = r"D:\TB\Products\barbour\repulibcation\images_selected"
-    # publish_need_process_dir = r"D:\TB\Products\barbour\repulibcation\need_edit"
-    # missing_txt_path = r"D:\TB\Products\barbour\repulibcation\missing_codes.txt"
+    excel_path = r"D:\TB\Products\barbour\document\publication\barbour_publication_20260215_144753.xlsx"
+    downloaded_dir = r"D:\TB\Products\barbour\images_download"
+    processed_dir = r"D:\TB\Products\barbour\images"
+    publish_ready_dir = r"D:\TB\Products\barbour\repulibcation\images_selected"
+    publish_need_process_dir = r"D:\TB\Products\barbour\repulibcation\need_edit"
+    missing_txt_path = r"D:\TB\Products\barbour\repulibcation\missing_codes.txt"
 
-    # ready, need_edit, missing = prepare_images_for_publication(
-    #     excel_path=excel_path,
-    #     downloaded_dir=downloaded_dir,
-    #     processed_dir=processed_dir,
-    #     publish_ready_dir=publish_ready_dir,
-    #     publish_need_process_dir=publish_need_process_dir,
-    #     missing_txt_path=missing_txt_path,
-    #     verbose=True,
-    # )
+    ready, need_edit, missing = prepare_images_for_publication(
+        excel_path=excel_path,
+        downloaded_dir=downloaded_dir,
+        processed_dir=processed_dir,
+        publish_ready_dir=publish_ready_dir,
+        publish_need_process_dir=publish_need_process_dir,
+        missing_txt_path=missing_txt_path,
+        verbose=True,
+    )
     
 
 

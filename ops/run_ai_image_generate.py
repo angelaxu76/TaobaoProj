@@ -14,6 +14,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import openpyxl
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from common.ai.image import GrsAIClient
 from common.ai.image.vton_pipeline import process_one
 from config import (
@@ -45,6 +46,9 @@ BACKGROUND_URL = None
 
 # 本地输出目录（默认取 cfg 值，如需临时输出到其他目录在此赋值）
 OUTPUT_DIR = VTON_OUTPUT_DIR
+
+# 并发线程数（API 为 I/O 密集型，建议 2~4；过高可能触发限流）
+MAX_WORKERS = 3
 
 # ============================================================
 # Main
@@ -78,7 +82,7 @@ def main():
     ok_list: list[str] = []
     fail_list: list[str] = []
 
-    for code in codes:
+    def _run(code: str) -> tuple[str, bool]:
         result = process_one(
             code=code,
             client=client,
@@ -90,7 +94,13 @@ def main():
             background_url=BACKGROUND_URL,
             skip_back=SKIP_BACK,
         )
-        (ok_list if result else fail_list).append(code)
+        return code, bool(result)
+
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+        futures = {pool.submit(_run, code): code for code in codes}
+        for future in as_completed(futures):
+            code, ok = future.result()
+            (ok_list if ok else fail_list).append(code)
 
     print(f"\n{'='*60}")
     print(f"完成: 成功 {len(ok_list)} / 失败 {len(fail_list)}")

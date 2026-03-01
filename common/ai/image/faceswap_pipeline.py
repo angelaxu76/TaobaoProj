@@ -18,7 +18,8 @@ from cfg.ai_config import (
     IMAGE_EXT, FACESWAP_DEFAULT_SHOT_SUFFIXES,
     FACESWAP_MODEL, FACESWAP_ASPECT_RATIO, FACESWAP_IMAGE_SIZE,
     FACESWAP_NEGATIVE_PROMPT,
-    FACESWAP_FACE_DETAIL_PROMPT,
+    FACESWAP_FACE_DETAIL_PROMPT, FACESWAP_WHITE_BG_PROMPT,
+    FACESWAP_HARDWARE_LOCK_PROMPT,
 )
 
 
@@ -55,12 +56,12 @@ def build_faceswap_prompt(has_bg_ref: bool = False) -> str:
         has_bg_ref: True 时 img_3 为背景参考图，False 时生成纯净棚拍背景
     """
     bg_clause = (
-        "Replace the background with a professional studio environment "
-        "similar to img_3, matching its lighting and mood."
+        "ABSOLUTELY DISCARD the original background from img_1. "
+        "Replace it with a background IDENTICAL to img_3. "
+        "Match the pure white pixels of img_3 exactly so the final background is clipped white (#FFFFFF) "
+        "with no gray cast, no texture, and no environment residue."
         if has_bg_ref
-        else
-        "Replace the background with a clean, high-end professional studio "
-        "environment with soft, even lighting."
+        else FACESWAP_WHITE_BG_PROMPT
     )
     return (
         "TASK: High-Fidelity Identity & Background Replacement. "
@@ -81,11 +82,12 @@ def build_faceswap_prompt(has_bg_ref: bool = False) -> str:
         "Do NOT change any colors, patterns, or color-blocking on the garment. "
         "If the garment has asymmetric color design, preserve it exactly as shown in img_1. "
         # 背景替换
-        f"3. Background: {bg_clause} "
         # 姿态锁定
-        "4. Pose & Body: Keep the exact body pose, proportions, and limb positions "
+        "3. Pose & Body: Keep the exact body pose, proportions, and limb positions "
         "from img_1 unchanged. "
-        f"5. Face Realism: {FACESWAP_FACE_DETAIL_PROMPT} "
+        f"4. Face Realism: {FACESWAP_FACE_DETAIL_PROMPT} "
+        f"5. Hardware & Zipper Lock: {FACESWAP_HARDWARE_LOCK_PROMPT} "
+        f"6. Background: {bg_clause} "
         # 输出质量
         "Output: Ultra-realistic, photorealistic seamless blending, "
         "8K resolution, e-commerce standard."

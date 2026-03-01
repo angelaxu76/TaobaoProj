@@ -20,13 +20,14 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import openpyxl
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from common.ai.image import GrsAIClient
 from common.ai.image.faceswap_pipeline import process_one_faceswap
 from config import (
     GRSAI_API_KEY, GRSAI_HOST,
     R2_PUBLIC_PREFIX,
     FACESWAP_DEFAULT_SHOT_SUFFIXES, FACESWAP_TARGET_FACE_URL,
-    FACESWAP_OUTPUT_DIR,
+    FACESWAP_OUTPUT_DIR, FACESWAP_WHITE_BG_REF_URL,
 )
 
 # ============================================================
@@ -45,11 +46,14 @@ SHOT_SUFFIXES = FACESWAP_DEFAULT_SHOT_SUFFIXES  # 改后缀请去 cfg/ai_config.
 # 目标模特脸部参考（默认取 cfg 值，如需临时换模特在此赋值）
 TARGET_FACE_URL = FACESWAP_TARGET_FACE_URL
 
-# 背景参考图（None = 生成纯净棚拍背景，填 URL 则以该图为背景风格参考）
-BACKGROUND_URL = None
+# 背景参考图（默认使用纯白参考图；设为 None 时仅依赖 prompt 白底描述）
+BACKGROUND_URL = FACESWAP_WHITE_BG_REF_URL
 
 # 本地输出目录（默认取 cfg 值）
 OUTPUT_DIR = FACESWAP_OUTPUT_DIR
+
+# 并发线程数（建议 2~4；过高可能触发 API 限流）
+MAX_WORKERS = 3
 
 # ============================================================
 # Main
@@ -84,7 +88,7 @@ def main():
     total_ok = 0
     fail_codes: list[str] = []
 
-    for code in codes:
+    def _run(code: str) -> tuple[str, list[str]]:
         saved = process_one_faceswap(
             code=code,
             client=client,
@@ -94,10 +98,16 @@ def main():
             shot_suffixes=SHOT_SUFFIXES,
             background_url=BACKGROUND_URL,
         )
-        if saved:
-            total_ok += len(saved)
-        else:
-            fail_codes.append(code)
+        return code, saved
+
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+        futures = {pool.submit(_run, code): code for code in codes}
+        for future in as_completed(futures):
+            code, saved = future.result()
+            if saved:
+                total_ok += len(saved)
+            else:
+                fail_codes.append(code)
 
     print(f"\n{'='*60}")
     print(f"完成: 成功 {total_ok} 张 / 失败 {len(fail_codes)} 款")

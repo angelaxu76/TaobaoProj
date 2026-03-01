@@ -103,18 +103,49 @@ FACESWAP_IMAGE_SIZE   = "2K"    # 2K 保留衣服细节，避免 AI 压缩失真
 # ── 目标模特脸部参考图（img_2，只取脸/发型/肤色）────────────────────────────
 FACESWAP_TARGET_FACE_URL = (
     # "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_2.png"
-    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_1.jpg"
+    # "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_1.jpg"
+    # "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_7.png"
+    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_8.png"
 )
 
 # ── 换脸负向提示词 ─────────────────────────────────────────────────────────────
 FACESWAP_FACE_DETAIL_PROMPT = (
-    "Maintain realistic skin texture with visible pores and natural skin imperfections. "
+    "Apply the facial identity of img_2 to the model in img_1 while preserving the original "
+    "camera view and body structure from img_1. "
+    "MANDATORY: Adjust the head rotation, head tilt, facial perspective, and neck alignment "
+    "to perfectly match the original neck and body orientation in img_1. "
+    "Ensure the jawline, neck muscles, chin underside, and collar connection look naturally attached, "
+    "not pasted on or floating. "
+    "Preserve high-frequency skin details including subtle pores, natural skin texture, and fine lines. "
     "Do NOT over-smooth or airbrush the face. "
-    "Ensure the jawline and cheekbones keep clear structural shadows and natural facial depth. "
+    "Maintain strong 3D facial structure with realistic shadows on the cheekbones, jawline, and brow ridge. "
+    "Facial lighting and shadow direction must strictly follow the lighting on the garment and body in img_1. "
     "Emphasize realistic eye reflections and catchlights so the eyes look focused and alive. "
-    "Preserve detailed baby hairs and fine hair strands along the hairline with natural shadow transition. "
-    "Use professional studio Rembrandt-style lighting on the face to enhance bone structure "
-    "while still matching the original lighting direction from img_1."
+    "Preserve detailed baby hairs and fine hair strands along the hairline with natural shadow transition."
+)
+
+FACESWAP_HARDWARE_LOCK_PROMPT = (
+    "Hardware and neckline lock is MANDATORY. "
+    "The zipper slider, zipper teeth, zipper tape, zipper stop, and the circular ring puller "
+    "must remain EXACTLY identical to img_1 in position, size, shape, angle, and visible proportion. "
+    "DO NOT lower, raise, slide, resize, shrink, or redraw the zipper or ring puller. "
+    "The neckline depth, collar opening, collar edge, and the connection point between the collar and zipper "
+    "must be a pixel-perfect match to img_1. "
+    "Do not alter any garment hardware, trims, stitching, folds, or structural details near the neck and chest."
+)
+
+FACESWAP_WHITE_BG_PROMPT = (
+    "ABSOLUTELY DISCARD the original background from img_1. "
+    "Replace it with a BLOWN-OUT PURE WHITE BACKGROUND. "
+    "The entire background must be 100% clipped white (#FFFFFF) with ZERO digital noise, "
+    "ZERO luminance variation, and ZERO visible texture. "
+    "Ensure the subject is perfectly isolated from any background texture or environmental color contamination. "
+    "Use high-key professional e-commerce studio lighting and include only soft, realistic contact shadows on the floor "
+    "so the model does not look like she is floating."
+)
+
+FACESWAP_WHITE_BG_REF_URL = (
+    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/white.jpg"
 )
 FACESWAP_NEGATIVE_PROMPT = (
     # 服装保护（核心）
@@ -129,6 +160,20 @@ FACESWAP_NEGATIVE_PROMPT = (
     "missing skin texture, flat facial shadows, weak jawline, weak cheekbones, "
     "blurry eyes, empty eyes, lifeless expression, cg-like face, cartoonish face, "
     "smooth forehead, fake hairline, overly clean hairline, "
+    "floating head, pasted face, misaligned neck, twisted neck, flat face, blurred jawline, "
+    "inconsistent lighting, mismatched face angle, wrong head rotation, wrong head tilt, "
+    "bad neck connection, disconnected chin shadow, unnatural collar transition, "
+    # hardware and zipper protection
+    "lowered zipper, raised zipper, moved zipper slider, resized zipper puller, shrunken metal ring, "
+    "altered zipper teeth, altered zipper tape, altered zipper stop, changed neckline depth, "
+    "changed collar opening, modified ring puller, distorted zipper hardware, resized zipper ring, "
+    "changed chest opening, modified placket, modified neck opening, "
+    # background replacement
+    "original background, preserved background, gray background, grey background, "
+    "off-white background, textured wall, wall shadow, messy environment, room background, "
+    "background clutter, dirty backdrop, visible backdrop texture, background color cast, "
+    "vignetting, studio backdrop texture, floor shadows on wall, dark corners, "
+    "ambient occlusion on background, non-white pixels, shadow casting on backdrop, "
     # 人体结构
     "bad anatomy, deformed fingers, extra limbs, fused fingers, "
     # 画质
