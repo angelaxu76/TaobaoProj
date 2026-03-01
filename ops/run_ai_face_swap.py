@@ -26,7 +26,7 @@ from common.ai.image.faceswap_pipeline import process_one_faceswap
 from config import (
     GRSAI_API_KEY, GRSAI_HOST,
     R2_PUBLIC_PREFIX,
-    FACESWAP_DEFAULT_SHOT_SUFFIXES, FACESWAP_TARGET_FACE_URL,
+    FACESWAP_DEFAULT_SHOT_SUFFIXES, FACESWAP_TARGET_FACE_URLS,
     FACESWAP_OUTPUT_DIR, FACESWAP_WHITE_BG_REF_URL,
 )
 
@@ -35,7 +35,7 @@ from config import (
 # ============================================================
 
 # 商品编码列表 Excel（第一列为编码）
-INPUT_FILE  = r"G:\temp\barbour\codes.xlsx"
+INPUT_FILE  = r"d:\barbour\codes.xlsx"
 HEADER_ROWS = 1         # 跳过的表头行数（0 = 第一行是数据）
 
 # 原始拍摄图后缀列表（每个后缀对应一张原图，均会生成一张换脸图）
@@ -43,8 +43,8 @@ HEADER_ROWS = 1         # 跳过的表头行数（0 = 第一行是数据）
 #   ["_1", "_5"]  → 每款处理两张：{code}_1.jpg 和 {code}_5.jpg
 SHOT_SUFFIXES = FACESWAP_DEFAULT_SHOT_SUFFIXES  # 改后缀请去 cfg/ai_config.py 修改
 
-# 目标模特脸部参考（默认取 cfg 值，如需临时换模特在此赋值）
-TARGET_FACE_URL = FACESWAP_TARGET_FACE_URL
+# 目标模特脸部参考列表（默认取 cfg 值，多个 URL 时按商品顺序轮流分配）
+TARGET_FACE_URLS = FACESWAP_TARGET_FACE_URLS
 
 # 背景参考图（默认使用纯白参考图；设为 None 时仅依赖 prompt 白底描述）
 BACKGROUND_URL = FACESWAP_WHITE_BG_REF_URL
@@ -83,6 +83,13 @@ def main():
 
     print(f"共读取到 {len(codes)} 个商品编码: {codes}")
     print(f"每款处理原图后缀: {SHOT_SUFFIXES}  → 共 {len(codes) * len(SHOT_SUFFIXES)} 张")
+    print(f"模特脸部 URL 共 {len(TARGET_FACE_URLS)} 个，按商品顺序轮流分配")
+
+    # 按商品顺序轮流分配模特 URL（thread-safe：只读 dict，提交前已确定）
+    face_url_for = {
+        code: TARGET_FACE_URLS[i % len(TARGET_FACE_URLS)]
+        for i, code in enumerate(codes)
+    }
 
     client = GrsAIClient(api_key=GRSAI_API_KEY, host=GRSAI_HOST)
     total_ok = 0
@@ -94,7 +101,7 @@ def main():
             client=client,
             r2_prefix=R2_PUBLIC_PREFIX,
             output_dir=OUTPUT_DIR,
-            target_face_url=TARGET_FACE_URL,
+            target_face_url=face_url_for[code],
             shot_suffixes=SHOT_SUFFIXES,
             background_url=BACKGROUND_URL,
         )

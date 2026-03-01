@@ -21,7 +21,7 @@ from cfg.brands.barbour import BARBOUR
 def main():
     excel_path              = r"D:\TB\Products\barbour\document\publication\barbour_publication_20260215_144753.xlsx"
     downloaded_dir          = r"D:\TB\Products\barbour\images_download"
-    processed_dir           = r"D:\TB\Products\barbour\images"
+    processed_dir           = r"D:\TB\Products\barbour\images_dummy"
     publish_ready_dir       = r"D:\TB\Products\barbour\repulibcation\images_selected"
     publish_need_process_dir = r"D:\TB\Products\barbour\repulibcation\need_edit"
     missing_txt_path        = r"D:\TB\Products\barbour\repulibcation\missing_codes.txt"
@@ -38,18 +38,18 @@ def main():
 
     target_root = publish_ready_dir
 
-    rebuild_all_products_images(target_root, verbose=True)
+    # rebuild_all_products_images(target_root, verbose=True)
 
-    collect_all_images_to_flat_dir(
-        target_root,
-        BARBOUR["IMAGE_PROCESS"],
-        verbose=True,
-    )
+    # collect_all_images_to_flat_dir(
+    #     target_root,
+    #     BARBOUR["IMAGE_PROCESS"],
+    #     verbose=True,
+    # )
 
-    watermark_index_0_9_inplace(
-        BARBOUR["IMAGE_PROCESS"],
-        watermark_text="英国哈梅尔百货",
-    )
+    # watermark_index_0_9_inplace(
+    #     BARBOUR["IMAGE_PROCESS"],
+    #     watermark_text="英国哈梅尔百货",
+    # )
 
 
 if __name__ == "__main__":

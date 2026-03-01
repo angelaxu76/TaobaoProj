@@ -72,9 +72,9 @@ def prepare_images_for_publication(
     返回:
         (ready_codes, need_process_codes, missing_codes)
     """
-    for d in [downloaded_dir, processed_dir]:
-        if not os.path.isdir(d):
-            raise NotADirectoryError(f"目录不存在: {d}")
+    if not os.path.isdir(downloaded_dir):
+        raise NotADirectoryError(f"downloaded_dir 不存在: {downloaded_dir}")
+    # processed_dir 可不存在（传入 dummy 路径时自动跳过，所有款式走 downloaded_dir）
 
     codes = _read_codes_from_excel(excel_path)
 
