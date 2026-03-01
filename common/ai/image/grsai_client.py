@@ -2,17 +2,22 @@
 GrsAI nano-banana 图片生成客户端。
 
 支持模型（model 参数）：
-  nano-banana-pro-vt   虚拟试穿（Virtual Try-on）
-  nano-banana-pro-cl   服装生成（Clothing）
+  nano-banana-2        通用生成（需在 prompt 中显式定义任务）
+  nano-banana-fast     快速通用生成
+  nano-banana-pro-vt   专用虚拟试穿（Virtual Try-on）
+  nano-banana-pro-cl   专用服装生成（Clothing）
+  nano-banana-pro      高质量通用
+  nano-banana-pro-vip  VIP 高质量（1K/2K）
+  nano-banana-pro-4k-vip  4K 超高分辨率
 
 典型用法：
     from common.ai_image.grsai_client import GrsAIClient
 
     client = GrsAIClient(api_key="你的Key")
     image_url = client.generate_and_wait(
-        urls=[flat_url, detail_url, model_url],
+        urls=[model_url, flat_url, detail_url],
         prompt="...",
-        model="nano-banana-pro-vt",
+        model="nano-banana-2",
     )
 """
 import time
@@ -159,11 +164,14 @@ class GrsAIClient:
         self,
         urls: list[str],
         prompt: str = (
-            "High-fidelity virtual try-on. img_1 is the target model (identity and pose). "
-            "img_2 is the flat garment. img_3 is the fabric texture detail. "
-            "Dress the model with the garment, strictly preserving all structural details."
+            "TASK: Professional e-commerce virtual try-on. "
+            "img_1 is the target model (face identity and pose). "
+            "img_2 is the flat garment (clothing structure). "
+            "img_3 is the fabric texture detail. "
+            "Generate a photorealistic fashion photo of the person from img_1 "
+            "wearing the garment from img_2, with textures from img_3."
         ),
-        model: str = "nano-banana-pro-vt",
+        model: str = "nano-banana-2",
         aspect_ratio: str = "3:4",
         image_size: str = "1K",
         negative_prompt: str | None = None,
