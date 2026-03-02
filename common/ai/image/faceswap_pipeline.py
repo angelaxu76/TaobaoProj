@@ -152,6 +152,17 @@ def process_one_faceswap(
         print(f"\n{'='*60}")
         print(f"[{label}] 开始换脸生成 (shot {idx}/{len(shot_urls)})")
         print(f"  img_1 (原片底图): {shot_url}")
+
+        # 检查原图是否存在于云盘，404 则跳过，避免浪费 API 调用
+        try:
+            head = requests.head(shot_url, timeout=10)
+            if head.status_code == 404:
+                print(f"[{label}] 原图不存在 (404)，跳过。")
+                continue
+        except requests.RequestException as e:
+            print(f"[{label}] 原图检查失败 ({e})，跳过。")
+            continue
+
         print(f"  img_2 (目标脸部): {target_face_url}")
         if background_url:
             print(f"  img_3 (背景参考): {background_url}")
