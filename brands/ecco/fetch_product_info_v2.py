@@ -39,9 +39,7 @@ HDRS = {
 }
 
 ENABLE_SELENIUM    = True
-SELENIUM_FIRST     = True   # ★ True = 对所有 URL 直接走 Selenium（Next.js 站推荐）
-                             #   False = requests 优先，失败才回退 Selenium（v1 行为）
-CHROMEDRIVER_PATH  = r"D:/Software/chromedriver-win64/chromedriver.exe"
+SELENIUM_FIRST     = False  # True = 全程用浏览器（最准但慢）；False = requests 优先（推荐）
 MAX_WORKERS        = 1
 
 
@@ -477,16 +475,8 @@ def get_driver():
     global _selenium_driver
     if _selenium_driver is not None:
         return _selenium_driver
-    from selenium import webdriver
-    from selenium.webdriver.chrome.options import Options
-    from selenium.webdriver.chrome.service import Service
-    opts = Options()
-    opts.add_argument("--headless=new")
-    opts.add_argument("--disable-gpu")
-    opts.add_argument("--no-sandbox")
-    opts.add_argument("--disable-dev-shm-usage")
-    opts.add_argument("--window-size=1920,1080")
-    _selenium_driver = webdriver.Chrome(service=Service(CHROMEDRIVER_PATH), options=opts)
+    from common.browser.driver_auto import build_uc_driver
+    _selenium_driver = build_uc_driver(headless=True)
     return _selenium_driver
 
 def fetch_html_selenium(url):
