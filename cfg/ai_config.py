@@ -126,12 +126,19 @@ FACESWAP_FACE_DETAIL_PROMPT = (
     "camera view and body structure from img_1. "
     "MANDATORY: Adjust the head rotation, head tilt, facial perspective, and neck alignment "
     "to perfectly match the original neck and body orientation in img_1. "
+    # --- 新增增强词：强化近景的立体感 ---
+    "Enforce strong structural depth between the jawline and the neck using deep, sharp shadows. "
+    # ----------------------------------
     "Ensure the jawline, neck muscles, chin underside, and collar connection look naturally attached, "
     "not pasted on or floating. "
     "Preserve high-frequency skin details including subtle pores, natural skin texture, and fine lines. "
     "Do NOT over-smooth or airbrush the face. "
     "Maintain strong 3D facial structure with realistic shadows on the cheekbones, jawline, and brow ridge. "
     "Facial lighting and shadow direction must strictly follow the lighting on the garment and body in img_1. "
+    # --- 新增增强词：强化近景的眼神和边缘 ---
+    "In close-up shots, render crisp iris details and moist eye reflections. "
+    "The transition between the skin and the garment collar must be a sharp, clear occlusion boundary. "
+    # --------------------------------------
     "Emphasize realistic eye reflections and catchlights so the eyes look focused and alive. "
     "Preserve detailed baby hairs and fine hair strands along the hairline with natural shadow transition."
 )
@@ -190,6 +197,11 @@ FACESWAP_NEGATIVE_PROMPT = (
     "bad anatomy, deformed fingers, extra limbs, fused fingers, "
     # 画质
     "lowres, blurry, watermark, text, signature, low quality, artifact."
+    # --- 新增：针对近景的防御词 ---
+    "blurred jawline, merged chin and neck, flat chin shadow, foggy skin texture, "
+    "soft facial edges, out-of-focus eyes, unrealistic facial tilt, "
+    "plastic skin, porcelain face, airbrushed skin, missing pores, "
+    # ----------------------------
 )
 
 # ── Face Swap 输出目录 ────────────────────────────────────────────────────────
