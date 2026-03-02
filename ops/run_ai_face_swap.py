@@ -16,6 +16,8 @@
 """
 import os
 import sys
+from datetime import datetime
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -123,6 +125,10 @@ def main():
     print(f"完成: 成功 {total_ok} 张 / 失败 {len(fail_codes)} 款")
     if fail_codes:
         print(f"失败编码: {fail_codes}")
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        fail_txt = Path(OUTPUT_DIR) / f"failed_codes_{ts}.txt"
+        fail_txt.write_text("\n".join(fail_codes), encoding="utf-8")
+        print(f"失败编码已保存: {fail_txt}")
 
 
 if __name__ == "__main__":
