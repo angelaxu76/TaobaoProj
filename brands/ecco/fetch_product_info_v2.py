@@ -17,6 +17,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from html import unescape
 from config import ECCO, SIZE_RANGE_CONFIG
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 import json
 import re
@@ -461,10 +463,27 @@ def save_debug_html(url, html, tag="loaded"):
     ts = time.strftime("%Y%m%d-%H%M%S")
     (DEBUG_DIR / f"{ts}_{tag}_{code_hint}.html").write_text(html or "", encoding="utf-8", errors="ignore")
 
-def fetch_html(url_or_file):
+def _make_session() -> requests.Session:
+    s = requests.Session()
+    retry = Retry(total=4, backoff_factor=1.5,
+                  status_forcelist=(429, 500, 502, 503, 504))
+    s.mount("https://", HTTPAdapter(max_retries=retry))
+    s.mount("http://",  HTTPAdapter(max_retries=retry))
+    s.headers.update(HDRS)
+    return s
+
+_session: requests.Session | None = None
+
+def _get_session() -> requests.Session:
+    global _session
+    if _session is None:
+        _session = _make_session()
+    return _session
+
+def fetch_html(url_or_file: str) -> str:
     if not is_url(url_or_file):
         return Path(url_or_file).read_text(encoding="utf-8", errors="ignore")
-    r = requests.get(url_or_file, headers=HDRS, timeout=REQUEST_TIMEOUT)
+    r = _get_session().get(url_or_file, timeout=REQUEST_TIMEOUT)
     r.raise_for_status()
     return r.text
 
