@@ -122,21 +122,25 @@ FACESWAP_TARGET_FACE_URLS = [
 FACESWAP_FACE_DETAIL_PROMPT = (
     "Apply the facial identity of img_2 to the model in img_1 while preserving the original "
     "camera view and body structure from img_1. "
+    # --- 比例控制（最高优先级，防止大头照把头撑大）---
+    "CRITICAL: Strictly maintain the exact head-to-shoulder scale and medium-shot perspective of img_1. "
+    "The head must be naturally small and proportional to the torso, matching the original body scale. "
+    "Adopt the medium-shot camera distance and focal length of img_1. "
+    "The facial features must be scaled down to match the distant perspective of the original body. "
+    "Properly seat the head within the spatial volume of the original neck area. "
+    "Do NOT enlarge or zoom in the face area beyond the original head bounding box in img_1. "
+    # --------------------------------------------------
     "MANDATORY: Adjust the head rotation, head tilt, facial perspective, and neck alignment "
     "to perfectly match the original neck and body orientation in img_1. "
-    # --- 新增增强词：强化近景的立体感 ---
     "Enforce strong structural depth between the jawline and the neck using deep, sharp shadows. "
-    # ----------------------------------
     "Ensure the jawline, neck muscles, chin underside, and collar connection look naturally attached, "
     "not pasted on or floating. "
     "Preserve high-frequency skin details including subtle pores, natural skin texture, and fine lines. "
     "Do NOT over-smooth or airbrush the face. "
     "Maintain strong 3D facial structure with realistic shadows on the cheekbones, jawline, and brow ridge. "
     "Facial lighting and shadow direction must strictly follow the lighting on the garment and body in img_1. "
-    # --- 新增增强词：强化近景的眼神和边缘 ---
     "In close-up shots, render crisp iris details and moist eye reflections. "
     "The transition between the skin and the garment collar must be a sharp, clear occlusion boundary. "
-    # --------------------------------------
     "Emphasize realistic eye reflections and catchlights so the eyes look focused and alive. "
     "Preserve detailed baby hairs and fine hair strands along the hairline with natural shadow transition."
 )
@@ -191,6 +195,11 @@ FACESWAP_NEGATIVE_PROMPT = (
     "background clutter, dirty backdrop, visible backdrop texture, background color cast, "
     "vignetting, studio backdrop texture, floor shadows on wall, dark corners, "
     "ambient occlusion on background, non-white pixels, shadow casting on backdrop, "
+    # 头部比例防御（防止大头照来源导致头部撑大）
+    "oversized head, big head, disproportionate head-to-shoulder ratio, "
+    "zoomed-in face, large face relative to body, face filling the frame, "
+    "distorted body proportions, macro shot perspective, close-up face scale, "
+    "head larger than original, face out of proportion, enlarged facial area, "
     # 人体结构
     "bad anatomy, deformed fingers, extra limbs, fused fingers, "
     # 画质
