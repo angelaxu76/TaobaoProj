@@ -56,7 +56,7 @@ BACKGROUND_URL = FACESWAP_WHITE_BG_REF_URL
 OUTPUT_DIR = FACESWAP_OUTPUT_DIR
 
 # 并发线程数（建议 2~4；过高可能触发 API 限流）
-MAX_WORKERS = 3
+MAX_WORKERS = 7
 
 # ============================================================
 # Main

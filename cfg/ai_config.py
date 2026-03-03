@@ -112,10 +112,11 @@ FACESWAP_IMAGE_SIZE   = "2K"    # 2K 保留衣服细节，避免 AI 压缩失真
 # 支持多个 URL：多款商品时按商品顺序轮流分配（code 0→url[0], code 1→url[1]...）
 # 只填一个 URL 则所有款式使用同一张脸
 FACESWAP_TARGET_FACE_URLS = [
-    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_2.png",
-    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_1.png",
-    # "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/men_mode_1.png",
-    # "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/men_mode_2.png",
+    # "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_2.png",
+    # "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_1.png",
+    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/men_mode_1.png",
+    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/men_mode_2.png",
+    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/men_mode_3.png",
 ]
 
 # ── 换脸负向提示词 ─────────────────────────────────────────────────────────────
