@@ -28,7 +28,6 @@ from common.ai.image.faceswap_pipeline import process_one_faceswap
 from config import (
     GRSAI_API_KEY, GRSAI_HOST,
     R2_PUBLIC_PREFIX,
-    FACESWAP_TARGET_FACE_URLS,
     FACESWAP_WHITE_BG_REF_URL,
 )
 
@@ -53,7 +52,13 @@ SHOT_SUFFIXES = ["_front_1"]
 OUTPUT_DIR = r"D:\barbour\images\ai_gen\faceswap_output"
 
 # 目标模特脸部参考列表（取 cfg 值；多个 URL 时按商品顺序轮流分配）
-TARGET_FACE_URLS = FACESWAP_TARGET_FACE_URLS
+TARGET_FACE_URLS = [
+    # "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_2.png",
+    # "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_1.png",
+    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/men_mode_1.png",
+    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/men_mode_2.png",
+    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/men_mode_3.png",
+]
 
 # 背景参考图（默认使用纯白参考图；设为 None 时仅依赖 prompt 白底描述）
 BACKGROUND_URL = FACESWAP_WHITE_BG_REF_URL
