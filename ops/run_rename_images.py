@@ -13,7 +13,7 @@ from sqlalchemy import False_
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from helper.image.rename_images import rename_images
+from helper.image.add_shot_keyword import add_shot_keyword
 
 # ============================================================
 # 运行参数（按需修改）
@@ -27,4 +27,4 @@ DRY_RUN    = False               # True = 仅预览；False = 实际执行
 # ============================================================
 
 if __name__ == "__main__":
-    rename_images(INPUT_DIR, OUTPUT_DIR, KEYWORD, dry_run=DRY_RUN)
+    add_shot_keyword(INPUT_DIR, OUTPUT_DIR, KEYWORD, dry_run=DRY_RUN)

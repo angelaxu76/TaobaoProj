@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 # ============================================================
 
 # 输入目录（待处理的原始图片）
-INPUT_DIR  = r"D:\TB\Products\barbour\facewap\faceswap_output_men\faceswap_output"
+INPUT_DIR  = r"D:\TB\Products\barbour\facewap\test"
 
 # 输出目录（处理后的 JPG；不存在时自动创建）
 OUTPUT_DIR = r"D:\TB\Products\barbour\facewap\faceswap_processed"
