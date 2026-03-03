@@ -26,7 +26,7 @@ import openpyxl
 ORIG_DIR      = r"D:\barbour\person"
 
 # 换脸结果所在的本地文件夹
-FACESWAP_DIR  = r"D:\barbour\images\ai_gen\faceswap_output"
+FACESWAP_DIR  = r"D:\barbour\faceswap_output"
 
 # 要检查的后缀列表（与 run_ai_face_swap.py 中 SHOT_SUFFIXES 一致）
 SHOT_SUFFIXES = ["_front_1"]

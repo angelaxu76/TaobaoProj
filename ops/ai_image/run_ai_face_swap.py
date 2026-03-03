@@ -49,7 +49,7 @@ R2_SHOT_SUBDIR = "product_front"
 SHOT_SUFFIXES = ["_front_1"]
 
 # 本地输出目录
-OUTPUT_DIR = r"D:\barbour\images\ai_gen\faceswap_output"
+OUTPUT_DIR = r"D:\barbour\faceswap_output"
 
 # 目标模特脸部参考列表（取 cfg 值；多个 URL 时按商品顺序轮流分配）
 TARGET_FACE_URLS = [

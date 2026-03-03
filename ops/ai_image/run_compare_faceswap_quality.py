@@ -37,7 +37,7 @@ from skimage.metrics import structural_similarity as ssim
 # 运行参数（按需修改）
 # ============================================================
 
-FACESWAP_DIR = r"D:\barbour\images\ai_gen\faceswap_output"   # 换脸后图片目录
+FACESWAP_DIR = r"D:\barbour\faceswap_output"   # 换脸后图片目录
 ORIG_DIR     = r"D:\barbour\person"              # 原图目录
 BAD_DIR      = r"D:\barbour\faceswap_bad"      # 低质量图片的输出目录
 REPORT_CSV   = r"D:\barbour\faceswap_compare_report.csv"

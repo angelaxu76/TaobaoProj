@@ -39,13 +39,13 @@ import numpy as np
 # ============================================================
 
 # 待检测的图片目录（换脸输出目录）
-INPUT_DIR  = r"D:\barbour\images\ai_gen\faceswap_output"
+INPUT_DIR  = r"D:\barbour\faceswap_output"
 
 # 比例不合格的图片移动到这里
-BAD_DIR    = r"D:\barbour\images\ai_gen\faceswap_bad_proportion"
+BAD_DIR    = r"D:\barbour\faceswap_bad_proportion"
 
 # 报告 CSV 路径
-REPORT_CSV = r"D:\barbour\images\ai_gen\proportion_report.csv"
+REPORT_CSV = r"D:\barbour\proportion_report.csv"
 
 # 头肩比阈值：超出此范围则判定为 BAD
 # 正常范围 0.38~0.58；换脸图脸太大通常 > 0.65
