@@ -90,6 +90,7 @@ VTON_OUTPUT_DIR = r"D:\images\ai_gen\output"
 
 # ── Face Swap 生成模型参数 ─────────────────────────────────────────────────────
 # 注：R2_SHOT_SUBDIR / SHOT_SUFFIXES / OUTPUT_DIR 已移至 ops/run_ai_face_swap.py
+FACESWAP_DEFAULT_SHOT_SUFFIXES = ["_front_1"]
 FACESWAP_MODEL        = "nano-banana-2"
 FACESWAP_ASPECT_RATIO = "1:1"
 FACESWAP_IMAGE_SIZE   = "2K"    # 2K 保留衣服细节，避免 AI 压缩失真
