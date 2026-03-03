@@ -88,22 +88,8 @@ VTON_OUTPUT_DIR = r"D:\images\ai_gen\output"
 # Face Swap 专用配置（身份替换 + 背景替换，服装 100% 保留）
 # ==============================================================================
 
-# ── 原始拍摄图 R2 路径前缀 ────────────────────────────────────────────────────
-# 原始模特拍摄图所在的 R2 子目录前缀（img_1 底图）
-# 最终 URL = FACESWAP_R2_SHOT_PREFIX + "/{code}{suffix}.jpg"
-# 示例：
-#   "" (空) → https://xxx.r2.dev/{code}_front_1.jpg
-#   "/product_front" → https://xxx.r2.dev/product_front/{code}_front_1.jpg
-FACESWAP_R2_SHOT_SUBDIR = "product_front"
-
-# ── 原始拍摄图后缀 ─────────────────────────────────────────────────────────────
-# 换脸任务以原始模特拍摄图作为底图（img_1），格式：{code}<后缀>.jpg
-# 可配置多张原图（按编号顺序，数量由 ops 脚本的 FACESWAP_SHOT_SUFFIXES 决定）
-# 示例：["_1"]          → 只用 {code}_1.jpg
-#        ["_1", "_5"]   → 同一款跑两张图（正面+四分之三侧面）
-FACESWAP_DEFAULT_SHOT_SUFFIXES = ["_front_1"]
-
 # ── Face Swap 生成模型参数 ─────────────────────────────────────────────────────
+# 注：R2_SHOT_SUBDIR / SHOT_SUFFIXES / OUTPUT_DIR 已移至 ops/run_ai_face_swap.py
 FACESWAP_MODEL        = "nano-banana-2"
 FACESWAP_ASPECT_RATIO = "1:1"
 FACESWAP_IMAGE_SIZE   = "2K"    # 2K 保留衣服细节，避免 AI 压缩失真
@@ -212,7 +198,5 @@ FACESWAP_NEGATIVE_PROMPT = (
     # ----------------------------
 )
 
-# ── Face Swap 输出目录 ────────────────────────────────────────────────────────
-FACESWAP_OUTPUT_DIR = r"D:\barbour\images\ai_gen\faceswap_output"
 
 

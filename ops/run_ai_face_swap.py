@@ -28,9 +28,8 @@ from common.ai.image.faceswap_pipeline import process_one_faceswap
 from config import (
     GRSAI_API_KEY, GRSAI_HOST,
     R2_PUBLIC_PREFIX,
-    FACESWAP_R2_SHOT_SUBDIR,
-    FACESWAP_DEFAULT_SHOT_SUFFIXES, FACESWAP_TARGET_FACE_URLS,
-    FACESWAP_OUTPUT_DIR, FACESWAP_WHITE_BG_REF_URL,
+    FACESWAP_TARGET_FACE_URLS,
+    FACESWAP_WHITE_BG_REF_URL,
 )
 
 # ============================================================
@@ -41,19 +40,23 @@ from config import (
 INPUT_FILE  = r"d:\barbour\codes.xlsx"
 HEADER_ROWS = 1         # 跳过的表头行数（0 = 第一行是数据）
 
-# 原始拍摄图后缀列表（每个后缀对应一张原图，均会生成一张换脸图）
-#   ["_1"]        → 每款只处理 {code}_1.jpg
-#   ["_1", "_5"]  → 每款处理两张：{code}_1.jpg 和 {code}_5.jpg
-SHOT_SUFFIXES = FACESWAP_DEFAULT_SHOT_SUFFIXES  # 改后缀请去 cfg/ai_config.py 修改
+# 原始模特拍摄图的 R2 子目录（img_1 来源）
+# "" 表示根目录直接拼 code；"product_front" 表示 /product_front/{code}{suffix}.jpg
+R2_SHOT_SUBDIR = "product_front"
 
-# 目标模特脸部参考列表（默认取 cfg 值，多个 URL 时按商品顺序轮流分配）
+# 原始拍摄图后缀列表（每个后缀对应一张原图，均会生成一张换脸图）
+#   ["_front_1"]          → 每款只处理 {code}_front_1.jpg
+#   ["_front_1", "_front_2"] → 每款处理两张
+SHOT_SUFFIXES = ["_front_1"]
+
+# 本地输出目录
+OUTPUT_DIR = r"D:\barbour\images\ai_gen\faceswap_output"
+
+# 目标模特脸部参考列表（取 cfg 值；多个 URL 时按商品顺序轮流分配）
 TARGET_FACE_URLS = FACESWAP_TARGET_FACE_URLS
 
 # 背景参考图（默认使用纯白参考图；设为 None 时仅依赖 prompt 白底描述）
 BACKGROUND_URL = FACESWAP_WHITE_BG_REF_URL
-
-# 本地输出目录（默认取 cfg 值）
-OUTPUT_DIR = FACESWAP_OUTPUT_DIR
 
 # 并发线程数（建议 2~4；过高可能触发 API 限流）
 MAX_WORKERS = 7
@@ -98,7 +101,7 @@ def main():
     total_ok = 0
     fail_codes: list[str] = []
 
-    r2_shot_prefix = f"{R2_PUBLIC_PREFIX.rstrip('/')}/{FACESWAP_R2_SHOT_SUBDIR}" if FACESWAP_R2_SHOT_SUBDIR else R2_PUBLIC_PREFIX
+    r2_shot_prefix = f"{R2_PUBLIC_PREFIX.rstrip('/')}/{R2_SHOT_SUBDIR}" if R2_SHOT_SUBDIR else R2_PUBLIC_PREFIX
 
     def _run(code: str) -> tuple[str, list[str]]:
         saved = process_one_faceswap(
