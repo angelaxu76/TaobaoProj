@@ -17,8 +17,8 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageChops
 
 # ================== 配置 ==================
-INPUT_DIR  = r"D:\TEMP3\INPUT"
-OUTPUT_DIR = r"D:\TEMP3\OUTPUT"
+INPUT_DIR  = r"D:\output\faceswap_output"
+OUTPUT_DIR = r"D:\output\faceswap_processed"
 
 SUPPORTED_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 TARGET_SIZE: Optional[int] = 1200      # 统一输出边长；None 不缩放
@@ -28,7 +28,12 @@ SAVE_TRANSPARENT_PNG = False           # 需要同时导出透明 PNG 时 True
 
 # 自动抠图
 AUTO_CUTOUT = True                     # 关掉可快速验证非抠图流程
-MODEL_NAME = "u2net"
+MODEL_NAME = "birefnet-general"        # 推荐: birefnet-general(最佳) > isnet-general-use > u2net
+
+# 白底检测（跳过已是白底的图）
+WHITE_BG_SKIP  = True    # True=检测到白底就跳过抠图；False=全部强制抠图
+WHITE_BG_TOL   = 15      # 255-tol 以上算白色（越小越严格）
+WHITE_BG_PATCH = 0.04    # 角落采样区域占短边的比例
 
 # 斜纹整幅水印
 DIAGONAL_TEXT_ENABLE = True
@@ -114,27 +119,59 @@ def _pad_to_square(img: Image.Image, target_size: Optional[int]) -> Image.Image:
     canvas.paste(img, (x, y), img if mode == "RGBA" else None)
     return canvas
 
+# ================== 白底检测 ==================
+def _is_white_bg(img: Image.Image) -> bool:
+    """
+    采样四个角落区域（各占短边 WHITE_BG_PATCH 比例），
+    若所有角落平均 RGB 均 >= 255-WHITE_BG_TOL，则判定为白底，返回 True。
+    灰色背景 / 有色背景 → 返回 False。
+    """
+    rgb = img.convert("RGB")
+    w, h = rgb.size
+    patch = max(5, int(min(w, h) * WHITE_BG_PATCH))
+    corners = [
+        (0, 0, patch, patch),
+        (w - patch, 0, w, patch),
+        (0, h - patch, patch, h),
+        (w - patch, h - patch, w, h),
+    ]
+    threshold = 255 - WHITE_BG_TOL
+    for box in corners:
+        region = np.array(rgb.crop(box), dtype=float)
+        if region.mean(axis=(0, 1)).min() < threshold:
+            return False
+    return True
+
+
 # ================== 自动抠图（复用 session） ==================
 from rembg import remove, new_session
 _SESSION = None
 def _get_session():
     global _SESSION
     if _SESSION is None and AUTO_CUTOUT:
-        print("⏳ 加载抠图模型（首次会下载 ~170MB）...")
+        print("⏳ 加载抠图模型（首次会下载模型文件）...")
         _SESSION = new_session(MODEL_NAME)
         print("✅ 模型就绪")
     return _SESSION
 
 def ensure_cutout(img: Image.Image) -> Image.Image:
-    """无透明→抠图；已有透明直接返回"""
+    """
+    白底图 → 跳过（WHITE_BG_SKIP=True 时）；
+    已含透明通道 → 直接返回；
+    其余 → 调用 rembg 抠图。
+    """
     if not AUTO_CUTOUT:
         return img
-    if img.mode != "RGBA":
-        img = img.convert("RGBA")
-    if "A" in img.getbands():
-        amin, amax = img.split()[-1].getextrema()
-        if amin < 255 and amax > 0:
-            return img  # 已含透明
+    # ① 白底检测：白底图跳过抠图
+    if WHITE_BG_SKIP and _is_white_bg(img):
+        print("    ⏩ 检测到白底，跳过抠图")
+        return img
+    # ② 已含有效透明通道 → 直接复用
+    rgba = img.convert("RGBA")
+    amin, amax = rgba.split()[-1].getextrema()
+    if amin < 255 and amax > 0:
+        return rgba
+    # ③ 调用 rembg 抠图
     sess = _get_session()
     buf = io.BytesIO()
     img.convert("RGB").save(buf, format="PNG")
