@@ -8,9 +8,10 @@
   - 将未处理编码去重后，保存到 OUTPUT_EXCEL（列名：商品编码）
 
 用法：
-  1. 修改下方参数（与 run_ai_face_swap.py 保持一致）。
-  2. python ops/run_find_unprocessed_faceswap.py
+  1. 修改下方参数（SHOT_SUFFIXES 自动从 run_ai_face_swap.py 读取，无需手动同步）。
+  2. python ops/ai_image/run_find_unprocessed_faceswap.py
 """
+import ast
 import os
 import sys
 from pathlib import Path
@@ -28,8 +29,9 @@ ORIG_DIR      = r"D:\barbour\person"
 # 换脸结果所在的本地文件夹
 FACESWAP_DIR  = r"D:\barbour\faceswap_output"
 
-# 要检查的后缀列表（与 run_ai_face_swap.py 中 SHOT_SUFFIXES 一致）
-SHOT_SUFFIXES = ["_front_1"]
+# 后缀列表覆盖（None = 自动从 run_ai_face_swap.py 读取，推荐保持 None）
+# 只在调试或单独运行时才填写，例如：["_front_1", "_front_2"]
+SHOT_SUFFIXES_OVERRIDE: list[str] | None = None
 
 # 换脸图在原图名后追加的后缀（不含扩展名）
 FACESWAP_SUFFIX = "_faceswap"
@@ -41,6 +43,35 @@ OUTPUT_EXCEL  = r"D:\barbour\codes.xlsx"
 EXTS = {".jpg", ".jpeg", ".png", ".webp"}
 
 # ============================================================
+
+
+def _read_shot_suffixes_from_swap_script() -> list[str]:
+    """用 AST 解析 run_ai_face_swap.py，提取 SHOT_SUFFIXES 的字面量值。
+    不执行该脚本，安全无副作用。解析失败时返回默认值 ['_front_1']。"""
+    swap_path = Path(__file__).parent / "run_ai_face_swap.py"
+    if not swap_path.is_file():
+        return ["_front_1"]
+    try:
+        tree = ast.parse(swap_path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id == "SHOT_SUFFIXES":
+                        if isinstance(node.value, ast.List):
+                            return [
+                                elt.value for elt in node.value.elts
+                                if isinstance(elt, ast.Constant) and isinstance(elt.value, str)
+                            ]
+    except Exception:
+        pass
+    return ["_front_1"]
+
+
+SHOT_SUFFIXES: list[str] = (
+    SHOT_SUFFIXES_OVERRIDE
+    if SHOT_SUFFIXES_OVERRIDE is not None
+    else _read_shot_suffixes_from_swap_script()
+)
 
 
 def _stem_to_code_suffix(stem: str, shot_suffixes: list[str]) -> tuple[str, str] | None:
