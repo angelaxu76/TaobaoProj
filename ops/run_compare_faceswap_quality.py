@@ -37,10 +37,10 @@ from skimage.metrics import structural_similarity as ssim
 # 运行参数（按需修改）
 # ============================================================
 
-FACESWAP_DIR = r"D:\output\faceswap_output"   # 换脸后图片目录
-ORIG_DIR     = r"D:\output\orig"              # 原图目录
-BAD_DIR      = r"D:\output\faceswap_bad"      # 低质量图片的输出目录
-REPORT_CSV   = r"D:\output\faceswap_compare_report.csv"
+FACESWAP_DIR = r"D:\barbour\images\ai_gen\faceswap_output"   # 换脸后图片目录
+ORIG_DIR     = r"D:\barbour\person"              # 原图目录
+BAD_DIR      = r"D:\barbour\faceswap_bad"      # 低质量图片的输出目录
+REPORT_CSV   = r"D:\barbour\faceswap_compare_report.csv"
 
 # SSIM 阈值：低于此值视为「衣服被改动」→ 移入 BAD_DIR
 # 建议先跑一批看分数分布再调，换脸图一般落在 0.88~0.96 之间
