@@ -42,9 +42,10 @@ def run_script(script_path: Path) -> None:
 def main() -> None:
     base_dir = Path(__file__).resolve().parent
     scripts = [
-        base_dir / "run_ai_face_swap.py",
-        base_dir / "run_compare_faceswap_quality.py",
-        base_dir / "run_find_unprocessed_faceswap.py",
+        base_dir / "run_ai_face_swap.py",             # 1) 生成换脸图
+        base_dir / "run_check_head_proportion.py",    # 2) 剔除头身比例异常
+        base_dir / "run_compare_faceswap_quality.py", # 3) 剔除衣服被改的
+        base_dir / "run_find_unprocessed_faceswap.py",# 4) 统计仍未完成的编码
     ]
 
     for script in scripts:

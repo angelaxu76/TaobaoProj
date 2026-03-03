@@ -44,7 +44,7 @@ REPORT_CSV   = r"D:\barbour\faceswap_compare_report.csv"
 
 # SSIM 阈值：低于此值视为「衣服被改动」→ 移入 BAD_DIR
 # 建议先跑一批看分数分布再调，换脸图一般落在 0.88~0.96 之间
-THRESHOLD = 0.92
+THRESHOLD = 0.90
 
 # 换脸文件名在原图名后追加的后缀（不含扩展名）
 FACESWAP_SUFFIX = "_faceswap"
