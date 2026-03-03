@@ -35,7 +35,7 @@ SHOT_SUFFIXES = ["_front_1"]
 FACESWAP_SUFFIX = "_faceswap"
 
 # 输出 Excel 路径（直接修改这里）
-OUTPUT_EXCEL  = r"D:\barbour\unprocessed_codes.xlsx"
+OUTPUT_EXCEL  = r"D:\barbour\codes.xlsx"
 
 # 支持的图片格式
 EXTS = {".jpg", ".jpeg", ".png", ".webp"}
