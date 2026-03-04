@@ -23,7 +23,7 @@ from channels.jingya.export.export_stock_to_excel import export_stock_excel
 from channels.jingya.export.export_channel_price_excel_jingya import export_jiangya_channel_prices
 
 # ====== 新品上架模板（鲸芽）======
-from channels.jingya.export.generate_publication_excel import generate_publication_excels
+from channels.jingya.export.generate_publication_excel_shoes import generate_publication_excels
 
 # ====== 给淘宝店铺同步价格（沿用 Camper 通用逻辑，可选保留）======
 from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk

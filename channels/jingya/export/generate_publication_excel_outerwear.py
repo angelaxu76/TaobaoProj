@@ -84,6 +84,10 @@ def determine_category_cn(style_cat: str, title_en: str, content: str) -> str:
         "jumpsuits":"连体裤","playsuits":"连体裤",
         "coats":"外套","jackets":"外套","blazers":"外套","waistcoats":"外套",
         "gilets":"外套","parkas":"外套","puffer":"外套",
+        "sweatshirts":"卫衣","sweatshirt":"卫衣","hoodies":"卫衣","hoodie":"卫衣","fleece":"卫衣",
+        "lingerie":"内衣","underwear":"内衣","bras":"内衣",
+        "jumpsuits":"连体裤",
+        "other":"服装",
     }
     if s in mapping: return mapping[s]
     t = (title_en or "").lower(); c = (content or "").lower(); blob = f"{t} {c}"

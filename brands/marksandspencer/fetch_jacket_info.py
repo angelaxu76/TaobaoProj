@@ -18,6 +18,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from config import MARKSANDSPENCER
 from common.browser.selenium_utils import get_driver
 from common.ingest.txt_writer import format_txt
+from common.product.style_category_normalizer import normalize_style_category
 
 
 CANON_SITE = "Marks & Spencer"
@@ -540,15 +541,6 @@ def _infer_gender(name: str, sheet: dict, url: str):
     return "女款"
 
 
-def _infer_category(name: str):
-    l = name.lower()
-    if any(k in l for k in ["coat", "jacket", "parka", "blazer", "gilet"]):
-        return "上衣/外套"
-    if any(k in l for k in ["cardigan", "jumper", "knit", "sweater"]):
-        return "上衣/针织"
-    if "dress" in l:
-        return "连衣裙"
-    return "上衣/其他"
 
 
 # ===================== 单页面解析 =====================
@@ -618,7 +610,7 @@ def extract_page(url: str) -> dict:
 
     # 性别 / 类目（必须放在尺码解析之前）
     gender = _infer_gender(name, sheet, url)
-    category = _infer_category(name)
+    category = normalize_style_category("", name)
 
     # 尺码（返回 SizeMap/SizeDetail，符合鲸芽格式）
     size_map, size_detail = _extract_sizes(sheet, gender)

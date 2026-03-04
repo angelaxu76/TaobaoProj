@@ -427,7 +427,7 @@ def process_product_url(url: str):
 
         # ---------- 其它字段 ----------
         gender = "女款"  # 胸罩默认女款
-        style_category = "内衣/文胸"
+        style_category = "Lingerie"
 
         # ---------- 写出 TXT ----------
         info = {

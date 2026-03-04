@@ -4,7 +4,7 @@ from config import GEOX
 from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 from brands.geox.collect_product_links import collect_all_product_links
 from channels.jingya.ingest.import_txt_to_db import import_txt_to_db_supplier
-from channels.jingya.export.generate_publication_excel import generate_publication_excels
+from channels.jingya.export.generate_publication_excel_shoes import generate_publication_excels
 from channels.jingya.export.export_stock_to_excel import export_stock_excel
 from channels.jingya.export.export_channel_price_excel_jingya import export_jiangya_channel_prices
 from channels.jingya.ingest.import_channel_info import insert_jingyaid_to_db,insert_missing_products_with_zero_stock

@@ -6,7 +6,7 @@ from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 from channels.jingya.ingest.import_txt_to_db import import_txt_to_db_supplier
 from channels.jingya.maintenance.disable_low_stock_products import disable_low_stock_products
 from channels.jingya.export.export_gender_split_excel import export_gender_split_excel
-from channels.jingya.export.generate_publication_excel import generate_publication_excels
+from channels.jingya.export.generate_publication_excel_shoes import generate_publication_excels
 from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
 from channels.jingya.maintenance.export_low_stock_products import export_low_stock_for_brand
 

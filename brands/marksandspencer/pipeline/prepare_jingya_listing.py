@@ -6,7 +6,7 @@ from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 from channels.jingya.ingest.import_txt_to_db import import_txt_to_db_supplier
 
 from channels.jingya.export.export_gender_split_excel import export_gender_split_excel
-from channels.jingya.export.generate_publication_excel import generate_publication_excels
+from channels.jingya.export.generate_publication_excel_outerwear import generate_publication_excels_clothing
 from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
 from brands.marksandspencer.collect_product_links import collect_lingerie_links, collect_jacket_links
 from brands.marksandspencer.fetch_jacket_info import fetch_jackcet_info
@@ -15,16 +15,16 @@ from channels.jingya.maintenance.export_low_stock_products import export_low_sto
 
 
 def main():
-    print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    backup_and_clear_brand_dirs(MARKSANDSPENCER)
+    # print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
+    # backup_and_clear_brand_dirs(MARKSANDSPENCER)
 
-    print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    collect_lingerie_links()
-    collect_jacket_links()
+    # print("\n🟡 Step: 2️⃣ 抓取商品链接")
+    # collect_lingerie_links()
+    # collect_jacket_links()
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
     fetch_jackcet_info()
-    fetch_lingerie_info()
+    # fetch_lingerie_info()
 
     # TODO: fetch_jackcet_info / fetch_lingerie_info 尚不支持 links_file 参数，
     #       补抓遗漏商品暂时跳过。如需启用，需先给两个 fetch 函数加 links_file 参数。
@@ -60,7 +60,7 @@ def main():
 
 
     print("\\n🟡 Step: 6️⃣为新品创建excel用于鲸芽侧发布")
-    generate_publication_excels("marksandspencer")
+    generate_publication_excels_clothing("marksandspencer")
 
     print("\n🟡 Step: 6️⃣ 输出低库存的商品，准备下架")
     export_low_stock_for_brand("marksandspencer", threshold=5)

@@ -6,7 +6,7 @@ from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 from brands.clarks_Jingya.collect_product_links import generate_product_links
 from brands.clarks_Jingya.fetch_product_info import clarks_fetch_info
 from channels.jingya.ingest.import_txt_to_db import import_txt_to_db_supplier
-from channels.jingya.export.generate_publication_excel import generate_publication_excels
+from channels.jingya.export.generate_publication_excel_shoes import generate_publication_excels
 from channels.jingya.export.export_stock_to_excel import export_stock_excel
 from channels.jingya.export.export_channel_price_excel_jingya import export_jiangya_channel_prices
 from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
