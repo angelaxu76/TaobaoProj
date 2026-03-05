@@ -16,6 +16,23 @@ from sqlalchemy import create_engine, text
 from importlib import import_module
 from config import BRAND_CONFIG, SETTINGS
 
+# ============================================================
+# 可修改参数（Excel 导出字段固定值）
+# ============================================================
+上市年份季节 = "2026年春季"
+版型       = "标准"
+面料       = "涤纶"
+衣门襟     = "拉链"
+厚薄       = "常规"
+领口设计   = "翻领"
+地区国家   = "英国"
+发货时间   = "10"
+运费模版   = "parcelforce"
+第一计量单位 = 第二计量单位 = "1"
+销售单位   = "件"
+DELIVERY_COST = 7   # 运费成本（英镑），用于计算价格
+# ============================================================
+
 # ---------- 动态加载标题模块（仅服装） ----------
 def _load_title_func(candidates):
     for mod in candidates:
@@ -50,17 +67,10 @@ try:
         calculate_discount_price_from_float,
     )
 except Exception:
-    from price_utils import (
+    from common.pricing.price_utils import (
         calculate_jingya_prices,
         calculate_discount_price_from_float,
     )
-
-# ---------- 服装默认属性 ----------
-上市年份季节 = "2025年秋季"
-版型, 面料, 衣门襟, 厚薄, 领口设计 = "标准", "涤纶", "拉链", "常规", "翻领"
-地区国家, 发货时间, 运费模版 = "英国", "7", "parcelforce"
-第一计量单位 = 第二计量单位 = "1"
-销售单位 = "件"
 
 # ---------- 工具 ----------
 def extract_field(name: str, content: str) -> str:
@@ -127,7 +137,7 @@ def _calc_price(base_price_gbp: float, mode: str) -> float:
     if (mode or "jingya").lower() == "taobao":
         return float(calculate_discount_price_from_float(base) or 0)
     exch = SETTINGS.get("EXCHANGE_RATE", 9.7) if isinstance(SETTINGS, dict) else 9.7
-    _, retail = calculate_jingya_prices(base, delivery_cost=7, exchange_rate=exch)
+    _, retail = calculate_jingya_prices(base, delivery_cost=DELIVERY_COST, exchange_rate=exch)
     return float(retail or 0)
 
 # ================= 主函数（签名保持不变） =================
