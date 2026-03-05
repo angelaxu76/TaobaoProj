@@ -7,7 +7,7 @@
   3. 将所有图片汇总到统一的平铺目录（IMAGE_PROCESS）
   4. 对序号 0-9 的图片添加水印
 
-处理完成后可直接运行 image_process_and_html.py 进行后续处理。
+处理完成后可直接运行后续 HTML 生成流程。
 """
 from common.image.copy_images_by_excel import (
     prepare_images_for_publication,
@@ -15,16 +15,16 @@ from common.image.copy_images_by_excel import (
     collect_all_images_to_flat_dir,
     watermark_index_0_9_inplace,
 )
-from cfg.brands.barbour import BARBOUR
+from cfg.brands.marksandspencer import MARKSANDSPENCER
 
 
 def main():
-    excel_path              = r"D:\TB\Products\barbour\document\publication\barbour_publication_20260220_222342.xlsx"
-    downloaded_dir          = r"D:\TB\Products\barbour\images_download"
-    processed_dir           = r"D:\TB\Products\barbour\images_dummy"
-    publish_ready_dir       = r"D:\TB\Products\barbour\repulibcation\images_selected"
-    publish_need_process_dir = r"D:\TB\Products\barbour\repulibcation\need_edit"
-    missing_txt_path        = r"D:\TB\Products\barbour\repulibcation\missing_codes.txt"
+    excel_path               = r"D:\TB\Products\marksandspencer\repulibcation\publication_excels_outerwear\marksandspencer_女装_外套.xlsx"
+    downloaded_dir           = str(MARKSANDSPENCER["IMAGE_DOWNLOAD"])
+    processed_dir            = str(MARKSANDSPENCER["IMAGE_PROCESS"])
+    publish_ready_dir        = str(MARKSANDSPENCER["OUTPUT_DIR"] / "images_selected")
+    publish_need_process_dir = str(MARKSANDSPENCER["OUTPUT_DIR"] / "need_edit")
+    missing_txt_path         = str(MARKSANDSPENCER["OUTPUT_DIR"] / "missing_codes.txt")
 
     ready, need_edit, missing = prepare_images_for_publication(
         excel_path=excel_path,
@@ -42,12 +42,12 @@ def main():
 
     # collect_all_images_to_flat_dir(
     #     target_root,
-    #     BARBOUR["IMAGE_PROCESS"],
+    #     MARKSANDSPENCER["IMAGE_PROCESS"],
     #     verbose=True,
     # )
 
     # watermark_index_0_9_inplace(
-    #     BARBOUR["IMAGE_PROCESS"],
+    #     MARKSANDSPENCER["IMAGE_PROCESS"],
     #     watermark_text="英国哈梅尔百货",
     # )
 
