@@ -510,6 +510,10 @@ def apply_fixed_prices_from_excel(
       - （可选）source_site/source_offer_url 标记为 manual
     """
 
+    if not xlsx_path or not os.path.exists(xlsx_path):
+        print(f"ℹ️ 固定价格清单文件不存在，已跳过：{xlsx_path}")
+        return
+
     cfg = BRAND_CONFIG["barbour"]["PGSQL_CONFIG"]
     engine = create_engine(
         f"postgresql+psycopg2://{cfg['user']}:{cfg['password']}@{cfg['host']}:{cfg['port']}/{cfg['dbname']}"
