@@ -132,6 +132,20 @@ def export_jiangya_channel_prices(
           AND TRIM(channel_product_id) <> ''
     """
     df = pd.read_sql(sql, conn)
+
+    # ── 诊断：统计数据库中商品的 channel_product_id 覆盖情况 ──
+    sql_total = f"SELECT COUNT(DISTINCT product_code) FROM {table}"
+    sql_with_id = f"""
+        SELECT COUNT(DISTINCT product_code) FROM {table}
+        WHERE channel_product_id IS NOT NULL AND TRIM(channel_product_id) <> ''
+    """
+    with conn.cursor() as cur:
+        cur.execute(sql_total);   total_codes   = cur.fetchone()[0]
+        cur.execute(sql_with_id); codes_with_id = cur.fetchone()[0]
+    print(f"[诊断] 数据库中总商品编码数：{total_codes}")
+    print(f"[诊断] 有 channel_product_id 的商品编码数：{codes_with_id}")
+    print(f"[诊断] 缺少 channel_product_id（未导入鲸芽ID）：{total_codes - codes_with_id}")
+
     conn.close()
 
     out_dir = Path(output_dir) if output_dir else Path(cfg["OUTPUT_DIR"])
@@ -181,7 +195,11 @@ def export_jiangya_channel_prices(
     expanded = prices.apply(pd.Series)
     expanded.columns = ["untaxed", "retail"]
     mask_valid = expanded.apply(lambda r: _valid_num(r["untaxed"]) and _valid_num(r["retail"]), axis=1)
+    invalid_count = (~mask_valid).sum()
+    if invalid_count:
+        print(f"[诊断] 因价格无效被剔除：{invalid_count} 条（价格为0或NaN）")
     df_grp, expanded = df_grp[mask_valid], expanded[mask_valid]
+    print(f"[诊断] 最终可导出渠道产品数：{len(df_grp)}")
 
     out_df = pd.DataFrame({
         "渠道产品ID": df_grp["channel_product_id"],

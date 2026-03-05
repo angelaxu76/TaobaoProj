@@ -45,16 +45,20 @@ def main():
     ecco_fetch_info(missing_product_link )
 
     print("\n🟡 Step: 4️⃣ TXT 导入数据库（鲸芽专用结构）")
-    import_txt_to_db_supplier("ecco",exchange_rate=9.4,delivery_cost=7)  
+    import_txt_to_db_supplier("ecco", exchange_rate=9.4, delivery_cost=7)
+    print("─" * 60)
 
     print("\n🟡 Step: 5️⃣ 导入鲸芽渠道Excel，写入渠道商品ID/SKUID 绑定关系")
     insert_jingyaid_to_db("ecco")
+    print("─" * 60)
 
     print("\n🟡 Step: 5️⃣ 处理已下架商品：补库存=0，防止违规超卖")
     insert_missing_products_with_zero_stock("ecco")
+    print("─" * 60)
 
     print("\n🟡 Step: 5️⃣ 根据尺码数量，自动下架稀缺尺码的商品，避免差评/售后")
     disable_low_stock_products("ecco")
+    print("─" * 60)
 
   
 
