@@ -21,6 +21,9 @@ def _load_exclude_codes(xlsx_path: Optional[str]) -> Set[str]:
     """
     if not xlsx_path:
         return set()
+    if not Path(xlsx_path).exists():
+        print(f"ℹ️ 排除清单文件不存在，已跳过：{xlsx_path}")
+        return set()
     df = pd.read_excel(xlsx_path, dtype=str)
     cols = [c.strip().lower().replace(" ", "") for c in df.columns]
     name2idx = {cols[i]: i for i in range(len(cols))}
