@@ -18,14 +18,14 @@ except Exception:
 
 # === 需要抓取的类目页面 ===
 TARGET_URLS = [
-    ("https://gb.ecco.com/women/shoes", "Women"),
-    ("https://gb.ecco.com/men/shoes", "Men"),
+    ("https://gb.ecco.com/women", "Women"),
+    ("https://gb.ecco.com/men", "Men"),
     ("https://gb.ecco.com/outdoor/women", "Women Outdoor"),
     ("https://gb.ecco.com/outdoor/men", "Men Outdoor"),
     ("https://gb.ecco.com/golf", "Golf"),
     ("https://gb.ecco.com/kids/junior", "Kids Junior"),
-    ("https://gb.ecco.com/kids/boys/shoes", "Kids Boys Shoes"),
-    ("https://gb.ecco.com/kids/girls/shoes", "Kids Girls Shoes"),
+    ("https://gb.ecco.com/kids/boys", "Kids Boys Shoes"),
+    ("https://gb.ecco.com/kids/girls", "Kids Girls Shoes"),
     ("https://gb.ecco.com/sale/women", "women sale"),
     ("https://gb.ecco.com/sale/men", "men sale"),
     ("https://gb.ecco.com/sale/kids", "kid sale"),
