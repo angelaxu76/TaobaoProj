@@ -237,8 +237,10 @@ def ecco_get_links():
 
             # 抓取当前类目所有商品链接
             links = collect_links_from_page(driver)
+            before = len(all_links)
             all_links.update(links)
-            print(f"✅ [{label}] 提取到 {len(links)} 条链接")
+            new_added = len(all_links) - before
+            print(f"✅ [{label}] 本类目抓取 {len(links)} 条，新增（去重后）{new_added} 条，累计 {len(all_links)} 条")
 
         # 写入 TXT
         with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
