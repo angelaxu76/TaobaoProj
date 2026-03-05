@@ -137,7 +137,8 @@ def generate_publication_excels_clothing(
     min_sizes: int = 3,
     min_total_stock: int = 9,
     gender_filter: str | None = None,
-    category_filter: list[str] | None = None
+    category_filter: list[str] | None = None,
+    all_categories: bool = False,
 ):
     brand = (brand or "").lower()
     if brand not in BRAND_CONFIG:
@@ -153,8 +154,11 @@ def generate_publication_excels_clothing(
     print(f"\n🔌 连接数据库：{brand.upper()}")
     engine = create_engine(f"postgresql+psycopg2://{pg['user']}:{pg['password']}@{pg['host']}:{pg['port']}/{pg['dbname']}")
 
-    # 过滤：是否仅外套
-    outerwear_only = not (category_filter and any(c.strip() for c in category_filter))
+    # 过滤：是否仅外套（all_categories=True 时跳过外套过滤，导出全品类）
+    outerwear_only = (
+        not all_categories
+        and not (category_filter and any(c.strip() for c in category_filter))
+    )
 
     gf_sql = ""
     if gender_filter:
@@ -248,7 +252,13 @@ def generate_publication_excels_clothing(
         rmb_price = _calc_price(base_price, pricing_mode)
 
         gender_raw = str(r.get("gender") or "")
-        gender_cn = "女装" if gender_raw.lower().startswith("w") else ("男装" if gender_raw.lower().startswith("m") else "未知")
+        _gl = gender_raw.strip().lower()
+        if _gl.startswith("w") or "女" in gender_raw:
+            gender_cn = "女装"
+        elif _gl.startswith("m") or "男" in gender_raw:
+            gender_cn = "男装"
+        else:
+            gender_cn = "未知"
 
         品名_local, 海关款式_local = _name_and_customs_by_cat(cat_cn)
 

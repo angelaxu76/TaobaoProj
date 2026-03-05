@@ -38,19 +38,15 @@ def _apply_size_range_completion(size_map: dict, detail: dict, gender: str | Non
     if size_map is None:
         return size_map, detail
 
+    g = (gender or "").strip()
+    gl = g.lower()
+    g_is_female = "女" in g or gl.startswith("w")
+    g_is_male   = "男" in g or gl.startswith("m")
+
     if not size_map:
         # 没有任何尺码：只有在女款/男款才考虑补一整套
-        g = gender or ""
-        if "女" not in g and "男" not in g:
+        if not g_is_female and not g_is_male:
             return size_map, detail
-    else:
-        g = gender or ""
-        # 有尺码也要照样补范围
-        # g 取自上层 _infer_gender，通常为 "女款"/"男款"/"童款"/"未知"
-    
-    g = gender or ""
-    g_is_female = "女" in g
-    g_is_male = "男" in g
 
     import re
 
@@ -523,7 +519,7 @@ def _infer_gender(name: str, sheet: dict, url: str):
 
     # 童款优先判断
     if any(k in l for k in ["girl", "boys", "kids"]) or "/kids/" in u:
-        return "童款"
+        return "Kids"
 
     # 从 JSON 里取 department 和 breadcrumbs（最可靠，不依赖 URL 结构）
     dept = str(sheet.get("department") or "").lower()
@@ -533,12 +529,12 @@ def _infer_gender(name: str, sheet: dict, url: str):
     # 检查顺序：department → breadcrumbs → 商品名 → URL 路径
     for text in (dept, crumbs, l):
         if re.search(r"\bmen\b", text) and "women" not in text:
-            return "男款"
+            return "Men"
 
     if re.search(r"/men[s]?/", u):
-        return "男款"
+        return "Men"
 
-    return "女款"
+    return "Women"
 
 
 

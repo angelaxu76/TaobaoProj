@@ -124,8 +124,8 @@ def _fabric_cn(material_en: str, blob: str) -> str:
 
 def _gender_cn(gender_en: str) -> str:
     g = _norm(gender_en)
-    if g.startswith("men"): return "男装"
-    if g.startswith("women"): return "女装"
+    if g.startswith("men") or "男" in gender_en: return "男装"
+    if g.startswith("women") or "女" in gender_en: return "女装"
     return "女装"
 
 # ============== 主函数 ==============

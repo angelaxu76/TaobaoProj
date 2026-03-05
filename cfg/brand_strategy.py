@@ -19,6 +19,7 @@ BRAND_NAME_MAP = {
     "birkenstock": ("BIRKENSTOCK", "勃肯"),
     "reiss": ("REISS", ""),
     "ms": ("Marks & Spencer", "马莎"),
+    "marksandspencer": ("英国M&S", "玛莎百货"),
 }
 
 BRAND_DISCOUNT = {
