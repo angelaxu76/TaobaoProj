@@ -88,6 +88,7 @@ def insert_jingyaid_to_db(brand: str, debug: bool = False):
 
     updated = 0
     skipped = 0
+    updated_codes: set = set()  # 去重：成功更新的商品编码
     skipped_records = []       # ⚙️ 新增：收集跳过记录
     unparsed_records = []      # ⚙️ 收集无法解析的记录
 
@@ -145,6 +146,7 @@ def insert_jingyaid_to_db(brand: str, debug: bool = False):
                     cur.execute(sql, params)
                     if cur.rowcount:
                         updated += 1
+                        updated_codes.add(product_code)
                     else:
                         skipped += 1
                         skipped_records.append((product_code, size))
@@ -155,7 +157,31 @@ def insert_jingyaid_to_db(brand: str, debug: bool = False):
                     skipped_records.append((product_code, size))
 
     # ---- 总结输出 ----
-    print(f"✅ 更新完成：成功 {updated} 条，跳过 {skipped} 条")
+    print(f"✅ 更新完成：成功 {len(updated_codes)} 个商品 / {updated} 条SKU，跳过 {skipped} 条")
+
+    # ---- 诊断：打印跳过样本，快速判断编码/尺码格式是否对不上 ----
+    if skipped_records:
+        print(f"⚠️ 跳过样本（前10条，格式: product_code / size）:")
+        for code, size in skipped_records[:10]:
+            print(f"   ⏭️  [{code}] / [{size}]")
+        # 检查这些编码在数据库中是否存在（忽略尺码）
+        conn2 = psycopg2.connect(**db_config)
+        sample_codes = list({c for c, _ in skipped_records[:50]})
+        placeholders = ",".join(["%s"] * len(sample_codes))
+        with conn2.cursor() as cur2:
+            cur2.execute(
+                f"SELECT DISTINCT product_code FROM {table_name} WHERE product_code IN ({placeholders})",
+                sample_codes,
+            )
+            found_in_db = {r[0] for r in cur2.fetchall()}
+        conn2.close()
+        not_in_db = [c for c in sample_codes if c not in found_in_db]
+        if not_in_db:
+            print(f"   ❌ 其中 {len(not_in_db)} 个编码在数据库中完全不存在（可能编码格式不匹配）:")
+            for c in not_in_db[:10]:
+                print(f"      {c}")
+        else:
+            print(f"   ✅ 编码在DB中均存在，问题可能出在尺码格式不匹配")
 
     # ---- 调试信息 ----
     if debug:

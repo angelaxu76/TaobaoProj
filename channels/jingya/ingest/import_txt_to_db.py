@@ -179,4 +179,5 @@ def import_txt_to_db_supplier(
             else:
                 print("✅ 所有 product_code 均已导入数据库。")
 
-    print(f"🎯 [{brand_name.upper()}] 导入完成，共 {len(enriched)} 条。")
+    unique_products = len({r[0] for r in enriched if r[0]})
+    print(f"🎯 [{brand_name.upper()}] 导入完成，共 {unique_products} 个商品 / {len(enriched)} 条SKU记录。")
