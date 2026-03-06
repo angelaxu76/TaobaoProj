@@ -13,7 +13,6 @@ OUTPUT_XLSX = r"C:\Users\angel\Desktop\abc.xlsx"
 # OUTPUT_XLSX = r"C:\Users\angel\Desktop\WXJ.xlsx"
 # =====================================
 
-
 HEADER_SET = {
     "渠道产品名称", "渠道产品ID", "货品ID", "类目", "鲸芽卖家名称",
     "宝贝关联状态", "价格(元)", "库存", "库存类型", "操作"
