@@ -17,14 +17,15 @@ from PIL import Image
 # ============================================================
 INPUT_DIR  = r"D:\TB\Products\clarks_jingya\publication\image_cutter分组图片\group_5"
 OUTPUT_DIR = r"D:\TB\Products\clarks_jingya\publication\image_cutter分组图片\group_5_compressed"
-TARGET_PX  = 1500         # 输出图片的最大边长（像素）；0 = 不缩放
-TARGET_KB  = 300          # 每张图片的目标大小上限（KB）；0 = 不压缩
+TARGET_PX   = 1500        # 输出图片的最大边长（像素）；0 = 不缩放
+TARGET_KB   = 300         # 每张图片的目标大小上限（KB）；0 = 不压缩
+MIN_QUALITY = 65          # JPEG 最低质量下限（低于此值电商平台可能拒绝，建议 60~75）
 # ============================================================
 
 SUPPORTED_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
 
 
-def _compress_jpg(img: Image.Image, out_path: Path, target_kb: int):
+def _compress_jpg(img: Image.Image, out_path: Path, target_kb: int, min_quality: int = 65):
     if img.mode in ("RGBA", "LA"):
         bg = Image.new("RGB", img.size, (255, 255, 255))
         bg.paste(img, mask=img.split()[-1])
@@ -33,10 +34,15 @@ def _compress_jpg(img: Image.Image, out_path: Path, target_kb: int):
         img = img.convert("RGB")
 
     # ⚠️ 不用 progressive=True：部分电商平台（淘宝/鲸芽）只接受 baseline JPEG
-    for q in range(95, 39, -5):
+    # ⚠️ 不低于 min_quality：低于 60~70 时电商平台会从 JPEG 量化表检测到并拒绝
+    for q in range(95, min_quality - 1, -5):
         img.save(out_path, quality=q, optimize=True)
         if out_path.stat().st_size // 1024 <= target_kb:
             return
+    # 达到质量下限仍超过目标大小时，保留当前文件（质量优先，不过度压缩）
+    actual_kb = out_path.stat().st_size // 1024
+    if actual_kb > target_kb:
+        print(f"   ⚠️ 质量已到下限 {min_quality}，实际 {actual_kb}KB > 目标 {target_kb}KB，保留当前质量")
 
 
 def _compress_png(img: Image.Image, out_path: Path, target_kb: int):
@@ -129,7 +135,7 @@ def compress_images(input_dir: str, output_dir: str, target_kb: int = 1024, targ
 
                     if target_kb > 0:
                         if ext in (".jpg", ".jpeg"):
-                            _compress_jpg(img, out_path, target_kb)
+                            _compress_jpg(img, out_path, target_kb, MIN_QUALITY)
                         elif ext == ".png":
                             _compress_png(img, out_path, target_kb)
                         elif ext == ".webp":
