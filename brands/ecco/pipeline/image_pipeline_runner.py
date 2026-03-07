@@ -1,4 +1,4 @@
-from helper.image.image_antifingerprint_flip import batch_process_images
+from helper.image.image_antifingerprint import batch_process_images
 from brands.ecco.helpers_local.image_max_cutter import batch_convert_webp_to_jpg,process_images_in_folder
 from helper.image.merge_product_images import batch_merge_images
 from common.publication.generate_html import generate_html_from_codes_files
@@ -21,7 +21,7 @@ def main():
     batch_convert_webp_to_jpg(ECCO["IMAGE_DOWNLOAD"], ECCO["IMAGE_PROCESS"])
 
     print("图片抖动，水平翻转")
-    batch_process_images(ECCO["IMAGE_CUTTER"],ECCO["IMAGE_PROCESS"])
+    batch_process_images(ECCO["IMAGE_CUTTER"], ECCO["IMAGE_PROCESS"], flip=True)
 
 
     print("将图片merge到一张图片中")

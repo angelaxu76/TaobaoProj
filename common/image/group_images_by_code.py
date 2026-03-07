@@ -64,6 +64,62 @@ def group_and_rename_images(images_dir: Path, code_len: int = 11, overwrite: boo
 
     print(f"🎯 完成！共移动并重命名 {total_moved} 张图片。")
 
+def group_by_strip_seq(images_dir: Path, overwrite: bool = True):
+    """
+    通用分组函数：去掉文件名末尾的 _数字 后剩余部分作为分组键。
+
+    支持格式：
+      - CODE_1.webp            → 分组到 CODE/CODE_1.webp
+      - CODE_COLOR_1.webp      → 分组到 CODE_COLOR/CODE_COLOR_1.webp
+      - CODE_COLOR_2.webp      → 分组到 CODE_COLOR/CODE_COLOR_2.webp
+
+    适用品牌：marksandspencer（以及任何遵循 GROUPKEY_序号.ext 命名的图片目录）
+    """
+    SUPPORTED = {".jpg", ".jpeg", ".png", ".webp"}
+    SEQ_RE = re.compile(r'^(.+)_(\d+)$')
+
+    if not images_dir.exists() or not images_dir.is_dir():
+        print(f"❌ 目录不存在或不是文件夹：{images_dir}")
+        return
+
+    # 收集：group_key -> [(seq:int, path, ext)]
+    bucket = {}
+    for p in images_dir.iterdir():
+        if not p.is_file() or p.suffix.lower() not in SUPPORTED:
+            continue
+        m = SEQ_RE.match(p.stem)
+        if not m:
+            continue
+        group_key, seq_str = m.group(1), m.group(2)
+        bucket.setdefault(group_key, []).append((int(seq_str), p, p.suffix.lower().lstrip(".")))
+
+    if not bucket:
+        print("⚠️ 未匹配到任何符合规则的图片文件。")
+        return
+
+    total_moved = 0
+    for group_key, items in sorted(bucket.items()):
+        items.sort(key=lambda x: x[0])
+        dest_dir = images_dir / group_key
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        for new_idx, (_, src_path, ext) in enumerate(items, start=1):
+            dest_name = f"{group_key}_{new_idx}.{ext}"
+            dest_path = dest_dir / dest_name
+            if dest_path.exists() and overwrite:
+                try:
+                    dest_path.unlink()
+                except Exception as e:
+                    print(f"⚠️ 无法删除已存在文件：{dest_path}，错误：{e}")
+            try:
+                shutil.move(str(src_path), str(dest_path))
+                total_moved += 1
+            except Exception as e:
+                print(f"❌ 移动失败：{src_path} → {dest_path}，错误：{e}")
+
+    print(f"🎯 完成！共分组移动 {total_moved} 张图片，{len(bucket)} 个分组。")
+
+
 if __name__ == "__main__":
     # 用法：python group_barbour_images.py "D:\path\to\images"
     if len(sys.argv) < 2:

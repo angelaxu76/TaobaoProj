@@ -1,4 +1,4 @@
-from helper.image.image_antifingerprint_flip import batch_process_images
+from helper.image.image_antifingerprint import batch_process_images
 from tools import run_crop_and_expand
 from config import BIRKENSTOCK
 
@@ -8,7 +8,7 @@ def main():
     #download_images_by_code_file(r"D:\TB\Products\clarks\repulibcation\五小剑\missing_images.txt")
 
     print("图抖动加上水平翻转")
-    batch_process_images(BIRKENSTOCK["IMAGE_DOWNLOAD"],BIRKENSTOCK["IMAGE_PROCESS"])
+    batch_process_images(BIRKENSTOCK["IMAGE_DOWNLOAD"], BIRKENSTOCK["IMAGE_PROCESS"], flip=True)
 
 
 
