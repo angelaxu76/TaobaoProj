@@ -23,7 +23,10 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(os.path.dirname(_HERE)))  # project root
+sys.path.insert(0, _HERE)                                    # ops/ai_image/
+from _session_config import FACESWAP_DIR, PERSON_DIR, FACESWAP_BAD_DIR, COMPARE_CSV
 
 import csv
 import shutil
@@ -34,13 +37,13 @@ import numpy as np
 from skimage.metrics import structural_similarity as ssim
 
 # ============================================================
-# 运行参数（按需修改）
+# 运行参数（按需修改）— 路径由 _session_config.py 统一管理
 # ============================================================
 
-FACESWAP_DIR = r"D:\barbour\faceswap_output"   # 换脸后图片目录
-ORIG_DIR     = r"D:\barbour\person"              # 原图目录
-BAD_DIR      = r"D:\barbour\faceswap_bad"      # 低质量图片的输出目录
-REPORT_CSV   = r"D:\barbour\faceswap_compare_report.csv"
+FACESWAP_DIR = str(FACESWAP_DIR)   # 换脸后图片目录
+ORIG_DIR     = str(PERSON_DIR)      # 原图目录
+BAD_DIR      = str(FACESWAP_BAD_DIR)
+REPORT_CSV   = str(COMPARE_CSV)
 
 # SSIM 阈值：低于此值视为「衣服被改动」→ 移入 BAD_DIR
 # 建议先跑一批看分数分布再调，换脸图一般落在 0.88~0.96 之间

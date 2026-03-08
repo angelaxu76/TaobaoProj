@@ -15,19 +15,23 @@ import ast
 import os
 import sys
 from pathlib import Path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(os.path.dirname(_HERE)))  # project root
+sys.path.insert(0, _HERE)                                    # ops/ai_image/
+from _session_config import PERSON_DIR, FACESWAP_DIR, CODES_EXCEL
 
 import openpyxl
 
 # ============================================================
-# 运行参数（与 run_ai_face_swap.py 保持一致）
+# 运行参数（与 run_ai_face_swap.py 保持一致）— 路径由 _session_config.py 统一管理
 # ============================================================
 
 # 原始图片所在的本地文件夹
-ORIG_DIR      = r"D:\barbour\person"
+ORIG_DIR      = str(PERSON_DIR)
 
 # 换脸结果所在的本地文件夹
-FACESWAP_DIR  = r"D:\barbour\faceswap_output"
+FACESWAP_DIR  = str(FACESWAP_DIR)
 
 # 后缀列表覆盖（None = 自动从 run_ai_face_swap.py 读取，推荐保持 None）
 # 只在调试或单独运行时才填写，例如：["_front_1", "_front_2"]
@@ -36,8 +40,8 @@ SHOT_SUFFIXES_OVERRIDE: list[str] | None = None
 # 换脸图在原图名后追加的后缀（不含扩展名）
 FACESWAP_SUFFIX = "_faceswap"
 
-# 输出 Excel 路径（直接修改这里）
-OUTPUT_EXCEL  = r"D:\barbour\codes.xlsx"
+# 输出 Excel 路径 — 路径由 _session_config.py 统一管理
+OUTPUT_EXCEL  = str(CODES_EXCEL)
 
 # 支持的图片格式
 EXTS = {".jpg", ".jpeg", ".png", ".webp"}

@@ -26,7 +26,10 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(os.path.dirname(_HERE)))  # project root
+sys.path.insert(0, _HERE)                                    # ops/ai_image/
+from _session_config import FACESWAP_DIR, BAD_PROPORTION, PROPORTION_CSV
 
 import csv
 import shutil
@@ -37,17 +40,17 @@ import cv2
 import numpy as np
 
 # ============================================================
-# 运行参数（按需修改）
+# 运行参数（按需修改）— 路径由 _session_config.py 统一管理
 # ============================================================
 
 # 待检测的图片目录（换脸输出目录）
-INPUT_DIR  = r"D:\barbour\faceswap_output"
+INPUT_DIR  = str(FACESWAP_DIR)
 
 # 比例不合格的图片移动到这里
-BAD_DIR    = r"D:\barbour\faceswap_bad_proportion"
+BAD_DIR    = str(BAD_PROPORTION)
 
 # 报告 CSV 路径
-REPORT_CSV = r"D:\barbour\proportion_report.csv"
+REPORT_CSV = str(PROPORTION_CSV)
 
 # 头肩比阈值：超出此范围则判定为 BAD
 # 正常范围 0.38~0.58；换脸图脸太大通常 > 0.65

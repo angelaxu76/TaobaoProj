@@ -3,13 +3,16 @@ import sys
 import subprocess
 from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(os.path.dirname(_HERE)))  # project root
+sys.path.insert(0, _HERE)                                    # ops/ai_image/
+from _session_config import CODES_EXCEL
 
 import openpyxl
 
 
 # 调度参数
-CODES_FILE = Path(r"D:\barbour\codes.xlsx")
+CODES_FILE = CODES_EXCEL
 HEADER_ROWS = 1
 MAX_ROUNDS = 100
 

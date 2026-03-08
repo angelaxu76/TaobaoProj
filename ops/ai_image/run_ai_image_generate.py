@@ -11,7 +11,10 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(os.path.dirname(_HERE)))  # project root
+sys.path.insert(0, _HERE)                                    # ops/ai_image/
+from _session_config import CODES_EXCEL
 
 import openpyxl
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -27,8 +30,8 @@ from config import (
 # 本次运行参数（按需修改）
 # ============================================================
 
-# 商品编码列表 Excel（第一列为编码）
-INPUT_FILE  = r"G:\temp\barbour\codes.xlsx"
+# 商品编码列表 Excel（第一列为编码）— 路径由 _session_config.py 统一管理
+INPUT_FILE  = str(CODES_EXCEL)
 HEADER_ROWS = 1         # 跳过的表头行数（0 = 第一行是数据）
 
 # URL 命名模式："A" 或 "B"（后缀规则见 cfg/ai_config.py）

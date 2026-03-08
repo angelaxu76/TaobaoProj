@@ -16,50 +16,41 @@ from common.image.copy_images_by_excel import (
     watermark_index_0_9_inplace,
 )
 from cfg.brands.marksandspencer import MARKSANDSPENCER
+from helper.image.classify_person_images import classify_images
+from common.image.group_images_by_code import group_by_strip_seq
+
+
 
 
 def main():
-    # ══════════════════════════════════════════════════════════════════
-    # 图片预处理（按需取消注释，0b 和 0c 选其一）
-    # ══════════════════════════════════════════════════════════════════
-
-    # ── Step 0a（可选）：将下载目录中的平铺图片按编码/颜色分组到子目录 ──
-    # 处理后：image_download/T073568_GREEN_1.webp -> image_download/T073568_GREEN/T073568_GREEN_1.webp
-    # from common.image.group_images_by_code import group_by_strip_seq
-    # group_by_strip_seq(MARKSANDSPENCER["IMAGE_DOWNLOAD"], overwrite=True)
-
-    # ── Step 0b【纯白底图用】：webp -> jpg + 补白正方形，不抠图，速度快 ──
-    # from helper.image.expand_to_square import process_folder
-    # process_folder(
-    #     str(MARKSANDSPENCER["IMAGE_DOWNLOAD"]),
-    #     str(MARKSANDSPENCER["IMAGE_PROCESS"]),
-    #     fill_color=(255, 255, 255),
-    #     recursive=True,
-    #     quality=90,
-    # )
 
     # ── Step 0c【需抠图时用】：rembg 抠图 + 去白毛边 + 补白正方形 ──
     # 在 IMAGE_DOWNLOAD 平铺文件上运行（单层），输出到 IMAGE_PROCESS
     # 完成后如需分组，对 IMAGE_PROCESS 再执行一次 group_by_strip_seq
-    import helper.image.cut_square_white_watermark as _cutmod
-    _cutmod.MODEL_NAME           = "birefnet-fashion"   # 服装专用模型（比 general 更准）
-    _cutmod.AUTO_CUTOUT          = True
-    _cutmod.WHITE_BG_SKIP        = True                 # 检测到白底则跳过，节省时间
-    _cutmod.TARGET_SIZE          = 1500
-    _cutmod.DEFRINGE_WHITE       = True
-    _cutmod.ALPHA_ERODE          = 1
-    _cutmod.DIAGONAL_TEXT_ENABLE = False                # 此阶段不加水印
-    _cutmod.LOCAL_LOGO_ENABLE    = False
-    _cutmod.batch_process(
-        str(MARKSANDSPENCER["IMAGE_DOWNLOAD"]),
-        str(MARKSANDSPENCER["IMAGE_PROCESS"]),
-        max_workers=4,
-    )
+    # import helper.image.cut_square_white_watermark as _cutmod
+    # _cutmod.MODEL_NAME           = "birefnet-fashion"   # 服装专用模型（比 general 更准）
+    # _cutmod.AUTO_CUTOUT          = False
+    # _cutmod.WHITE_BG_SKIP        = True                 # 检测到白底则跳过，节省时间
+    # _cutmod.TARGET_SIZE          = 1500
+    # _cutmod.DEFRINGE_WHITE       = True
+    # _cutmod.ALPHA_ERODE          = 1
+    # _cutmod.DIAGONAL_TEXT_ENABLE = False                # 此阶段不加水印
+    # _cutmod.LOCAL_LOGO_ENABLE    = False
+    # _cutmod.batch_process(
+    #     str(MARKSANDSPENCER["IMAGE_DOWNLOAD"]),
+    #     str(MARKSANDSPENCER["IMAGE_PROCESS"]),
+    #     max_workers=4,
+    # )
 
-    # ══════════════════════════════════════════════════════════════════
 
+
+    # ── Step 1 将图片按编码分组 ──
+    # group_by_strip_seq(MARKSANDSPENCER["IMAGE_PROCESS"], overwrite=True)
+    group_by_strip_seq(r"D:\TB\Products\marksandspencer\repulibcation\classify\person", overwrite=True)
+
+    # ── Step 2 将需要发布商品的图片copy到OUTPUT DIR 单独处理 ──
     # excel_path               = r"D:\TB\Products\marksandspencer\repulibcation\publication_excels_outerwear\marksandspencer_男装_外套.xlsx"
-    # downloaded_dir           = str(MARKSANDSPENCER["IMAGE_DOWNLOAD"])
+    # downloaded_dir           = str(MARKSANDSPENCER["IMAGE_PROCESS"])
     # processed_dir            = str(MARKSANDSPENCER["IMAGE_PROCESS"])
     # publish_ready_dir        = str(MARKSANDSPENCER["OUTPUT_DIR"] / "images_selected")
     # publish_need_process_dir = str(MARKSANDSPENCER["OUTPUT_DIR"] / "need_edit")
@@ -75,19 +66,24 @@ def main():
     #     verbose=True,
     # )
 
-    target_root = publish_ready_dir
 
-    # rebuild_all_products_images(target_root, verbose=True)
 
-    # collect_all_images_to_flat_dir(
-    #     target_root,
-    #     MARKSANDSPENCER["IMAGE_PROCESS"],
-    #     verbose=True,
-    # )
-
-    # watermark_index_0_9_inplace(
-    #     MARKSANDSPENCER["IMAGE_PROCESS"],
-    #     watermark_text="英国哈梅尔百货",
+    # # ── Step 2 将图片分类为模特图和详情图 ──
+    # INPUT_DIR  = r"D:\TB\Products\marksandspencer\repulibcation\images_selected"
+    # PERSON_DIR = r"D:\TB\Products\marksandspencer\repulibcation\classify\person"
+    # DETAIL_DIR = r"D:\TB\Products\marksandspencer\repulibcation\classify\detail"
+    # RECURSIVE       = True
+    # CONFIDENCE      = 0.4
+    # REQUIRE_HEAD    = True   # True = 只有检测到头部才算人物图（仅手/腿的细节图归入 detail）
+    # HEAD_CONFIDENCE = 0.3    # 头部关键点置信度阈值（降低可减少漏检）
+    # classify_images(
+    #     input_dir=INPUT_DIR,
+    #     person_dir=PERSON_DIR,
+    #     detail_dir=DETAIL_DIR,
+    #     recursive=RECURSIVE,
+    #     require_head=REQUIRE_HEAD,
+    #     confidence=CONFIDENCE,
+    #     head_confidence=HEAD_CONFIDENCE,
     # )
 
 

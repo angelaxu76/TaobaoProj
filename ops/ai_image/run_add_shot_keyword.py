@@ -28,7 +28,7 @@ from helper.image.add_shot_keyword import add_shot_keyword
 # ============================================================
 
 # 待处理图片目录
-INPUT_DIR  = r"D:\barbour\person"
+INPUT_DIR  = r"D:\TB\Products\marksandspencer\repulibcation\classify\dest"
 
 # 输出目录（与 INPUT_DIR 相同则就地重命名；不同则复制到新目录保留原文件）
 OUTPUT_DIR = INPUT_DIR
@@ -39,7 +39,7 @@ KEYWORD    = "front"
 
 # DRY_RUN = True  → 仅打印预览，不实际改动（建议先用 True 确认）
 # DRY_RUN = False → 实际执行重命名/复制
-DRY_RUN    = True
+DRY_RUN    = False
 
 # ============================================================
 

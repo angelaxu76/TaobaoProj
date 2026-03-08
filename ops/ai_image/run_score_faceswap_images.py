@@ -22,7 +22,10 @@ AI 换脸图质量评分脚本。
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(os.path.dirname(_HERE)))  # project root
+sys.path.insert(0, _HERE)                                    # ops/ai_image/
+from _session_config import FACESWAP_DIR, SCORED_DIR
 
 import shutil
 import csv
@@ -33,14 +36,14 @@ import cv2
 import numpy as np
 
 # ============================================================
-# 本次运行参数（按需修改）
+# 本次运行参数（按需修改）— 路径由 _session_config.py 统一管理
 # ============================================================
 
 # 待评分的图片目录（通常是换脸输出目录）
-INPUT_DIR = r"D:\output\faceswap_output"
+INPUT_DIR = str(FACESWAP_DIR)
 
 # 评分结果的输出根目录（会在里面创建四个子文件夹 + 汇总 CSV）
-OUTPUT_DIR = r"D:\output\faceswap_scored"
+OUTPUT_DIR = str(SCORED_DIR)
 
 # 是否把图片按分级复制到对应子目录（False = 只打印/导出 CSV，不复制文件）
 COPY_TO_TIER = True

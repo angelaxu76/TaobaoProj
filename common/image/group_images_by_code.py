@@ -77,6 +77,7 @@ def group_by_strip_seq(images_dir: Path, overwrite: bool = True):
     """
     SUPPORTED = {".jpg", ".jpeg", ".png", ".webp"}
     SEQ_RE = re.compile(r'^(.+)_(\d+)$')
+    images_dir = Path(images_dir)
 
     if not images_dir.exists() or not images_dir.is_dir():
         print(f"❌ 目录不存在或不是文件夹：{images_dir}")

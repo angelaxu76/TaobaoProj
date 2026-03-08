@@ -19,7 +19,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(os.path.dirname(_HERE)))  # project root
+sys.path.insert(0, _HERE)                                    # ops/ai_image/
+from _session_config import CODES_EXCEL, FACESWAP_DIR
 
 import openpyxl
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -35,8 +38,8 @@ from config import (
 # 本次运行参数（按需修改）
 # ============================================================
 
-# 商品编码列表 Excel（第一列为编码）
-INPUT_FILE  = r"d:\barbour\codes.xlsx"
+# 商品编码列表 Excel（第一列为编码）— 路径由 _session_config.py 统一管理
+INPUT_FILE  = str(CODES_EXCEL)
 HEADER_ROWS = 1         # 跳过的表头行数（0 = 第一行是数据）
 
 # 原始模特拍摄图的 R2 子目录（img_1 来源）
@@ -48,8 +51,8 @@ R2_SHOT_SUBDIR = "product_front"
 #   ["_front_1", "_front_2"] → 每款处理两张
 SHOT_SUFFIXES = ["_front_1"]
 
-# 本地输出目录
-OUTPUT_DIR = r"D:\barbour\faceswap_output"
+# 本地输出目录 — 路径由 _session_config.py 统一管理
+OUTPUT_DIR = str(FACESWAP_DIR)
 
 # 目标模特脸部参考列表（取 cfg 值；多个 URL 时按商品顺序轮流分配）
 TARGET_FACE_URLS = [
