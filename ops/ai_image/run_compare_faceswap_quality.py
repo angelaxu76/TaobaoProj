@@ -25,8 +25,6 @@ import sys
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(os.path.dirname(_HERE)))  # project root
-sys.path.insert(0, _HERE)                                    # ops/ai_image/
-from _session_config import FACESWAP_DIR, PERSON_DIR, FACESWAP_BAD_DIR, COMPARE_CSV
 
 import csv
 import shutil
@@ -37,13 +35,8 @@ import numpy as np
 from skimage.metrics import structural_similarity as ssim
 
 # ============================================================
-# 运行参数（按需修改）— 路径由 _session_config.py 统一管理
+# 可调参数（不随 session 变化）
 # ============================================================
-
-FACESWAP_DIR = str(FACESWAP_DIR)   # 换脸后图片目录
-ORIG_DIR     = str(PERSON_DIR)      # 原图目录
-BAD_DIR      = str(FACESWAP_BAD_DIR)
-REPORT_CSV   = str(COMPARE_CSV)
 
 # SSIM 阈值：低于此值视为「衣服被改动」→ 移入 BAD_DIR
 # 建议先跑一批看分数分布再调，换脸图一般落在 0.88~0.96 之间
@@ -157,11 +150,21 @@ def _base_stem(faceswap_stem: str) -> str:
     return faceswap_stem.replace(FACESWAP_SUFFIX, "")
 
 
-def main():
-    faceswap_dir = Path(FACESWAP_DIR)
-    orig_dir     = Path(ORIG_DIR)
-    bad_dir      = Path(BAD_DIR)
-    report_path  = Path(REPORT_CSV)
+def main(faceswap_dir=None, orig_dir=None, bad_dir=None, report_csv=None):
+    """路径参数均可由调用方注入（供 linkfox 等其他渠道复用）。
+    不传时从本目录的 _session_config.py 自动读取。"""
+    if faceswap_dir is None:
+        sys.path.insert(0, _HERE)
+        from _session_config import FACESWAP_DIR, PERSON_DIR, FACESWAP_BAD_DIR, COMPARE_CSV as _CSV
+        faceswap_dir = str(FACESWAP_DIR)
+        orig_dir     = str(PERSON_DIR)
+        bad_dir      = str(FACESWAP_BAD_DIR)
+        report_csv   = str(_CSV)
+
+    faceswap_dir = Path(faceswap_dir)
+    orig_dir     = Path(orig_dir)
+    bad_dir      = Path(bad_dir)
+    report_path  = Path(report_csv)
 
     if not faceswap_dir.is_dir():
         raise NotADirectoryError(f"FACESWAP_DIR 不存在: {faceswap_dir}")

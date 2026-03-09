@@ -8,7 +8,15 @@ from pathlib import Path
 from typing import Dict, Tuple
 from config import BRAND_CONFIG, PGSQL_CONFIG
 
-# 仅保留模板的 6 列（按要求顺序，“*菜鸟货品ID”放最后）
+# ============================================================
+# 运行参数（按需修改）
+# ============================================================
+CHANNEL_NAME    = "淘分销"          # 销售渠道名称
+CHANNEL_SHOP_ID = "2221679632348"   # 渠道店铺ID（精雅淘宝店铺ID）
+DELIVERY_MODE   = "直发"            # 发货模式
+# ============================================================
+
+# 仅保留模板的 6 列（按要求顺序，"*菜鸟货品ID"放最后）
 TEMPLATE_COLUMNS = [
     "*销售渠道", "*渠道店铺ID", "*发货模式",
     "*外部渠道商品ID", "*商品名称", "*菜鸟货品ID",
@@ -116,9 +124,9 @@ def generate_channel_binding_excel_shoes(brand: str, goods_dir: Path, debug: boo
     id_to_channel_item, item_to_code_size, code_size_to_info = _fetch_maps(table_name, pgcfg)
 
     # 固定列
-    unbound_df["*销售渠道"] = "淘分销"
-    unbound_df["*渠道店铺ID"] = "2219163936872"
-    unbound_df["*发货模式"] = "直发"
+    unbound_df["*销售渠道"] = CHANNEL_NAME
+    unbound_df["*渠道店铺ID"] = CHANNEL_SHOP_ID
+    unbound_df["*发货模式"] = DELIVERY_MODE
     unbound_df["*菜鸟货品ID"] = unbound_df["货品ID"]
 
     # 从 Excel 名称解析 code,size

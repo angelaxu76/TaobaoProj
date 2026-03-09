@@ -27,3 +27,6 @@ SCORED_DIR       = BRAND_ROOT / "faceswap_scored"      # 评分分级输出
 COMPARE_CSV      = BRAND_ROOT / "faceswap_compare_report.csv"
 PROPORTION_CSV   = BRAND_ROOT / "proportion_report.csv"
 BAD_PROPORTION   = BRAND_ROOT / "faceswap_bad_proportion"
+
+# 原始拍摄图后缀（供 run_find_unprocessed_faceswap.py 读取，与 run_ai_face_swap.py 保持一致）
+SHOT_SUFFIXES = ["_front_1"]

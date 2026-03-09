@@ -24,7 +24,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(os.path.dirname(_HERE)))  # project root
 sys.path.insert(0, _HERE)                                    # ops/linkfox/
-from _session_config import CODES_EXCEL, LINKFOX_DIR
+from _session_config import (
+    CODES_EXCEL, LINKFOX_DIR,
+    R2_SHOT_SUBDIR, SHOT_SUFFIXES, TARGET_MODEL_URLS,
+)
 
 import openpyxl
 from common.ai.image.linkfox_client import LinkFoxClient
@@ -43,24 +46,12 @@ from config import (
 INPUT_FILE  = str(CODES_EXCEL)
 HEADER_ROWS = 1         # 跳过的表头行数（0 = 第一行是数据）
 
-# 原始模特拍摄图的 R2 子目录（imageUrl 来源）
-# "" 表示根目录；"product_front" 表示 r2_prefix/product_front/{code}{suffix}.jpg
-R2_SHOT_SUBDIR = "product_front"
-
-# 原始拍摄图后缀列表（每个后缀对应一张原图，均会生成一张换模特图）
-#   ["_front_1"]              → 每款只处理 {code}_front_1.jpg
-#   ["_front_1", "_front_2"] → 每款处理两张
-SHOT_SUFFIXES = ["_front_1"]
+# 原始模特拍摄图的 R2 子目录 — 在 _session_config.py 中修改
+# 原始拍摄图后缀列表          — 在 _session_config.py 中修改
+# 目标模特头部参考图列表      — 在 _session_config.py 中修改
 
 # 本地输出目录 — 路径由 _session_config.py 统一管理
 OUTPUT_DIR = str(LINKFOX_DIR)
-
-# 目标模特头部参考图列表（多个 URL 时按商品顺序轮流分配）
-TARGET_MODEL_URLS = [
-    "https://test-file-ai.linkfox.com//UPLOAD/example/target-model.png",
-    # 可添加更多目标模特图（按需替换为真实 URL）
-    # "https://...",
-]
 
 # 场景/背景参考图（None 表示保持接口默认，不传场景图）
 SCENE_IMG_URL: str | None = None
