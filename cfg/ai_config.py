@@ -148,6 +148,21 @@ FACESWAP_WHITE_BG_PROMPT = (
 FACESWAP_WHITE_BG_REF_URL = (
     "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/white.jpg"
 )
+# ==============================================================================
+# LinkFox (Ziniao) AI换模特-2.0 配置
+# ==============================================================================
+
+# ── API 凭证 ───────────────────────────────────────────────────────────────────
+LINKFOX_API_KEY = "202603081480339192830619648"
+LINKFOX_HOST    = "https://sbappstoreapi.ziniao.com/openapi-router"
+
+# ── 默认原始拍摄图后缀（imageUrl 来源）────────────────────────────────────────
+LINKFOX_DEFAULT_SHOT_SUFFIXES = ["_front_1"]
+
+# ── 默认场景相似度（None = 不传，接口使用默认值 0.7）─────────────────────────
+LINKFOX_SCENE_STRENGTH: float | None = None
+
+
 FACESWAP_NEGATIVE_PROMPT = (
     # 服装保护（核心）
     "altered clothing, changed garment texture, missing buttons, modified sleeves, "
