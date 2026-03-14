@@ -251,7 +251,7 @@ def generate_channel_binding_excel(brand: str, goods_dir: Path, debug: bool = Tr
 
     # 固定列
     unbound_df["*销售渠道"] = "淘分销"
-    unbound_df["*渠道店铺ID"] = "2219163936872"
+    unbound_df["*渠道店铺ID"] = "2221679632348"
     unbound_df["*发货模式"] = "直发"
     unbound_df["*菜鸟货品ID"] = unbound_df["货品ID"]
     log("✓ 已填充固定列：*销售渠道 / *渠道店铺ID / *发货模式 / *菜鸟货品ID")

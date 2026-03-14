@@ -207,15 +207,16 @@ def _build_filename(
     if not order and not invoice:
         return None
 
-    parts = [BRAND, "Invoice"]
+    parts = []
+    if txn_date_iso:
+        parts.append(txn_date_iso)
+    parts.extend([BRAND, "Invoice"])
     if order:
         parts.append(f"ORDER_{order}")
     if INCLUDE_INVOICE_ID and invoice:
         parts.append(f"INV_{invoice}")
     if amount:
         parts.append(f"{CURRENCY_SYMBOL}{amount}")
-    if txn_date_iso:
-        parts.append(txn_date_iso)
 
     return "_".join(parts) + ".pdf"
 

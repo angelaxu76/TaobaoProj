@@ -1,0 +1,126 @@
+================================================================
+  POE 财务流水线操作手册
+  最后更新：2026-03-14
+================================================================
+
+本手册描述从 POE 发货数据导入到生成 CI / EES 的完整操作步骤。
+ANNA 相关脚本已停用（2026-01 后改用 Wise），不在本流程中。
+
+----------------------------------------------------------------
+主流程（按顺序执行）
+----------------------------------------------------------------
+
+【Step 1】导入 POE 发货数据到数据库
+  脚本：finance/pipeline/run_import_poe_invoice.py
+  输入：D:\OneDrive\CrossBorderDocs_HK\06_Shipping_And_Export\POE_References\
+  操作：直接运行，无需修改参数
+  结果：POE 数据写入数据库 export_shipments 表
+
+  python finance/pipeline/run_import_poe_invoice.py
+
+
+【Step 2】导出 POE 成本填写模板 Excel
+  脚本：finance/pipeline/run_poe_order_export_excel.py
+  修改：打开脚本，在 POE_ID 列表中填入本批次的 POE_ID
+  输出：D:\OneDrive\CrossBorderDocs_UK\99_Backup\POE_TEMPLATES\{poe_id}_costs.xlsx
+
+  python finance/pipeline/run_poe_order_export_excel.py
+
+
+【Step 3】手工填写采购成本（人工操作）
+  打开 Step 2 生成的 {poe_id}_costs.xlsx
+  填写每款商品的采购单价（GBP）
+  保存并关闭文件
+
+
+【Step 4】将填好的成本数据导入数据库
+  脚本：finance/pipeline/run_poe_order_import_excel.py
+  输入：自动扫描 POE_TEMPLATES 目录下所有 *_costs.xlsx
+  操作：直接运行，无需修改参数
+  结果：成本数据写入数据库
+
+  python finance/pipeline/run_poe_order_import_excel.py
+
+  ⚠ 注意：必须在 Step 3 填好成本后才能执行此步，
+          否则 Step 5 生成 CI 时会因缺少成本数据而跳过。
+
+
+【Step 5】生成 CI（商业发票）和 EES PDF
+  脚本：finance/pipeline/run_poe_generate_ci_ess.py
+  操作：直接运行，无需修改参数
+  输出：D:\OneDrive\CrossBorderDocs_UK\06_Export_Proofs\{poe_id}_{date}\
+         ├── CI Excel / DOCX / PDF（需有成本数据才生成）
+         ├── EES PDF（无条件生成）
+         └── 原始 POE PDF（从 HK 目录复制）
+
+  python finance/pipeline/run_poe_generate_ci_ess.py
+
+
+----------------------------------------------------------------
+按需使用的辅助脚本（不在主链路上）
+----------------------------------------------------------------
+
+【补充生成缺失 EES / CI】
+  脚本：finance/pipeline/run_ees.py
+  用途：增量补生成。若 run_poe_generate_ci_ess 有漏网，用此脚本补跑。
+  操作：直接运行
+
+  python finance/pipeline/run_ees.py
+
+
+【生成 HK → UK 付款凭证】
+  脚本：finance/pipeline/run_payment_receipt_hk_uk.py
+  用途：HK 向 UK 汇款时生成付款凭证 DOCX
+  修改：打开脚本，修改 payment_date / amount_gbp / hk_ref 等参数
+  输出：D:\OneDrive\CrossBorderDocs_UK\04_PaymentProofs\HK_to_UK\
+
+  python finance/pipeline/run_payment_receipt_hk_uk.py
+
+
+【生成形式发票（Proforma Invoice）】
+  脚本：finance/pipeline/run_pi_generate.py
+  用途：按需生成 PI PDF，例如申请付款授权时使用
+  修改：打开脚本，修改 amount_gbp / inv_date 参数
+  输出：D:\OneDrive\CrossBorderDocs_UK\04_PaymentProofs\HK_PI\
+
+  python finance/pipeline/run_pi_generate.py
+
+
+【批量重命名供应商发票】
+  脚本：finance/pipeline/run_supplier_invoice_renamer.py
+  用途：从 PDF 中提取订单号/金额/日期，批量重命名发票文件
+  支持供应商：Camper / Clarks / ECCO / Amazon / ParcelBroker
+  修改：打开脚本，取消注释对应供应商的调用行，确认路径正确
+
+  python finance/pipeline/run_supplier_invoice_renamer.py
+
+
+----------------------------------------------------------------
+已停用脚本（保留供历史数据回溯）
+----------------------------------------------------------------
+
+  run_anna_import.py              — 导入 ANNA 银行交易（2026-01 后停用）
+  run_anna_group_transaction.py   — 整理 ANNA 对账单 PDF（同上）
+  run_anna_merge_generate_notes.py — ANNA + POE 对账 Excel（同上）
+  run_export_ci_anna.py           — 从 ANNA CSV 生成 CI（同上）
+
+
+----------------------------------------------------------------
+常见问题
+----------------------------------------------------------------
+
+Q: Step 5 运行后 CI 没有生成，只有 EES？
+A: 通常是 Step 4 的成本数据没有导入成功。
+   检查 *_costs.xlsx 是否已填写并保存，重新运行 Step 4 后再跑 Step 5。
+
+Q: run_ees.py 和 run_poe_generate_ci_ess.py 有什么区别？
+A: run_poe_generate_ci_ess.py 是主脚本，每次处理所有 POE。
+   run_ees.py 是增量脚本，只补生成文件不存在的 POE，速度更快。
+   建议主流程用前者，补跑时用后者。
+
+Q: 供应商发票重命名后文件在哪里？
+A: 原始文件在 99_Backup 目录保留不动，重命名后的副本复制到
+   03_Purchase_Records/01_Supplier_Invoices/ 对应供应商子目录。
+   rename_log.csv 记录了每个文件的处理结果。
+
+================================================================
