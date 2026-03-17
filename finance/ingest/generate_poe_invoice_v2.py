@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 from datetime import date, datetime
 
@@ -9,10 +10,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt, Cm
 
 from config import PGSQL_CONFIG          # 和 manage_export_shipments_costs 一样的数据库配置
-from finance_config import FINANCE_EES   # 出口方 / 收货方信息 + 银行信息
-
-# 利润率（UK → HK 批发的加成比例）
-MARGIN_RATE = 0.15
+from finance_config import FINANCE_EES, MARGIN_RATE, VAT_RATE   # 出口方 / 收货方信息 + 定价参数
 
 # 签名相关（和 anna_monthly_reports_v2 对齐）
 SIGN_NAME = "XIAODAN MA"
@@ -102,6 +100,24 @@ def load_poe_lines(poe_id: str) -> pd.DataFrame:
     return df_with_cost
 
 
+def _clean_description(desc: str) -> str:
+    """
+    去掉 ECMS Excel product_description 里混入的无意义数字：
+    - 大数字+'.00cm' / '+cm' / '+yards'（EAN 条形码、CNY 价格等被误当单位渲染）
+    - 例如 "2734351450112.00cm" -> ""
+    - 保留 "size 41" / "Size: 39" 等正常尺码描述
+    """
+    if not isinstance(desc, str):
+        return desc
+    # 去除：数字（可含小数）后直接跟 cm 或 yards，前面不是 "size" 关键词
+    cleaned = re.sub(r'(?<![Ss]ize\s)\b\d[\d,]*\.?\d*\s*(?:cm|yards)\b', '', desc)
+    # 去除残余的孤立大整数（7位以上，不是 size 后面的）
+    cleaned = re.sub(r'(?<![Ss]ize[\s:])\b\d{7,}\b', '', cleaned)
+    # 折叠多余空格和标点
+    cleaned = re.sub(r'[\s\-]+', ' ', cleaned).strip().strip('-').strip()
+    return cleaned
+
+
 def build_cost_and_price(df: pd.DataFrame) -> pd.DataFrame:
     """
     你在 Excel 填写的是含 VAT 的价格（gross price）。
@@ -113,8 +129,6 @@ def build_cost_and_price(df: pd.DataFrame) -> pd.DataFrame:
     """
     df = df.copy()
     df["quantity"] = df["quantity"].fillna(0).astype(int)
-
-    VAT_RATE = 0.20  # 英国标准 VAT 20%
 
     # 你填入的含税价（gross cost）
     df["gross_cost_unit"] = df["purchase_unit_cost_gbp"].astype(float)
@@ -293,7 +307,7 @@ def create_poe_invoice_docx(df: pd.DataFrame, output_path: Path) -> Path:
         "(the “Agreement”). The goods are sold by the UK Seller to the Hong Kong Buyer "
         "on a wholesale basis.\n\n"
         "Delivery Terms: FCA (ECMS UK warehouse), Incoterms® 2020.\n\n"
-        "Pricing Method: The unit prices are determined by applying the agreed cost-plus 15% "
+        f"Pricing Method: The unit prices are determined by applying the agreed cost-plus {int(MARGIN_RATE * 100)}% "
         "wholesale margin to the Seller's net landed cost, in accordance with the agreed Pricing Policy.\n\n"
         "VAT Treatment: This supply qualifies as a zero-rated export of goods for UK VAT "
         "purposes under HMRC Notice 703."
@@ -419,17 +433,22 @@ def generate_poe_invoice_and_report(poe_id: str, output_dir: str):
     out_dir.mkdir(parents=True, exist_ok=True)
 
     df_raw = load_poe_lines(poe_id)
+    df_raw["product_description"] = df_raw["product_description"].apply(_clean_description)
     df = build_cost_and_price(df_raw)
 
+    # 从数据中提取 POE 日期，用于文件名排序（格式 YYYY-MM-DD）
+    poe_date_str = pd.to_datetime(df["poe_date"].iloc[0]).strftime("%Y-%m-%d")
+    file_stem = f"PoE_{poe_date_str}_{poe_id}"
+
     # 1) Excel 明细
-    excel_path = out_dir / f"POE_CostBreakdown_{poe_id}.xlsx"
+    excel_path = out_dir / f"POE_CostBreakdown_{file_stem}.xlsx"
     excel_path = create_poe_cost_report(df, excel_path)
 
     # 2) 发票 DOCX + PDF
-    invoice_docx_path = out_dir / f"CommercialInvoice_PoE_{poe_id}.docx"
+    invoice_docx_path = out_dir / f"CommercialInvoice_{file_stem}.docx"
     invoice_docx_path = create_poe_invoice_docx(df, invoice_docx_path)
 
-    invoice_pdf_path = out_dir / f"CommercialInvoice_PoE_{poe_id}.pdf"
+    invoice_pdf_path = out_dir / f"CommercialInvoice_{file_stem}.pdf"
     create_invoice_pdf(invoice_docx_path, invoice_pdf_path)
 
     return excel_path, invoice_docx_path, invoice_pdf_path

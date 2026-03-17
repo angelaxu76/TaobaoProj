@@ -41,6 +41,11 @@ def export_poe_cost_template(poe_id: str, output_excel_path: str) -> str:
     output_path = Path(output_excel_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # 已存在则跳过，防止覆盖已填写的成本数据
+    if output_path.exists():
+        print(f"[跳过] 文件已存在，不覆盖: {output_path.name}")
+        return str(output_path.resolve())
+
     sql = """
         SELECT
             id,

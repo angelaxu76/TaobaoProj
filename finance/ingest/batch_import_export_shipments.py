@@ -212,8 +212,8 @@ def _parse_poe_meta_from_pdf(pdf_path: str) -> dict:
         if m:
             meta["poe_id"] = m.group(1)
 
-        # ---- MRN: 25GB 开头 ----
-        m = re.search(r"\b(25GB[A-Z0-9]{14,})\b", text)
+        # ---- MRN: yyGB... 开头（年份两位数字）----
+        m = re.search(r"\b(\d{2}GB[A-Z0-9]{14,})\b", text)
         if m:
             meta["poe_mrn"] = m.group(1)
 

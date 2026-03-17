@@ -2,7 +2,7 @@ from pathlib import Path
 from finance.ingest.manage_export_shipments_costs import import_poe_cost_from_excel
 
 # 这里就是你现在放 Excel 模板的目录
-BASE_DIR = Path(r"D:\OneDrive\CrossBorderDocs_UK\99_Backup\POE_TEMPLATES")
+BASE_DIR = Path(r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\99_Backup\POE_TEMPLATES")
 
 
 def main():

@@ -11,23 +11,42 @@ from finance.ingest.generate_poe_ees_pdf_v2 import generate_poe_ees_pdf
 from finance.ingest.generate_poe_ees_pdf_v2 import fetch_poe_header  # 复用 EES 的头信息查询函数
 
 # UK 这边 CI + EES 输出目录
-BASE_OUTPUT = Path(r"D:\OneDrive\CrossBorderDocs_UK\06_Export_Proofs")
+BASE_OUTPUT = Path(r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\06_Export_Proofs")
 
 # HK 那边原始 POE 文件根目录
-HK_POE_BASE = Path(r"D:\OneDrive\CrossBorderDocs_HK\06_Shipping_And_Export\POE_References")
+HK_POE_BASE = Path(r"C:\Users\angel\OneDrive\CrossBorderDocs_HK\06_Shipping_And_Export\POE_References")
+
+# ── 日期范围过滤（按 poe_date）────────────────────────────────────────
+# 留空字符串 "" 表示不限制该端，格式 "YYYY-MM-DD"
+DATE_FROM = "2025-11-30"
+DATE_TO   = "2026-05-01"
+# ──────────────────────────────────────────────────────────────────────
 
 
 def get_all_poe_ids():
     """
-    从 export_shipments 中取出所有存在记录的 POE_ID。
+    从 export_shipments 中取出 POE_ID，可按 poe_date 范围过滤。
+    DATE_FROM / DATE_TO 均为空时取全部。
     """
+    conditions = []
+    params = []
+    if DATE_FROM:
+        conditions.append("poe_date >= %s")
+        params.append(DATE_FROM)
+    if DATE_TO:
+        conditions.append("poe_date <= %s")
+        params.append(DATE_TO)
+
+    where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
     conn = psycopg2.connect(**PGSQL_CONFIG)
     cur = conn.cursor()
-    cur.execute("""
+    cur.execute(f"""
         SELECT DISTINCT poe_id
         FROM export_shipments
+        {where}
         ORDER BY poe_id
-    """)
+    """, params)
     poe_ids = [row[0] for row in cur.fetchall()]
     cur.close()
     conn.close()
