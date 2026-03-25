@@ -20,7 +20,9 @@ Outdoor & Country 采集器 - 重构版 (使用 BaseFetcher)
 
 from __future__ import annotations
 
+import atexit
 import re
+import threading
 from pathlib import Path
 from typing import Dict, Any
 from bs4 import BeautifulSoup
@@ -29,6 +31,26 @@ from selenium.common.exceptions import TimeoutException
 
 # 导入基类和工具
 from brands.barbour.core.base_fetcher import BaseFetcher, setup_logging
+
+# ── undetected_chromedriver 驱动池（按线程 id 隔离）──────────────────
+# OutdoorAndCountry 被 Cloudflare 保护，必须用 uc 绕过；
+# 标准 headless Selenium 会触发 Cloudflare managed challenge。
+_uc_drivers: dict = {}
+_uc_lock = threading.Lock()
+
+
+def _cleanup_uc_drivers():
+    with _uc_lock:
+        items = list(_uc_drivers.items())
+        _uc_drivers.clear()
+    for _, d in items:
+        try:
+            d.quit()
+        except Exception:
+            pass
+
+
+atexit.register(_cleanup_uc_drivers)
 
 # 导入站点特定的解析模块
 from brands.barbour.supplier.outdoorandcountry_parse_offer_info import parse_offer_info
@@ -62,20 +84,52 @@ class OutdoorAndCountryFetcher(BaseFetcher):
     MEN_ALPHA = ["S", "M", "L", "XL", "XXL", "XXXL"]
     MEN_NUM = [str(s) for s in range(32, 52, 2)]
 
+    def get_driver(self):
+        """
+        使用 undetected_chromedriver（非无头）代替标准 Selenium。
+        OutdoorAndCountry 受 Cloudflare 保护；headless Selenium 会触发
+        managed challenge，uc 在有窗口模式下可让 challenge JS 自动通过。
+        """
+        key = f"oc_uc_{threading.get_ident()}"
+        with _uc_lock:
+            if key not in _uc_drivers:
+                from common.browser.driver_auto import build_uc_driver
+                driver = build_uc_driver(
+                    headless=False,
+                    extra_options=[
+                        "--window-size=1920,1080",
+                        "--blink-settings=imagesEnabled=false",
+                        "--disable-notifications",
+                    ],
+                    verbose=True,
+                )
+                _uc_drivers[key] = driver
+                self.logger.info(f"🚗 [uc] undetected_chromedriver 已启动 (key={key})")
+            return _uc_drivers[key]
+
+    def quit_driver(self):
+        key = f"oc_uc_{threading.get_ident()}"
+        with _uc_lock:
+            driver = _uc_drivers.pop(key, None)
+        if driver:
+            try:
+                driver.quit()
+            except Exception:
+                pass
+
     def _fetch_html(self, url: str) -> str:
         """
-        等待 var stockInfo 出现后再返回 page_source。
-        OutdoorAndCountry 的 JS 数据由前端脚本动态注入，
-        固定 sleep(2s) 对后续页面不够用；改为最长等 15s。
+        导航到页面，等待 Cloudflare challenge 自动通过后 var stockInfo 出现。
+        超时上限 30s：challenge 解决约需 5-10s，之后页面正常渲染。
         """
         driver = self.get_driver()
         driver.get(url)
         try:
-            WebDriverWait(driver, 15).until(
+            WebDriverWait(driver, 30).until(
                 lambda d: "var stockInfo" in d.page_source
             )
         except TimeoutException:
-            self.logger.warning(f"等待 stockInfo 超时 (15s)，继续使用当前 page_source: {url}")
+            self.logger.warning(f"等待 stockInfo 超时 (30s)，继续使用当前 page_source: {url}")
         return driver.page_source
 
     def parse_detail_page(self, html: str, url: str) -> Dict[str, Any]:
