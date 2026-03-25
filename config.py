@@ -33,6 +33,12 @@ from cfg.brand_strategy import (
     BRAND_DISCOUNT,
 )
 
+from cfg.email_config import (
+    SMTP_HOST, SMTP_PORT,
+    EMAIL_SENDER, EMAIL_PASSWORD,
+    ECMS_RECIPIENTS,
+)
+
 from cfg.ai_config import (
     GRSAI_API_KEY, GRSAI_HOST,
     R2_PUBLIC_PREFIX,
@@ -73,4 +79,7 @@ __all__ = [
     # LinkFox AI换模特-2.0
     "LINKFOX_API_KEY", "LINKFOX_HOST",
     "LINKFOX_DEFAULT_SHOT_SUFFIXES", "LINKFOX_SCENE_STRENGTH",
+    # Email
+    "SMTP_HOST", "SMTP_PORT",
+    "EMAIL_SENDER", "EMAIL_PASSWORD", "ECMS_RECIPIENTS",
 ]
