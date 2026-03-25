@@ -24,6 +24,8 @@ import re
 from pathlib import Path
 from typing import Dict, Any
 from bs4 import BeautifulSoup
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException
 
 # 导入基类和工具
 from brands.barbour.core.base_fetcher import BaseFetcher, setup_logging
@@ -59,6 +61,22 @@ class OutdoorAndCountryFetcher(BaseFetcher):
     WOMEN_NUM = ["6", "8", "10", "12", "14", "16", "18", "20"]
     MEN_ALPHA = ["S", "M", "L", "XL", "XXL", "XXXL"]
     MEN_NUM = [str(s) for s in range(32, 52, 2)]
+
+    def _fetch_html(self, url: str) -> str:
+        """
+        等待 var stockInfo 出现后再返回 page_source。
+        OutdoorAndCountry 的 JS 数据由前端脚本动态注入，
+        固定 sleep(2s) 对后续页面不够用；改为最长等 15s。
+        """
+        driver = self.get_driver()
+        driver.get(url)
+        try:
+            WebDriverWait(driver, 15).until(
+                lambda d: "var stockInfo" in d.page_source
+            )
+        except TimeoutException:
+            self.logger.warning(f"等待 stockInfo 超时 (15s)，继续使用当前 page_source: {url}")
+        return driver.page_source
 
     def parse_detail_page(self, html: str, url: str) -> Dict[str, Any]:
         """
