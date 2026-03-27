@@ -118,26 +118,26 @@ def send_ecms_notification(
 
 
 def main():
-    send_ecms_notification(
-        shipment_ref = SHIPMENT_REF,
-        couriers     = [
-            ("884256064655", "Parcelforce"),
-            ("884256064656", "Parcelforce"),
-        ],
-        lp_file      = r"G:\temp\lp_numbers.txt",
-        ship_date    = SHIP_DATE,
-        dry_run      = False,
-    )
-
     # send_ecms_notification(
     #     shipment_ref = SHIPMENT_REF,
     #     couriers     = [
     #         ("884256064655", "Parcelforce"),
+    #         ("884256064656", "Parcelforce"),
     #     ],
     #     lp_file      = r"G:\temp\lp_numbers.txt",
     #     ship_date    = SHIP_DATE,
     #     dry_run      = False,
     # )
+
+    send_ecms_notification(
+        shipment_ref = SHIPMENT_REF,
+        couriers     = [
+            ("UH7209805", "Parcelforce"),
+        ],
+        lp_file      = r"G:\temp\lp_numbers.txt",
+        ship_date    = SHIP_DATE,
+        dry_run      = False,
+    )
 
 
 

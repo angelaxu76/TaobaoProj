@@ -352,7 +352,7 @@ def insert_offer(info, conn, missing_log: list) -> int:
         conn.rollback()
     return inserted
 
-def import_txt_for_supplier(supplier: str, dryrun: bool = False):
+def import_txt_for_supplier(supplier: str, dryrun: bool = False, full_sweep: bool = True):
     supplier = canonical_site(supplier) or supplier
     if supplier not in BARBOUR["TXT_DIRS"]:
         print(f"❌ 未找到 supplier: {supplier}")
@@ -411,8 +411,9 @@ def import_txt_for_supplier(supplier: str, dryrun: bool = False):
                     if not url_list:
                         continue
 
-                    print(f"🧹 软删除站点内本轮未出现的旧记录（按 URL 作用域）：{site} | URL数={len(url_list)}")
-
+                    # ── 阶段 1：URL 作用域软删除 ────────────────────────────────
+                    # 针对"本次抓到了该 URL，但某些 size 在 TXT 里消失了"的情况
+                    print(f"🧹 [1/2] URL 作用域软删除（size 缺失）：{site} | URL数={len(url_list)}")
                     if dryrun:
                         cur.execute("""
                             SELECT site_name, offer_url, size, last_seen
@@ -422,7 +423,7 @@ def import_txt_for_supplier(supplier: str, dryrun: bool = False):
                               AND last_seen < %s
                         """, (site, url_list, run_start_ts))
                         rows = cur.fetchall()
-                        print(f"[DryRun] {len(rows)} rows would be soft-deleted:")
+                        print(f"[DryRun] {len(rows)} rows would be soft-deleted (URL scope):")
                         for r in rows[:20]:
                             print(r)
                         if len(rows) > 20:
@@ -438,6 +439,37 @@ def import_txt_for_supplier(supplier: str, dryrun: bool = False):
                                AND last_seen  < %s
                         """, (site, url_list, run_start_ts))
                         print(f"   → 受影响行数: {cur.rowcount}")
+
+                    # ── 阶段 2：全站点范围软删除 ─────────────────────────────────
+                    # 针对"整个商品 URL 都没出现在本次 TXT 里（商品已下架）"的情况
+                    # full_sweep=True 表示本次是完整批量抓取，可安全地清零所有未更新记录
+                    if full_sweep:
+                        print(f"🧹 [2/2] 全站点范围软删除（URL 整体消失）：{site}")
+                        if dryrun:
+                            cur.execute("""
+                                SELECT site_name, offer_url, size, last_seen
+                                FROM barbour_offers
+                                WHERE site_name = %s
+                                  AND last_seen < %s
+                                  AND is_active = TRUE
+                            """, (site, run_start_ts))
+                            rows = cur.fetchall()
+                            print(f"[DryRun] {len(rows)} rows would be soft-deleted (full sweep):")
+                            for r in rows[:20]:
+                                print(r)
+                            if len(rows) > 20:
+                                print(f"...共 {len(rows)} 行，已省略 {len(rows)-20} 行")
+                        else:
+                            cur.execute("""
+                                UPDATE barbour_offers
+                                   SET is_active   = FALSE,
+                                       stock_count = 0,
+                                       last_checked = NOW()
+                                 WHERE site_name = %s
+                                   AND last_seen  < %s
+                                   AND is_active  = TRUE
+                            """, (site, run_start_ts))
+                            print(f"   → 受影响行数: {cur.rowcount}")
 
             conn.commit()
 

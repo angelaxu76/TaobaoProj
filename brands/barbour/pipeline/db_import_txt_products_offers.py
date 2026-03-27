@@ -19,14 +19,17 @@ def barbour_database_import_pipleline():
     # batch_import_txt_to_barbour_product("houseoffraser")
 
     print("步骤 4：将txt中数据导入barbour offers中，成为可以供应的仓库")
-    import_txt_for_supplier("barbour",False)
-    import_txt_for_supplier("outdoorandcountry",False)
-    import_txt_for_supplier("allweathers",False)
-    import_txt_for_supplier("houseoffraser",False)
-    import_txt_for_supplier("very",False)
-    import_txt_for_supplier("terraces",False)
-    import_txt_for_supplier("philipmorris",False)
-    import_txt_for_supplier("cho",False)
+    # full_sweep=True（默认）：本次是完整批量抓取，导入后对整个供应商做全范围软删除，
+    # 确保本次没出现 TXT 的商品（已下架）也被正确清零（stock_count=0, is_active=FALSE）。
+    # 如果只是增量更新部分商品，应传 full_sweep=False，避免误清零其他商品。
+    import_txt_for_supplier("barbour", False)
+    import_txt_for_supplier("outdoorandcountry", False)
+    import_txt_for_supplier("allweathers", False)
+    import_txt_for_supplier("houseoffraser", False)
+    import_txt_for_supplier("very", False)
+    import_txt_for_supplier("terraces", False)
+    import_txt_for_supplier("philipmorris", False)
+    import_txt_for_supplier("cho", False)
     
 if __name__ == "__main__":
     barbour_database_import_pipleline()
