@@ -19,7 +19,7 @@ from cfg.brands.barbour import BARBOUR
 
 
 def main():
-    excel_path              = r"D:\TB\Products\barbour\document\publication\barbour_publication_20260328_000150.xlsx"
+    excel_path              = r"D:\TB\Products\barbour\document\publication\barbour_publication_20260329_005611.xlsx"
     downloaded_dir          = r"D:\TB\Products\barbour\images_download"
     processed_dir           = r"D:\TB\Products\barbour\images_dummy"
     publish_ready_dir       = r"D:\TB\Products\barbour\repulibcation\images_selected"

@@ -31,21 +31,30 @@ R2_SHOT_SUBDIR = "product_front"
 SHOT_SUFFIXES = ["_front_1", "_front_2"]
 
 # 目标模特头部参考图列表（多个 URL 时按商品顺序轮流分配）
+# TARGET_MODEL_URLS = [
+#     "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_1.png",
+#     "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_2.png",
+#     "https://file-ai.linkfox.com/UPLOAD/MANAGE/ecd7ff06b596450197fb9305a4c37c7c.jpg?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3139313631323039333739333839333538303829",
+#     "https://file-ai.linkfox.com/UPLOAD/MANAGE/8f941970caa04ccc8fde3eca9a9fe2cc.jpg?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3138373130383439343336353336303132383029",
+#     # 可添加更多目标模特图：
+#     # "https://...",
+# ]
+
 TARGET_MODEL_URLS = [
-    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_1.png",
-    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_2.png",
-    "https://file-ai.linkfox.com/UPLOAD/MANAGE/ecd7ff06b596450197fb9305a4c37c7c.jpg?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3139313631323039333739333839333538303829",
-    "https://file-ai.linkfox.com/UPLOAD/MANAGE/8f941970caa04ccc8fde3eca9a9fe2cc.jpg?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3138373130383439343336353336303132383029",
+    "https://file-ai.linkfox.com/UPLOAD/MANAGE/e1b426f47bdc470795ba1b9ce77f636e.png?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3139313633383432323038353838303632373229",
+    "https://file-ai.linkfox.com/UPLOAD/MANAGE/2b599d034b26417a97fc9f6500a51927.png?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3139313634363239323131333930383934303829",
+    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/men_mode_1.png",
     # 可添加更多目标模特图：
     # "https://...",
 ]
+
 
 # ============================================================
 # 3. 与 ai_image 共享脚本的标准接口别名（无需修改）
 # ============================================================
 
 # 原始人物图本地目录（run_compare / run_find_unprocessed 读取原图用）
-PERSON_DIR       = BRAND_ROOT / "\classify\person"
+PERSON_DIR       = BRAND_ROOT / "classify" / "person"
 
 # 共享脚本使用的标准变量名（别名映射）
 FACESWAP_DIR     = LINKFOX_DIR          # 换模特输出目录
