@@ -126,5 +126,5 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("用法：python group_barbour_images.py \"D:\\TB\\Products\\barbour\\publication\\images\"")
         sys.exit(1)
-    images_dir = Path(sys.argv[1])
-    group_and_rename_images(images_dir, code_len=11, overwrite=True)
+    # images_dir = Path(sys.argv[1])
+    group_and_rename_images(r"D:\TB\Products\barbour\repulibcation\ALL", code_len=11, overwrite=True)

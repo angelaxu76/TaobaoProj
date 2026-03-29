@@ -302,25 +302,40 @@ if __name__ == "__main__":
 # === 读取商品编码列表（txt）===
 def _read_codes_file(codes_file: Path) -> list[str]:
     """
-    读取一个包含商品编码的txt文件。
+    读取包含商品编码的文件。优先使用 .txt，如果 .txt 不存在则尝试同名 .xlsx。
     支持：一行一个编码；或逗号/空格/制表符分隔；自动忽略空行与 # 注释行。
     返回：去重且保持顺序的编码列表（原样保留大小写，但内部匹配用 _norm_code）
     """
     import re
-    codes_raw = []
+    codes_file = Path(codes_file)
+    # 优先 txt，fallback xlsx
     if not codes_file.exists():
-        print(f"❌ 编码文件不存在：{codes_file}")
-        return codes_raw
+        alt = codes_file.with_suffix(".xlsx") if codes_file.suffix.lower() == ".txt" else codes_file.with_suffix(".txt")
+        if alt.exists():
+            print(f"⚠️  {codes_file.name} 不存在，改用 {alt.name}")
+            codes_file = alt
+        else:
+            print(f"❌ 编码文件不存在：{codes_file}")
+            return []
 
-    with open(codes_file, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            parts = re.split(r"[,\s]+", line)
-            for p in parts:
-                if p:
-                    codes_raw.append(p.strip())
+    codes_raw = []
+    if codes_file.suffix.lower() == ".xlsx":
+        import pandas as pd
+        df = pd.read_excel(codes_file, sheet_name=0, usecols=[0], header=0)
+        for val in df.iloc[:, 0].dropna():
+            p = str(val).strip()
+            if p:
+                codes_raw.append(p)
+    else:
+        with open(codes_file, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = re.split(r"[,\s]+", line)
+                for p in parts:
+                    if p:
+                        codes_raw.append(p.strip())
 
     # 去重并保持顺序（按规范化键判断）
     seen = set()
