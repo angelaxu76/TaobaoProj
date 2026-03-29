@@ -13,7 +13,7 @@ def pipeline_barbour():
     # excel_path = export_barbour_discounts_excel(0, 3, "LWX")
     # print(excel_path)
 
-    # excel_path = export_barbour_discounts_excel_multi(0, 3, "LWX,LSP,LWX,LWB,LCA,LOL")
+    # excel_path = export_barbour_discounts_excel_multi(0, 3, "LWX,LSP,LWX,LWB,LCA,LOL,LGI")
 
     # excel_path = export_barbour_discounts_excel_multi(0, 3, "MWX,MQU,MOL,MWB,MFL,MOS")
     # print(excel_path)
