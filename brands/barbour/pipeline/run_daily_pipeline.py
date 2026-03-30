@@ -22,8 +22,8 @@ from datetime import datetime
 # ══════════════════════════════════════════════════════════════════
 
 # ── 阶段开关 ──────────────────────────────────────────────────────
-RUN_A_CRAWL     = True   # 抓取供货商数据（耗时最长，若已抓过可关闭）
-RUN_B_IMPORT    = True   # TXT 导入 products + offers
+RUN_A_CRAWL     = False   # 抓取供货商数据（耗时最长，若已抓过可关闭）
+RUN_B_IMPORT    = False   # TXT 导入 products + offers
 RUN_C_INVENTORY = True   # 重建 supplier_map + inventory
 RUN_D_EXPORT    = True   # 导出库存 / 价格 Excel
 
