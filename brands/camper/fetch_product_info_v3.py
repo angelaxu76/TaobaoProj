@@ -37,6 +37,7 @@ MAX_WORKERS = 4  # 建议 3~5
 LOGIN_WAIT_SECONDS = 30  # 参数兼容保留（public 版不登录）
 
 DEBUG_ENABLED = False
+IGNORE_VOUCHER = False  # 设为 True 时跳过 voucherPrices，直接使用 prices.current/previous
 DEBUG_DIR = str(Path(SAVE_PATH).resolve().parent / "debug_camper")
 Path(DEBUG_DIR).mkdir(parents=True, exist_ok=True)
 
@@ -127,21 +128,22 @@ def pick_prices_from_product_sheet(product_sheet: dict) -> Tuple[float, float, s
                     best = cand
         return best
 
-    top = pick_from_voucher_dict(prices.get("voucherPrices") or {})
-    if top:
-        return top[0], top[1], top[2]
+    if not IGNORE_VOUCHER:
+        top = pick_from_voucher_dict(prices.get("voucherPrices") or {})
+        if top:
+            return top[0], top[1], top[2]
 
-    sizes = product_sheet.get("sizes") or []
-    best = None
-    for s in sizes:
-        if not isinstance(s, dict):
-            continue
-        cand = pick_from_voucher_dict(s.get("voucherPrices") or {})
-        if cand:
-            if best is None or (cand[0] - cand[1]) > (best[0] - best[1]):
-                best = cand
-    if best:
-        return best[0], best[1], best[2] + "__from_size"
+        sizes = product_sheet.get("sizes") or []
+        best = None
+        for s in sizes:
+            if not isinstance(s, dict):
+                continue
+            cand = pick_from_voucher_dict(s.get("voucherPrices") or {})
+            if cand:
+                if best is None or (cand[0] - cand[1]) > (best[0] - best[1]):
+                    best = cand
+        if best:
+            return best[0], best[1], best[2] + "__from_size"
 
     cur = _safe_float(prices.get("current"))
     prev = _safe_float(prices.get("previous"))
