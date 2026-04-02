@@ -257,10 +257,13 @@ def process_product_url_with_driver(driver, product_url: str):
     features_raw = data.get("features") or []
     feature_texts = []
     for f in features_raw:
-        value_html = (f.get("value") or "")
-        clean_text = BeautifulSoup(value_html, "html.parser").get_text(strip=True)
-        if clean_text:
-            feature_texts.append(clean_text)
+        name_text = BeautifulSoup(f.get("name") or "", "html.parser").get_text(strip=True)
+        value_text = BeautifulSoup(f.get("value") or "", "html.parser").get_text(strip=True)
+        if name_text and value_text:
+            feature_texts.append(f"{name_text}: {value_text}")
+        elif value_text:
+            feature_texts.append(value_text)
+        # skip features with name-only (section headers like bare "Outsole")
     feature_str = " | ".join(feature_texts) if feature_texts else "No Data"
 
     upper_material = "No Data"
