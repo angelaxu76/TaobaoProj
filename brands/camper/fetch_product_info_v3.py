@@ -33,11 +33,11 @@ HOME_URL = "https://www.camper.com/en_GB"
 PRODUCT_URLS_FILE = CAMPER["LINKS_FILE"]
 SAVE_PATH = CAMPER["TXT_DIR"]
 
-MAX_WORKERS = 4  # 建议 3~5
+DEFAULT_MAX_WORKERS = 8  # I/O 型抓取默认开高一点；不稳时可降到 4~6
 LOGIN_WAIT_SECONDS = 30  # 参数兼容保留（public 版不登录）
 
 DEBUG_ENABLED = False
-IGNORE_VOUCHER = False  # 设为 True 时跳过 voucherPrices，直接使用 prices.current/previous
+IGNORE_VOUCHER = True  # 设为 True 时跳过 voucherPrices，直接使用 prices.current/previous
 DEBUG_DIR = str(Path(SAVE_PATH).resolve().parent / "debug_camper")
 Path(DEBUG_DIR).mkdir(parents=True, exist_ok=True)
 
@@ -204,8 +204,19 @@ def shutdown_all_drivers():
 def process_product_url_with_driver(driver, product_url: str):
     print(f"\n🔍 正在访问: {product_url}")
     driver.get(product_url)
-    WebDriverWait(driver, 25).until(EC.presence_of_element_located((By.CSS_SELECTOR, "body")))
-    time.sleep(1.2)
+    wait = WebDriverWait(driver, 25)
+    wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "body")))
+    # 用页面关键数据就绪代替固定 sleep，避免每个商品额外等待 1.2 秒。
+    wait.until(
+        lambda d: bool(
+            d.execute_script(
+                """
+                const el = document.querySelector('script#__NEXT_DATA__[type="application/json"]');
+                return !!(el && el.textContent && el.textContent.trim().length > 0);
+                """
+            )
+        )
+    )
 
     dump_debug_page(driver, "PRE__" + product_url[-80:])
 
@@ -309,15 +320,28 @@ def process_product_url_with_driver(driver, product_url: str):
 # v3 Entry: PUBLIC multi-thread (no login)  ✅ 签名不变
 # =========================
 def camper_fetch_product_info(product_urls_file: Optional[str] = None,
-                              login_wait_seconds: int = LOGIN_WAIT_SECONDS):
+                              login_wait_seconds: int = LOGIN_WAIT_SECONDS,
+                              max_workers: int = DEFAULT_MAX_WORKERS,
+                              debug_enabled: Optional[bool] = None,
+                              links_file: Optional[str] = None):
+    del login_wait_seconds  # public 版保留兼容签名，但不使用
+
+    global DEBUG_ENABLED
+
+    if links_file is not None:
+        product_urls_file = links_file
     if product_urls_file is None:
         product_urls_file = PRODUCT_URLS_FILE
+    if debug_enabled is not None:
+        DEBUG_ENABLED = debug_enabled
+    if not isinstance(max_workers, int) or max_workers < 1:
+        raise ValueError(f"max_workers must be a positive int, got: {max_workers!r}")
 
     print(f"📄 使用链接文件: {product_urls_file}")
     with open(product_urls_file, "r", encoding="utf-8") as f:
         urls = [line.strip() for line in f if line.strip()]
 
-    print(f"🚀 开始多线程抓取：{len(urls)} 条，MAX_WORKERS={MAX_WORKERS}")
+    print(f"🚀 开始多线程抓取：{len(urls)} 条，MAX_WORKERS={max_workers}，DEBUG_ENABLED={DEBUG_ENABLED}")
 
     failed = []
 
@@ -338,7 +362,7 @@ def camper_fetch_product_info(product_urls_file: Optional[str] = None,
         return False, url, "unknown"
 
     try:
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
+        with ThreadPoolExecutor(max_workers=max_workers) as ex:
             fut_map = {ex.submit(worker, u): u for u in urls}
             for fut in as_completed(fut_map):
                 ok, url, err = fut.result()
