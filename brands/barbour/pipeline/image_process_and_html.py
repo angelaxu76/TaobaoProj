@@ -21,7 +21,7 @@ def main():
     code_file_path = r"D:\TB\Products\barbour\repulibcation\codes.txt"
 
     print("将图片 merge 到一张图片中")
-    batch_merge_images(BARBOUR["IMAGE_PROCESS"], BARBOUR["MERGED_DIR"], width=750)
+    # batch_merge_images(BARBOUR["IMAGE_PROCESS"], BARBOUR["MERGED_DIR"], width=750)
 
     print("生成产品详情卡 HTML")
     generate_html_from_codes_files("barbour", code_file_path, max_workers=2)

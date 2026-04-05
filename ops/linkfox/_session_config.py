@@ -28,8 +28,8 @@ R2_SHOT_SUBDIR = "product_front"
 # 原始拍摄图后缀列表（每个后缀对应一张原图，均会生成一张换模特图）
 #   ["_front_1"]              → 每款只处理 {code}_front_1.jpg
 #   ["_front_1", "_front_2"] → 每款处理两张
-# SHOT_SUFFIXES = ["_front_1", "_front_2"]
-SHOT_SUFFIXES = ["_front_2"]  
+SHOT_SUFFIXES = ["_front_1", "_front_2"]
+# SHOT_SUFFIXES = ["_front_1"]  
 
 # 目标模特头部参考图列表（多个 URL 时按商品顺序轮流分配）
 # TARGET_MODEL_URLS = [
@@ -41,22 +41,25 @@ SHOT_SUFFIXES = ["_front_2"]
 #     # "https://...",
 # ]
 
-# TARGET_MODEL_URLS = [
-#     "https://file-ai.linkfox.com/UPLOAD/MANAGE/e1b426f47bdc470795ba1b9ce77f636e.png?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3139313633383432323038353838303632373229",
-#     "https://file-ai.linkfox.com/UPLOAD/MANAGE/2b599d034b26417a97fc9f6500a51927.png?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3139313634363239323131333930383934303829",
-#     "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/men_mode_1.png",
-#     # 可添加更多目标模特图：
-#     # "https://...",
-# ]
+
+# 男性模特
+TARGET_MODEL_URLS = [
+    "https://file-ai.linkfox.com/UPLOAD/MANAGE/3e5b7430dd824ac79b9d398fc6ad699b.jpg?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3138373130373539393838303935383737313229",
+    "https://file-ai.linkfox.com/UPLOAD/MANAGE/10a4772452f949e5b73eeaad420d8323.jpg?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3139313634353933383934363338313832343029",
+    "https://file-ai.linkfox.com/UPLOAD/MANAGE/2d1b8b9e425e4a94a8c5217af9fcfa4d.png?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3139393832393437383839373437303636383829",
+    "https://file-ai.linkfox.com/UPLOAD/MANAGE/9fbd113379c14667a626ce5052500ab2.png?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3139313634363436323232393030373135353229",
+        # 可添加更多目标模特图：
+    # "https://...",
+]
 
 
 #  男士长头发
-TARGET_MODEL_URLS = [
-    "https://file-ai.linkfox.com/UPLOAD/MANAGE/18f55475298543e598c9a52227cbcd6d.png?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3139313634363233353237313032333431313229",
-    "https://file-ai.linkfox.com/UPLOAD/MANAGE/1198fbbdcafd44c8ada20aad86a46d8e.png?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3139313634363430333836313439323132313629",
-    # 可添加更多目标模特图：
-    # "https://...",
-]
+# TARGET_MODEL_URLS = [
+#     "https://file-ai.linkfox.com/UPLOAD/MANAGE/18f55475298543e598c9a52227cbcd6d.png?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3139313634363233353237313032333431313229",
+#     "https://file-ai.linkfox.com/UPLOAD/MANAGE/1198fbbdcafd44c8ada20aad86a46d8e.png?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3139313634363430333836313439323132313629",
+#     # 可添加更多目标模特图：
+#     # "https://...",
+# ]
 
 
 # ============================================================

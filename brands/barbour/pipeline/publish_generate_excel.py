@@ -31,7 +31,8 @@ def pipeline_barbour():
     # ── 步骤 1：导出折扣候选商品到 Excel ────────────────────────────
     # 取消注释需要的那一行（women / men）：
     # excel_path = export_barbour_discounts_excel_multi(0, 3, "LWX,LSP,LWB,LCA,LOL,LGI")
-    excel_path = export_barbour_discounts_excel_multi(0, 3, "MWX,MQU,MOL,MWB,MFL,MOS,MCA,MFL")
+    # excel_path = export_barbour_discounts_excel_multi(0, 3, "MWX,MQU,MOL,MWB,MFL,MOS,MCA,MFL")
+    excel_path = export_barbour_discounts_excel_multi(0, 3, "MSP,MCA")
     # print(excel_path)
 
     # ── 步骤 2：将 Excel 中的商品编码自动写入 codes.xlsx ────────────

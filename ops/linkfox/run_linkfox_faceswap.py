@@ -69,7 +69,7 @@ REAL_MODEL = True
 OUTPUT_NUM = 1
 
 # 并发线程数（建议 2~5；过高可能触发 API 限流）
-MAX_WORKERS = 5
+MAX_WORKERS = 8
 
 # ============================================================
 # Main

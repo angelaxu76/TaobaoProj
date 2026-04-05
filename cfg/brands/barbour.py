@@ -6,8 +6,8 @@ BARBOUR_BASE = BASE_DIR / "barbour"
 BARBOUR = {
     "BRAND": "barbour",
     "BASE": BARBOUR_BASE,
-	"IMAGE_FIRST_PRIORITY": ["front_1_faceswap", "front_0_faceswap", "7", "9"],
-    "IMAGE_DES_PRIORITY": ["8", "7", "6", "front_1_faceswap"],
+	"IMAGE_FIRST_PRIORITY": ["front_1_faceswap", "front_0_faceswap", "7", "9", "3", "6"],
+    "IMAGE_DES_PRIORITY": ["8", "7", "6", "front_1_faceswap","front_0_faceswap", "9", "3",],
     "TXT_DIR": BARBOUR_BASE / "document" /"TXT",
     "TXT_DIR_ALL": BARBOUR_BASE / "publication" /"TXT",
     "OUTPUT_DIR": BARBOUR_BASE / "repulibcation",
