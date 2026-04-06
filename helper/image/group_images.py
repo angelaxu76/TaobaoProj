@@ -9,7 +9,7 @@ source_dir = r"D:\TB\Products\barbour\repulibcation\images_flat"
 target_root_dir = r"D:\TB\Products\barbour\repulibcation\images_flat分组图片"
 
 # 每组的图片数量
-group_size = 220
+group_size = 300
 
 # 支持的图片扩展名
 image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
