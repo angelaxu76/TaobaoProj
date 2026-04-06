@@ -29,20 +29,20 @@ from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import
 from channels.jingya.maintenance.generate_missing_links_for_brand import generate_missing_links_for_brand
 
 def main():
-    # print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录 (ECCO)")
-    # backup_and_clear_brand_dirs(ECCO)
+    print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录 (ECCO)")
+    backup_and_clear_brand_dirs(ECCO)
 
-    # print("\n🟡 Step: 2️⃣ 抓取 ECCO 商品链接")
-    # ecco_get_links()
+    print("\n🟡 Step: 2️⃣ 抓取 ECCO 商品链接")
+    ecco_get_links()
 
-    # print("\n🟡 Step: 3️⃣ 抓取 ECCO 商品信息 & 生成 TXT")
-    # ecco_fetch_info()
+    print("\n🟡 Step: 3️⃣ 抓取 ECCO 商品信息 & 生成 TXT")
+    ecco_fetch_info()
 
 
-    # print("\n🟡 Step: 3️⃣ 将鲸牙存在但TXT中不存在的商品抓一遍")
-    # missing_product_link = r"D:\TB\Products\ecco\publication\missing_product_links.txt";
-    # generate_missing_links_for_brand("ecco",missing_product_link )
-    # ecco_fetch_info(missing_product_link )
+    print("\n🟡 Step: 3️⃣ 将鲸牙存在但TXT中不存在的商品抓一遍")
+    missing_product_link = r"D:\TB\Products\ecco\publication\missing_product_links.txt";
+    generate_missing_links_for_brand("ecco",missing_product_link )
+    ecco_fetch_info(missing_product_link )
 
     print("\n🟡 Step: 4️⃣ TXT 导入数据库（鲸芽专用结构）")
     import_txt_to_db_supplier("ecco", exchange_rate=9.4, delivery_cost=7)
