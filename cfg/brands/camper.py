@@ -1,4 +1,4 @@
-from ..paths import BASE_DIR
+from ..paths import BASE_DIR, GEI_SHARED_BASE
 from ..db_config import PGSQL_CONFIG
 
 
@@ -7,6 +7,7 @@ CAMPER_BASE = BASE_DIR / "camper"
 CAMPER = {
     "BRAND": "camper",
     "BASE": CAMPER_BASE,
+    "GEI_DIR": GEI_SHARED_BASE / "camper",
     "IMAGE_FIRST_PRIORITY": ["F", "C", "L", "T"],
     "IMAGE_DES_PRIORITY": ["C", "F", "L", "T"],
     "TXT_DIR": CAMPER_BASE / "publication" / "TXT",

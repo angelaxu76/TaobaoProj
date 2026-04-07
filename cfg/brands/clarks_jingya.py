@@ -1,4 +1,4 @@
-from ..paths import BASE_DIR
+from ..paths import BASE_DIR, GEI_SHARED_BASE
 from ..db_config import PGSQL_CONFIG
 
 
@@ -7,6 +7,7 @@ CLARKS_JINGYA_BASE = BASE_DIR / "clarks_jingya"
 CLARKS_JINGYA = {
     "BRAND": "clarks_jingya",
     "BASE": CLARKS_JINGYA_BASE,
+    "GEI_DIR": GEI_SHARED_BASE / "clarks_jingya",
     "IMAGE_PRIORITY": ["1", "6", "4", "2"],
     "IMAGE_FIRST_PRIORITY": ["1", "6", "4", "2"],
     "IMAGE_DES_PRIORITY": ["6", "1", "4", "2"],

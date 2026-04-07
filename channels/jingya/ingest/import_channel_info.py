@@ -77,7 +77,7 @@ def insert_jingyaid_to_db(brand: str, debug: bool = False):
         raise ValueError(f"❌ 不支持的品牌: {brand}")
 
     config = BRAND_CONFIG[brand]
-    document_dir = Path(config["BASE"]) / "document"
+    document_dir = Path(config.get("GEI_DIR", Path(config["BASE"]) / "document"))
     output_dir = Path(config["OUTPUT_DIR"])
     output_dir.mkdir(parents=True, exist_ok=True)
     db_config = config["PGSQL_CONFIG"]
@@ -220,7 +220,7 @@ def insert_missing_products_with_zero_stock(brand: str):
         raise ValueError(f"❌ 不支持的品牌: {brand}")
 
     config = BRAND_CONFIG[brand]
-    document_dir = Path(config["BASE"]) / "document"
+    document_dir = Path(config.get("GEI_DIR", Path(config["BASE"]) / "document"))
     output_dir = Path(config["OUTPUT_DIR"])
     output_dir.mkdir(parents=True, exist_ok=True)
 

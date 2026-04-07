@@ -1,4 +1,4 @@
-from ..paths import BASE_DIR
+from ..paths import BASE_DIR, GEI_SHARED_BASE
 from ..db_config import PGSQL_CONFIG
 
 # === GEOX 品牌路径配置 ===
@@ -6,6 +6,7 @@ GEOX_BASE = BASE_DIR / "geox"
 GEOX = {
     "BRAND": "geox",
     "BASE": GEOX_BASE,
+    "GEI_DIR": GEI_SHARED_BASE / "geox",
     "IMAGE_PRIORITY": ["1", "6", "4", "2"],
     "IMAGE_FIRST_PRIORITY": ["07", "00", "01", "2"],
     "IMAGE_DES_PRIORITY": ["01", "00", "07", "2"],
