@@ -610,7 +610,7 @@ def process_one(url: str, idx: int, total: int):
             "Feature":             feature,
             "Source URL":          url
         }
-        format_txt(info, out_path, brand="clarks_jingya")
+        format_txt(info, out_path, brand="clarks")
         print(f"✅ 写入: {out_path.name}")
 
     except Exception as e:
@@ -639,7 +639,7 @@ def process_one(url: str, idx: int, total: int):
                 "Feature":             "",
                 "Source URL":          url
             }
-            format_txt(info, out_path, brand="clarks_jingya")
+            format_txt(info, out_path, brand="clarks")
             print(f"⚠️ 已写占位: {out_path.name}")
         except Exception:
             pass

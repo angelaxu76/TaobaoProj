@@ -14,7 +14,7 @@ GROUP_SIZE = 500
 
 BRAND_MAP = {
     "barbour": "Barbour",
-    "clarks_jingya": "clarks其乐",
+    "clarks": "clarks其乐",
     "camper": "camper看步",
     "clarks": "clarks其乐",
     "ecco": "ecco爱步",

@@ -6,13 +6,13 @@ BRAND_STRATEGY = {
     "camper": "min_price_times_ratio",
     "ecco": "discount_or_original_ratio",
     "geox": "discount_priority",
-    "clarks_jingya": "discount_priority",
+    "clarks": "discount_priority",
 }
 
 BRAND_NAME_MAP = {
     "camper": ("Camper", "看步"),
     "clarks": ("Clarks", "其乐"),
-    "clarks_jingya": ("Clarks", "其乐"),
+    "clarks": ("Clarks", "其乐"),
     "geox": ("GEOX", "健乐士"),
     "ecco": ("ECCO", "爱步"),
     "barbour": ("Barbour", "巴伯尔"),
@@ -25,6 +25,6 @@ BRAND_NAME_MAP = {
 BRAND_DISCOUNT = {
     "camper": 0.75,
     "geox": 1,
-    "clarks_jingya": 1.0,
+    "clarks": 1.0,
     "ecco": 0.9,
 }

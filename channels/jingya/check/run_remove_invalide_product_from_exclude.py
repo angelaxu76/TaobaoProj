@@ -10,9 +10,9 @@ def taobao_price_validate():
 
     # print("\\n🟡 Step:clarks jingya")
     # exclude_excel_rows_by_txt(
-    # excel_path=r"D:\TB\Products\clarks_jingya\document\exclude.xlsx",
-    # txt_path=r"D:\TB\Products\clarks_jingya\document\exclude_codes.txt",
-    # output_path=r"D:\TB\Products\clarks_jingya\document\exclude.xlsx",  # 覆盖
+    # excel_path=r"D:\TB\Products\clarks\document\exclude.xlsx",
+    # txt_path=r"D:\TB\Products\clarks\document\exclude_codes.txt",
+    # output_path=r"D:\TB\Products\clarks\document\exclude.xlsx",  # 覆盖
     # )
 
     # print("\\n🟡 Step: camper")
@@ -31,9 +31,9 @@ def taobao_price_validate():
 
     # print("\\n🟡 geox")
     # exclude_excel_rows_by_txt(
-    # excel_path=r"D:\TB\Products\clarks_jingya\document\exclude.xlsx",
-    # txt_path=r"D:\TB\Products\clarks_jingya\document\exclude_codes.txt",
-    # output_path=r"D:\TB\Products\clarks_jingya\document\exclude.xlsx",  # 覆盖
+    # excel_path=r"D:\TB\Products\clarks\document\exclude.xlsx",
+    # txt_path=r"D:\TB\Products\clarks\document\exclude_codes.txt",
+    # output_path=r"D:\TB\Products\clarks\document\exclude.xlsx",  # 覆盖
     # )
 
 

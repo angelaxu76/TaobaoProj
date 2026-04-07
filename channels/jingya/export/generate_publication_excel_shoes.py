@@ -52,7 +52,7 @@ def generate_publication_excels(brand: str):
     if brand not in BRAND_CONFIG:
         raise ValueError(f"❌ 不支持的品牌: {brand}")
 
-    if brand == "clarks_jingya":
+    if brand == "clarks":
         MIN_TOTAL_STOCK = 11
     elif brand == "camper":
         MIN_TOTAL_STOCK = 11

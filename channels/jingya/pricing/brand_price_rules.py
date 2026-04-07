@@ -59,7 +59,7 @@ def compute_brand_base_price(brand: str, original_gbp, discount_gbp) -> float:
         camper        -> min_price_times_ratio
         ecco          -> discount_priority
         geox          -> discount_priority
-        clarks_jingya -> min_price_times_ratio
+        clarks -> min_price_times_ratio
       这些都在 config.BRAND_STRATEGY 中定义。
     """
     brand = (brand or "").lower().strip()

@@ -28,9 +28,9 @@ def generate_discouted_product():
 
 
     export_discount_itemids_to_ztc_txts(
-        brand="clarks_jingya",
+        brand="clarks",
         min_discount_percent=29,
-        taobao_store_excels_dir=r"D:\TB\Products\clarks_jingya\document\store_prices",
+        taobao_store_excels_dir=r"D:\TB\Products\clarks\document\store_prices",
         output_txt_dir=r"D:\TB\推广\discount",
         only_in_stock=True,
     )

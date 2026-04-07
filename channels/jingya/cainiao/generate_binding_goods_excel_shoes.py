@@ -23,7 +23,7 @@ TEMPLATE_COLUMNS = [
 ]
 
 BRAND_MAP = {
-    "clarks_jingya": "clarks其乐",
+    "clarks": "clarks其乐",
     "camper": "camper看步",
     "clarks": "clarks其乐",
     "ecco": "ecco爱步",

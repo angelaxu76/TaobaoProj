@@ -2,7 +2,7 @@ import os
 import psycopg2
 import pandas as pd
 from pathlib import Path
-from config import CAMPER, CLARKS_JINGYA, ECCO, GEOX,BRAND_CONFIG
+from config import CAMPER, CLARKS, ECCO, GEOX,BRAND_CONFIG
 # 顶部补充
 import re
 
@@ -67,7 +67,7 @@ def insert_jingyaid_to_db(brand: str, debug: bool = False):
     """
     从 GEI@sales_catalogue_export@*.xlsx 更新数据库中的渠道绑定信息
     参数:
-        brand: 品牌名（如 clarks_jingya）
+        brand: 品牌名（如 clarks）
         debug: 是否开启调试模式，若为 True，则打印跳过的编码与尺码并保存日志
     """
     import datetime

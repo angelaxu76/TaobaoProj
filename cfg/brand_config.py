@@ -1,6 +1,6 @@
 from cfg.brands.barbour import BARBOUR
 from cfg.brands.camper import CAMPER
-from cfg.brands.clarks_jingya import CLARKS_JINGYA
+from cfg.brands.clarks import CLARKS
 from cfg.brands.geox import GEOX
 from cfg.brands.ecco import ECCO
 from cfg.brands.reiss import REISS
@@ -9,7 +9,7 @@ from cfg.brands.marksandspencer import MARKSANDSPENCER
 
 
 BRAND_CONFIG = {
-    "clarks_jingya": CLARKS_JINGYA,
+    "clarks": CLARKS,
     "camper": CAMPER,
     "geox": GEOX,
     "ecco": ECCO,

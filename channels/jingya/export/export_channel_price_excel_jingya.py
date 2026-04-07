@@ -497,7 +497,7 @@ def export_channel_price_by_sku(
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="导出鲸芽渠道价格更新 Excel（固定表头/分文件）")
-    parser.add_argument("--brand", required=True, help="品牌名，例如 camper / clarks_jingya / geox / barbour")
+    parser.add_argument("--brand", required=True, help="品牌名，例如 camper / clarks / geox / barbour")
     parser.add_argument("--output-dir", default=None, help="可选，导出目录（默认 BRAND_CONFIG[brand]['OUTPUT_DIR']）")
     args = parser.parse_args()
     path = export_jiangya_channel_prices(args.brand, args.output_dir)

@@ -193,7 +193,7 @@ def find_image_path(code, image_dir: Path, brand: str):
         return PLACEHOLDER_IMG
 
     # ==== Clarks-Jingya 特殊逻辑：取最大数字后缀的图片 ====
-    if brand.lower() == "clarks_jingya":
+    if brand.lower() == "clarks":
         pattern = re.compile(rf"^{re.escape(code)}_(\d+)\.jpg$", re.IGNORECASE)
         max_num = -1
         best_file = None
@@ -512,7 +512,7 @@ def generate_html_from_codes_files(brand: str, codes_file: str | Path, max_worke
     """
     根据“商品编码列表txt”选择对应TXT并生成HTML。
     路径与 generate_html_from_images 一致：读取 BRAND_CONFIG[brand] 的 TXT/IMAGE/HTML 目录。
-    :param brand: 品牌名（如 'camper', 'barbour', 'clarks_jingya'）
+    :param brand: 品牌名（如 'camper', 'barbour', 'clarks'）
     :param codes_file: 商品编码列表txt路径（如 D:\\TB\\Products\\camper\\repulibcation\\publication_codes.txt）
     :param max_workers: 线程数
     """

@@ -149,7 +149,7 @@ MAX_FEATURES = 3
 BRAND_SHORT_CODE_RULE = {
     "ecco": {"mode": "ecco_6", "enable": True},
     "camper": {"mode": "style", "enable": True},
-    "clarks_jingya": {"mode": "style", "enable": True},
+    "clarks": {"mode": "style", "enable": True},
     "default": {"mode": "style", "enable": False},
 }
 

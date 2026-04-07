@@ -21,7 +21,7 @@ TaobaoProj/
 ├── brands/         各品牌专属逻辑（抓取、数据库、发布流水线）
 │   ├── barbour/
 │   ├── camper/
-│   ├── clarks_Jingya/
+│   ├── clarks/
 │   ├── ecco/
 │   ├── geox/
 │   ├── marksandspencer/
@@ -129,7 +129,7 @@ from config import BRAND_CONFIG, BRAND_NAME_MAP, PGSQL_CONFIG
 ## 数据库
 
 - PostgreSQL，host: `192.168.1.44:5432`，dbname: `taobao_inventory_db`（当前 active）
-- 各品牌独立表：`camper_inventory`、`barbour_inventory`、`clarks_jingya_inventory` 等
+- 各品牌独立表：`camper_inventory`、`barbour_inventory`、`clarks_inventory` 等
 - 连接通过 `psycopg2`，配置见 `cfg/db_config.py`
 
 ---
@@ -189,6 +189,6 @@ from config import BRAND_CONFIG, BRAND_NAME_MAP, PGSQL_CONFIG
 - Python 3.13，Windows 11，ChromeDriver 路径：`D:\chromedriver\chromedriver.exe`
 - 汇率固定在 `cfg/settings.py`（EXCHANGE_RATE = 9.7），不要硬编码
 - `_legacy/` 和 `*/legacy/` 目录内的脚本**不维护**，只做参考
-- 品牌 key 统一小写：`"barbour"`, `"camper"`, `"clarks_jingya"`, `"ecco"`, `"geox"`
+- 品牌 key 统一小写：`"barbour"`, `"camper"`, `"clarks"`, `"ecco"`, `"geox"`
 - 所有 TXT 商品文件编码为 UTF-8
 - 新增业务脚本优先放 `channels/jingya/` 对应子目录或 `ops/`，不放 `helper/`

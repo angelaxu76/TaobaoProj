@@ -98,7 +98,7 @@ STYLE_EXTRACTORS = {
     "ecco": style_ecco,
     "geox": style_geox,
     "clarks": style_clarks,
-    "clarks_jingya": style_clarks,
+    "clarks": style_clarks,
 }
 
 def extract_style_name(brand_key: str, title_en: str, content: str) -> str:

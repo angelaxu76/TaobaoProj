@@ -352,7 +352,7 @@ def generate_first_page_from_codes_files(brand: str, codes_file: str | Path, max
     """
     根据“商品编码列表txt”生成首屏 HTML。
     图片与输出目录沿用 BRAND_CONFIG[brand]（与 generate_html_for_first_page 一致）。
-    :param brand: 品牌（如 'camper', 'barbour', 'clarks_jingya'）
+    :param brand: 品牌（如 'camper', 'barbour', 'clarks'）
     :param codes_file: 商品编码列表txt路径（如 D:\\TB\\Products\\camper\\repulibcation\\publication_codes.txt）
     :param max_workers: 线程数
     """

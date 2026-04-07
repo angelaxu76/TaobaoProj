@@ -17,7 +17,7 @@ GOODS_DIR = Path(r"D:\TB\taofenxiao\goods")
 INPUT_PREFIX = "货品导出"
 INPUT_SUFFIX = ".xlsx"
 
-DB_TABLE = "clarks_jingya_inventory"
+DB_TABLE = "clarks_inventory"
 DB_CHANNEL_FIELD = "channel_item_id"
 
 COL_NAME = "货品名称"

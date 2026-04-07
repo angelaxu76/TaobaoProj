@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-鞋类品牌（camper / clarks_jingya）专用：
+鞋类品牌（camper / clarks）专用：
 - 从品牌 inventory 表读取基础信息（config.BRAND_CONFIG[brand]["TABLE_NAME"]）
 - 合并 "货品导出*.xlsx"，生成严格按淘宝菜鸟模板列名/顺序的 Excel：
   列顺序严格为：
@@ -24,7 +24,7 @@ import psycopg2
 from config import BRAND_CONFIG
 
 # ======================= ✅【参数区】=======================
-BRAND = "camper"                         # camper 或 clarks_jingya
+BRAND = "camper"                         # camper 或 clarks
 GOODS_DIR = Path(r"D:/TB/taofenxiao/goods")
 GROUP_SIZE = 500
 # ========================================================
@@ -32,7 +32,7 @@ GROUP_SIZE = 500
 # 中文品牌展示名
 BRAND_MAP = {
     "camper": "camper看步",
-    "clarks_jingya": "clarks其乐",
+    "clarks": "clarks其乐",
     "clarks": "clarks其乐",
     "ecco": "ecco爱步",
     "geox": "geox健乐士",

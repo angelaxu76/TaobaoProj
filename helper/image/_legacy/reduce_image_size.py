@@ -15,8 +15,8 @@ from PIL import Image
 # ============================================================
 # 修改这里
 # ============================================================
-INPUT_DIR  = r"D:\TB\Products\clarks_jingya\publication\image_cutter分组图片\group_5"
-OUTPUT_DIR = r"D:\TB\Products\clarks_jingya\publication\image_cutter分组图片\group_5_compressed"
+INPUT_DIR  = r"D:\TB\Products\clarks\publication\image_cutter分组图片\group_5"
+OUTPUT_DIR = r"D:\TB\Products\clarks\publication\image_cutter分组图片\group_5_compressed"
 TARGET_PX   = 1500        # 输出图片的最大边长（像素）；0 = 不缩放
 TARGET_KB   = 300         # 每张图片的目标大小上限（KB）；0 = 不压缩
 MIN_QUALITY = 65          # JPEG 最低质量下限（低于此值电商平台可能拒绝，建议 60~75）

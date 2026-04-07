@@ -24,7 +24,7 @@ LOG_DIR = Path(r"D:\temp\TaobaoPipelineLogs\TaobaoProj")
 
 PIPELINES: dict[str, str] = {
     "camper": "brands/camper/pipeline/prepare_jingya_listing.py",
-    "clarks": "brands/clarks_Jingya/pipeline/prepare_jingya_listing.py",
+    "clarks": "brands/clarks/pipeline/prepare_jingya_listing.py",
     "ecco":   "brands/ecco/pipeline/prepare_jingya_listing.py",
     "geox":   "brands/geox/pipeline/prepare_jingya_listing.py",
 }

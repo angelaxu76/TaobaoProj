@@ -10,13 +10,13 @@ import re
 import json
 import requests
 from bs4 import BeautifulSoup
-from config import CLARKS_JINGYA
+from config import CLARKS
 from common.ingest.txt_writer import format_txt
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
-LINK_FILE = CLARKS_JINGYA["BASE"] / "publication" / "product_links.txt"
-TXT_DIR = CLARKS_JINGYA["TXT_DIR"]
-BRAND = CLARKS_JINGYA["BRAND"]
+LINK_FILE = CLARKS["BASE"] / "publication" / "product_links.txt"
+TXT_DIR = CLARKS["TXT_DIR"]
+BRAND = CLARKS["BRAND"]
 
 # 成人款 UK→EU 映射（保持原来不变）
 UK_TO_EU_CM = {

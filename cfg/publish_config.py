@@ -34,7 +34,7 @@ PUBLISH_RULES_BASE = {
 
 # 品牌发布阈值覆盖（按你 generate_publication_excel.py 里的逻辑先写上）
 PUBLISH_RULES_BY_BRAND = {
-    "clarks_jingya": {"MIN_TOTAL_STOCK": 11},
+    "clarks": {"MIN_TOTAL_STOCK": 11},
     "camper": {"MIN_TOTAL_STOCK": 35},
     "geox": {"MIN_TOTAL_STOCK": 11},
 }

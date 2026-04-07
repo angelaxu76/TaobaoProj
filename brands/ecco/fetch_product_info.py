@@ -16,7 +16,7 @@ from bs4 import BeautifulSoup
 import json
 
 # ===== 你本地已有的写入器：保持与现有工程兼容 =====
-from common.ingest.txt_writer import format_txt  # format_txt(info, filepath, brand="clarks_jingya")
+from common.ingest.txt_writer import format_txt  # format_txt(info, filepath, brand="clarks")
 
 # ===== 路径配置（按需改）=====
 LINKS_FILE = ECCO["LINKS_FILE"]
@@ -798,7 +798,7 @@ def process_one(url: str, idx: int, total: int):
             "Feature": feature,
             "Source URL": url
         }
-        format_txt(info, out_path, brand="clarks_jingya")
+        format_txt(info, out_path, brand="clarks")
         print(f"✅ 写入: {out_path.name}")
 
     except Exception as e:
@@ -827,7 +827,7 @@ def process_one(url: str, idx: int, total: int):
                 "Feature": "",
                 "Source URL": url
             }
-            format_txt(info, out_path, brand="clarks_jingya")
+            format_txt(info, out_path, brand="clarks")
             print(f"⚠️ 已写占位: {out_path.name}")
         except Exception:
             pass

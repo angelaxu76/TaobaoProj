@@ -13,7 +13,7 @@ def taobao_price_validate():
 
     # clarks 英国伦敦代购
     check_taobao_item_price_diff(
-    brand="clarks_jingya",
+    brand="clarks",
     taobao_excel_path=r"D:\TB\maintain\store_prices_export\英国伦敦代购clarks.xlsx",
     output_report_path=r"D:\TB\maintain\store_prices_report\英国伦敦代购clarks_report.xlsx",
     )
@@ -45,7 +45,7 @@ def taobao_price_validate():
 
     # clarks 五小剑
     check_taobao_item_price_diff(
-    brand="clarks_jingya",
+    brand="clarks",
     taobao_excel_path=r"D:\TB\maintain\store_prices_export\五小剑clarks.xlsx",
     output_report_path=r"D:\TB\maintain\store_prices_report\五小剑clarks_report.xlsx",
     )
@@ -75,9 +75,9 @@ def taobao_price_validate():
 
 
     # exclude_excel_rows_by_txt(
-    # excel_path=r"D:\TB\Products\clarks_jingya\document\exclude.xlsx",
-    # txt_path=r"D:\TB\Products\clarks_jingya\document\exclude_codes.txt",
-    # output_path=r"D:\TB\Products\clarks_jingya\document\exclude.xlsx",  # 覆盖
+    # excel_path=r"D:\TB\Products\clarks\document\exclude.xlsx",
+    # txt_path=r"D:\TB\Products\clarks\document\exclude_codes.txt",
+    # output_path=r"D:\TB\Products\clarks\document\exclude.xlsx",  # 覆盖
     # )
 
 

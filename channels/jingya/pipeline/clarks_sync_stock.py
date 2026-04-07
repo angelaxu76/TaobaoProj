@@ -9,15 +9,15 @@ from datetime import datetime
 
 import psycopg2  # 用于查询数据库
 
-from config import CLARKS_JINGYA
+from config import CLARKS
 from channels.jingya.ingest.import_channel_info import insert_jingyaid_to_db, insert_missing_products_with_zero_stock
 from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
-from brands.clarks_Jingya.collect_product_links import generate_product_links
-from brands.clarks_Jingya.fetch_product_info import clarks_fetch_info
+from brands.clarks.collect_product_links import generate_product_links
+from brands.clarks.fetch_product_info import clarks_fetch_info
 from channels.jingya.ingest.import_txt_to_db import import_txt_to_db_supplier
 
 # ================== 常量配置 ==================
-BASE_DIR = CLARKS_JINGYA["BASE"]
+BASE_DIR = CLARKS["BASE"]
 PUBLICATION_DIR = BASE_DIR / "publication"
 REPUB_DIR = BASE_DIR / "repulibcation"
 BACKUP_DIR = BASE_DIR / "backup"
@@ -36,8 +36,8 @@ GENDER_RUNS = [
     },
 ]
 
-DB_CFG = CLARKS_JINGYA["PGSQL_CONFIG"]
-TABLE_NAME = CLARKS_JINGYA["TABLE_NAME"]
+DB_CFG = CLARKS["PGSQL_CONFIG"]
+TABLE_NAME = CLARKS["TABLE_NAME"]
 
 PENDING_THRESHOLD = 5        # 容忍未更新上限
 MAX_RERUNS = 5               # 最多额外循环次数
@@ -197,22 +197,22 @@ def run_until_threshold(gender: str, process_name: str, success_file: Path):
 # ================== 主流程 ==================
 def main():
     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    backup_and_clear_brand_dirs(CLARKS_JINGYA)
+    backup_and_clear_brand_dirs(CLARKS)
 
     print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    generate_product_links("clarks_jingya")
+    generate_product_links("clarks")
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
     clarks_fetch_info()
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库（库存<2 置 0）")
-    import_txt_to_db_supplier("clarks_jingya")
+    import_txt_to_db_supplier("clarks")
 
     print("\n🟡 Step: 5️⃣ 绑定渠道 SKU 信息（导入鲸芽 Excel）")
-    insert_jingyaid_to_db("clarks_jingya")
+    insert_jingyaid_to_db("clarks")
 
     print("\n🟡 Step: 5️⃣ 将最新TXT中没有的产品，说明刚商品已经下架，但鲸芽这边没办法删除，全部补库存为0")
-    insert_missing_products_with_zero_stock("clarks_jingya")
+    insert_missing_products_with_zero_stock("clarks")
 
 
 

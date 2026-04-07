@@ -20,7 +20,7 @@ def copy_images(src_dir: Path, dst_dir: Path):
 
 # === 使用示例 ===
 if __name__ == "__main__":
-    src = Path("D:/TB/Products/clarks_jingya/document/images")
-    dst = Path("D:/TB/Products/clarks_jingya/publication/html/images")
+    src = Path("D:/TB/Products/clarks/document/images")
+    dst = Path("D:/TB/Products/clarks/publication/html/images")
 
     copy_images(src, dst)

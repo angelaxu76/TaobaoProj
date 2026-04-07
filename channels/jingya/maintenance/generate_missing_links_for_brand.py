@@ -1,7 +1,7 @@
 """
 generate_missing_links_for_brand.py
 
-通用脚本：用于四大鞋品牌（camper, clarks_jingya, ecco, geox）
+通用脚本：用于四大鞋品牌（camper, clarks, ecco, geox）
 
 功能：
 1. 读取品牌 TXT 目录中的商品编码集合（文件名 = 编码）。
@@ -11,7 +11,7 @@ generate_missing_links_for_brand.py
 
 前置约定：
 - config.BRAND_CONFIG[brand] 中包含：
-    - "BASE"      → 品牌根目录，如 D:/TB/Products/camper 或 .../clarks_jingya
+    - "BASE"      → 品牌根目录，如 D:/TB/Products/camper 或 .../clarks
     - "TXT_DIR"   → 当前品牌 TXT 目录
     - "TABLE_NAME" → 数据库表名，如 "camper_inventory"
     - "PGSQL_CONFIG" → 数据库连接参数 dict(host, port, user, password, dbname)
@@ -178,7 +178,7 @@ def main():
     )
     parser.add_argument(
         "brand",
-        help="品牌名称，例如：camper / clarks_jingya / ecco / geox"
+        help="品牌名称，例如：camper / clarks / ecco / geox"
     )
     parser.add_argument(
         "--output",

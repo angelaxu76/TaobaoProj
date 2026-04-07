@@ -131,7 +131,7 @@ def export_stock_excel(brand: str, output_dir: Optional[str] = None, filename: O
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="导出鲸芽库存更新 Excel（固定 sheet/表头；分文件 490 行）")
-    parser.add_argument("--brand", required=True, help="品牌名，例如 camper / clarks_jingya / geox / barbour")
+    parser.add_argument("--brand", required=True, help="品牌名，例如 camper / clarks / geox / barbour")
     parser.add_argument("--output-dir", default=None, help="可选，指定导出目录（默认 BRAND_CONFIG[brand]['OUTPUT_DIR']）")
     parser.add_argument("--filename", default=None, help="可选，输出文件名基底；单文件时可用精准文件名")
     args = parser.parse_args()

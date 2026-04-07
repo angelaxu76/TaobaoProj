@@ -5,12 +5,12 @@ import psycopg2
 from bs4 import BeautifulSoup
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from config import CLARKS_JINGYA, ensure_all_dirs
+from config import CLARKS, ensure_all_dirs
 from psycopg2.extras import RealDictCursor
 
 # === 配置 ===
-PRODUCT_LINKS_FILE = CLARKS_JINGYA["BASE"] / "publication" / "product_links.txt"
-IMAGE_DIR = CLARKS_JINGYA["IMAGE_DOWNLOAD"]
+PRODUCT_LINKS_FILE = CLARKS["BASE"] / "publication" / "product_links.txt"
+IMAGE_DIR = CLARKS["IMAGE_DOWNLOAD"]
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 MAX_WORKERS = 5
 SKIP_EXISTING_IMAGE = True
@@ -105,8 +105,8 @@ def fetch_urls_from_db_by_codes(code_file_path, pgsql_config, table_name):
 
 
 def download_images_by_code_file(code_txt_path):
-    pgsql_config = CLARKS_JINGYA["PGSQL_CONFIG"]
-    table_name = CLARKS_JINGYA["TABLE_NAME"]
+    pgsql_config = CLARKS["PGSQL_CONFIG"]
+    table_name = CLARKS["TABLE_NAME"]
 
     urls = fetch_urls_from_db_by_codes(code_txt_path, pgsql_config, table_name)
     print(f"📦 共需下载 {len(urls)} 个商品的图片\n")

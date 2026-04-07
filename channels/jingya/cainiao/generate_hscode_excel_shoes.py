@@ -29,7 +29,7 @@ SHEET_NAME = "sheet"   # ← 如果你之前的工作表名不一样，请改成
 TEXTS_DIRS = {
     "camper": r"D:\TB\Products\camper\publication\TXT",
     "geox": r"D:\TB\Products\geox\publication\TXT",
-    "clarks": r"D:\TB\Products\clarks_jingya\publication\TXT",
+    "clarks": r"D:\TB\Products\clarks\publication\TXT",
     "ecco":   r"D:\TB\Products\ecco\publication\TXT",
 }
 
@@ -49,7 +49,7 @@ BRAND_MAP = {
         "name_like_cols": ["goods_name", "product_name"],
     },
     "clarks": {
-        "table": "clarks_jingya_inventory",
+        "table": "clarks_inventory",
         "fields": {
             "channel_item_id": "channel_item_id",
             "product_code": ["product_code", "product_name", "code"],
