@@ -1,6 +1,6 @@
-DROP TABLE IF EXISTS clarks_jingya_inventory;
+DROP TABLE IF EXISTS clarks_inventory;
 
-CREATE TABLE clarks_jingya_inventory (
+CREATE TABLE clarks_inventory (
     id SERIAL PRIMARY KEY,
 
     -- 基础信息

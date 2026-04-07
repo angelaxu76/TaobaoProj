@@ -30,9 +30,10 @@ def main():
     clarks_fetch_info()
 
     print("\n🟡 Step: 3️⃣ 将鲸牙存在但TXT中不存在的商品抓一遍")
-    missing_product_link = r"D:\TB\Products\clarks\publication\missing_product_links.txt";
-    generate_missing_links_for_brand("clarks",missing_product_link )
-    clarks_fetch_info(missing_product_link)
+    missing_product_link = r"D:\TB\Products\clarks\publication\missing_product_links.txt"
+    generate_missing_links_for_brand("clarks", missing_product_link)
+    if os.path.exists(missing_product_link):
+        clarks_fetch_info(missing_product_link)
 
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
