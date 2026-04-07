@@ -33,7 +33,7 @@ HOME_URL = "https://www.camper.com/en_GB"
 PRODUCT_URLS_FILE = CAMPER["LINKS_FILE"]
 SAVE_PATH = CAMPER["TXT_DIR"]
 
-DEFAULT_MAX_WORKERS = 8  # I/O 型抓取默认开高一点；不稳时可降到 4~6
+DEFAULT_MAX_WORKERS = 3  # 6GB 内存机器：3 个 Chrome ≈ 1.5GB，留足系统余量
 LOGIN_WAIT_SECONDS = 30  # 参数兼容保留（public 版不登录）
 
 DEBUG_ENABLED = False

@@ -93,6 +93,13 @@ def _build_chrome_options(
     )
     # 关图片，加快速度
     options.add_argument("--blink-settings=imagesEnabled=false")
+    # 内存节省
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-translate")
+    options.add_argument("--disable-plugins")
+    options.add_argument("--js-flags=--max-old-space-size=128")  # 限制每个 Tab 的 V8 堆
+    options.add_argument("--memory-pressure-off")
+    options.add_argument("--disable-renderer-backgrounding")
 
     return options
 
