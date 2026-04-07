@@ -29,7 +29,14 @@ CATEGORY_URLS = {
 
     # Clothing
     "mens-clothing": "https://www.barbour.com/gb/mens/clothing",
+    "mens-Overshirts": "https://www.barbour.com/gb/mens/clothing/overshirts",
+    "mens-t-shirts": "https://www.barbour.com/gb/mens/clothing/t-shirts",
+    "mens-shirts": "https://www.barbour.com/gb/mens/clothing/shirts",
+    "mens-polo-shirts": "https://www.barbour.com/gb/mens/clothing/polo-shirts",
     "womens-clothing": "https://www.barbour.com/gb/womens/clothing",
+    "womens-shirts-blouses": "https://www.barbour.com/gb/womens/clothing/shirts-blouses",
+    "womens-t-shirts": "https://www.barbour.com/gb/womens/clothing/t-shirts",
+    "womens-polo-shirts": "https://www.barbour.com/gb/womens/clothing/polo-shirts",
 
     # Accessories
     "mens-accessories": "https://www.barbour.com/gb/mens/accessories",
