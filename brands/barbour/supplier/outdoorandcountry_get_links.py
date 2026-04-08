@@ -1,20 +1,13 @@
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.service import Service
 from bs4 import BeautifulSoup
 from common.browser.driver_auto import build_uc_driver
 from pathlib import Path
-import time
 from config import BARBOUR
-from pathlib import Path
+import time
 import re
 import json
-from bs4 import BeautifulSoup
-
-# === 配置路径 ===
-from config import BARBOUR
 
 # ✅ 页面配置：上衣类（男 + 女）
 TARGET_URLS = [
@@ -36,107 +29,6 @@ STABLE_THRESHOLD = 10
 TXT_DIR = BARBOUR["TXT_DIRS"]["outdoorandcountry"]
 LINKS_FILE = BARBOUR["LINKS_FILES"]["outdoorandcountry"]
 
-
-# -*- coding: utf-8 -*-
-import os, re, shutil, subprocess, time
-import undetected_chromedriver as uc
-from selenium.common.exceptions import SessionNotCreatedException, WebDriverException
-
-def _detect_chrome_major_on_windows():
-    # 1) 注册表读取
-    try:
-        import winreg
-        for root in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
-            try:
-                key = winreg.OpenKey(root, r"SOFTWARE\Google\Chrome\BLBeacon")
-                version, _ = winreg.QueryValueEx(key, "version")  # e.g. "141.0.7390.125"
-                m = re.match(r"(\d+)\.", version)
-                if m:
-                    return int(m.group(1))
-            except OSError:
-                pass
-    except Exception:
-        pass
-
-    # 2) 通过 chrome.exe --version
-    candidates = [
-        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-    ]
-    for exe in candidates:
-        if os.path.exists(exe):
-            try:
-                out = subprocess.check_output([exe, "--version"], stderr=subprocess.STDOUT, timeout=5)
-                out = out.decode("utf-8", "ignore")
-                # e.g. "Google Chrome 141.0.7390.125"
-                m = re.search(r"\b(\d+)\.", out)
-                if m:
-                    return int(m.group(1))
-            except Exception:
-                pass
-
-    return None
-
-
-def _clear_uc_cache():
-    # 通常缓存目录
-    candidates = [
-        os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "undetected_chromedriver"),
-        os.path.join(os.path.expanduser("~"), ".undetected_chromedriver"),
-    ]
-    for p in candidates:
-        shutil.rmtree(p, ignore_errors=True)
-
-
-def build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True):
-    """
-    自动适配本机 Chrome 主版本，构建 undetected_chromedriver。
-    - headless: 是否无头
-    - extra_options: 额外的 ChromeOptions 参数（list[str]）
-    - retries: 失败后（清缓存）重试次数
-    """
-    options = uc.ChromeOptions()
-    options.add_argument("--start-maximized")
-    if extra_options:
-        for arg in extra_options:
-            options.add_argument(arg)
-
-    major = _detect_chrome_major_on_windows()
-    if verbose:
-        print(f"🔍 Detected Chrome major version: {major if major else 'UNKNOWN'}")
-
-    # 传入 version_main 可确保下载匹配的驱动
-    kwargs = dict(options=options, headless=headless)
-    if major:
-        kwargs["version_main"] = major
-
-    last_err = None
-    for attempt in range(1, retries + 1):
-        try:
-            if verbose:
-                print(f"🚗 Creating uc.Chrome (attempt {attempt}/{retries}) with {kwargs} ...")
-            driver = build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True)
-            if verbose:
-                print("✅ uc.Chrome started successfully.")
-            return driver
-        except SessionNotCreatedException as e:
-            last_err = e
-            if verbose:
-                print(f"⚠️ SessionNotCreatedException: {e}\n🧹 Clearing uc cache and retrying ...")
-            _clear_uc_cache()
-            time.sleep(1.5)
-        except WebDriverException as e:
-            last_err = e
-            if "only supports Chrome version" in str(e):
-                if verbose:
-                    print(f"⚠️ Driver version mismatch: {e}\n🧹 Clearing uc cache and retrying ...")
-                _clear_uc_cache()
-                time.sleep(1.5)
-            else:
-                raise
-
-    # 若到这里仍失败，抛出最后一次的错误
-    raise last_err if last_err else RuntimeError("Failed to start uc.Chrome with auto version match.")
 
 # === 提取函数 ===
 def extract_js_object(js_text: str, var_name: str):
@@ -263,6 +155,41 @@ def outdoorandcountry_fetch_info():
     driver.quit()
 
 
+def click_view_all(driver, timeout=15, wait_stable_secs=60):
+    """
+    自动点击 View All 按钮并等待商品链接数量稳定后返回。
+    - 使用 JS click 触发 Knockout.js 绑定事件
+    - 若按钮不存在（页面已全量展示）则直接跳过
+    """
+    try:
+        btn = WebDriverWait(driver, timeout).until(
+            EC.presence_of_element_located((By.ID, "viewAllButton"))
+        )
+        before = len(collect_links_from_html(driver.page_source))
+        driver.execute_script("arguments[0].click();", btn)
+        print(f"✅ 已点击 View All，等待商品加载（当前 {before} 条）...")
+
+        # 等待链接数稳定：连续 3 次检查无增长则认为加载完成
+        last_count = before
+        stable = 0
+        for _ in range(wait_stable_secs // 3):
+            time.sleep(3)
+            current = len(collect_links_from_html(driver.page_source))
+            print(f"   📦 链接数: {current}")
+            if current == last_count:
+                stable += 1
+                if stable >= 3:
+                    print(f"✅ 链接数已稳定: {current} 条")
+                    break
+            else:
+                stable = 0
+                last_count = current
+        else:
+            print(f"⚠️ 等待超时，当前链接数: {last_count}")
+    except Exception as e:
+        print(f"⚠️ 未找到 View All 按钮（可能页面已全量展示）: {e}")
+
+
 def accept_cookies(driver, timeout=8):
     try:
         button = WebDriverWait(driver, timeout).until(
@@ -370,10 +297,8 @@ def outdoorandcountry_fetch_and_save_links():
         time.sleep(3)
 
         accept_cookies(driver)
+        click_view_all(driver)
         scroll_like_mouse_until_loaded(driver)
-
-        print(f"🟡 请检查页面 [{label}] 是否加载完整，可手动再滚动几次")
-        input(f"⏸️ 确认 [{label}] 页面加载完成后，按回车继续 >>> ")
 
         html = driver.page_source
         links = collect_links_from_html(html)
