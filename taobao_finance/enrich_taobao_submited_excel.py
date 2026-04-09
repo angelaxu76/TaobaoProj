@@ -4,6 +4,7 @@ import os
 import re
 from typing import List, Optional, Dict, Any
 
+from pathlib import Path
 import pandas as pd
 from sqlalchemy import create_engine, text
 
@@ -97,7 +98,11 @@ def fetch_order_info(engine, order_ids: List[str]) -> Dict[str, Dict[str, Any]]:
 
 
 def enrich_excel(input_path: str, output_path: Optional[str] = None) -> str:
-    df = pd.read_excel(input_path, dtype=str)
+    input_file = Path(input_path)
+    if input_file.suffix.lower() == ".csv":
+        df = pd.read_csv(input_file, dtype=str, encoding="gb18030")
+    else:
+        df = pd.read_excel(input_file, dtype=str)
 
     order_col = detect_order_id_col(df)
     df["_order_id_norm"] = df[order_col].apply(normalize_order_id)

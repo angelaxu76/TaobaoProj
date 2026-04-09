@@ -84,13 +84,16 @@ def upsert_dataframe(engine, df_out: pd.DataFrame):
     print(f"✅ UPSERT 完成：{len(records)} 条")
 
 
-def import_transaction():
-    excel_file = Path(EXCEL_PATH)
+def import_transaction(excel_path: str = EXCEL_PATH):
+    excel_file = Path(excel_path)
     if not excel_file.exists():
-        raise FileNotFoundError(f"找不到文件: {EXCEL_PATH}")
+        raise FileNotFoundError(f"找不到文件: {excel_path}")
 
-    print("📥 读取 Excel:", excel_file.name)
-    df = pd.read_excel(excel_file, dtype=str)
+    print("📥 读取文件:", excel_file.name)
+    if excel_file.suffix.lower() == ".csv":
+        df = pd.read_csv(excel_file, dtype=str, encoding="gb18030")
+    else:
+        df = pd.read_excel(excel_file, dtype=str)
     df.columns = [str(c).strip().replace("\u3000", " ") for c in df.columns]
     print("📌 发现列名：", list(df.columns))
 
@@ -159,4 +162,4 @@ def import_transaction():
 
 
 if __name__ == "__main__":
-    import_transaction()
+    import_transaction(EXCEL_PATH)
