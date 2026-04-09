@@ -103,7 +103,7 @@ def insert_missing_products_with_zero_stock(brand: str):
     cfg = BRAND_CONFIG[brand]
     table = cfg["TABLE_NAME"]          # 'barbour_inventory'
     db    = cfg["PGSQL_CONFIG"]
-    doc   = Path(cfg["BASE"]) / "document"
+    doc   = Path(cfg.get("GEI_DIR", Path(cfg["BASE"]) / "document"))
     out   = Path(cfg["OUTPUT_DIR"]); out.mkdir(parents=True, exist_ok=True)
 
     gei = find_latest_gei_file(doc)
@@ -174,7 +174,7 @@ def insert_jingyaid_to_db(brand: str):
     cfg = BRAND_CONFIG[brand]
     table = cfg["TABLE_NAME"]
     db    = cfg["PGSQL_CONFIG"]
-    doc   = Path(cfg["BASE"]) / "document"
+    doc   = Path(cfg.get("GEI_DIR", Path(cfg["BASE"]) / "document"))
     out   = Path(cfg["OUTPUT_DIR"]); out.mkdir(parents=True, exist_ok=True)
 
     gei = find_latest_gei_file(doc)
