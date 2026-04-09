@@ -12,7 +12,7 @@
 """
 
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Set
 
 import pandas as pd
 import openpyxl
@@ -23,6 +23,39 @@ try:
     from config import PGSQL_CONFIG  # 兜底
 except Exception:
     PGSQL_CONFIG = {}
+
+
+def _load_exclude_codes_from_excel(excel_path: Path) -> Set[str]:
+    """
+    从 Excel 读取白名单商品编码（大写）。
+    自动识别列名含 'code' 或 '编码' 的列。
+    文件不存在或无法解析时返回空集合。
+    """
+    if not excel_path.exists():
+        print(f"[INFO] 白名单文件未找到：{excel_path}（不做排除）")
+        return set()
+    try:
+        df_exc = pd.read_excel(excel_path)
+    except Exception as e:
+        print(f"[WARN] 无法读取白名单Excel {excel_path}: {e}")
+        return set()
+
+    candidate_cols = [
+        col for col in df_exc.columns
+        if "code" in str(col).lower() or "编码" in str(col)
+    ]
+    if not candidate_cols:
+        print(f"[WARN] 白名单Excel中未找到含'code'/'编码'的列，列名={list(df_exc.columns)}")
+        return set()
+
+    col_use = candidate_cols[0]
+    codes = {
+        v.strip().upper()
+        for v in df_exc[col_use].astype(str).tolist()
+        if v.strip() and v.strip().upper() != "NAN"
+    }
+    print(f"[INFO] 白名单加载 {len(codes)} 条商品编码（来自列 '{col_use}'）")
+    return codes
 
 SHEET_NAME = "sheet1"
 HEADERS = ["渠道产品ID(必填)", "skuID", "库存(必填)"]
@@ -43,7 +76,18 @@ def _write_one_excel(df_chunk: pd.DataFrame, file_path: Path):
     wb.save(file_path)
     wb.close()
 
-def export_stock_excel(brand: str, output_dir: Optional[str] = None, filename: Optional[str] = None) -> str:
+def export_stock_excel(
+    brand: str,
+    output_dir: Optional[str] = None,
+    filename: Optional[str] = None,
+    exclude_excel_file: Optional[str] = None,
+) -> str:
+    """
+    导出鲸芽库存更新 Excel。
+
+    exclude_excel_file: 可选。Excel 白名单路径，列名含 'code' 或 '编码'。
+                        名单内的商品编码（product_code）将从导出结果中排除。
+    """
     brand_l = brand.lower().strip()
     if brand_l not in BRAND_CONFIG:
         raise ValueError(f"未知品牌：{brand}。可用：{', '.join(sorted(BRAND_CONFIG.keys()))}")
@@ -54,18 +98,29 @@ def export_stock_excel(brand: str, output_dir: Optional[str] = None, filename: O
     if not pgcfg:
         raise RuntimeError("PGSQL 连接配置缺失，请在 config.py 中提供 PGSQL_CONFIG 或品牌级 PGSQL_CONFIG。")
 
-    # 1) 读取数据：仅 channel_product_id 非空/非空串
+    # 0) 加载白名单（若有）
+    exclude_codes: Set[str] = set()
+    if exclude_excel_file:
+        exclude_codes = _load_exclude_codes_from_excel(Path(exclude_excel_file))
+
+    # 1) 读取数据：仅 channel_product_id 非空/非空串；同时取 product_code 供白名单过滤
     conn = psycopg2.connect(
         host=pgcfg["host"], port=pgcfg["port"],
         user=pgcfg["user"], password=pgcfg["password"], dbname=pgcfg["dbname"],
     )
     sql = f"""
-        SELECT channel_product_id, skuid, stock_count
+        SELECT channel_product_id, skuid, stock_count, product_code
         FROM {table}
         WHERE channel_product_id IS NOT NULL AND TRIM(channel_product_id) <> ''
     """
     df = pd.read_sql(sql, conn)
     conn.close()
+
+    # 1b) 按白名单排除
+    if exclude_codes:
+        before = len(df)
+        df = df[~df["product_code"].astype(str).str.strip().str.upper().isin(exclude_codes)]
+        print(f"[INFO] 白名单排除：{before - len(df)} 条（剩余 {len(df)} 条）")
 
     # 2) 清洗
     if df.empty:

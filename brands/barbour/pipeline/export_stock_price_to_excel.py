@@ -12,7 +12,9 @@ from brands.barbour.jingya.merge_offer_into_inventory import backfill_barbour_in
 
 def barbour_export_price_stock():
 
-    exclude_xlsx_path = r"D:\TB\Products\barbour\document\barbour_exclude_list.xlsx"
+    # exclude_xlsx_path = r"D:\TB\Products\barbour\document\barbour_exclude_list.xlsx"
+    exclude_xlsx_path = r"\\vmware-host\Shared Folders\shared\barbour\barbour_exclude_list.xlsx"
+
     ######################################################################
     ################导出EXCEL 用于更新鲸芽和淘宝##########################
     ######################################################################
@@ -20,7 +22,7 @@ def barbour_export_price_stock():
 
     print("导出excel 用于更新鲸芽库存")
     stock_dest_excel_folder = r"D:\TB\Products\barbour\repulibcation\stock"
-    export_stock_excel("barbour",stock_dest_excel_folder)
+    export_stock_excel("barbour", stock_dest_excel_folder, exclude_excel_file=exclude_xlsx_path)
     
     print("导出excel 用于更新鲸芽价格=====商品级别"    )
     price_dest_excel_path = r"D:\TB\Products\barbour\repulibcation\publication_prices"
@@ -28,7 +30,8 @@ def barbour_export_price_stock():
     
     export_jiangya_channel_prices(
     brand="barbour",
-    output_dir=price_dest_excel_path
+    output_dir=price_dest_excel_path,
+    exclude_excel_file=exclude_xlsx_path
     )
 
     # print("\n🟡 Step: 6️⃣ 获取excel文件，用来更新各个淘宝店铺价格，输入文件夹可以是多个店铺的导出文件")
