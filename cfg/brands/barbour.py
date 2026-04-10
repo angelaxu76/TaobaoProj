@@ -32,6 +32,7 @@ BARBOUR = {
     "HTML_DEST": BARBOUR_BASE / "repulibcation" / "dest",
     "TABLE_NAME": "barbour_inventory",
     "TAOBAO_STORE_DISCOUNT": 1,  # 不包关税→淘宝店铺价再打9折
+    "SUPPLIER_MIN_SIZES": 3,    # 供应商映射：至少要有几个有货尺码才算"可用"
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": BARBOUR_BASE / "publication" / "barbour" / "product_links.txt",
     # === 新增 houseoffraser 配置 ===

@@ -38,6 +38,7 @@ def _load_exclude_codes(xlsx_path: Optional[str]) -> Set[str]:
 PUBLICATION_DIR = Path(BARBOUR["PUBLICATION_DIR"])
 PATTERN = "barbour_publication_*.xlsx"
 TABLE = "barbour_supplier_map"
+MIN_SIZES: int = BARBOUR.get("SUPPLIER_MIN_SIZES", 3)  # 供应商可用的最低有货尺码数
 
 SQL_CREATE = text(f"""
 CREATE TABLE IF NOT EXISTS {TABLE} (
@@ -61,13 +62,13 @@ VALUES (:code, :site)
 ON CONFLICT (product_code) DO UPDATE SET site_name = EXCLUDED.site_name
 """)
 
-SQL_LOWEST_SITE = text("""
+SQL_LOWEST_SITE = text(“””
 WITH agg AS (
   SELECT
     site_name,
     -- 有货尺码数（只统计 stock_count>0 的尺码）
     SUM(CASE WHEN COALESCE(stock_count,0) > 0 THEN 1 ELSE 0 END) AS sizes_in_stock,
-    -- 仅在有货尺码中，按“折后价+运费”的真实成本取最低价：
+    -- 仅在有货尺码中，按”折后价+运费”的真实成本取最低价：
     -- 优先 sale_price_gbp，其次 price_gbp，最后 original_price_gbp
     MIN(COALESCE(NULLIF(sale_price_gbp,0), NULLIF(price_gbp,0), original_price_gbp))
       FILTER (WHERE COALESCE(stock_count,0) > 0)                 AS min_price,
@@ -78,8 +79,8 @@ WITH agg AS (
   GROUP BY site_name
 ),
 eligible AS (
-  -- 第一步：筛出“库存符合要求”的供货商，这里约定尺码数>=3
-  SELECT * FROM agg WHERE sizes_in_stock >= 3
+  -- 第一步：筛出”库存符合要求”的供货商（阈值来自 BARBOUR[“SUPPLIER_MIN_SIZES”]）
+  SELECT * FROM agg WHERE sizes_in_stock >= :min_sizes
 )
 SELECT site_name
 FROM eligible
@@ -91,7 +92,7 @@ ORDER BY
   -- 若还相同，取最近一次检查时间最新的
   latest DESC
 LIMIT 1
-""")  # offers 字段参考：site_name/price_gbp/original_price_gbp/stock_count/last_checked。:contentReference[oaicite:1]{index=1}
+“””)  # offers 字段参考：site_name/price_gbp/original_price_gbp/stock_count/last_checked。
 
 
 def _load_publication_mappings(pub_dir: Path) -> Dict[str, str]:
@@ -135,7 +136,7 @@ def _load_publication_mappings(pub_dir: Path) -> Dict[str, str]:
 
 
 def _pick_lowest_site(conn: Connection, code: str) -> Optional[str]:
-    row = conn.execute(SQL_LOWEST_SITE, {"code": code}).fetchone()
+    row = conn.execute(SQL_LOWEST_SITE, {"code": code, "min_sizes": MIN_SIZES}).fetchone()
     if not row:
         return None
     return canonical_site(row[0]) or row[0]
@@ -198,7 +199,7 @@ def fill_supplier_map(force_refresh: bool = False, exclude_xlsx: Optional[str] =
         need = (published - set(pub_hit)) - existing
         offer_filled: List[str] = []
         fail_no_offers: List[str] = []       # 在 barbour_offers 里完全没有记录
-        fail_low_stock: List[tuple] = []     # 有 offers 但所有站点有货尺码数 < 3
+        fail_low_stock: List[tuple] = []     # 有 offers 但所有站点有货尺码数 < MIN_SIZES
         for code in sorted(need):
             if code in exclude_codes:
                 continue
@@ -236,7 +237,7 @@ def fill_supplier_map(force_refresh: bool = False, exclude_xlsx: Optional[str] =
                 print(f"  [无 offers 数据] {len(fail_no_offers)} 个（未抓取或已下架）：")
                 print("   ", ", ".join(fail_no_offers))
             if fail_low_stock:
-                print(f"  [有货尺码 < 3] {len(fail_low_stock)} 个（库存稀缺，所有站点均不足 3 尺）：")
+                print(f"  [有货尺码 < {MIN_SIZES}] {len(fail_low_stock)} 个（库存稀缺，所有站点均不足 {MIN_SIZES} 尺）：")
                 for code, best, summary in fail_low_stock:
                     print(f"    {code}: 最优 {best} 尺 — {summary}")
 
@@ -431,7 +432,7 @@ def export_supplier_stock_price_report(min_sizes_ok: int = 1, output_path: str |
             ROW_NUMBER() OVER (
               PARTITION BY product_code
               ORDER BY
-                CASE WHEN sizes_in_stock >= 3 THEN 0 ELSE 1 END,   -- ≥3尺有货优先
+                CASE WHEN sizes_in_stock >= {MIN_SIZES} THEN 0 ELSE 1 END,   -- ≥MIN_SIZES 尺有货优先
                 min_eff_price ASC NULLS LAST,
                 sizes_in_stock DESC,
                 latest DESC
@@ -439,7 +440,7 @@ def export_supplier_stock_price_report(min_sizes_ok: int = 1, output_path: str |
             ROW_NUMBER() OVER (
               PARTITION BY product_code
               ORDER BY
-                CASE WHEN sizes_in_stock >= 3 THEN 0 ELSE 1 END,
+                CASE WHEN sizes_in_stock >= {MIN_SIZES} THEN 0 ELSE 1 END,
                 min_eff_price ASC NULLS LAST
             ) AS rank_price_first
           FROM agg
@@ -456,9 +457,9 @@ def export_supplier_stock_price_report(min_sizes_ok: int = 1, output_path: str |
     df = df.merge(map_df, on="product_code", how="left", suffixes=("", "_mapped"))
     df["is_current"] = (df["site_name"] == df["site_name_mapped"]).fillna(False)
 
-    # 推荐站点（≥3尺有货 & 价格最低）
+    # 推荐站点（≥MIN_SIZES 尺有货 & 价格最低）
     best = (
-        df[(df["sizes_in_stock"] >= 3) & df["min_eff_price"].notna()]
+        df[(df["sizes_in_stock"] >= MIN_SIZES) & df["min_eff_price"].notna()]
         .sort_values(["product_code", "min_eff_price", "sizes_in_stock", "latest"], ascending=[True, True, False, False])
         .drop_duplicates(["product_code"])
         .rename(columns={"site_name":"best_site", "min_eff_price":"best_min_eff_price", "sizes_in_stock":"best_sizes_in_stock"})
