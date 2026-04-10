@@ -197,6 +197,8 @@ def fill_supplier_map(force_refresh: bool = False, exclude_xlsx: Optional[str] =
         # 4) 兜底（仅对未命中且未映射的已发布编码，且跳过排除编码）
         need = (published - set(pub_hit)) - existing
         offer_filled: List[str] = []
+        fail_no_offers: List[str] = []       # 在 barbour_offers 里完全没有记录
+        fail_low_stock: List[tuple] = []     # 有 offers 但所有站点有货尺码数 < 3
         for code in sorted(need):
             if code in exclude_codes:
                 continue
@@ -204,9 +206,39 @@ def fill_supplier_map(force_refresh: bool = False, exclude_xlsx: Optional[str] =
             if site:
                 conn.execute(SQL_UPSERT, {"code": code, "site": site})
                 offer_filled.append(code)
+            else:
+                # 诊断：查询该编码在 offers 里的最优情况
+                diag = conn.execute(text("""
+                    SELECT site_name,
+                           SUM(CASE WHEN COALESCE(stock_count,0) > 0 THEN 1 ELSE 0 END) AS sizes_in_stock
+                    FROM barbour_offers
+                    WHERE product_code = :code AND is_active = TRUE
+                    GROUP BY site_name
+                    ORDER BY sizes_in_stock DESC
+                    LIMIT 3
+                """), {"code": code}).fetchall()
+                if not diag:
+                    fail_no_offers.append(code)
+                else:
+                    best_sizes = diag[0][1] or 0
+                    summary = ", ".join(f"{r[0]}({r[1]}尺)" for r in diag)
+                    fail_low_stock.append((code, best_sizes, summary))
+
         print(f"✅ 按 offers 兜底：{len(offer_filled)} 条。")
         if offer_filled:
             print("→ 来自 offers 兜底的编码：", ", ".join(offer_filled))
+
+        # 打印映射失败原因
+        unmapped_total = len(fail_no_offers) + len(fail_low_stock)
+        if unmapped_total:
+            print(f"⚠️ 映射失败：{unmapped_total} 个编码无法分配供应商。")
+            if fail_no_offers:
+                print(f"  [无 offers 数据] {len(fail_no_offers)} 个（未抓取或已下架）：")
+                print("   ", ", ".join(fail_no_offers))
+            if fail_low_stock:
+                print(f"  [有货尺码 < 3] {len(fail_low_stock)} 个（库存稀缺，所有站点均不足 3 尺）：")
+                for code, best, summary in fail_low_stock:
+                    print(f"    {code}: 最优 {best} 尺 — {summary}")
 
         # 5) 回填“排除清单中已存在的历史映射”（在 force_refresh 情况下）
         if preserved:
