@@ -16,7 +16,7 @@ import pandas as pd
 
 def _load_exclude_codes(xlsx_path: Optional[str]) -> Set[str]:
     """
-    读取排除清单 Excel，返回需要“完全忽略更新”的商品编码集合。
+    读取排除清单 Excel，返回需要"完全忽略更新"的商品编码集合。
     兼容列名：Product Code / 商品编码 / product_code / color_code / 编码
     """
     if not xlsx_path:
@@ -62,13 +62,13 @@ VALUES (:code, :site)
 ON CONFLICT (product_code) DO UPDATE SET site_name = EXCLUDED.site_name
 """)
 
-SQL_LOWEST_SITE = text(“””
+SQL_LOWEST_SITE = text("""
 WITH agg AS (
   SELECT
     site_name,
     -- 有货尺码数（只统计 stock_count>0 的尺码）
     SUM(CASE WHEN COALESCE(stock_count,0) > 0 THEN 1 ELSE 0 END) AS sizes_in_stock,
-    -- 仅在有货尺码中，按”折后价+运费”的真实成本取最低价：
+    -- 仅在有货尺码中，按"折后价+运费"的真实成本取最低价：
     -- 优先 sale_price_gbp，其次 price_gbp，最后 original_price_gbp
     MIN(COALESCE(NULLIF(sale_price_gbp,0), NULLIF(price_gbp,0), original_price_gbp))
       FILTER (WHERE COALESCE(stock_count,0) > 0)                 AS min_price,
@@ -79,7 +79,7 @@ WITH agg AS (
   GROUP BY site_name
 ),
 eligible AS (
-  -- 第一步：筛出”库存符合要求”的供货商（阈值来自 BARBOUR[“SUPPLIER_MIN_SIZES”]）
+  -- 第一步：筛出"库存符合要求"的供货商（阈值来自 BARBOUR["SUPPLIER_MIN_SIZES"]）
   SELECT * FROM agg WHERE sizes_in_stock >= :min_sizes
 )
 SELECT site_name
@@ -92,13 +92,13 @@ ORDER BY
   -- 若还相同，取最近一次检查时间最新的
   latest DESC
 LIMIT 1
-“””)  # offers 字段参考：site_name/price_gbp/original_price_gbp/stock_count/last_checked。
+""")  # offers 字段参考：site_name/price_gbp/original_price_gbp/stock_count/last_checked。
 
 
 def _load_publication_mappings(pub_dir: Path) -> Dict[str, str]:
     """
     读取目录下所有 barbour_publication_*.xlsx，返回 {product_code -> canonical_site}
-    后读的新文件覆盖旧文件（以“最新发布”为准）。
+    后读的新文件覆盖旧文件（以"最新发布"为准）。
     兼容列名：
       编码：Product Code / 商品编码 / product_code / color_code / 编码
       站点：Supplier / 供应商 / Site / site / 站点
@@ -159,7 +159,7 @@ def fill_supplier_map(force_refresh: bool = False, exclude_xlsx: Optional[str] =
 
         preserved: Dict[str, str] = {}
         if force_refresh:
-            # 在清空之前，把排除清单里“已有映射”的编码先保存起来
+            # 在清空之前，把排除清单里"已有映射"的编码先保存起来
             if exclude_codes:
                 rows = conn.execute(
                     text(f"SELECT product_code, site_name FROM {TABLE} WHERE product_code = ANY(:codes)"),
@@ -172,7 +172,7 @@ def fill_supplier_map(force_refresh: bool = False, exclude_xlsx: Optional[str] =
             conn.execute(text(f"TRUNCATE TABLE {TABLE};"))
             print(f"⚠️ 已清空 {TABLE} 表。")
 
-        # 1) 取“已发布”的编码集合
+        # 1) 取"已发布"的编码集合
         published: Set[str] = {r[0] for r in conn.execute(SQL_PUBLISHED_CODES).fetchall()}
         print(f"📦 已发布编码：{len(published)} 个。")
 
@@ -241,7 +241,7 @@ def fill_supplier_map(force_refresh: bool = False, exclude_xlsx: Optional[str] =
                 for code, best, summary in fail_low_stock:
                     print(f"    {code}: 最优 {best} 尺 — {summary}")
 
-        # 5) 回填“排除清单中已存在的历史映射”（在 force_refresh 情况下）
+        # 5) 回填"排除清单中已存在的历史映射"（在 force_refresh 情况下）
         if preserved:
             rows = [{"code": k, "site": v} for k, v in preserved.items()]
             conn.execute(text(f"""
@@ -263,7 +263,7 @@ def reassign_low_stock_suppliers(
     exclude_xlsx: Optional[str] = None
 ) -> list[dict]:
     """
-    找出当前映射站点“在售尺码数 < size_threshold”的商品；
+    找出当前映射站点"在售尺码数 < size_threshold"的商品；
     若存在其它站点满足(尺码≥阈值 & 最低价最低)，则建议/执行切换。
     - dry_run=True：只打印与返回建议，不改库
     - exclude_xlsx: Excel文件路径，含需排除更新的商品编码（Product Code / 商品编码）
@@ -388,8 +388,8 @@ def reassign_low_stock_suppliers(
 
 def export_supplier_stock_price_report(min_sizes_ok: int = 1, output_path: str | None = None) -> str:
     """
-    导出每个商品在各站点的“在售尺码数、最低有效价、最近更新时间”，并标注当前映射与推荐站点。
-    - min_sizes_ok: 统计“有货尺码数”的阈值（默认>=1视为有货参与最低价评选）
+    导出每个商品在各站点的"在售尺码数、最低有效价、最近更新时间"，并标注当前映射与推荐站点。
+    - min_sizes_ok: 统计"有货尺码数"的阈值（默认>=1视为有货参与最低价评选）
     - output_path: 指定导出xlsx路径；不传则写到 BARBOUR['OUTPUT_DIR']/barbour_supplier_report.xlsx
     """
     cfg = BRAND_CONFIG["barbour"]["PGSQL_CONFIG"]
@@ -453,7 +453,7 @@ def export_supplier_stock_price_report(min_sizes_ok: int = 1, output_path: str |
     df["site_name"] = df["site_name"].map(lambda s: canonical_site(s) or s)
     map_df["site_name"] = map_df["site_name"].map(lambda s: canonical_site(s) or s)
 
-    # 标注“当前映射”
+    # 标注"当前映射"
     df = df.merge(map_df, on="product_code", how="left", suffixes=("", "_mapped"))
     df["is_current"] = (df["site_name"] == df["site_name_mapped"]).fillna(False)
 
@@ -494,8 +494,8 @@ def apply_barbour_supplier_overrides(xlsx_path: str, dry_run: bool = False) -> N
     """
     按 Excel 文件手动指定 Barbour 商品供货商。
     Excel 要求：
-      - 第一列：商品编码（列名必须为 “商品编码”）
-      - 第二列：供货商（列名必须为 “供货商”）
+      - 第一列：商品编码（列名必须为 "商品编码"）
+      - 第二列：供货商（列名必须为 "供货商"）
     会将对应关系写入 barbour_supplier_map（有则更新，无则插入）。
     dry_run=True 时只预览不写库。
     """
