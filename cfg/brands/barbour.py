@@ -176,6 +176,12 @@ BARBOUR = {
         # T-Shirts
         "MTS": ("男款", "T恤"),
         "LTS": ("女款", "T恤"),
+
+        # Polo Shirts
+        "MPO": ("男款", "翻领T恤POLO衫"),
+        "LPO": ("女款", "翻领T恤POLO衫"),
+        "MML": ("男款", "翻领T恤POLO衫"),
+        "LML": ("女款", "翻领T恤POLO衫"),
     },
 
     "BARBOUR_COLOR_CODE_MAP": {
