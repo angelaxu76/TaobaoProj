@@ -76,6 +76,8 @@ def is_driver_connection_error(e: Exception) -> bool:
         or ("localhost" in msg and "/session/" in msg)
         or "Read timed out" in msg        # driver 进程崩溃/OOM，120s 无响应
         or "RemoteDisconnected" in msg    # driver 进程意外断开
+        or "receiving message from renderer" in msg  # renderer 进程崩溃/挂起
+        or "chrome not reachable" in msg.lower()     # Chrome 整体不可达
     )
 
 
