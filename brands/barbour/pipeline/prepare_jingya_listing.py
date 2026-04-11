@@ -95,6 +95,11 @@ def _fail(step: str, exc: Exception):
 def run_a_crawl():
     _banner("阶段 A：抓取供货商商品数据")
 
+    from config import BARBOUR
+    from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
+    _step("备份并清空 publication / repulibcation 目录")
+    backup_and_clear_brand_dirs(BARBOUR)
+
     from brands.barbour.supplier.barbour_get_links        import barbour_get_links
     from brands.barbour.supplier.barbour_fetch_info       import barbour_fetch_info
     from brands.barbour.supplier.outdoorandcountry_get_links  import outdoorandcountry_fetch_and_save_links
