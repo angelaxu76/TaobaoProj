@@ -23,6 +23,7 @@ ROOT = Path(__file__).parent.parent.resolve()
 LOG_DIR = Path(r"D:\temp\TaobaoPipelineLogs\TaobaoProj")
 
 PIPELINES: dict[str, str] = {
+    "barbour": "brands/barbour/pipeline/prepare_jingya_listing.py",
     "camper": "brands/camper/pipeline/prepare_jingya_listing.py",
     "clarks": "brands/clarks/pipeline/prepare_jingya_listing.py",
     "ecco":   "brands/ecco/pipeline/prepare_jingya_listing.py",

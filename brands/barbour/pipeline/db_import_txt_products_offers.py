@@ -26,7 +26,6 @@ def barbour_database_import_pipleline():
     import_txt_for_supplier("outdoorandcountry", False)
     import_txt_for_supplier("allweathers", False)
     import_txt_for_supplier("houseoffraser", False)
-    import_txt_for_supplier("very", False)
     import_txt_for_supplier("terraces", False)
     import_txt_for_supplier("philipmorris", False)
     import_txt_for_supplier("cho", False)
