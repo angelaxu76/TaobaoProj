@@ -52,41 +52,40 @@ def main():
     insert_jingyaid_to_db("ecco")
     print("─" * 60)
 
-    # print("\n🟡 Step: 5️⃣ 处理已下架商品：补库存=0，防止违规超卖")
-    # insert_missing_products_with_zero_stock("ecco")
-    # print("─" * 60)
+    print("\n🟡 Step: 5️⃣ 处理已下架商品：补库存=0，防止违规超卖")
+    insert_missing_products_with_zero_stock("ecco")
+    print("─" * 60)
 
-    # print("\n🟡 Step: 5️⃣ 根据尺码数量，自动下架稀缺尺码的商品，避免差评/售后")
-    # disable_low_stock_products("ecco")
-    # print("─" * 60)
+    print("\n🟡 Step: 5️⃣ 根据尺码数量，自动下架稀缺尺码的商品，避免差评/售后")
+    disable_low_stock_products("ecco")
+    print("─" * 60)
 
   
 
-    # print("\n🟡 Step: 6️⃣ 生成鲸芽【库存更新】Excel")
-    # stock_dest_excel_folder = r"D:\TB\Products\ecco\repulibcation\stock"
-    # export_stock_excel("ecco", stock_dest_excel_folder)
+    print("\n🟡 Step: 6️⃣ 生成鲸芽【库存更新】Excel")
+    stock_dest_excel_folder = r"D:\TB\Products\ecco\repulibcation\stock"
+    export_stock_excel("ecco", stock_dest_excel_folder)
 
-    # print("\n🟡 Step: 6️⃣ 生成鲸芽【价格更新】Excel")
-    # price_dest_excel_folder = r"D:\TB\Products\ecco\repulibcation\publication_prices"
-    # export_jiangya_channel_prices("ecco", price_dest_excel_folder)
+    print("\n🟡 Step: 6️⃣ 生成鲸芽【价格更新】Excel")
+    price_dest_excel_folder = r"D:\TB\Products\ecco\repulibcation\publication_prices"
+    export_jiangya_channel_prices("ecco", price_dest_excel_folder)
 
-    # print("\n🟡 Step: 7️⃣ 为新品生成【鲸芽上新模板】Excel")
-    # generate_publication_excels("ecco")
+    print("\n🟡 Step: 7️⃣ 为新品生成【鲸芽上新模板】Excel")
+    generate_publication_excels("ecco")
 
-    # print("\n🟡 Step: 9️⃣ 生成淘宝店铺价格导入文件（可选，沿用 Camper 的店铺价逻辑）")
-    # generate_price_excels_bulk(
-    #     brand="ecco",
-    #     input_dir=r"D:\TB\Products\ECCO\document\store_prices",
-    #     output_dir=r"D:\TB\Products\ecco\repulibcation\store_prices",
-    #     suffix="_价格",
-    #     drop_rows_without_price=False,
-    #     blacklist_excel_file=r"D:\TB\Products\ecco\document\exclude.xlsx" # 不丢行，查不到的价格留空
-    # )
+    print("\n🟡 Step: 9️⃣ 生成淘宝店铺价格导入文件（可选，沿用 Camper 的店铺价逻辑）")
+    generate_price_excels_bulk(
+        brand="ecco",
+        input_dir=r"D:\TB\Products\ECCO\document\store_prices",
+        output_dir=r"D:\TB\Products\ecco\repulibcation\store_prices",
+        suffix="_价格",
+        drop_rows_without_price=False,
+        blacklist_excel_file=r"D:\TB\Products\ecco\document\exclude.xlsx" # 不丢行，查不到的价格留空
+    )
 
 
-    # print("\n🟡 Step: 5️⃣ 导出男/女商品列表（可用于手工核对）")
-    #     export_gender_split_excel("ecco")
-    #     print("\n✅ ECCO 鲸芽 pipeline 完成")
+
+    print("\n✅ ECCO 鲸芽 pipeline 完成")
 
 
 if __name__ == "__main__":
