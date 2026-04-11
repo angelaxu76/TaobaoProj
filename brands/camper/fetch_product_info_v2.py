@@ -263,7 +263,8 @@ def process_product_url(url: str) -> tuple[bool, str, str]:
 
         filepath = SAVE_PATH / f"{product_code}.txt"
         format_txt(info, filepath, brand="camper")
-        print(f"✅ 完成 TXT: {filepath.name} | 原价={original_price} 折扣价={discount_price}")
+        price_src = "no_discount" if original_price == discount_price else "discount"
+        print(f"✅ 完成 TXT: {filepath.name}  (src={price_src}, P={original_price}, D={discount_price})")
         return True, url, ""
 
     except Exception as e:

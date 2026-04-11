@@ -10,6 +10,7 @@
 import os
 import re
 import time
+import random
 import json
 import threading
 from pathlib import Path
@@ -181,14 +182,14 @@ def get_thread_driver():
 
 def reset_thread_driver():
     """
-    线程内 driver 掉线（10061）时，重建一次
+    线程内 driver 掉线时，清除 thread_local 并同步清除 selenium_utils._DRIVERS 缓存，
+    确保下次 get_thread_driver() 创建的是全新的 Chrome 实例。
     """
+    from common.browser.selenium_utils import quit_driver
     try:
-        if hasattr(thread_local, "driver") and thread_local.driver is not None:
-            try:
-                thread_local.driver.quit()
-            except Exception:
-                pass
+        quit_driver("camper_v3_public_mt")  # quit + 从 _DRIVERS 缓存中删除
+    except Exception:
+        pass
     finally:
         thread_local.driver = None
 
@@ -358,12 +359,13 @@ def camper_fetch_product_info(product_urls_file: Optional[str] = None,
             driver = get_thread_driver()
             try:
                 process_product_url_with_driver(driver, url)
+                time.sleep(random.uniform(1.5, 3.5))  # 模拟人工浏览间隔，避免触发限流
                 return True, url, ""
             except Exception as e:
                 if is_driver_connection_error(e) and attempt == 0:
-                    print(f"⚠️ driver 掉线(10061)，重建后重试: {url}")
+                    print(f"⚠️ driver 掉线，重建后重试: {url}")
                     reset_thread_driver()
-                    time.sleep(0.5)
+                    time.sleep(random.uniform(2.0, 4.0))  # 重建后多等一会儿再试
                     continue
                 return False, url, str(e)
         return False, url, "unknown"
