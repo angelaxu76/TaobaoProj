@@ -45,7 +45,7 @@ import tempfile
 from datetime import datetime
 def import_txt_to_db_supplier(
     brand_name: str,
-    exchange_rate: float = 9.7,
+    exchange_rate: float = 9.5,
     delivery_cost: float = 7,
     untaxed_margin: float = 1.13,
     retail_margin: float = 1.43,
