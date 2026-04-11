@@ -69,11 +69,13 @@ def infer_gender_from_url(url: str) -> str:
 def is_driver_connection_error(e: Exception) -> bool:
     msg = str(e)
     return (
-        "WinError 10061" in msg
+        "WinError 10061" in msg           # 拒绝连接（driver 进程不在了）
         or "Max retries exceeded" in msg
         or "NewConnectionError" in msg
         or "Failed to establish a new connection" in msg
         or ("localhost" in msg and "/session/" in msg)
+        or "Read timed out" in msg        # driver 进程崩溃/OOM，120s 无响应
+        or "RemoteDisconnected" in msg    # driver 进程意外断开
     )
 
 

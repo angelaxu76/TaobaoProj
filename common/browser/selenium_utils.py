@@ -129,6 +129,8 @@ def get_driver(
 
         service = Service(str(driver_path))
         driver = webdriver.Chrome(service=service, options=options)
+        driver.set_page_load_timeout(45)   # 防止 driver.get() 无限阻塞（默认 300s）
+        driver.set_script_timeout(15)       # 防止 execute_script() 无限阻塞
 
         _DRIVERS[key] = driver
         return driver
