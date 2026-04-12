@@ -16,7 +16,7 @@ BARBOUR = {
     "PUBLICATION_DIR": BARBOUR_BASE / "document" / "publication",
     "IMAGE_DIR": BARBOUR_BASE / "publication" / "images",
     "IMAGE_DOWNLOAD": BARBOUR_BASE / "repulibcation" / "images_download",
-    "IMAGE_PROCESS": BARBOUR_BASE / "repulibcation" / "images_flat",
+    "IMAGE_PROCESS": BARBOUR_BASE / "repulibcation" / "all",
     "IMAGE_CUTTER": BARBOUR_BASE / "repulibcation" / "images_cutter",
     "ORG_IMAGE_DIR": BARBOUR_BASE / "repulibcation" / "orgin_images",
     "DEF_IMAGE_DIR": BARBOUR_BASE / "repulibcation" / "DEF_images",
@@ -182,6 +182,9 @@ BARBOUR = {
         "LPO": ("女款", "翻领T恤POLO衫"),
         "MML": ("男款", "翻领T恤POLO衫"),
         "LML": ("女款", "翻领T恤POLO衫"),
+
+        "MOS": ("男款", "加厚衬衫外套夹克"),
+        "MSH": ("男款", "翻领薄衬衫"),
     },
 
     "BARBOUR_COLOR_CODE_MAP": {
