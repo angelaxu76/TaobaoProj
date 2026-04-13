@@ -71,7 +71,7 @@ HTML_TEMPLATE = """
         <ul class="list">
           <li class="item">
             <span class="ico">🌐</span>
-            <span class="txt">官网直采 · 凭证俱全</span>
+            <span class="txt">英国专柜官网/授权店铺采购 · · 凭证俱全</span>
           </li>
           <li class="item">
             <span class="ico">📦</span>
