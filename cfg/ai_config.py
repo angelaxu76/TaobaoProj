@@ -207,4 +207,67 @@ FACESWAP_NEGATIVE_PROMPT = (
 )
 
 
+# ==============================================================================
+# Shoe Angle Generation 专用配置（图生图微调视角）
+# ==============================================================================
+
+# ── 生成模型参数 ───────────────────────────────────────────────────────────────
+SHOE_ANGLE_MODEL        = "nano-banana-2"
+SHOE_ANGLE_ASPECT_RATIO = "1:1"
+SHOE_ANGLE_IMAGE_SIZE   = "2K"
+
+# ── 三个角度定义 ───────────────────────────────────────────────────────────────
+# label      : 输出文件名后缀（angle_01 / angle_02 / angle_03）
+# prompt_hint: 在 prompt 中描述视角偏移方向（嵌入主提示词）
+SHOE_ANGLE_VARIANTS = [
+    {
+        "label":       "angle_01",
+        "prompt_hint": (
+            "Rotate the shoe's viewpoint approximately 5 degrees to the LEFT "
+            "(counter-clockwise horizontal camera shift). "
+            "The shoe's inner side and left edge should become slightly more visible."
+        ),
+    },
+    {
+        "label":       "angle_02",
+        "prompt_hint": (
+            "Rotate the shoe's viewpoint approximately 5 degrees to the RIGHT "
+            "(clockwise horizontal camera shift). "
+            "The shoe's outer side and right edge should become slightly more visible."
+        ),
+    },
+    {
+        "label":       "angle_03",
+        "prompt_hint": (
+            "Apply a slight top-down bird's-eye angle shift of approximately 10 degrees "
+            "downward. The camera tilts slightly overhead so the toe box and upper "
+            "surface of the shoe become more visible."
+        ),
+    },
+]
+
+# ── 负向提示词 ─────────────────────────────────────────────────────────────────
+SHOE_ANGLE_NEGATIVE_PROMPT = (
+    # 产品细节保护
+    "altered logo, missing logo, changed brand name, blurred label, different shoe, "
+    "changed color, different material, missing stitching, altered sole pattern, "
+    "missing sole details, different lace color, extra decorations, removed eyelets, "
+    "changed heel height, distorted shoe shape, stretched proportions, "
+    # 背景
+    "gray background, dark background, textured background, shadow on background, "
+    "gradient background, off-white background, colored background, "
+    "floor visible, surface visible, reflections on floor, "
+    # 画质
+    "lowres, blurry, watermark, text, signature, low quality, artifact, "
+    "overexposed, underexposed, bad lighting, plastic look, toy shoe, cartoon shoe."
+)
+
+# ── R2 写入凭证（用于临时上传本地输入图至 R2 以获取公开 URL）────────────────
+# 请在 R2 控制台创建 API Token（Object:Edit 权限），填入以下占位符
+R2_ACCOUNT_ID      = "YOUR_R2_ACCOUNT_ID"          # Cloudflare Account ID
+R2_WRITE_KEY_ID    = "YOUR_R2_ACCESS_KEY_ID"        # R2 Access Key ID
+R2_WRITE_SECRET    = "YOUR_R2_SECRET_ACCESS_KEY"    # R2 Secret Access Key
+R2_BUCKET_NAME     = "YOUR_R2_BUCKET_NAME"          # 存储桶名称
+# 上传的临时文件在 R2 中的 key 前缀（不含尾部斜杠）
+R2_TEMP_UPLOAD_PREFIX = "tmp_shoe_input"
 
