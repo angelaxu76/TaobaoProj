@@ -9,10 +9,7 @@ BRAND_MAP = {
     "geox": GEOX,
 }
 
-# ✅ 可配置变量
-MIN_SIZES = 2  # 如果有效尺码数 <= 这个值，商品下架（库存清零 + is_published=False）
-
-def disable_low_stock_products(brand_name: str):
+def disable_low_stock_products(brand_name: str, min_sizes: int = 2):
     brand_name = brand_name.lower()
     if brand_name not in BRAND_MAP:
         raise ValueError(f"❌ 不支持的品牌: {brand_name}")
@@ -33,7 +30,7 @@ def disable_low_stock_products(brand_name: str):
     conn = psycopg2.connect(**pg_config)
     with conn:
         with conn.cursor() as cur:
-            cur.execute(query_find, (MIN_SIZES,))
+            cur.execute(query_find, (min_sizes,))
             codes = cur.fetchall()
 
     if not codes:

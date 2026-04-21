@@ -56,9 +56,9 @@ def main():
     insert_missing_products_with_zero_stock("ecco")
     print("─" * 60)
 
-    print("\n🟡 Step: 5️⃣ 根据尺码数量，自动下架稀缺尺码的商品，避免差评/售后")
-    disable_low_stock_products("ecco")
-    print("─" * 60)
+    # print("\n🟡 Step: 5️⃣ 根据尺码数量，自动下架稀缺尺码的商品，避免差评/售后")
+    # disable_low_stock_products("ecco", min_sizes=1)
+    # print("─" * 60)
 
   
 
