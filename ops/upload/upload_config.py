@@ -10,7 +10,7 @@ from pathlib import Path
 # ─────────────────────────────────────────────────────────────────
 
 # 共享文件夹输入区（VMware 共享或 UNC 路径）
-SHARED_INPUT_DIR = Path(r"\\vmware-host\Shared Folders\input")
+SHARED_INPUT_DIR = Path(r"\\vmware-host\Shared Folders\VMShared\input")
 
 # 本地处理区（从共享目录搬运到此处再处理，与共享目录完全隔离）
 LOCAL_PROCESSING_DIR = Path(r"D:\RPA\processing")
@@ -52,7 +52,7 @@ DELETE_FROM_SHARED_AFTER_COPY = True
 #   C:\Users\<你的用户名>\AppData\Local\Programs\UiPath\app-<版本号>\UiRobot.exe
 # Studio 默认路径示例：
 #   C:\Program Files\UiPath\Studio\UiRobot.exe
-UIPATH_ROBOT_EXE = r"C:\Users\YourUsername\AppData\Local\Programs\UiPath\app-25.x.x\UiRobot.exe"
+UIPATH_ROBOT_EXE = r"C:\Users\maddingxu\AppData\Local\Programs\UiPathPlatform\Studio\26.0.191-cloud.22694\UiRobot.exe"
 
 # 已发布的流程名称（在 UiPath Assistant 里显示的名字，区分大小写）
 # 对应 Orchestrator 上的 Process Name（不是 project.json 路径）
