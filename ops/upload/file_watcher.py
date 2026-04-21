@@ -31,7 +31,6 @@ from upload_config import (
     STABILITY_INTERVAL,
     POLL_INTERVAL,
     BATCH_SETTLE_SECONDS,
-    DELETE_FROM_SHARED_AFTER_COPY,
     UIPATH_ROBOT_EXE,
     UIPATH_PROCESS_NAME,
     UIPATH_FIXED_ARGS,
@@ -199,8 +198,8 @@ def call_uipath(folder_path: Path, logger: logging.Logger) -> bool:
 #  成功 / 失败后处理
 # ─────────────────────────────────────────────────────────────────
 
-def handle_success(local_file: Path, shared_src: Path, logger: logging.Logger) -> None:
-    """上传成功：删除或归档 processing 文件，并清理共享目录原文件。"""
+def handle_success(local_file: Path, logger: logging.Logger) -> None:
+    """上传成功：删除或归档 processing 文件（共享目录原文件已在搬运时删除）。"""
     if ARCHIVE_ON_SUCCESS:
         archive_dest = LOCAL_DONE_DIR / local_file.name
         try:
@@ -211,9 +210,6 @@ def handle_success(local_file: Path, shared_src: Path, logger: logging.Logger) -
             _safe_unlink(local_file, logger, label="processing")
     else:
         _safe_unlink(local_file, logger, label="processing")
-
-    if DELETE_FROM_SHARED_AFTER_COPY:
-        _safe_unlink(shared_src, logger, label="共享目录")
 
 
 def handle_failure(local_file: Path, logger: logging.Logger) -> None:
@@ -284,7 +280,6 @@ def scan_and_process(logger: logging.Logger) -> None:
     )
 
     local_files: list[Path] = []
-    shared_sources: list[Path] = []
 
     for src in candidates:
         if not is_stable(src):
@@ -294,7 +289,7 @@ def scan_and_process(logger: logging.Logger) -> None:
             local_file = copy_to_processing(src)
             logger.info(f"搬运: {src.name} → {local_file}")
             local_files.append(local_file)
-            shared_sources.append(src)
+            _safe_unlink(src, logger, label="共享目录")
         except OSError as e:
             logger.error(f"搬运失败，跳过: {src.name} — {e}")
 
@@ -308,8 +303,8 @@ def scan_and_process(logger: logging.Logger) -> None:
 
     # 5. 批量处理结果
     if success:
-        for local, shared in zip(local_files, shared_sources):
-            handle_success(local, shared, logger)
+        for local in local_files:
+            handle_success(local, logger)
     else:
         for local in local_files:
             handle_failure(local, logger)
@@ -331,12 +326,42 @@ def main() -> None:
     logger.info(f"  UiPath   : {UIPATH_ROBOT_EXE}")
     logger.info("=" * 50)
 
+    # 启动时先处理 processing 目录中的残余文件
     try:
-        while True:
+        leftover = [
+            f for f in LOCAL_PROCESSING_DIR.iterdir()
+            if f.is_file() and f.suffix.lower() in WATCH_EXTENSIONS
+        ]
+    except OSError as e:
+        logger.error(f"无法读取 processing 目录: {e}")
+        leftover = []
+
+    if leftover:
+        logger.info(f"发现 {len(leftover)} 个残余文件，优先处理后再监控共享目录")
+        try:
+            success = call_uipath(LOCAL_PROCESSING_DIR, logger)
+            if success:
+                for f in leftover:
+                    handle_success(f, logger)
+            else:
+                for f in leftover:
+                    handle_failure(f, logger)
+        except Exception as e:
+            logger.error(f"处理残余文件时发生异常: {e}", exc_info=True)
+        logger.info("残余文件处理完毕，开始监控共享目录")
+    else:
+        logger.info("processing 目录无残余文件，直接开始监控")
+
+    # 主监控循环：仅 KeyboardInterrupt / SystemExit 才退出，其他异常记录后继续
+    while True:
+        try:
             scan_and_process(logger)
-            time.sleep(POLL_INTERVAL)
-    except KeyboardInterrupt:
-        logger.info("收到中断信号，服务停止。")
+        except KeyboardInterrupt:
+            logger.info("收到中断信号，服务停止。")
+            break
+        except Exception as e:
+            logger.error(f"主循环发生未预期异常，5 秒后继续: {e}", exc_info=True)
+        time.sleep(POLL_INTERVAL)
 
 
 if __name__ == "__main__":

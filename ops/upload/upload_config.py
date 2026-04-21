@@ -43,9 +43,6 @@ POLL_INTERVAL = 2.0
 # 建议设为代码生成文件的最大间隔时间 + 缓冲，例如 10 秒
 BATCH_SETTLE_SECONDS = 10
 
-# 是否在搬运后删除共享目录原文件（True=删除 / False=保留）
-DELETE_FROM_SHARED_AFTER_COPY = True
-
 
 # ─────────────────────────────────────────────────────────────────
 #  UiPath 配置（通过 UiPath Assistant 部署的流程）
