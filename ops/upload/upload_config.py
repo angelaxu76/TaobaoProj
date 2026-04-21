@@ -68,7 +68,7 @@ UIPATH_PROCESS_NAME = "update_stock_by_excel"
 # 注意：FolderPath（处理目录）由 Python 运行时自动注入，不在这里配置
 UIPATH_FIXED_ARGS = {
     # 示例：如果你的流程需要指定上传类型，可以在这里加
-    "FilePath": "D:\RPA\processing",
+    "FilePath": r"D:\RPA\processing",
 }
 
 # UiPath 单次执行最长等待时间（秒），超时视为失败
