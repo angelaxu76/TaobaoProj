@@ -140,8 +140,9 @@ def _ensure_uirobot_not_running(logger: logging.Logger) -> None:
     同时检测 UiRobot.exe（启动器）和 UiPath.Executor.exe（实际 workflow 进程）。
     先等待自然退出（最长 UIPATH_WAIT_BEFORE_KILL_SECS 秒），超时后强制 taskkill。
     """
-    # UiRobot.exe = 命令行启动器；UiPath.Executor.exe = 前台 workflow 执行进程
-    watch_names = [Path(UIPATH_ROBOT_EXE).name, "UiPath.Executor.exe"]
+    # 只检测 UiRobot.exe（命令行启动器，执行期间阻塞、完成后自动退出）
+    # UiPath.Executor.exe 是 UiPath 常驻后台服务，不代表有任务在跑，不纳入检测
+    watch_names = [Path(UIPATH_ROBOT_EXE).name]
 
     def _running_names() -> list[str]:
         found = []
