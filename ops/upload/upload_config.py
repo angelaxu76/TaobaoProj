@@ -39,6 +39,10 @@ STABILITY_INTERVAL = 1.0
 # 主循环扫描间隔（秒）
 POLL_INTERVAL = 2.0
 
+# 批次沉默等待时间（秒）：检测到文件后，连续 N 秒内无新文件出现才视为批次完成
+# 建议设为代码生成文件的最大间隔时间 + 缓冲，例如 10 秒
+BATCH_SETTLE_SECONDS = 10
+
 # 是否在搬运后删除共享目录原文件（True=删除 / False=保留）
 DELETE_FROM_SHARED_AFTER_COPY = True
 
@@ -61,10 +65,9 @@ UIPATH_PROCESS_NAME = "update_stock_by_excel"
 # 传给 UiPath 流程的固定 In 参数（每次调用都不变的部分）
 # key = UiPath 流程里定义的 In Argument 名称（区分大小写）
 # value = 对应的值
-# 注意：文件路径是动态的，由 Python 运行时自动注入，不在这里配置
+# 注意：FolderPath（处理目录）由 Python 运行时自动注入，不在这里配置
 UIPATH_FIXED_ARGS = {
     # 示例：如果你的流程需要指定上传类型，可以在这里加
-    "FilePath": "D:\RPA\processing",
     # "ShopName": "my-shop",
 }
 

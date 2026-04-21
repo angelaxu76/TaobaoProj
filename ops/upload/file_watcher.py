@@ -30,6 +30,7 @@ from upload_config import (
     STABILITY_SECONDS,
     STABILITY_INTERVAL,
     POLL_INTERVAL,
+    BATCH_SETTLE_SECONDS,
     DELETE_FROM_SHARED_AFTER_COPY,
     UIPATH_ROBOT_EXE,
     UIPATH_PROCESS_NAME,
@@ -132,17 +133,17 @@ def copy_to_processing(src: Path) -> Path:
 #  UiPath 调用
 # ─────────────────────────────────────────────────────────────────
 
-def call_uipath(file_path: Path, logger: logging.Logger) -> bool:
+def call_uipath(folder_path: Path, logger: logging.Logger) -> bool:
     """
     通过 UiRobot.exe 调用已在 UiPath Assistant 中部署的流程。
-    使用 --process 指定发布的流程名，而非 project.json 路径。
+    传入 processing 目录路径，UiPath 流程负责遍历其中的所有 Excel 文件。
     支持失败重试（由 UIPATH_RETRY_COUNT 控制）。
     返回 True = 成功，False = 最终失败。
     """
     import json
 
-    # 动态参数：文件路径（每次不同，由 Python 运行时注入）
-    args = {"FilePath": str(file_path)}
+    # 动态参数：processing 目录（UiPath 流程内部循环处理其中所有文件）
+    args = {"FolderPath": str(folder_path)}
 
     # 固定参数：从 upload_config.UIPATH_FIXED_ARGS 合并（每次调用都一样的参数）
     args.update(UIPATH_FIXED_ARGS)
@@ -158,10 +159,10 @@ def call_uipath(file_path: Path, logger: logging.Logger) -> bool:
     attempts = 1 + UIPATH_RETRY_COUNT
     for attempt in range(1, attempts + 1):
         if attempt > 1:
-            logger.info(f"第 {attempt} 次重试（共 {attempts} 次）: {file_path.name}")
+            logger.info(f"第 {attempt} 次重试（共 {attempts} 次）: {folder_path.name}")
             time.sleep(UIPATH_RETRY_INTERVAL)
 
-        logger.info(f"调用 UiPath [{attempt}/{attempts}]: {file_path.name}")
+        logger.info(f"调用 UiPath [{attempt}/{attempts}]: {folder_path.name}")
 
         try:
             result = subprocess.run(
@@ -171,7 +172,7 @@ def call_uipath(file_path: Path, logger: logging.Logger) -> bool:
                 text=True,
             )
             if result.returncode == 0:
-                logger.info(f"UiPath 执行成功: {file_path.name}")
+                logger.info(f"UiPath 执行成功: {folder_path.name}")
                 return True
             else:
                 logger.warning(
@@ -181,7 +182,7 @@ def call_uipath(file_path: Path, logger: logging.Logger) -> bool:
                 )
 
         except subprocess.TimeoutExpired:
-            logger.warning(f"UiPath 超时（>{UIPATH_TIMEOUT}s）: {file_path.name}")
+            logger.warning(f"UiPath 超时（>{UIPATH_TIMEOUT}s）: {folder_path.name}")
 
         except FileNotFoundError:
             logger.error(f"找不到 UiRobot.exe，请检查配置: {UIPATH_ROBOT_EXE}")
@@ -190,7 +191,7 @@ def call_uipath(file_path: Path, logger: logging.Logger) -> bool:
         except Exception as e:
             logger.warning(f"调用 UiPath 异常: {e}")
 
-    logger.error(f"UiPath 全部 {attempts} 次尝试均失败: {file_path.name}")
+    logger.error(f"UiPath 全部 {attempts} 次尝试均失败: {folder_path.name}")
     return False
 
 
@@ -240,51 +241,78 @@ def _safe_unlink(path: Path, logger: logging.Logger, label: str = "") -> None:
 #  主扫描逻辑（串行处理，每次扫描一批）
 # ─────────────────────────────────────────────────────────────────
 
+def _list_shared_files() -> set[str]:
+    """返回共享目录中当前所有 Excel 文件名集合（用于批次沉默检测）。"""
+    try:
+        return {
+            f.name for f in SHARED_INPUT_DIR.iterdir()
+            if f.is_file() and f.suffix.lower() in WATCH_EXTENSIONS
+        }
+    except OSError:
+        return set()
+
+
 def scan_and_process(logger: logging.Logger) -> None:
     """
-    扫描共享目录，对每个 Excel 文件依次：
-      稳定性检测 → 搬运 → UiPath上传 → 成功删除 / 失败归error
-    串行执行，避免并发带来的浏览器/文件锁冲突。
+    批次模式：扫描共享目录，等到连续 BATCH_SETTLE_SECONDS 秒内无新文件出现，
+    视为一批文件全部就绪，再一次性搬运 + 调用 UiPath 一次批量处理。
     """
-    try:
-        candidates = sorted(
-            (f for f in SHARED_INPUT_DIR.iterdir()
-             if f.is_file() and f.suffix.lower() in WATCH_EXTENSIONS),
-            key=lambda f: f.stat().st_mtime   # 按修改时间升序，先处理旧文件
-        )
-    except OSError as e:
-        logger.error(f"无法读取共享目录（{SHARED_INPUT_DIR}）: {e}")
+    # 1. 初次扫描，若无文件直接返回
+    current_names = _list_shared_files()
+    if not current_names:
         return
 
-    if not candidates:
-        return
+    logger.info(f"检测到 {len(current_names)} 个文件，等待批次完成（{BATCH_SETTLE_SECONDS}s 无新文件视为就绪）...")
 
-    logger.info(f"扫描到 {len(candidates)} 个待处理文件")
+    # 2. 批次沉默等待：直到连续 BATCH_SETTLE_SECONDS 内文件集合不再增加
+    while True:
+        time.sleep(BATCH_SETTLE_SECONDS)
+        new_names = _list_shared_files()
+        if new_names == current_names:
+            break
+        added = new_names - current_names
+        logger.info(f"批次新增 {len(added)} 个文件，继续等待... 当前共 {len(new_names)} 个")
+        current_names = new_names
+
+    logger.info(f"批次就绪，共 {len(current_names)} 个文件，开始搬运")
+
+    # 3. 稳定性检测 + 搬运所有文件
+    candidates = sorted(
+        (f for f in SHARED_INPUT_DIR.iterdir()
+         if f.is_file() and f.suffix.lower() in WATCH_EXTENSIONS),
+        key=lambda f: f.stat().st_mtime,
+    )
+
+    local_files: list[Path] = []
+    shared_sources: list[Path] = []
 
     for src in candidates:
-        logger.info(f"─── 处理: {src.name} ───")
-
-        # 1. 稳定性检测
         if not is_stable(src):
-            logger.warning(f"文件仍在写入，本轮跳过: {src.name}")
+            logger.warning(f"文件仍在写入，跳过: {src.name}")
             continue
-
-        # 2. 搬运到本地 processing 目录
         try:
             local_file = copy_to_processing(src)
-            logger.info(f"搬运完成: {src.name} → {local_file}")
+            logger.info(f"搬运: {src.name} → {local_file}")
+            local_files.append(local_file)
+            shared_sources.append(src)
         except OSError as e:
             logger.error(f"搬运失败，跳过: {src.name} — {e}")
-            continue
 
-        # 3. 调用 UiPath 上传
-        success = call_uipath(local_file, logger)
+    if not local_files:
+        logger.warning("所有文件搬运失败，本轮跳过")
+        return
 
-        # 4. 根据结果处理文件
-        if success:
-            handle_success(local_file, src, logger)
-        else:
-            handle_failure(local_file, logger)
+    # 4. 调用 UiPath 一次，传入 processing 目录
+    logger.info(f"调用 UiPath 处理 {len(local_files)} 个文件（目录: {LOCAL_PROCESSING_DIR}）")
+    success = call_uipath(LOCAL_PROCESSING_DIR, logger)
+
+    # 5. 批量处理结果
+    if success:
+        for local, shared in zip(local_files, shared_sources):
+            handle_success(local, shared, logger)
+    else:
+        for local in local_files:
+            handle_failure(local, logger)
 
 
 # ─────────────────────────────────────────────────────────────────
