@@ -77,7 +77,12 @@ UIPATH_FIXED_ARGS = {
 }
 
 # UiPath 单次执行最长等待时间（秒），超时视为失败
-UIPATH_TIMEOUT = 120
+# 需大于最大批次的实际处理时长（35个文件约需 10-30 分钟，建议设 2 小时保底）
+UIPATH_TIMEOUT = 7200
+
+# 调用 UiPath 前，等待上一个残留实例自然退出的最长时间（秒）
+# 超时后强制 taskkill，再启动新实例；建议与 UIPATH_TIMEOUT 保持一致
+UIPATH_WAIT_BEFORE_KILL_SECS = 7200
 
 # UiPath 失败后重试次数（0=不重试）
 UIPATH_RETRY_COUNT = 1

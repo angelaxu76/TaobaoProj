@@ -14,6 +14,7 @@ import subprocess
 import sys
 import time
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -37,6 +38,7 @@ from upload_config import (
     UIPATH_TIMEOUT,
     UIPATH_RETRY_COUNT,
     UIPATH_RETRY_INTERVAL,
+    UIPATH_WAIT_BEFORE_KILL_SECS,
     LOG_DIR,
     LOG_FILENAME,
     LOG_MAX_BYTES,
@@ -132,6 +134,45 @@ def copy_to_processing(src: Path) -> Path:
 #  UiPath 调用
 # ─────────────────────────────────────────────────────────────────
 
+def _ensure_uirobot_not_running(logger: logging.Logger) -> None:
+    """
+    调用 UiPath 前确保没有残留实例。
+    同时检测 UiRobot.exe（启动器）和 UiPath.Executor.exe（实际 workflow 进程）。
+    先等待自然退出（最长 UIPATH_WAIT_BEFORE_KILL_SECS 秒），超时后强制 taskkill。
+    """
+    # UiRobot.exe = 命令行启动器；UiPath.Executor.exe = 前台 workflow 执行进程
+    watch_names = [Path(UIPATH_ROBOT_EXE).name, "UiPath.Executor.exe"]
+
+    def _running_names() -> list[str]:
+        found = []
+        for name in watch_names:
+            r = subprocess.run(
+                ["tasklist", "/FI", f"IMAGENAME eq {name}", "/NH"],
+                capture_output=True, text=True,
+            )
+            if name.lower() in r.stdout.lower():
+                found.append(name)
+        return found
+
+    running = _running_names()
+    if not running:
+        return
+
+    logger.warning(f"检测到 UiPath 进程仍在运行 {running}，等待自然退出（最多 {UIPATH_WAIT_BEFORE_KILL_SECS}s）...")
+    deadline = time.time() + UIPATH_WAIT_BEFORE_KILL_SECS
+    while time.time() < deadline:
+        time.sleep(5)
+        running = _running_names()
+        if not running:
+            logger.info("UiPath 进程已自然退出")
+            return
+
+    logger.warning(f"UiPath 进程等待超时，强制终止: {running}")
+    for name in running:
+        subprocess.run(["taskkill", "/F", "/IM", name], capture_output=True)
+    time.sleep(2)
+
+
 def call_uipath(folder_path: Path, logger: logging.Logger) -> bool:
     """
     通过 UiRobot.exe 调用已在 UiPath Assistant 中部署的流程。
@@ -161,6 +202,7 @@ def call_uipath(folder_path: Path, logger: logging.Logger) -> bool:
             logger.info(f"第 {attempt} 次重试（共 {attempts} 次）: {folder_path.name}")
             time.sleep(UIPATH_RETRY_INTERVAL)
 
+        _ensure_uirobot_not_running(logger)
         logger.info(f"调用 UiPath [{attempt}/{attempts}]: {folder_path.name}")
 
         try:
@@ -213,16 +255,11 @@ def handle_success(local_file: Path, logger: logging.Logger) -> None:
 
 
 def handle_failure(local_file: Path, logger: logging.Logger) -> None:
-    """上传失败：将 processing 文件移入 error 目录，保留共享原文件供排查。"""
-    error_dest = LOCAL_ERROR_DIR / local_file.name
-    # 若 error 目录已有同名文件，加时间戳区分
-    if error_dest.exists():
-        error_dest = LOCAL_ERROR_DIR / f"{local_file.stem}_{int(time.time())}{local_file.suffix}"
-    try:
-        shutil.move(str(local_file), str(error_dest))
-        logger.error(f"上传失败，文件已移入 error 目录: {error_dest}")
-    except OSError as e:
-        logger.error(f"移动到 error 目录失败: {e}")
+    """上传失败：文件留在 processing 目录，等待下次启动时自动重试。"""
+    if local_file.exists():
+        logger.error(f"上传失败，文件保留在 processing 等待重试: {local_file.name}")
+    else:
+        logger.error(f"上传失败，且文件已不存在（可能已被 UiPath 部分处理）: {local_file.name}")
 
 
 def _safe_unlink(path: Path, logger: logging.Logger, label: str = "") -> None:
@@ -279,19 +316,40 @@ def scan_and_process(logger: logging.Logger) -> None:
         key=lambda f: f.stat().st_mtime,
     )
 
-    local_files: list[Path] = []
+    # 3a. 并行稳定性检测（避免 N×STABILITY_SECONDS 的顺序等待）
+    with ThreadPoolExecutor(max_workers=min(len(candidates), 16)) as pool:
+        results = {pool.submit(is_stable, f): f for f in candidates}
+        stable = [results[fut] for fut in as_completed(results) if fut.result()]
+    stable.sort(key=lambda f: f.stat().st_mtime)
+    skipped = len(candidates) - len(stable)
+    if skipped:
+        logger.warning(f"{skipped} 个文件仍在写入，本轮跳过")
 
-    for src in candidates:
-        if not is_stable(src):
-            logger.warning(f"文件仍在写入，跳过: {src.name}")
-            continue
+    if not stable:
+        logger.warning("无就绪文件，本轮跳过")
+        return
+
+    # 3b. 批量 copy：先全部复制到 processing，再批量删除共享目录原文件
+    local_files: list[Path] = []
+    copied_srcs: list[Path] = []
+
+    for src in stable:
         try:
             local_file = copy_to_processing(src)
-            logger.info(f"搬运: {src.name} → {local_file}")
             local_files.append(local_file)
-            _safe_unlink(src, logger, label="共享目录")
+            copied_srcs.append(src)
         except OSError as e:
-            logger.error(f"搬运失败，跳过: {src.name} — {e}")
+            logger.error(f"复制失败，跳过: {src.name} — {e}")
+
+    if not local_files:
+        logger.warning("所有文件复制失败，本轮跳过")
+        return
+
+    logger.info(f"批量复制完成，共 {len(local_files)} 个文件 → {LOCAL_PROCESSING_DIR}")
+
+    # 3c. 批量删除共享目录原文件（copy 已全部完成后再删，避免部分失败留下孤文件）
+    for src in copied_srcs:
+        _safe_unlink(src, logger, label="共享目录")
 
     if not local_files:
         logger.warning("所有文件搬运失败，本轮跳过")
