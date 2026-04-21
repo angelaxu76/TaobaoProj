@@ -150,7 +150,8 @@ def call_uipath(file_path: Path, logger: logging.Logger) -> bool:
     input_json = json.dumps(args, ensure_ascii=False)
     cmd = [
         UIPATH_ROBOT_EXE,
-        "--process", UIPATH_PROCESS_NAME,   # 已发布的流程名（非 project.json）
+        "execute",
+        "--process-name", UIPATH_PROCESS_NAME,
         "--input", input_json,
     ]
 
