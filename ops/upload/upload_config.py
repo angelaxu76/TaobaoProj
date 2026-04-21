@@ -3,6 +3,7 @@ upload_config.py — 上传自动化系统集中配置文件
 修改本文件的参数即可适配不同环境，无需改动主逻辑。
 """
 
+import os
 from pathlib import Path
 
 # ─────────────────────────────────────────────────────────────────
@@ -48,12 +49,19 @@ BATCH_SETTLE_SECONDS = 10
 #  UiPath 配置（通过 UiPath Assistant 部署的流程）
 # ─────────────────────────────────────────────────────────────────
 
-# UiRobot.exe 路径（Assistant 模式安装在 AppData，Studio 安装在 Program Files）
-# Assistant 默认路径示例：
-#   C:\Users\<你的用户名>\AppData\Local\Programs\UiPath\app-<版本号>\UiRobot.exe
-# Studio 默认路径示例：
-#   C:\Program Files\UiPath\Studio\UiRobot.exe
-UIPATH_ROBOT_EXE = r"C:\Users\maddingxu\AppData\Local\Programs\UiPathPlatform\Studio\26.0.191-cloud.22694\UiRobot.exe"
+# UiRobot.exe 路径：从环境变量 UIPATH_ROBOT_EXE 读取，各机器自行配置，不入 git
+# 设置方式（Windows 系统环境变量或用户环境变量）：
+#   变量名: UIPATH_ROBOT_EXE
+#   变量值: C:\Users\<用户名>\AppData\Local\Programs\UiPathPlatform\Studio\<版本>\UiRobot.exe
+_robot_exe = os.environ.get("UIPATH_ROBOT_EXE", "")
+if not _robot_exe:
+    raise EnvironmentError(
+        "环境变量 UIPATH_ROBOT_EXE 未设置。\n"
+        "请在系统环境变量中添加：\n"
+        "  变量名: UIPATH_ROBOT_EXE\n"
+        "  变量值: <UiRobot.exe 的完整路径>"
+    )
+UIPATH_ROBOT_EXE = _robot_exe
 
 # 已发布的流程名称（在 UiPath Assistant 里显示的名字，区分大小写）
 # 对应 Orchestrator 上的 Process Name（不是 project.json 路径）
