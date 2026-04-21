@@ -35,7 +35,7 @@ C_SIZE_THRESHOLD     = 3
 
 # ── 路径配置 ─────────────────────────────────────────────────────
 EXCLUDE_LIST_XLSX    = r"D:\TB\Products\barbour\document\barbour_exclude_list.xlsx"
-STOCK_EXPORT_DIR     = r"D:\TB\Products\barbour\repulibcation\stock"
+STOCK_EXPORT_DIR     = r"\\vmware-host\Shared Folders\VMShared\input"
 PRICE_EXPORT_DIR     = r"D:\TB\Products\barbour\repulibcation\publication_prices"
 
 # ── A 阶段：要抓取的供应商列表（注释掉的暂时停用）────────────────
