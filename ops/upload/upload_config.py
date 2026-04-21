@@ -56,7 +56,7 @@ UIPATH_ROBOT_EXE = r"C:\Users\YourUsername\AppData\Local\Programs\UiPath\app-25.
 
 # 已发布的流程名称（在 UiPath Assistant 里显示的名字，区分大小写）
 # 对应 Orchestrator 上的 Process Name（不是 project.json 路径）
-UIPATH_PROCESS_NAME = "UploadExcel"
+UIPATH_PROCESS_NAME = "update_stock_by_excel"
 
 # 传给 UiPath 流程的固定 In 参数（每次调用都不变的部分）
 # key = UiPath 流程里定义的 In Argument 名称（区分大小写）
@@ -64,7 +64,7 @@ UIPATH_PROCESS_NAME = "UploadExcel"
 # 注意：文件路径是动态的，由 Python 运行时自动注入，不在这里配置
 UIPATH_FIXED_ARGS = {
     # 示例：如果你的流程需要指定上传类型，可以在这里加
-    # "UploadType": "Excel",
+    "FilePath": "D:\RPA\processing",
     # "ShopName": "my-shop",
 }
 
