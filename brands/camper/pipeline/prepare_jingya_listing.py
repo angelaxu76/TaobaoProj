@@ -8,7 +8,7 @@ from channels.jingya.maintenance.disable_low_stock_products import disable_low_s
 from channels.jingya.export.export_gender_split_excel import export_gender_split_excel
 from channels.jingya.export.generate_publication_excel_shoes import generate_publication_excels
 from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
-from brands.camper.fetch_product_info_v3 import camper_fetch_product_info
+from brands.camper.fetch_product_info_v2 import camper_fetch_product_info
 from brands.camper.collect_product_links import camper_get_links
 from channels.jingya.maintenance.export_low_stock_products import export_low_stock_for_brand
 from channels.jingya.maintenance.generate_missing_links_for_brand import generate_missing_links_for_brand
@@ -48,7 +48,7 @@ def main():
 
 
     print("\\n🟡 Step: 6️⃣ 鲸芽侧更新价格和库存------")
-    stock_dest_excel_folder = r"D:\TB\Products\camper\repulibcation\stock"
+    stock_dest_excel_folder = r"\\vmware-host\Shared Folders\VMShared\input"
     export_stock_excel("camper",stock_dest_excel_folder)
 
     print("\\n🟡 Step: 6️⃣ 导出价格用于更新")

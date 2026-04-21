@@ -66,7 +66,7 @@ def main():
 
 
     print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
-    stock_dest_excel_folder = r"D:\TB\Products\clarks\repulibcation\stock"
+    stock_dest_excel_folder = r"\\vmware-host\Shared Folders\VMShared\input"
     export_stock_excel("clarks",stock_dest_excel_folder)
 
     price_dest_excel = r"D:\TB\Products\clarks\repulibcation\publication_prices"

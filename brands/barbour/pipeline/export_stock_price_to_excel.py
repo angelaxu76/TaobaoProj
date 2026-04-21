@@ -21,7 +21,7 @@ def barbour_export_price_stock():
 
 
     print("导出excel 用于更新鲸芽库存")
-    stock_dest_excel_folder = r"D:\TB\Products\barbour\repulibcation\stock"
+    stock_dest_excel_folder = r"\\vmware-host\Shared Folders\VMShared\input"
     export_stock_excel("barbour", stock_dest_excel_folder, exclude_excel_file=exclude_xlsx_path)
     
     print("导出excel 用于更新鲸芽价格=====商品级别"    )

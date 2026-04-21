@@ -63,7 +63,7 @@ def main():
   
 
     print("\n🟡 Step: 6️⃣ 生成鲸芽【库存更新】Excel")
-    stock_dest_excel_folder = r"D:\TB\Products\ecco\repulibcation\stock"
+    stock_dest_excel_folder = r"\\vmware-host\Shared Folders\VMShared\input"
     export_stock_excel("ecco", stock_dest_excel_folder)
 
     print("\n🟡 Step: 6️⃣ 生成鲸芽【价格更新】Excel")
