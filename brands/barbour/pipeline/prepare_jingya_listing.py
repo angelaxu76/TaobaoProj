@@ -148,6 +148,16 @@ def run_a_crawl():
         except Exception as e:
             _fail(f"A-fetch_info-{supplier}", e)
 
+    _step("过滤非 Barbour 编码文件（houseoffraser / cho / philipmorris / terraces）")
+    from brands.barbour.tools.move_non_barbour_files import move_non_barbour_files
+    _FILTER_SUPPLIERS = ["houseoffraser", "cho", "philipmorris", "terraces"]
+    for s in _FILTER_SUPPLIERS:
+        if s in A_SUPPLIERS:
+            src = rf"D:\TB\Products\barbour\publication\{s}\TXT"
+            bk  = rf"D:\TB\Products\barbour\publication\{s}\TXT.bk"
+            move_non_barbour_files(src, bk)
+    _ok("非 Barbour 文件已移出", 0)
+
 
 # ══════════════════════════════════════════════════════════════════
 #  阶段 B：TXT 导入数据库
