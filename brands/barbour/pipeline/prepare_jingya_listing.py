@@ -92,6 +92,11 @@ class _Tee:
     def fileno(self):
         return self._streams[0].fileno()
 
+    def reconfigure(self, **kwargs):
+        for s in self._streams:
+            if hasattr(s, "reconfigure"):
+                s.reconfigure(**kwargs)
+
 
 def _setup_file_log() -> str | None:
     """
