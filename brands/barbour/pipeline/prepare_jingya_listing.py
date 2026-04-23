@@ -14,8 +14,11 @@ Barbour 日常运营流水线（单一入口）
   - 如果本次跳过某个阶段（例如 A 已跑过），将对应 RUN_* 设为 False 即可。
 """
 
+import logging
+import sys
 import time
 from datetime import datetime
+from pathlib import Path
 
 # ══════════════════════════════════════════════════════════════════
 #  CONFIG — 按需修改
@@ -37,6 +40,9 @@ C_SIZE_THRESHOLD     = 3
 EXCLUDE_LIST_XLSX    = r"D:\TB\Products\barbour\document\barbour_exclude_list.xlsx"
 STOCK_EXPORT_DIR     = r"\\vmware-host\Shared Folders\VMShared\input"
 PRICE_EXPORT_DIR     = r"D:\TB\Products\barbour\repulibcation\publication_prices"
+
+# ── 日志目录（留空则不写文件日志）────────────────────────────────
+LOG_DIR = r"D:\TB\Logs\barbour"
 
 # ── A 阶段：要抓取的供应商列表（注释掉的暂时停用）────────────────
 A_SUPPLIERS = [
@@ -61,6 +67,65 @@ B_SUPPLIERS = [
     "cho",
     # "very",
 ]
+
+# ══════════════════════════════════════════════════════════════════
+#  日志：同时写 console + 文件
+# ══════════════════════════════════════════════════════════════════
+
+class _Tee:
+    """将 stdout 的 print() 同时写到控制台和日志文件。"""
+    def __init__(self, *streams):
+        self._streams = streams
+
+    def write(self, data):
+        for s in self._streams:
+            s.write(data)
+
+    def flush(self):
+        for s in self._streams:
+            s.flush()
+
+    @property
+    def encoding(self):
+        return self._streams[0].encoding
+
+    def fileno(self):
+        return self._streams[0].fileno()
+
+
+def _setup_file_log() -> str | None:
+    """
+    在 LOG_DIR 下创建带时间戳的日志文件，同时捕获：
+      - logging.* （来自 base_fetcher / fetch_info 模块）
+      - print()   （来自本 pipeline 脚本）
+    返回日志文件路径字符串，若未配置则返回 None。
+    """
+    if not LOG_DIR:
+        return None
+
+    log_dir = Path(LOG_DIR)
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_path = log_dir / f"barbour_pipeline_{ts}.log"
+
+    # ── 1. root logger → 文件（捕获所有子模块的 logging.* 调用）──
+    fh = logging.FileHandler(log_path, encoding="utf-8")
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(logging.Formatter(
+        "%(asctime)s [%(levelname)-8s] %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+    ))
+    logging.getLogger().setLevel(logging.DEBUG)
+    logging.getLogger().addHandler(fh)
+
+    # ── 2. stdout Tee → 文件（捕获本脚本的 print() 调用）────────
+    log_file = open(log_path, "a", encoding="utf-8", buffering=1)
+    sys.stdout = _Tee(sys.__stdout__, log_file)
+
+    print(f"📄 日志文件：{log_path}", flush=True)
+    return str(log_path)
+
 
 # ══════════════════════════════════════════════════════════════════
 #  工具：计时 + 步骤打印
@@ -321,6 +386,7 @@ def run_d_export():
 # ══════════════════════════════════════════════════════════════════
 
 def main():
+    _setup_file_log()
     start = time.time()
     print(f"\n{'★'*60}")
     print(f"  Barbour 日常流水线  {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
