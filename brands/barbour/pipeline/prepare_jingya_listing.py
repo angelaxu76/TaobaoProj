@@ -39,7 +39,7 @@ C_SIZE_THRESHOLD     = 3
 
 # ── 路径配置 ─────────────────────────────────────────────────────
 EXCLUDE_LIST_XLSX    = r"D:\TB\Products\barbour\document\barbour_exclude_list.xlsx"
-STOCK_EXPORT_DIR     = r"\\vmware-host\Shared Folders\VMShared\input"
+STOCK_EXPORT_DIR     = r"\\vmware-host\Shared Folders\VMShared\barbour_input"
 PRICE_EXPORT_DIR     = r"D:\TB\Products\barbour\repulibcation\publication_prices"
 
 # ── 日志目录（留空则不写文件日志）────────────────────────────────
