@@ -33,7 +33,7 @@ def pipeline_barbour():
     # excel_path = export_barbour_discounts_excel_multi(0, 3, "LWX,LSP,LWB,LCA,LOL,LGI")
     # excel_path = export_barbour_discounts_excel_multi(0, 3, "MWX,MQU,MOL,MWB,MFL,MOS,MCA,MFL")
     # excel_path = export_barbour_discounts_excel_multi(0, 3, "MTS,MSH,MML,MOS")
-    excel_path = export_barbour_discounts_excel_multi(0, 3, "MOS,MSH")
+    excel_path = export_barbour_discounts_excel_multi(0, 3, "LTS,LSH,LDR,LSK,LML")
     # print(excel_path)
 
     # ── 步骤 2：将 Excel 中的商品编码自动写入 codes.xlsx ────────────

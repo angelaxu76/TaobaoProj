@@ -180,25 +180,31 @@ def collect_links_from_page(driver: webdriver.Chrome) -> set[str]:
     links: set[str] = set()
 
     # 优先：从 ProductTile 中找
-    anchors = driver.find_elements(
-        By.CSS_SELECTOR,
-        '[data-testid="ProductTile"] a.chakra-link[href*="/product/"]',
-    )
-    for a in anchors:
-        href = a.get_attribute("href")
-        if href and "/product/" in href:
-            links.add(href)
-
-    # 兜底：整个商品网格里任意 /product/ 链接
-    if not links:
-        fallback = driver.find_elements(
+    try:
+        anchors = driver.find_elements(
             By.CSS_SELECTOR,
-            '[data-testid="product-list-grid"] a[href*="/product/"]',
+            '[data-testid="ProductTile"] a.chakra-link[href*="/product/"]',
         )
-        for a in fallback:
+        for a in anchors:
             href = a.get_attribute("href")
             if href and "/product/" in href:
                 links.add(href)
+    except Exception as e:
+        print(f"⚠️ ProductTile 链接获取失败（超时/连接断开），跳过主选: {e}")
+
+    # 兜底：整个商品网格里任意 /product/ 链接
+    if not links:
+        try:
+            fallback = driver.find_elements(
+                By.CSS_SELECTOR,
+                '[data-testid="product-list-grid"] a[href*="/product/"]',
+            )
+            for a in fallback:
+                href = a.get_attribute("href")
+                if href and "/product/" in href:
+                    links.add(href)
+        except Exception as e:
+            print(f"⚠️ 兜底链接获取也失败，返回空集: {e}")
 
     return links
 
@@ -217,30 +223,33 @@ def ecco_get_links():
 
         for url, label in TARGET_URLS:
             print(f"\n🔍 正在打开 [{label}]: {url}")
-            driver.get(url)
-            time.sleep(5)
-
-            # 只在第一次访问时处理 Cookie
-            if is_first_page:
-                try_accept_cookies(driver)
-                is_first_page = False
-
-            # 尝试等待商品列表出现
             try:
-                WebDriverWait(driver, 15).until(
-                    EC.presence_of_element_located(
-                        (By.CSS_SELECTOR, '[data-testid="product-list-grid"]')
-                    )
-                )
-            except Exception:
-                print("⚠️ 主商品区域等待超时，继续尝试抓取链接")
+                driver.get(url)
+                time.sleep(5)
 
-            # 抓取当前类目所有商品链接
-            links = collect_links_from_page(driver)
-            before = len(all_links)
-            all_links.update(links)
-            new_added = len(all_links) - before
-            print(f"✅ [{label}] 本类目抓取 {len(links)} 条，新增（去重后）{new_added} 条，累计 {len(all_links)} 条")
+                # 只在第一次访问时处理 Cookie
+                if is_first_page:
+                    try_accept_cookies(driver)
+                    is_first_page = False
+
+                # 尝试等待商品列表出现
+                try:
+                    WebDriverWait(driver, 15).until(
+                        EC.presence_of_element_located(
+                            (By.CSS_SELECTOR, '[data-testid="product-list-grid"]')
+                        )
+                    )
+                except Exception:
+                    print("⚠️ 主商品区域等待超时，继续尝试抓取链接")
+
+                # 抓取当前类目所有商品链接
+                links = collect_links_from_page(driver)
+                before = len(all_links)
+                all_links.update(links)
+                new_added = len(all_links) - before
+                print(f"✅ [{label}] 本类目抓取 {len(links)} 条，新增（去重后）{new_added} 条，累计 {len(all_links)} 条")
+            except Exception as e:
+                print(f"⚠️ [{label}] 抓取异常，跳过该类目继续: {e}")
 
         # 写入 TXT
         with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
