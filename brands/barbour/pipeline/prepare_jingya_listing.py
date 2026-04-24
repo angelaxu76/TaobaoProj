@@ -18,6 +18,7 @@ import logging
 import sys
 import time
 from datetime import datetime
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 # ══════════════════════════════════════════════════════════════════
@@ -98,6 +99,20 @@ class _Tee:
                 s.reconfigure(**kwargs)
 
 
+def _cleanup_old_logs(log_dir: Path, keep: int = 10) -> None:
+    """删除多余的旧日志，只保留最新的 keep 个文件。"""
+    logs = sorted(
+        log_dir.glob("barbour_pipeline_*.log"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    for old in logs[keep:]:
+        try:
+            old.unlink()
+        except OSError:
+            pass
+
+
 def _setup_file_log() -> str | None:
     """
     在 LOG_DIR 下创建带时间戳的日志文件，同时捕获：
@@ -111,17 +126,22 @@ def _setup_file_log() -> str | None:
     log_dir = Path(LOG_DIR)
     log_dir.mkdir(parents=True, exist_ok=True)
 
+    # 清理旧日志，只保留最新 10 个
+    _cleanup_old_logs(log_dir, keep=10)
+
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_path = log_dir / f"barbour_pipeline_{ts}.log"
 
-    # ── 1. root logger → 文件（捕获所有子模块的 logging.* 调用）──
-    fh = logging.FileHandler(log_path, encoding="utf-8")
-    fh.setLevel(logging.DEBUG)
+    # ── 1. root logger → 文件（单文件最大 50 MB，轮转保留 3 个）──
+    fh = RotatingFileHandler(
+        log_path, maxBytes=50 * 1024 * 1024, backupCount=3, encoding="utf-8"
+    )
+    fh.setLevel(logging.INFO)
     fh.setFormatter(logging.Formatter(
         "%(asctime)s [%(levelname)-8s] %(name)s: %(message)s",
         datefmt="%H:%M:%S",
     ))
-    logging.getLogger().setLevel(logging.DEBUG)
+    logging.getLogger().setLevel(logging.INFO)
     logging.getLogger().addHandler(fh)
 
     # ── 2. stdout Tee → 文件（捕获本脚本的 print() 调用）────────

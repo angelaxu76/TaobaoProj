@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import re
 import time
-import threading
 from typing import Dict, Any, Optional, Tuple
 from bs4 import BeautifulSoup
 import psycopg2
@@ -30,7 +29,7 @@ from brands.barbour.core.hybrid_barbour_matcher import resolve_product_code
 from brands.barbour.core.base_fetcher import BaseFetcher, setup_logging
 
 # 导入通用模块
-from common.browser.selenium_utils import get_driver, quit_driver
+from common.browser.selenium_utils import get_driver
 
 # 配置
 from config import BARBOUR, SETTINGS, PGSQL_CONFIG
@@ -187,22 +186,6 @@ class CHOFetcher(BaseFetcher):
                 self.logger.warning(f"DB 连接失败, 跳过编码补全: {e}")
                 return None
         return self._db_conn
-
-    def _fetch_html(self, url: str) -> str:
-        """覆盖基类: 每线程独立 driver"""
-        tid = threading.current_thread().ident
-        driver_name = f"{self.site_name}_{tid}"
-        driver = get_driver(
-            name=driver_name,
-            headless=self.headless,
-            window_size="1920,1080",
-        )
-        try:
-            driver.get(url)
-            time.sleep(self.wait_seconds)
-            return driver.page_source
-        finally:
-            quit_driver(driver_name)
 
     def parse_detail_page(self, html: str, url: str) -> Dict[str, Any]:
         """解析 CHO 商品详情页 - 与 v1 逻辑完全对齐"""
