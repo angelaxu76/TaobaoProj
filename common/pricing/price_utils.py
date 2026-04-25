@@ -81,14 +81,18 @@ def calculate_jingya_prices(
     retail  = untaxed * retail_margin
     """
     from math import floor
+    try:
+        from cfg.price_config import LOW_PRICE_BUMPS
+    except Exception:
+        LOW_PRICE_BUMPS = [(30, 7), (40, 5)]
 
     if base_price <= 0:
         return 0, 0
 
-    if base_price < 30:
-        base_price = base_price + 7
-    elif 30 < base_price < 40:
-        base_price = base_price + 5
+    for threshold, bump in LOW_PRICE_BUMPS:
+        if base_price < threshold:
+            base_price += bump
+            break
 
     try:
         untaxed = (base_price + delivery_cost) * untaxed_margin * exchange_rate

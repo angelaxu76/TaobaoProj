@@ -8,7 +8,7 @@ import unicodedata
 import openpyxl
 from sqlalchemy import create_engine, text
 
-from config import BRAND_CONFIG, BARBOUR, SETTINGS
+from config import BRAND_CONFIG, BARBOUR, SETTINGS, EXCHANGE_RATE
 from brands.barbour.common.generate_taobao_title_v2 import generate_barbour_taobao_title
 from common.pricing.price_utils import calculate_jingya_prices
 from datetime import datetime
@@ -234,7 +234,7 @@ def generate_publication_excel():
     ]
     ws.append(header)
 
-    rate = SETTINGS.get("EXCHANGE_RATE", 9.7)
+    rate = EXCHANGE_RATE
 
     with engine.connect() as conn:
         for idx, (code, supplier) in enumerate(code_pairs, 1):

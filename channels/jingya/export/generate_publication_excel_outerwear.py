@@ -14,7 +14,7 @@ import re, os, shutil, pandas as pd
 from pathlib import Path
 from sqlalchemy import create_engine, text
 from importlib import import_module
-from config import BRAND_CONFIG, SETTINGS
+from config import BRAND_CONFIG, SETTINGS, EXCHANGE_RATE
 
 # ============================================================
 # 可修改参数（Excel 导出字段固定值）
@@ -136,8 +136,7 @@ def _calc_price(base_price_gbp: float, mode: str) -> float:
     if base <= 0: return 0.0
     if (mode or "jingya").lower() == "taobao":
         return float(calculate_discount_price_from_float(base) or 0)
-    exch = SETTINGS.get("EXCHANGE_RATE", 9.7) if isinstance(SETTINGS, dict) else 9.7
-    _, retail = calculate_jingya_prices(base, delivery_cost=DELIVERY_COST, exchange_rate=exch)
+    _, retail = calculate_jingya_prices(base, delivery_cost=DELIVERY_COST, exchange_rate=EXCHANGE_RATE)
     return float(retail or 0)
 
 # ================= 主函数（签名保持不变） =================

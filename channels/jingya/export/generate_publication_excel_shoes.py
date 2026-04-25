@@ -3,7 +3,7 @@ import re
 import shutil
 import pandas as pd
 from sqlalchemy import create_engine
-from config import BRAND_CONFIG, SETTINGS
+from config import BRAND_CONFIG, SETTINGS, EXCHANGE_RATE
 from common.pricing.price_utils import calculate_jingya_prices
 from common.text.generate_taobao_title_v1 import generate_taobao_title
 
@@ -167,7 +167,7 @@ def generate_publication_excels(brand: str):
         final_price = min(valid_prices) if valid_prices else 0
 
         try:
-            _, rmb_price = calculate_jingya_prices(final_price, delivery_cost=7,exchange_rate=SETTINGS["EXCHANGE_RATE"])
+            _, rmb_price = calculate_jingya_prices(final_price, delivery_cost=7, exchange_rate=EXCHANGE_RATE)
         except:
             rmb_price = ""
 

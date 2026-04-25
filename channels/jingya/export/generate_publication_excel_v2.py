@@ -9,6 +9,7 @@ from sqlalchemy import create_engine
 from config import (
     BRAND_CONFIG,
     SETTINGS,
+    EXCHANGE_RATE,
     EXCEL_CONSTANTS_BASE,
     EXCEL_CONSTANTS_BY_BRAND,
     PUBLISH_RULES_BASE,
@@ -162,7 +163,7 @@ def generate_publication_excels(brand: str):
             _, rmb_price = calculate_jingya_prices(
                 final_price,
                 delivery_cost=7,
-                exchange_rate=SETTINGS["EXCHANGE_RATE"]
+                exchange_rate=EXCHANGE_RATE
             )
         except Exception:
             rmb_price = ""

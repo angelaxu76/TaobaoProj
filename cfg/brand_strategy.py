@@ -1,17 +1,10 @@
 # config/brand_strategy.py
+# 价格相关配置（BRAND_STRATEGY / BRAND_DISCOUNT）已移至 cfg/price_config.py
 
 TAOBAO_STORES = ["五小剑", "英国伦敦代购2015"]
 
-BRAND_STRATEGY = {
-    "camper": "min_price_times_ratio",
-    "ecco": "discount_or_original_ratio",
-    "geox": "discount_priority",
-    "clarks": "discount_priority",
-}
-
 BRAND_NAME_MAP = {
     "camper": ("Camper", "看步"),
-    "clarks": ("Clarks", "其乐"),
     "clarks": ("Clarks", "其乐"),
     "geox": ("GEOX", "健乐士"),
     "ecco": ("ECCO", "爱步"),
@@ -20,11 +13,4 @@ BRAND_NAME_MAP = {
     "reiss": ("REISS", ""),
     "ms": ("Marks & Spencer", "马莎"),
     "marksandspencer": ("英国M&S", "玛莎百货"),
-}
-
-BRAND_DISCOUNT = {
-    "camper": 0.73,
-    "geox": 1,
-    "clarks": 1.0,
-    "ecco": 0.9,
 }
