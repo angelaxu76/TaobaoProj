@@ -9,6 +9,7 @@ from helper.image.trim_sides_batch import trim_sides_batch
 from helper.image.crop_to_square import run_crop_and_expand
 from helper.image.copy_images import copy_images
 from brands.geox.download_product_images import download_geox_images_by_code_file
+import helper.image.cut_square_white_watermark as _cutmod
 
 
 def main():
@@ -33,6 +34,15 @@ def main():
     quality = 85
     run_crop_and_expand(GEOX["IMAGE_PROCESS"], GEOX["IMAGE_CUTTER"], bg_color, tolerance, quality)
 
+    print("抠图并转换为白底图（加水印）")
+    _cutmod.AUTO_CUTOUT   = True
+    _cutmod.WHITE_BG_SKIP = False   # 灰底(240,240,240)会被误判为白底，强制抠图
+    _cutmod.TARGET_SIZE   = 1200
+    _cutmod.batch_process(
+        str(GEOX["IMAGE_CUTTER"]),
+        str(GEOX["IMAGE_CUTTER"]),
+        max_workers=4,
+    )
 
     print("将处理好的图片copy到document目录")
     copy_images(GEOX["IMAGE_CUTTER"],GEOX["IMAGE_DIR"])
