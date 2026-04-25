@@ -185,6 +185,10 @@ BARBOUR = {
 
         "MOS": ("男款", "加厚衬衫外套夹克"),
         "MSH": ("男款", "翻领薄衬衫"),
+
+        # Dresses & Skirts
+        "LDR": ("女款", "中长连衣裙"),
+        "LSK": ("女款", "中长裙"),
     },
 
     "BARBOUR_COLOR_CODE_MAP": {
