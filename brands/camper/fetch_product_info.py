@@ -10,13 +10,13 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from config import CAMPER, SIZE_RANGE_CONFIG  # ✅ 引入标准尺码配置
+from config import CAMPER, SIZE_RANGE_CONFIG, GLOBAL_CHROMEDRIVER_PATH  # ✅ 引入标准尺码配置
 from common.ingest.txt_writer import format_txt
 from common.product.category_utils import infer_style_category
 from selenium import webdriver
 driver = webdriver.Chrome()
 
-CHROMEDRIVER_PATH = CAMPER["CHROMEDRIVER_PATH"]
+CHROMEDRIVER_PATH = GLOBAL_CHROMEDRIVER_PATH
 PRODUCT_URLS_FILE = CAMPER["LINKS_FILE"]
 SAVE_PATH = CAMPER["TXT_DIR"]
 MAX_WORKERS = 6

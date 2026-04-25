@@ -7,12 +7,12 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from config import GEOX, ensure_all_dirs
+from config import GEOX, ensure_all_dirs, GLOBAL_CHROMEDRIVER_PATH
 
 # === 配置 ===
 PRODUCT_LINK_FILE = GEOX["LINKS_FILE"]
 IMAGE_OUTPUT_DIR = GEOX["IMAGE_DOWNLOAD"]
-CHROMEDRIVER_PATH = GEOX["CHROMEDRIVER_PATH"]
+CHROMEDRIVER_PATH = GLOBAL_CHROMEDRIVER_PATH
 WAIT = 2
 DELAY = 0.5
 SKIP_EXISTING_IMAGE = True
