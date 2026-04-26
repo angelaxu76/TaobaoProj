@@ -45,7 +45,7 @@ def main():
     ecco_fetch_info(missing_product_link )
 
     print("\n🟡 Step: 4️⃣ TXT 导入数据库（鲸芽专用结构）")
-    import_txt_to_db_supplier("ecco", exchange_rate=9.4, delivery_cost=7)
+    import_txt_to_db_supplier("ecco")
     print("─" * 60)
 
     print("\n🟡 Step: 5️⃣ 导入鲸芽渠道Excel，写入渠道商品ID/SKUID 绑定关系")

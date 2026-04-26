@@ -31,7 +31,7 @@ def main():
     camper_fetch_product_info(links_file=missing_product_link )
 
     print("\n🟡 Step: 4️⃣ TXT导入数据库 -----将各个商品的TXT中信息导入到数据库中")
-    import_txt_to_db_supplier("camper",exchange_rate=9.5,delivery_cost=7,untaxed_margin=1.1,retail_margin=1.43)  
+    import_txt_to_db_supplier("camper")
 
     print("\n🟡 Step: 5️⃣ 通过解析鲸芽导出的Excel，将鲸芽侧相关的商品ID和SKU信息导入数据库")
     insert_jingyaid_to_db("camper")

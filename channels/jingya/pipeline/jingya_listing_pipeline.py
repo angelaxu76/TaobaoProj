@@ -43,13 +43,9 @@ def step_backup_and_clear(brand: str):
     backup_and_clear_brand_dirs(cfg)
 
 
-def step_import_txt_to_db(brand: str, exchange_rate: float = 9.5, delivery_cost: float = 7,
-                           untaxed_margin: float = 1.1, retail_margin: float = 1.43):
-    """Step 4：TXT 导入数据库（鲸芽专用定价结构）"""
-    import_txt_to_db_supplier(brand, exchange_rate=exchange_rate,
-                               delivery_cost=delivery_cost,
-                               untaxed_margin=untaxed_margin,
-                               retail_margin=retail_margin)
+def step_import_txt_to_db(brand: str):
+    """Step 4：TXT 导入数据库（鲸芽专用定价结构，参数统一读 cfg/price_config.py）"""
+    import_txt_to_db_supplier(brand)
 
 
 def step_insert_jingya_ids(brand: str):
