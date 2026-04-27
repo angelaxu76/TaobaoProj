@@ -4,7 +4,7 @@ API_KEYS = {
 }
 
 SETTINGS = {
-    "EXCHANGE_RATE": 9.7,
+    # EXCHANGE_RATE 已移至 cfg/price_config.py
     "STOCK_VALUE_MODE": "binary",
     "DEFAULT_STOCK_COUNT": 3,
 }

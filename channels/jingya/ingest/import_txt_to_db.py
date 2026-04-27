@@ -2,7 +2,11 @@ import math
 import psycopg2
 from pathlib import Path
 from psycopg2.extras import execute_batch
-from config import BRAND_CONFIG, BRAND_DISCOUNT
+from config import (
+    BRAND_CONFIG,
+    EXCHANGE_RATE, DEFAULT_DELIVERY, DEFAULT_UNTAXED_MARGIN, DEFAULT_RETAIL_MARGIN,
+    BRAND_PRICE_OVERRIDES,
+)
 from common.ingest.txt_parser import jingya_parse_txt_file
 from channels.jingya.pricing.brand_price_rules import compute_brand_base_price
 try:
@@ -43,14 +47,14 @@ def _safe_float(x) -> float:
 
 import tempfile
 from datetime import datetime
-def import_txt_to_db_supplier(
-    brand_name: str,
-    exchange_rate: float = 9.5,
-    delivery_cost: float = 7,
-    untaxed_margin: float = 1.13,
-    retail_margin: float = 1.43,
-):
+def import_txt_to_db_supplier(brand_name: str):
     brand_name = brand_name.lower()
+
+    overrides = BRAND_PRICE_OVERRIDES.get(brand_name, {})
+    exchange_rate  = EXCHANGE_RATE
+    delivery_cost  = overrides.get("delivery",        DEFAULT_DELIVERY)
+    untaxed_margin = overrides.get("untaxed_margin",  DEFAULT_UNTAXED_MARGIN)
+    retail_margin  = overrides.get("retail_margin",   DEFAULT_RETAIL_MARGIN)
 
     if brand_name not in BRAND_CONFIG:
         raise ValueError(f"❌ 不支持的品牌: {brand_name}")

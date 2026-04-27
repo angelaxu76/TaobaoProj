@@ -457,7 +457,7 @@ def add_local_logo(img: Image.Image, text: str = None) -> Image.Image:
     return Image.alpha_composite(base, overlay)
 
 # ================== 主流程 ==================
-def process_one(path: Path, out_dir: Path):
+def process_one(path: Path, out_dir: Path, add_watermark: bool = True):
     try:
         print(f"  ▶ 载入：{path.name}")
         img = Image.open(str(path))
@@ -472,8 +472,9 @@ def process_one(path: Path, out_dir: Path):
         img = _pad_to_square(img, TARGET_SIZE)
 
         # 4) 水印（RGBA in/out）
-        img = add_diagonal_text_watermark(img)
-        img = add_local_logo(img, LOCAL_LOGO_TEXT)
+        if add_watermark:
+            img = add_diagonal_text_watermark(img)
+            img = add_local_logo(img, LOCAL_LOGO_TEXT)
 
         # 可选导出一份透明 PNG（方便后续复用）
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -497,7 +498,7 @@ def process_one(path: Path, out_dir: Path):
     except Exception as e:
         print(f"  ✗ 失败：{path.name} -> {e}")
 
-def batch_process(input_dir: str, output_dir: str, max_workers: int = MAX_WORKERS):
+def batch_process(input_dir: str, output_dir: str, max_workers: int = MAX_WORKERS, add_watermark: bool = True):
     in_dir, out_dir = Path(input_dir), Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -531,7 +532,7 @@ def batch_process(input_dir: str, output_dir: str, max_workers: int = MAX_WORKER
         _get_session()  # 提前加载本地模型
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_file = {executor.submit(process_one, f, out_dir): f for f in files}
+        future_to_file = {executor.submit(process_one, f, out_dir, add_watermark): f for f in files}
         for i, future in enumerate(as_completed(future_to_file), 1):
             f = future_to_file[future]
             try:
