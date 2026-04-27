@@ -80,7 +80,7 @@ def main():
         output_dir=r"D:\TB\Products\ecco\repulibcation\store_prices",
         suffix="_价格",
         drop_rows_without_price=False,
-        blacklist_excel_file=r"D:\TB\Products\ecco\document\exclude.xlsx" # 不丢行，查不到的价格留空
+        blacklist_excel_file=r"\\vmware-host\Shared Folders\shared\ecco\exclude.xlsx" # 不丢行，查不到的价格留空
     )
 
 
