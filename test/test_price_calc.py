@@ -14,14 +14,16 @@ from cfg.price_config import (
     DEFAULT_UNTAXED_MARGIN,
     DEFAULT_RETAIL_MARGIN,
     BRAND_DISCOUNT,
+    BRAND_STRATEGY,
     BRAND_PRICE_OVERRIDES,
     LOW_PRICE_BUMPS,
 )
 from math import floor
+from channels.jingya.pricing.discount_strategies_v2 import STRATEGY_MAP
 
 
 def calc_price(
-    gbp: float,
+    gbp: float = None,
     brand: str = None,
     original_gbp: float = None,
     discount_gbp: float = None,
@@ -32,14 +34,19 @@ def calc_price(
     参数：
       gbp          直接指定 base GBP（不走品牌策略，适合快速测试）
       brand        品牌名（用于读取 BRAND_DISCOUNT 和 BRAND_PRICE_OVERRIDES）
-      original_gbp 原价（配合 discount_gbp 走完整品牌策略，可选）
-      discount_gbp 折扣价（同上，可选）
+      original_gbp 原价（配合 discount_gbp 走完整品牌策略）
+      discount_gbp 折扣价（0 或不传表示不打折）
     """
     brand_key = (brand or "").lower().strip()
 
-    # 1) 品牌折扣率
+    # 1) 计算 base：优先走完整策略，fallback 到直接乘折扣率
     ratio = BRAND_DISCOUNT.get(brand_key, 1.0) if brand_key else 1.0
-    base = gbp * ratio
+    if original_gbp is not None and brand_key in BRAND_STRATEGY:
+        strategy_fn = STRATEGY_MAP[BRAND_STRATEGY[brand_key]]
+        base = strategy_fn(original_gbp, discount_gbp or 0.0, brand_key)
+        gbp = original_gbp  # 用于 input_gbp 显示
+    else:
+        base = (gbp or 0.0) * ratio
 
     # 2) 品牌级参数覆盖
     overrides = BRAND_PRICE_OVERRIDES.get(brand_key, {})
@@ -111,8 +118,17 @@ if __name__ == "__main__":
 
     # 详细推导（适合查看单个商品）
     print_price(145,  brand="camper")
-    print_price(100, brand="camper")
+    # print_price(100, brand="ecco")
     print_price(38,  brand="clarks")
+    print_price(96,  brand="geox")
+
+    # ECCO 策略验证：有折扣 vs 无折扣
+    print("\n── ECCO 策略对比（discount_priority）──")
+    r1 = calc_price(original_gbp=100, discount_gbp=0,  brand="ecco")  # 不打折 → 100×0.85=85
+    r2 = calc_price(original_gbp=100, discount_gbp=90, brand="ecco")  # 9折 → 直接用90
+    r3 = calc_price(original_gbp=100, discount_gbp=70, brand="ecco")  # 7折 → 直接用70
+    for label, r in [("无折扣(原价£100)", r1), ("9折(£90)", r2), ("7折(£70)", r3)]:
+        print(f"  {label:<16} base=£{r['base']:.2f}  未税=¥{r['untaxed']}  零售=¥{r['retail']}")
     # print_price(25,  brand="geox")
 
     # 对比表（适合批量检查价格合理性）

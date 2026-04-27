@@ -29,7 +29,7 @@ DEFAULT_RETAIL_MARGIN  = 1.35   # 零售价加成（淘宝店铺价 = 未税价 
 #   ladder_wrap_discount_priority           阶梯抬价后再走 discount_priority 策略
 BRAND_STRATEGY = {
     "camper": "min_price_times_ratio",
-    "ecco":   "discount_or_original_ratio",
+    "ecco":   "discount_priority",
     "geox":   "discount_priority",
     "clarks": "discount_priority",
 }
@@ -39,7 +39,7 @@ BRAND_STRATEGY = {
 # base_price 的最终乘数；不配置的品牌默认 1.0（不打折）
 BRAND_DISCOUNT = {
     "camper": 0.75,   # ~75折
-    "ecco":   0.90,   # ~85折（部分策略下生效）
+    "ecco":   0.85,   # ~85折（部分策略下生效）
     "geox":   1.00,
     "clarks": 1.00,
     "barbour": 1.00,
