@@ -19,7 +19,7 @@ PRODUCT_LINK_FILE = GEOX["BASE"] / "publication" / "product_links.txt"
 TXT_OUTPUT_DIR = GEOX["TXT_DIR"]
 BRAND = "geox"
 MAX_THREADS = 1              # 先单线程，把登录态/折扣跑稳后再调高
-LOGIN_WAIT_SECONDS = 20      # 手动登录等待时间（可按需调整）
+LOGIN_WAIT_SECONDS = 3       # Profile 已保存登录态，无需长时间等待；如需手动登录改回 20
 
 TXT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -401,19 +401,16 @@ def fetch_all_product_info(links_file=None):
     session = export_session(login_driver)
     login_driver.quit()
 
-    # 2) 创建一个可复用的工作用 driver
-    driver = create_driver(headless=False)
+    # 2) 创建轻量 headless worker driver（禁图 + eager 加载）
+    driver = create_worker_driver()
 
     try:
         import_session(driver, session, base_url="https://www.geox.com/")
 
         for idx, url in enumerate(urls, 1):
             try:
-                print(f"[{idx}/{len(urls)}] 🪟 正在打开：{url}")
-                driver.get(url)
-                time.sleep(0.5)
-
-                html = driver.page_source
+                print(f"[{idx}/{len(urls)}] 抓取：{url}")
+                html = get_html(driver, url)
                 if not html:
                     print(f"[{idx}] ⚠️ 空页面: {url}")
                     continue
@@ -427,8 +424,6 @@ def fetch_all_product_info(links_file=None):
                 txt_path.parent.mkdir(parents=True, exist_ok=True)
                 format_txt(info, txt_path, brand=BRAND)
                 print(f"[{idx}] ✅ 写入成功: {txt_path.name}")
-
-                time.sleep(1)
 
             except Exception as e:
                 print(f"[{idx}] ❌ 处理失败 {url} → {e}")
