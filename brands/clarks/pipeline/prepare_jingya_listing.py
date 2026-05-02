@@ -69,7 +69,7 @@ def main():
     stock_dest_excel_folder = r"\\vmware-host\Shared Folders\VMShared\input"
     export_stock_excel("clarks",stock_dest_excel_folder)
 
-    price_dest_excel = r"D:\TB\Products\clarks\repulibcation\publication_prices"
+    price_dest_excel = r"\\vmware-host\Shared Folders\VMShared\clarks\publication_prices"
     export_jiangya_channel_prices("clarks",price_dest_excel,chunk_size=200)
 
     print("\\n🟡 Step: 6️⃣生成发布产品的excel")

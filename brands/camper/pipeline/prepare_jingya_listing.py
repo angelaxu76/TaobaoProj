@@ -52,8 +52,8 @@ def main():
     export_stock_excel("camper",stock_dest_excel_folder)
 
     print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
-    price_dest_excel_folder = r"D:\TB\Products\camper\repulibcation\publication_prices"
-    export_jiangya_channel_prices("camper",price_dest_excel_folder,chunk_size=300,exchange_rate=9.4)
+    price_dest_excel = r"\\vmware-host\Shared Folders\VMShared\camper\publication_prices"
+    export_jiangya_channel_prices("camper",price_dest_excel,chunk_size=200)
 
 
     print("\\n🟡 Step: 6️⃣为新品创建excel用于鲸芽侧发布")

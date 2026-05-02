@@ -54,10 +54,10 @@ def main():
     export_stock_excel("geox",stock_dest_excel_folder)
 
     print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
-    price_dest_excel = r"D:\TB\Products\geox\repulibcation\publication_prices"
+    price_dest_excel = r"\\vmware-host\Shared Folders\VMShared\geox\publication_prices"
     exclude_exccel = r"D:\TB\Products\geox\document\exclude.xlsx"
     # export_jiangya_channel_prices("geox",price_dest_excel,exclude_exccel)
-    export_jiangya_channel_prices("geox",price_dest_excel)
+    export_jiangya_channel_prices("geox",price_dest_excel,chunk_size=200)
 
 
     generate_price_excels_bulk(
