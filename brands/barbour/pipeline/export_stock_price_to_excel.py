@@ -25,13 +25,14 @@ def barbour_export_price_stock():
     export_stock_excel("barbour", stock_dest_excel_folder, exclude_excel_file=exclude_xlsx_path)
     
     print("导出excel 用于更新鲸芽价格=====商品级别"    )
-    price_dest_excel_path = r"D:\TB\Products\barbour\repulibcation\publication_prices"
+    price_dest_excel = r"\\vmware-host\Shared Folders\VMShared\barbour\publication_prices"
 
     
     export_jiangya_channel_prices(
     brand="barbour",
-    output_dir=price_dest_excel_path,
-    exclude_excel_file=exclude_xlsx_path
+    output_dir=price_dest_excel,
+    exclude_excel_file=exclude_xlsx_path,
+    chunk_size=200
     )
 
     # print("\n🟡 Step: 6️⃣ 获取excel文件，用来更新各个淘宝店铺价格，输入文件夹可以是多个店铺的导出文件")
