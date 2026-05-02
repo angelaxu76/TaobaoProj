@@ -10,7 +10,7 @@ import hashlib
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from html import unescape
-from config import ECCO, SIZE_RANGE_CONFIG
+from config import ECCO, SIZE_RANGE_CONFIG, GLOBAL_CHROMEDRIVER_PATH
 import requests
 from bs4 import BeautifulSoup
 import json
@@ -38,7 +38,7 @@ HDRS = {
 
 # 可选：Selenium 回退（动态库存/变体更稳）
 ENABLE_SELENIUM = True
-CHROMEDRIVER_PATH = r"D:/Software/chromedriver-win64/chromedriver.exe"
+CHROMEDRIVER_PATH = GLOBAL_CHROMEDRIVER_PATH
 
 # 线程
 MAX_WORKERS = 1

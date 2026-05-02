@@ -58,7 +58,6 @@ def main():
     # generate_html_from_codes_files("GEOX",code_file_path)
     # generate_first_page_from_codes_files("GEOX",code_file_path)
 
-    # GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径
     # print("生成产品详情卡图片")
     # convert_html_to_images(GEOX["HTML_DIR_DES"], GEOX["HTML_IMAGE_DES"],"",6)
     # trim_sides_batch(GEOX["HTML_IMAGE_DES"],GEOX["HTML_CUTTER_DES"])

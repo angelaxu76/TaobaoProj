@@ -11,11 +11,9 @@ from selenium.common.exceptions import TimeoutException, WebDriverException
 from PIL import Image
 
 # === 配置 geckodriver 路径 ===
-try:
-    from config import SETTINGS  # 建议在 SETTINGS 里加 key: "GECKODRIVER_PATH"
-    GECKODRIVER_PATH = SETTINGS.get("GECKODRIVER_PATH", r"D:/Software/geckodriver.exe")
-except Exception:
-    GECKODRIVER_PATH = r"D:/Software/geckodriver.exe"
+from config import GLOBAL_GECKODRIVER_PATH
+
+GECKODRIVER_PATH = GLOBAL_GECKODRIVER_PATH
 
 # === 每个线程复用一个 Firefox 实例 ===
 _thread_local = threading.local()

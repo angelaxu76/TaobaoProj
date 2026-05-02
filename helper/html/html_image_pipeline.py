@@ -1,5 +1,6 @@
 from helper.html.html_to_png_batch import process_html_folder
 from helper.image.trim_sides_batch import trim_sides_batch
+from config import GLOBAL_GECKODRIVER_PATH
 
 
 
@@ -10,10 +11,7 @@ def main():
 
     HTML_FOLDER = "D:/TB/HTMLToImage/input"  # HTML 文件夹路径
     OUTPUT_FOLDER = "D:/TB/HTMLToImage/output"  # 输出图片文件夹
-    GECKODRIVER_PATH = r"D:\Software\geckodriver.exe"  # GeckoDriver 路径
-
-
-    process_html_folder(HTML_FOLDER, OUTPUT_FOLDER, GECKODRIVER_PATH)
+    process_html_folder(HTML_FOLDER, OUTPUT_FOLDER, GLOBAL_GECKODRIVER_PATH)
 
     result = trim_sides_batch(
         input_dir=r"D:/TB/HTMLToImage/output",

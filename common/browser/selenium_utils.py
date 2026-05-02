@@ -51,7 +51,7 @@ def _resolve_driver_path() -> Optional[Path]:
 
     # 都没有就直接失败（不允许 Selenium Manager）
     raise RuntimeError(
-        "❌ 未配置 chromedriver，请在 config/settings.py 中设置 GLOBAL_CHROMEDRIVER_PATH"
+        "❌ 未配置 chromedriver，请在 cfg/settings.py 中设置 DRIVER_DIR / GLOBAL_CHROMEDRIVER_PATH"
     )
 
 

@@ -5,12 +5,12 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from config import SIZE_RANGE_CONFIG
-from config import GEOX
+from config import GEOX, GLOBAL_CHROMEDRIVER_PATH
 from common.ingest.txt_writer import format_txt
 
 PRODUCT_LINK_FILE = GEOX["BASE"] / "publication" / "product_links.txt"
 TXT_OUTPUT_DIR = GEOX["TXT_DIR"]
-CHROMEDRIVER_PATH = "D:/Software/chromedriver-win64/chromedriver.exe"
+CHROMEDRIVER_PATH = GLOBAL_CHROMEDRIVER_PATH
 MAX_THREADS = 5
 
 TXT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -26,6 +26,7 @@ def supplement_geox_sizes(size_stock: dict, gender: str) -> dict:
 def create_driver():
     from selenium import webdriver
     from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.chrome.service import Service
 
     chrome_options = Options()
     chrome_options.add_argument("--headless=new")
@@ -46,8 +47,10 @@ def create_driver():
     chrome_options.add_argument("--disable-features=Translate,MediaRouter,AutofillServerCommunication")
     chrome_options.add_argument("--blink-settings=imagesEnabled=false")
 
-    # ✅ 不再手动指定路径，也不使用 chromedriver_autoinstaller
-    driver = webdriver.Chrome(options=chrome_options)
+    driver = webdriver.Chrome(
+        service=Service(CHROMEDRIVER_PATH),
+        options=chrome_options,
+    )
 
     # 打印版本确认匹配
     try:

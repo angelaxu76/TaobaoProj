@@ -3,7 +3,13 @@ from __future__ import annotations
 
 # ========== split configs (normal imports) ==========
 from cfg.paths import BASE_DIR, DISCOUNT_EXCEL_DIR, ensure_all_dirs
-from cfg.settings import API_KEYS, SETTINGS, GLOBAL_CHROMEDRIVER_PATH
+from cfg.settings import (
+    API_KEYS,
+    SETTINGS,
+    DRIVER_DIR,
+    GLOBAL_CHROMEDRIVER_PATH,
+    GLOBAL_GECKODRIVER_PATH,
+)
 from cfg.db_config import PGSQL_CONFIG
 from cfg.publish_config import (
     EXCEL_CONSTANTS_BASE,
@@ -70,7 +76,8 @@ from cfg.ai_config import (
 
 __all__ = [
     "BASE_DIR", "DISCOUNT_EXCEL_DIR", "ensure_all_dirs",
-    "API_KEYS", "SETTINGS", "GLOBAL_CHROMEDRIVER_PATH",
+    "API_KEYS", "SETTINGS", "DRIVER_DIR",
+    "GLOBAL_CHROMEDRIVER_PATH", "GLOBAL_GECKODRIVER_PATH",
     "PGSQL_CONFIG",
     "EXCEL_CONSTANTS_BASE", "EXCEL_CONSTANTS_BY_BRAND",
     "PUBLISH_RULES_BASE", "PUBLISH_RULES_BY_BRAND",

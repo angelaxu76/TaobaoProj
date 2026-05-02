@@ -13,12 +13,10 @@ from PIL import Image
 HTML_FOLDER = Path(r"D:/TB/HTMLToImage/input")
 OUTPUT_FOLDER = Path(r"D:/TB/HTMLToImage/output")
 
-# 从 config.py 读取 GeckoDriver 路径；如未配置则用常见默认
-try:
-    from config import SETTINGS  # 建议在 SETTINGS 里加 key: "GECKODRIVER_PATH"
-    GECKODRIVER_PATH = SETTINGS.get("GECKODRIVER_PATH", r"D:/Software/geckodriver.exe")
-except Exception:
-    GECKODRIVER_PATH = r"D:/Software/geckodriver.exe"
+# 从统一配置读取 GeckoDriver 路径
+from config import GLOBAL_GECKODRIVER_PATH
+
+GECKODRIVER_PATH = GLOBAL_GECKODRIVER_PATH
 
 
 def trim_white_margins_lr(image_path: Path) -> None:
