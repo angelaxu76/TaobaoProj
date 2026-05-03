@@ -1,8 +1,10 @@
 import os
 import re
 import time
+import threading
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -18,7 +20,7 @@ from common.product.category_utils import infer_style_category
 PRODUCT_LINK_FILE = GEOX["BASE"] / "publication" / "product_links.txt"
 TXT_OUTPUT_DIR = GEOX["TXT_DIR"]
 BRAND = "geox"
-MAX_THREADS = 1              # 先单线程，把登录态/折扣跑稳后再调高
+MAX_THREADS = 4              # 建议 3~6；GEOX 有限速时调低
 LOGIN_WAIT_SECONDS = 3       # Profile 已保存登录态，无需长时间等待；如需手动登录改回 20
 
 TXT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -365,8 +367,63 @@ def derive_code_from_url(url: str) -> str:
     except Exception:
         return Path(urlparse(url).path).stem.upper()
 
+# ===================== 多线程基础设施 =====================
+_thread_local = threading.local()
+_DRIVER_LIST_LOCK = threading.Lock()
+_THREAD_DRIVERS: List[webdriver.Chrome] = []
+
+
+def _get_thread_driver(session: Dict) -> webdriver.Chrome:
+    driver = getattr(_thread_local, "driver", None)
+    if driver is None:
+        driver = create_worker_driver()
+        import_session(driver, session, base_url="https://www.geox.com/")
+        with _DRIVER_LIST_LOCK:
+            _THREAD_DRIVERS.append(driver)
+        _thread_local.driver = driver
+    return driver
+
+
+def _process_one_url(idx: int, total: int, url: str, session: Dict) -> Tuple[bool, str]:
+    driver = _get_thread_driver(session)
+    try:
+        print(f"[{idx}/{total}] 抓取：{url}")
+        html = get_html(driver, url)
+        if not html:
+            print(f"[{idx}] ⚠️ 空页面: {url}")
+            return False, url
+
+        info = parse_product(html, url)
+        if not info:
+            print(f"[{idx}] ⚠️ 解析失败: {url}")
+            return False, url
+
+        if not info.get("Product Code") or info["Product Code"] == "No Data":
+            info["Product Code"] = derive_code_from_url(url)
+
+        txt_path = TXT_OUTPUT_DIR / f"{info['Product Code']}.txt"
+        txt_path.parent.mkdir(parents=True, exist_ok=True)
+        format_txt(info, txt_path, brand=BRAND)
+        print(f"[{idx}] ✅ 写入成功: {txt_path.name}")
+        return True, url
+
+    except Exception as e:
+        print(f"[{idx}] ❌ 处理失败 {url} → {e}")
+        return False, url
+
+
+def _cleanup_thread_drivers():
+    with _DRIVER_LIST_LOCK:
+        for d in _THREAD_DRIVERS:
+            try:
+                d.quit()
+            except Exception:
+                pass
+        _THREAD_DRIVERS.clear()
+
+
 # ===================== 主流程（登录一次→批量抓取） =====================
-def fetch_all_product_info(links_file=None):
+def fetch_all_product_info(links_file=None, max_workers: int = MAX_THREADS):
     """
     GEOX 商品抓取主入口（支持外部传入 product_links.txt 覆盖 config 默认路径）。
 
@@ -401,37 +458,29 @@ def fetch_all_product_info(links_file=None):
     session = export_session(login_driver)
     login_driver.quit()
 
-    # 2) 创建轻量 headless worker driver（禁图 + eager 加载）
-    driver = create_worker_driver()
+    # 2) 多线程抓取
+    total = len(urls)
+    print(f"📦 本次需要抓取 GEOX 商品数量: {total}，线程数: {max_workers}")
+    t0 = time.time()
+    success = fail = 0
 
     try:
-        import_session(driver, session, base_url="https://www.geox.com/")
-
-        for idx, url in enumerate(urls, 1):
-            try:
-                print(f"[{idx}/{len(urls)}] 抓取：{url}")
-                html = get_html(driver, url)
-                if not html:
-                    print(f"[{idx}] ⚠️ 空页面: {url}")
-                    continue
-
-                info = parse_product(html, url)
-                if not info:
-                    print(f"[{idx}] ⚠️ 解析失败: {url}")
-                    continue
-
-                txt_path = TXT_OUTPUT_DIR / f"{info['Product Code']}.txt"
-                txt_path.parent.mkdir(parents=True, exist_ok=True)
-                format_txt(info, txt_path, brand=BRAND)
-                print(f"[{idx}] ✅ 写入成功: {txt_path.name}")
-
-            except Exception as e:
-                print(f"[{idx}] ❌ 处理失败 {url} → {e}")
-
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(_process_one_url, idx, total, url, session): url
+                for idx, url in enumerate(urls, 1)
+            }
+            for fut in as_completed(futures):
+                ok, _ = fut.result()
+                if ok:
+                    success += 1
+                else:
+                    fail += 1
     finally:
-        driver.quit()
+        _cleanup_thread_drivers()
 
-    print("\n✅ 全部处理完成。")
+    dt = time.time() - t0
+    print(f"\n✅ GEOX 抓取完成：成功 {success} 条，失败 {fail} 条，耗时约 {dt/60:.1f} 分钟")
 
 
 
