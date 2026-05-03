@@ -10,9 +10,18 @@ from channels.jingya.export.export_channel_price_excel_jingya import export_jian
 from channels.jingya.ingest.import_channel_info import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
 from channels.jingya.maintenance.generate_missing_links_for_brand import generate_missing_links_for_brand
 from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
-# from brands.geox.core.fetch_product_info import fetch_all_product_info
 
-from brands.geox.fetch_product_info_jingya import fetch_all_product_info
+# =====================================================================
+# 抓取模式选择（改这一行即可）：
+#   False → 快速模式（requests + 多线程，折扣公开时使用，日常推荐）
+#   True  → 登录模式（Selenium + Chrome Profile，会员专属折扣时使用）
+# =====================================================================
+MEMBER_DISCOUNT_MODE = False
+
+if MEMBER_DISCOUNT_MODE:
+    from brands.geox.fetch_product_info_jingya import fetch_all_product_info
+else:
+    from brands.geox.fetch_product_info_fast import fetch_all_product_info
 
 def run_script(filename: str):
     path = os.path.join(os.path.dirname(__file__), filename)
