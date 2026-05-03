@@ -26,6 +26,7 @@ from pathlib import Path
 # ══════════════════════════════════════════════════════════════════
 
 # ── 阶段开关 ──────────────────────────────────────────────────────
+RUN_A_BACKUP    = True   # 备份并清空 TXT 目录（重跑某供货商时设 False）
 RUN_A_CRAWL     = True   # 抓取供货商数据（耗时最长，若已抓过可关闭）
 RUN_B_IMPORT    = True   # TXT 导入 products + offers
 RUN_C_INVENTORY = True   # 重建 supplier_map + inventory
@@ -187,8 +188,11 @@ def run_a_crawl():
 
     from config import BARBOUR
     from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
-    _step("备份并清空 publication / repulibcation 目录")
-    backup_and_clear_brand_dirs(BARBOUR)
+    if RUN_A_BACKUP:
+        _step("备份并清空 publication / repulibcation 目录")
+        backup_and_clear_brand_dirs(BARBOUR)
+    else:
+        _skip("备份/清空（RUN_A_BACKUP=False）")
 
     from brands.barbour.supplier.barbour_get_links        import barbour_get_links
     from brands.barbour.supplier.barbour_fetch_info       import barbour_fetch_info

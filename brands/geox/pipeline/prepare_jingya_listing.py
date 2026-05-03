@@ -29,11 +29,11 @@ def run_script(filename: str):
     subprocess.run(["python", path], check=True)
 
 def main():
-    print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    backup_and_clear_brand_dirs(GEOX)
+    # print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
+    # backup_and_clear_brand_dirs(GEOX)
 
-    print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    collect_all_product_links()
+    # print("\n🟡 Step: 2️⃣ 抓取商品链接")
+    # collect_all_product_links()
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
     fetch_all_product_info()
