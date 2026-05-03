@@ -332,6 +332,13 @@ def parse_product(html: str, url: str) -> Dict:
     # 风格分类
     style_category = infer_style_category(f"{name} {description}")
 
+    feature_block = soup.select_one("div.bestFor-container")
+    if feature_block:
+        items = [li.get_text(strip=True) for li in feature_block.select("ul li")]
+        feature = " | ".join(items) if items else "No Data"
+    else:
+        feature = "No Data"
+
     info = {
         "Product Code": code,
         "Product Name": name,
@@ -342,7 +349,7 @@ def parse_product(html: str, url: str) -> Dict:
         "Adjusted Price": discount_price,
         "Product Material": material_text,
         "Style Category": style_category,
-        "Feature": "No Data",
+        "Feature": feature,
         "SizeMap": size_map,
         "SizeDetail": size_detail,
         "Source URL": url,
