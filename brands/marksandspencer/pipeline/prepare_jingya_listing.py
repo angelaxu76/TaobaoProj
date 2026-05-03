@@ -51,12 +51,12 @@ def main():
 
 
     print("\\n🟡 Step: 6️⃣ 鲸芽侧更新价格和库存------")
-    stock_dest_excel_folder = r"D:\TB\Products\marksandspencer\repulibcation\stock"
+    stock_dest_excel_folder = r"\\vmware-host\Shared Folders\VMShared\input"
     export_stock_excel("marksandspencer",stock_dest_excel_folder)
 
     print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
-    price_dest_excel_folder = r"D:\TB\Products\marksandspencer\repulibcation\publication_prices"
-    export_jiangya_channel_prices("marksandspencer",price_dest_excel_folder)
+    price_dest_excel_folder = r"\\vmware-host\Shared Folders\VMShared\marksandspencer\publication_prices"
+    export_jiangya_channel_prices("marksandspencer",price_dest_excel_folder,chunk_size=200)
 
 
     print("\\n🟡 Step: 6️⃣为新品创建excel用于鲸芽侧发布")
