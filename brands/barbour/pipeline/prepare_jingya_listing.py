@@ -26,8 +26,8 @@ from pathlib import Path
 # ══════════════════════════════════════════════════════════════════
 
 # ── 阶段开关 ──────────────────────────────────────────────────────
-RUN_A_BACKUP    = True   # 备份并清空 TXT 目录（重跑某供货商时设 False）
-RUN_A_CRAWL     = True   # 抓取供货商数据（耗时最长，若已抓过可关闭）
+RUN_A_BACKUP    = False   # 备份并清空 TXT 目录（重跑某供货商时设 False）
+RUN_A_CRAWL     = True   # A 阶段总开关（False = 跳过整个 A 阶段）
 RUN_B_IMPORT    = True   # TXT 导入 products + offers
 RUN_C_INVENTORY = True   # 重建 supplier_map + inventory
 RUN_D_EXPORT    = True   # 导出库存 / 价格 Excel
@@ -46,17 +46,20 @@ PRICE_EXPORT_DIR     = r"D:\TB\Products\barbour\repulibcation\publication_prices
 # ── 日志目录（留空则不写文件日志）────────────────────────────────
 LOG_DIR = r"D:\TB\Logs\barbour"
 
-# ── A 阶段：要抓取的供应商列表（注释掉的暂时停用）────────────────
-A_SUPPLIERS = [
-    "barbour",
-    "outdoorandcountry",
-    "allweathers",
-    "houseoffraser",
-    "terraces",
-    "philipmorris",
-    "cho",
-    # "very",
-]
+# ── A 阶段：每个供应商独立控制 get_links / fetch_info ────────────
+# get_links：True = 重新爬取链接列表；False = 沿用上次已保存的链接
+# fetch_info：True = 抓取商品详情并写 TXT；False = 跳过（保留上次的 TXT）
+A_SUPPLIERS = {
+    #  supplier             get_links  fetch_info
+    "barbour":           (  False,      True  ),
+    "outdoorandcountry": (  False,     False ),
+    "allweathers":       (  False,     False ),
+    "houseoffraser":     (  False,     False ),
+    "terraces":          (  False,     False ),
+    "philipmorris":      (  False,     False ),
+    "cho":               (  False,     False ),
+    # "very":            (  False,     False ),
+}
 
 # ── B 阶段：要导入的供应商列表 ────────────────────────────────────
 B_SUPPLIERS = [
@@ -219,38 +222,48 @@ def run_a_crawl():
         "cho":               (cho_get_links,                      lambda: cho_fetch_info(max_workers=7)),
     }
 
-    for supplier in A_SUPPLIERS:
+    for supplier, (do_get_links, do_fetch_info) in A_SUPPLIERS.items():
+        if not do_get_links and not do_fetch_info:
+            _skip(f"[{supplier}] get_links + fetch_info（均已关闭）")
+            continue
+
         if supplier not in _FETCH_MAP:
             print(f"⚠️  未知供应商，跳过：{supplier}")
             continue
 
         get_links_fn, fetch_fn = _FETCH_MAP[supplier]
 
-        _step(f"[{supplier}] 获取商品链接")
-        t = time.time()
-        try:
-            get_links_fn()
-            _ok(f"{supplier} 链接获取完成", time.time() - t)
-        except Exception as e:
-            _fail(f"A-get_links-{supplier}", e)
+        if do_get_links:
+            _step(f"[{supplier}] 获取商品链接")
+            t = time.time()
+            try:
+                get_links_fn()
+                _ok(f"{supplier} 链接获取完成", time.time() - t)
+            except Exception as e:
+                _fail(f"A-get_links-{supplier}", e)
+        else:
+            _skip(f"[{supplier}] get_links（沿用上次链接）")
 
-        _step(f"[{supplier}] 抓取商品详情 → TXT")
-        t = time.time()
-        try:
-            fetch_fn()
-            _ok(f"{supplier} 详情抓取完成", time.time() - t)
-        except Exception as e:
-            _fail(f"A-fetch_info-{supplier}", e)
+        if do_fetch_info:
+            _step(f"[{supplier}] 抓取商品详情 → TXT")
+            t = time.time()
+            try:
+                fetch_fn()
+                _ok(f"{supplier} 详情抓取完成", time.time() - t)
+            except Exception as e:
+                _fail(f"A-fetch_info-{supplier}", e)
+        else:
+            _skip(f"[{supplier}] fetch_info（保留上次 TXT）")
 
     _step("过滤非 Barbour 编码文件（houseoffraser / cho / philipmorris / terraces）")
     from brands.barbour.tools.move_non_barbour_files import move_non_barbour_files
     _FILTER_SUPPLIERS = ["houseoffraser", "cho", "philipmorris", "terraces"]
     for s in _FILTER_SUPPLIERS:
-        if s in A_SUPPLIERS:
+        if A_SUPPLIERS.get(s, (False, False))[1]:  # 只对本次执行了 fetch_info 的过滤
             src = rf"D:\TB\Products\barbour\publication\{s}\TXT"
             bk  = rf"D:\TB\Products\barbour\publication\{s}\TXT.bk"
             move_non_barbour_files(src, bk)
-    _ok("非 Barbour 文件已移出", 0)
+    _ok("非 Barbour 文件过滤完成", 0)
 
 
 # ══════════════════════════════════════════════════════════════════

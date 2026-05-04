@@ -34,8 +34,9 @@ HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    )
+        "Chrome/131.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "en-GB,en;q=0.9",
 }
 
 
@@ -104,7 +105,10 @@ class BarbourFetcher(BaseFetcher):
         # 8. 格式化尺码
         product_size, product_size_detail = self.build_size_lines(size_detail, gender)
 
-        # 9. 返回标准化字典
+        # 9. 提取 Care & Product Information
+        feature = self._extract_features(soup)
+
+        # 10. 返回标准化字典
         price_str = f"{price:.2f}" if price else "0"
         return {
             "Product Code": product_code,
@@ -112,6 +116,7 @@ class BarbourFetcher(BaseFetcher):
             "Product Color": self.clean_text(color, maxlen=100),
             "Product Gender": self._convert_gender_to_english(gender),
             "Product Description": self.clean_description(description),
+            "Feature": feature,
             "Product Price": price_str,       # txt_writer / DB 导入使用此 key
             "Adjusted Price": price_str,      # txt_writer / DB 导入使用此 key
             "Original Price (GBP)": price_str,   # BaseFetcher._validate_info 要求
@@ -124,27 +129,29 @@ class BarbourFetcher(BaseFetcher):
 
     def _extract_sizes_with_stock(self, soup: BeautifulSoup) -> Dict[str, Dict]:
         """
-        Barbour 特有: 从按钮提取尺码和库存状态
+        Barbour 特有: 从尺码元素提取尺码和库存状态
 
-        按钮格式:
-        <button class="size-button" disabled>S</button>  # 无货
-        <button class="size-button">M</button>           # 有货
+        新版页面结构（2024+）:
+        <span class="size-button text-center selectable"   data-attr-value="8">8</span>  # 有货
+        <span class="size-button text-center unselectable" data-attr-value="10">10</span> # 无货
         """
         size_detail = {}
 
-        size_buttons = soup.select("div.size-wrapper button.size-button")
-        for btn in size_buttons or []:
-            size_text = btn.get_text(strip=True)
+        # 新结构：span.size-button（旧版是 button.size-button，已不再出现）
+        size_spans = soup.select("span.size-button[data-attr-value]")
+        for span in size_spans:
+            size_text = span.get("data-attr-value", "").strip() or span.get_text(strip=True)
             if not size_text:
                 continue
 
-            # 检查是否 disabled
-            disabled = ("disabled" in (btn.get("class") or [])) or btn.has_attr("disabled")
+            classes = span.get("class") or []
+            # unselectable = 缺货；selectable = 有货
+            disabled = "unselectable" in classes or "not-available" in classes
             stock_count = 0 if disabled else self.default_stock
 
             size_detail[size_text] = {
                 "stock_count": stock_count,
-                "ean": "",
+                "ean": "0000000000000",
             }
 
         return size_detail
@@ -171,6 +178,35 @@ class BarbourFetcher(BaseFetcher):
         }
 
         return mapping.get(gender_raw, "未知")
+
+    def _extract_features(self, soup: BeautifulSoup) -> str:
+        """
+        提取 Care & Product Information 内容。
+
+        页面结构：
+          <div class="container-accordion-pdp vertical-acoordion js-modal-button">
+            <button>View Care & Product Information</button>
+            <div class="hidden-modal-body">
+              Care & Information
+              Outer: 100% Polyamide
+              Inner: 100% Polyester
+              ...
+            </div>
+          </div>
+        """
+        for btn in soup.find_all("button", class_="pdp-dd-vertical-accordion"):
+            if "care" not in btn.get_text(strip=True).lower():
+                continue
+            body = btn.find_next_sibling("div", class_="hidden-modal-body")
+            if not body:
+                continue
+            lines = [
+                ln.strip()
+                for ln in body.get_text(separator="\n", strip=True).splitlines()
+                if ln.strip() and ln.strip().lower() not in {"care & information", "care &amp; information"}
+            ]
+            return " | ".join(lines) if lines else "No Data"
+        return "No Data"
 
     def _convert_gender_to_english(self, gender_cn: str) -> str:
         """转换中文性别为英文"""
