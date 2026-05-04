@@ -272,13 +272,13 @@ def run_b_import():
         except Exception as e:
             _fail(f"B-products-{supplier}", e)
 
-    _step("导入供应商库存/价格 → barbour_offers（含下架商品清零）")
+    _step("导入供应商库存/价格 → barbour_offers（先清空再导入，确保与 TXT 完全一致）")
     for supplier in B_SUPPLIERS:
         t = time.time()
         try:
-            # full_sweep=True：本次是全量抓取，对整个供应商做完整软删除，
-            # 确保本次没出现 TXT 的商品（已下架）stock_count 被清为 0
-            import_txt_for_supplier(supplier, dryrun=False, full_sweep=True)
+            # clear_first=True：先删除该 supplier 的所有旧 offer 行，再从 TXT 重建，
+            # 彻底避免"TXT 无此商品但 DB 仍有旧数据"导致的库存残留问题。
+            import_txt_for_supplier(supplier, dryrun=False, full_sweep=True, clear_first=True)
             _ok(f"{supplier} → offers 完成", time.time() - t)
         except Exception as e:
             _fail(f"B-offers-{supplier}", e)

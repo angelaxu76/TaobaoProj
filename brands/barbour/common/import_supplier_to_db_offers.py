@@ -352,7 +352,7 @@ def insert_offer(info, conn, missing_log: list) -> int:
         conn.rollback()
     return inserted
 
-def import_txt_for_supplier(supplier: str, dryrun: bool = False, full_sweep: bool = True):
+def import_txt_for_supplier(supplier: str, dryrun: bool = False, full_sweep: bool = True, clear_first: bool = False):
     supplier = canonical_site(supplier) or supplier
     if supplier not in BARBOUR["TXT_DIRS"]:
         print(f"❌ 未找到 supplier: {supplier}")
@@ -364,6 +364,18 @@ def import_txt_for_supplier(supplier: str, dryrun: bool = False, full_sweep: boo
         with conn.cursor() as cur:
             cur.execute("SELECT NOW()")
             run_start_ts = cur.fetchone()[0]
+
+        # clear_first=True：导入前先删除该 supplier 的所有旧 offer 行，
+        # 确保 barbour_offers 与 TXT 完全一致（无任何旧数据残留）
+        if clear_first and not dryrun:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM barbour_offers WHERE site_name = %s",
+                    (supplier,),
+                )
+                deleted = cur.rowcount
+            conn.commit()
+            print(f"🗑️  已清空 {supplier} 的旧 offer 记录（{deleted} 行）")
 
         txt_dir = BARBOUR["TXT_DIRS"][supplier]
         files = sorted(Path(txt_dir).glob("*.txt"))
