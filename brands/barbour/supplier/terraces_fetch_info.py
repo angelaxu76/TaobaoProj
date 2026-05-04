@@ -51,11 +51,11 @@ PG = BRAND_CONFIG["barbour"]["PGSQL_CONFIG"]
 
 # 尺码常量
 WOMEN_ORDER = ["4", "6", "8", "10", "12", "14", "16", "18", "20"]
-MEN_ALPHA_ORDER = ["2XS", "XS", "S", "M", "L", "XL", "2XL", "3XL"]
-MEN_NUM_ORDER = [str(n) for n in range(30, 52, 2)]  # 30..50
+MEN_ALPHA_ORDER = ["XS", "S", "M", "L", "XL", "2XL", "3XL"]
+MEN_NUM_ORDER = [str(n) for n in range(32, 50, 2)]  # 32..48
 
 ALPHA_MAP = {
-    "XXXS": "2XS", "2XS": "2XS",
+    "XXXS": "XS", "2XS": "XS",
     "XXS": "XS", "XS": "XS",
     "S": "S", "SMALL": "S",
     "M": "M", "MEDIUM": "M",
@@ -220,7 +220,7 @@ class TerracesFetcher(BaseFetcher):
             "Adjusted Price": adjusted_price,        # txt_writer / DB 导入使用此 key
             "Original Price (GBP)": product_price,  # BaseFetcher._validate_info 要求
             "Discount Price (GBP)": adjusted_price, # BaseFetcher._validate_info 要求
-            "Product Size": ";".join(sizes) if sizes else "No Data",
+            "Product Size": self.size_from_detail(size_detail),
             "Product Size Detail": size_detail,
             "Feature": features,
         }

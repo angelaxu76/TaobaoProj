@@ -16,21 +16,27 @@ from config import SETTINGS
 
 DEFAULT_STOCK_COUNT = SETTINGS.get("DEFAULT_STOCK_COUNT", 3)
 
-# 尺码顺序配置
+# ── Barbour 标准尺码范围 ──────────────────────────────────────────────────
+# 女款: UK 6-18（偶数）—— Barbour 不销售 4 和 20
 WOMEN_ORDER = ["4", "6", "8", "10", "12", "14", "16", "18", "20"]
-MEN_ALPHA_ORDER = ["2XS", "XS", "S", "M", "L", "XL", "2XL", "3XL"]
-MEN_NUM_ORDER = [str(n) for n in range(30, 52, 2)]  # 30, 32, 34, ..., 50 (不含52)
 
-# 字母尺码映射（标准化）
+# 男款字母系: S-3XL（与已发布产品保持一致）
+MEN_ALPHA_ORDER = ["XS", "S", "M", "L", "XL", "2XL", "3XL"]
+
+# 男款数字系: 32-48（偶数）—— 与已发布产品保持一致
+MEN_NUM_ORDER = [str(n) for n in range(32, 50, 2)]  # 32,34,...,48
+
+# 字母尺码映射（标准化到已发布的有效尺码范围）
+# 极端尺码折叠到最近的有效尺码
 ALPHA_MAP = {
-    "XXXS": "2XS", "2XS": "2XS",
-    "XXS": "XS", "XS": "XS",
+    "XXXS": "XS", "2XS": "XS",  # 折叠到 XS（最小有效尺码）
+    "XXS":  "XS", "XS": "XS",
     "S": "S", "SMALL": "S",
     "M": "M", "MEDIUM": "M",
     "L": "L", "LARGE": "L",
-    "XL": "XL", "X-LARGE": "XL",
+    "XL": "XL", "X-LARGE": "XL", "XLARGE": "XL",
     "XXL": "2XL", "2XL": "2XL",
-    "XXXL": "3XL", "3XL": "3XL",
+    "XXXL": "3XL", "3XL": "3XL",  # 保留 3XL
 }
 
 
@@ -42,8 +48,8 @@ def normalize_size(token: str, gender: str) -> Optional[str]:
 
     处理逻辑:
     1. 去除前缀 (UK, EU, US)
-    2. 数字尺码: 女款 4-20, 男款 30-50 (偶数)
-    3. 字母尺码: 通过 ALPHA_MAP 标准化
+    2. 数字尺码: 女款 6-18 (偶数), 男款 30-50 (偶数)
+    3. 字母尺码: 通过 ALPHA_MAP 标准化（极端尺码折叠到最近有效值）
 
     Args:
         token: 原始尺码字符串 (如 "UK 10", "S", "XL", "36")
@@ -76,33 +82,34 @@ def normalize_size(token: str, gender: str) -> Optional[str]:
     is_women = "女" in gender_lower or "women" in gender_lower or "lady" in gender_lower or "ladies" in gender_lower
     is_men = "男" in gender_lower or "men" in gender_lower or "man" in gender_lower
 
-    # 尝试数字尺码
+    # ── 先查 ALPHA_MAP（处理 S/M/L/XL/2XL/3XL 等字母系尺码）──────────────
+    # 必须在数字解析之前，否则 "2XL"、"3XL" 中的数字会被误抓
+    key = s.replace("-", "").replace(" ", "")
+    if key in ALPHA_MAP:
+        return ALPHA_MAP[key]
+
+    # ── 再尝试纯数字 / 数字+字母 尺码（36R、UK 10 等）───────────────────
     m = re.findall(r"\d{1,3}", s)
     if m:
         n = int(m[0])
 
-        # 女款数字尺码: 4, 6, 8, 10, 12, 14, 16, 18, 20
+        # 女款数字尺码: 4-20（偶数）
         if is_women and n in {4, 6, 8, 10, 12, 14, 16, 18, 20}:
             return str(n)
+        if is_women:
+            return None  # 超出女款销售范围，丢弃
 
-        # 男款数字尺码: 30-50 (偶数, 排除52)
+        # 男款数字尺码: 32-48 (偶数)，与已发布产品保持一致
         if is_men:
-            # 严格匹配
-            if 30 <= n <= 50 and n % 2 == 0:
+            if 32 <= n <= 48 and n % 2 == 0:
                 return str(n)
-
-            # 容错: 28-54 映射到最近的有效值
+            # 容错: 30-50 映射到最近的有效偶数
             if 28 <= n <= 54:
                 candidate = n if n % 2 == 0 else n - 1
-                candidate = max(30, min(50, candidate))
+                candidate = max(32, min(48, candidate))
                 return str(candidate)
 
-        # 其他情况不返回
-        return None
-
-    # 尝试字母尺码
-    key = s.replace("-", "").replace(" ", "")
-    return ALPHA_MAP.get(key)
+    return None
 
 
 def choose_size_order_for_gender(gender: str, present_sizes: Set[str]) -> List[str]:
@@ -121,11 +128,11 @@ def choose_size_order_for_gender(gender: str, present_sizes: Set[str]) -> List[s
         完整的尺码顺序列表
 
     Examples:
-        >>> choose_size_order_for_gender("女款", {"4", "6", "8"})
-        ["4", "6", "8", "10", "12", "14", "16", "18", "20"]
+        >>> choose_size_order_for_gender("女款", {"6", "8", "10"})
+        ["6", "8", "10", "12", "14", "16", "18"]
 
         >>> choose_size_order_for_gender("男款", {"S", "M", "L"})
-        ["2XS", "XS", "S", "M", "L", "XL", "2XL", "3XL"]
+        ["XS", "S", "M", "L", "XL", "2XL"]
 
         >>> choose_size_order_for_gender("男款", {"30", "32", "34"})
         ["30", "32", "34", ..., "50"]

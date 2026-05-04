@@ -79,10 +79,6 @@ class OutdoorAndCountryFetcher(BaseFetcher):
     - MPN 字段优先
     """
 
-    # 尺码排序规则
-    WOMEN_NUM = ["6", "8", "10", "12", "14", "16", "18", "20"]
-    MEN_ALPHA = ["S", "M", "L", "XL", "XXL", "XXXL"]
-    MEN_NUM = [str(s) for s in range(32, 52, 2)]
 
     def get_driver(self):
         """
@@ -188,7 +184,7 @@ class OutdoorAndCountryFetcher(BaseFetcher):
             "Adjusted Price": discount_price,        # txt_writer / DB 导入使用此 key
             "Original Price (GBP)": original_price,  # BaseFetcher._validate_info 要求
             "Discount Price (GBP)": discount_price,  # BaseFetcher._validate_info 要求
-            "Product Size": "No Data",  # 旧版未使用此字段
+            "Product Size": self.size_from_detail(product_size_detail),
             "Product Size Detail": product_size_detail,
             "Feature": features,
         }
@@ -284,73 +280,35 @@ class OutdoorAndCountryFetcher(BaseFetcher):
 
         return ""
 
-    def _build_sizes_from_offers(self, offers, gender: str):
-        """从 offers 构建 Product Size Detail"""
+    def _build_sizes_from_offers(self, offers, gender: str) -> str:
+        """从 offers 构建 Product Size Detail（经由 size_normalizer 标准化）"""
         if not offers:
             return "No Data"
 
-        temp = []
+        size_detail: Dict[str, Any] = {}
         for size, price, stock_text, can_order in offers:
             size = (size or "").strip()
             if not size:
                 continue
 
-            # 判断库存
             stock = 0
             if (stock_text or "").strip() in ("有货", "In Stock", "available"):
                 stock = DEFAULT_STOCK_COUNT
             if can_order and stock == 0:
                 stock = DEFAULT_STOCK_COUNT
 
-            # 清理尺码
             cs = self._clean_size(size)
             if not cs:
                 continue
 
-            # 过滤超大尺码 (>=52)
-            m = re.match(r"^(\d{2})$", cs)
-            if m and int(m.group(1)) >= 52:
-                continue
+            if cs not in size_detail or stock > size_detail[cs]["stock_count"]:
+                size_detail[cs] = {"stock_count": stock, "ean": "0000000000000"}
 
-            temp.append((cs, stock))
-
-        if not temp:
+        if not size_detail:
             return "No Data"
 
-        # 去重 (保留最大库存)
-        bucket = {}
-        for s, stock in temp:
-            bucket[s] = max(bucket.get(s, 0), stock)
-
-        # 排序
-        ordered = []
-        if "女" in (gender or ""):
-            # 女款: 数字优先
-            for s in self.WOMEN_NUM:
-                if s in bucket:
-                    ordered.append(s)
-            for s in bucket:
-                if s not in ordered:
-                    ordered.append(s)
-        else:
-            # 男款: 字母 + 数字
-            for s in self.MEN_ALPHA:
-                if s in bucket:
-                    ordered.append(s)
-            for s in self.MEN_NUM:
-                if s in bucket:
-                    ordered.append(s)
-            for s in bucket:
-                if s not in ordered:
-                    ordered.append(s)
-
-        # 格式化
-        out = []
-        for s in ordered:
-            qty = DEFAULT_STOCK_COUNT if bucket.get(s, 0) > 0 else 0
-            out.append(f"{s}:{qty}:0000000000000")
-
-        return ";".join(out) if out else "No Data"
+        _, product_size_detail = self.build_size_lines(size_detail, gender)
+        return product_size_detail
 
     def _clean_size(self, raw: str) -> str:
         """清理尺码"""

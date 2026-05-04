@@ -57,8 +57,8 @@ COLOR_WEIGHT = 0.25              # 颜色权重
 
 # ===== 标准尺码表（用于补齐未出现尺码=0） =====
 WOMEN_ORDER = ["4","6","8","10","12","14","16","18","20"]
-MEN_ALPHA_ORDER = ["2XS","XS","S","M","L","XL","2XL","3XL"]
-MEN_NUM_ORDER = [str(n) for n in range(30, 52, 2)]  # 30..50（不含52）
+MEN_ALPHA_ORDER = ["XS","S","M","L","XL","2XL","3XL"]
+MEN_NUM_ORDER = [str(n) for n in range(32, 50, 2)]  # 32..48
 
 def _full_order_for_gender(gender: str) -> list[str]:
     """根据性别返回完整尺码顺序；未知/童款先按男款处理。"""
@@ -267,7 +267,7 @@ def _extract_sizes_and_stock(initial: Optional[dict], soup: BeautifulSoup) -> Li
 
     # 尺码规范化
     _alpha_canon = {
-        "XXXS":"2XS","2XS":"2XS","XXS":"XS","XS":"XS",
+        "XXXS":"XS","2XS":"XS","XXS":"XS","XS":"XS",
         "S":"S","SMALL":"S","M":"M","MEDIUM":"M","L":"L","LARGE":"L",
         "XL":"XL","X-LARGE":"XL","XXL":"2XL","2XL":"2XL","XXXL":"3XL","3XL":"3XL",
     }

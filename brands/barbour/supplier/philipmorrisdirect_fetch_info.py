@@ -406,6 +406,9 @@ class PhilipMorrisFetcher(BaseFetcher):
                     # 整页所有 MPN
                     all_mpns = extract_all_mpns_plus(html)
 
+                    # 一次性推断性别 (所有颜色共用同一个产品名)
+                    gender = self.infer_gender(text=product_name, url=url, output_format="en")
+
                     # 颜色按钮
                     color_elems = driver.find_elements(By.CSS_SELECTOR, "label.form-option.label-img")
                     variants = []
@@ -433,8 +436,8 @@ class PhilipMorrisFetcher(BaseFetcher):
                             soup_c = BeautifulSoup(html_c, "html.parser")
 
                             orig, sale = self._extract_prices(soup_c)
-                            sizes = self._extract_sizes(html_c)
-                            size_str = self._build_size_str(sizes)
+                            size_detail = self._extract_sizes(html_c)
+                            product_size, product_size_detail = self.build_size_lines(size_detail, gender)
 
                             adjusted = sale if sale and sale != orig else ""
 
@@ -443,9 +446,11 @@ class PhilipMorrisFetcher(BaseFetcher):
                                 "Product Name": product_name,
                                 "Product Description": product_desc,
                                 "Product Color": color,
+                                "Product Gender": gender,
                                 "Product Price": orig or sale or "0",
                                 "Adjusted Price": adjusted,
-                                "Product Size": size_str,
+                                "Product Size": product_size,
+                                "Product Size Detail": product_size_detail,
                                 "Site Name": SITE_NAME,
                                 "Source URL": url,
                             })
@@ -453,8 +458,8 @@ class PhilipMorrisFetcher(BaseFetcher):
                         # 单色
                         self.logger.warning("无颜色选项 -> 视为单色")
                         color = "No Data"
-                        sizes = self._extract_sizes(html)
-                        size_str = self._build_size_str(sizes)
+                        size_detail = self._extract_sizes(html)
+                        product_size, product_size_detail = self.build_size_lines(size_detail, gender)
                         adjusted = base_sale if base_sale != base_orig else ""
 
                         variants.append({
@@ -462,9 +467,11 @@ class PhilipMorrisFetcher(BaseFetcher):
                             "Product Name": product_name,
                             "Product Description": product_desc,
                             "Product Color": color,
+                            "Product Gender": gender,
                             "Product Price": base_orig or base_sale or "0",
                             "Adjusted Price": adjusted,
-                            "Product Size": size_str,
+                            "Product Size": product_size,
+                            "Product Size Detail": product_size_detail,
                             "Site Name": SITE_NAME,
                             "Source URL": url,
                         })
@@ -587,11 +594,11 @@ class PhilipMorrisFetcher(BaseFetcher):
         m = re.search(r"([0-9]+(?:\.[0-9]{1,2})?)", t.replace(",", ""))
         return m.group(1) if m else ""
 
-    def _extract_sizes(self, html: str):
-        """提取尺码"""
+    def _extract_sizes(self, html: str) -> Dict[str, Dict]:
+        """提取尺码 → {raw_size: {"stock_count": N, "ean": "..."}}"""
         soup = BeautifulSoup(html, "html.parser")
         labels = soup.select("label.form-option")
-        out = []
+        result: Dict[str, Dict] = {}
 
         for lb in labels:
             classes = lb.get("class", [])
@@ -603,25 +610,14 @@ class PhilipMorrisFetcher(BaseFetcher):
                 continue
 
             size = span.text.strip()
-            stock = "无货" if "unavailable" in classes else "有货"
-            out.append((size, stock))
+            if not size:
+                continue
 
-        return out
+            stock = 0 if "unavailable" in classes else self.default_stock
+            if size not in result or stock > result[size]["stock_count"]:
+                result[size] = {"stock_count": stock, "ean": "0000000000000"}
 
-    def _build_size_str(self, sizes):
-        """构建尺码字符串"""
-        order = []
-        agg = {}
-
-        for size, st in sizes:
-            if size not in agg:
-                agg[size] = st
-                order.append(size)
-            else:
-                if st == "有货":
-                    agg[size] = "有货"
-
-        return ";".join([f"{s}:{agg[s]}" for s in order])
+        return result
 
     def parse_detail_page(self, html: str, url: str) -> Dict[str, Any]:
         """

@@ -51,13 +51,13 @@ LOG_DIR = r"D:\TB\Logs\barbour"
 # fetch_info：True = 抓取商品详情并写 TXT；False = 跳过（保留上次的 TXT）
 A_SUPPLIERS = {
     #  supplier             get_links  fetch_info
-    "barbour":           (  False,      True  ),
+    "barbour":           (  False,      False  ),
     "outdoorandcountry": (  False,     False ),
     "allweathers":       (  False,     False ),
     "houseoffraser":     (  False,     False ),
     "terraces":          (  False,     False ),
     "philipmorris":      (  False,     False ),
-    "cho":               (  False,     False ),
+    "cho":               (  False,     True ),
     # "very":            (  False,     False ),
 }
 

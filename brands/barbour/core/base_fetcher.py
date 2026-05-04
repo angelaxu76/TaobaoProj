@@ -458,6 +458,27 @@ class BaseFetcher(ABC):
         """从文本提取 Barbour Product Code"""
         return extract_barbour_code_from_text(text)
 
+    def size_from_detail(self, detail_str: str) -> str:
+        """
+        从 Product Size Detail 字符串反推 Product Size（有货/无货格式）。
+
+        例: "32:10:0000000000000;34:0:0000000000000" → "32:有货;34:无货"
+        """
+        if not detail_str or detail_str == "No Data":
+            return "No Data"
+        parts = []
+        for token in detail_str.split(";"):
+            segs = token.split(":")
+            if len(segs) < 2:
+                continue
+            size = segs[0].strip()
+            try:
+                stock = int(segs[1])
+            except ValueError:
+                stock = 0
+            parts.append(f"{size}:{'有货' if stock > 0 else '无货'}")
+        return ";".join(parts) if parts else "No Data"
+
 
 # ================== 辅助函数 ==================
 

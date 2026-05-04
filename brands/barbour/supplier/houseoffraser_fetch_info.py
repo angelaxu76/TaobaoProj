@@ -21,11 +21,14 @@ from __future__ import annotations
 
 import re
 import json
+import time
 import threading
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from bs4 import BeautifulSoup
 import requests
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException
 
 # 导入基类和工具
 from brands.barbour.core.base_fetcher import BaseFetcher, setup_logging
@@ -133,8 +136,33 @@ class HouseOfFraserFetcher(BaseFetcher):
                 pass
 
     def _load_urls(self) -> List[str]:
-        """重写：加载链接并过滤掉已完成的"""
-        all_urls = super()._load_urls()
+        """
+        重写：保留 #colcode=... fragment + 过滤已完成的 URL
+
+        HoF 链接格式: .../product-123456#colcode=12345678
+        基类 normalize_url 会把 # 后面全部删掉，导致 Selenium 打开时
+        JS 无法读取 colcode，页面不知道该展示哪个颜色的尺码。
+        这里直接读文件，只去空格和注释，保留 fragment。
+        """
+        try:
+            raw_lines = self.links_file.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except Exception as e:
+            self.logger.error(f"读取链接文件失败: {e}")
+            return []
+
+        seen: set = set()
+        all_urls: list = []
+
+        for line in raw_lines:
+            url = line.strip()
+            if not url or url.startswith("#"):
+                continue
+            # 仅去除查询参数中的 tracking 参数，保留 #fragment
+            # 简单去重：以完整 URL（含 fragment）为 key
+            if url not in seen:
+                seen.add(url)
+                all_urls.append(url)
+
         before = len(all_urls)
         urls = [u for u in all_urls if u not in self._done_urls]
         skipped = before - len(urls)
@@ -144,25 +172,26 @@ class HouseOfFraserFetcher(BaseFetcher):
 
     def _fetch_html(self, url: str) -> str:
         """
-        获取 HTML：优先用 requests（快），失败时回退 Selenium。
+        使用 Selenium 加载页面并等待 JS 渲染完成。
 
-        HOF 是 Next.js SSR 站点，JSON-LD / __NEXT_DATA__ 都在首次 HTML 中，
-        大多数情况不需要 JS 渲染。
+        HoF 是 Next.js App Router (RSC streaming) 站点，尺码/库存数据完全通过
+        客户端 JS 渲染，requests 获取的静态 HTML 中没有任何尺码信息，
+        必须用 Selenium 等待 JS 执行完毕后才能抓取。
         """
-        if self._use_requests:
-            try:
-                resp = self._session.get(url, timeout=15)
-                resp.raise_for_status()
-                html = resp.text
-                # 检查 HTML 是否包含有效数据（非空壳 / 反爬页）
-                if '"@type"' in html or "__NEXT_DATA__" in html:
-                    return html
-                self.logger.debug(f"requests 返回无效页面，回退 Selenium: {url}")
-            except Exception as e:
-                self.logger.debug(f"requests 失败 ({e})，回退 Selenium: {url}")
+        driver = self.get_driver()
+        driver.get(url)
 
-        # 回退 Selenium
-        return super()._fetch_html(url)
+        # 等待产品价格出现（表示 JS 已完成渲染）
+        try:
+            WebDriverWait(driver, 30).until(
+                lambda d: d.find_elements("css selector", "p[data-testid='price'], [data-testid='price']")
+                          or d.find_elements("css selector", "[class*='Price_']")
+                          or d.find_elements("css selector", "[class*='price']")
+            )
+        except TimeoutException:
+            self.logger.warning(f"等待价格元素超时 (30s)，继续解析: {url}")
+
+        return driver.page_source
 
     def fetch_one_product(self, url: str, idx: int, total: int):
         """重写：成功后记录进度"""
@@ -179,9 +208,8 @@ class HouseOfFraserFetcher(BaseFetcher):
         解析 House of Fraser 商品详情页
 
         页面特点:
-        - JSON-LD 包含基础信息
+        - Next.js App Router SSR，尺码数据全部通过 JS 渲染
         - 价格在 data-testid="price"
-        - 尺码在 select/option
         - 使用 Lexicon 匹配获取 Product Code
         """
         soup = BeautifulSoup(html, "html.parser")
@@ -193,13 +221,13 @@ class HouseOfFraserFetcher(BaseFetcher):
         sku_guess = jd.get("sku") or "No Data"
 
         # 2. 提取颜色
-        color_guess = self._extract_color(soup, html) or "No Data"
+        color_guess = self._extract_color(soup, html, url=url) or "No Data"
 
         # 3. 提取价格
         product_price_str, adjusted_price_str = self._extract_prices(soup)
 
-        # 4. 提取尺码
-        raw_sizes = self._extract_sizes(soup)
+        # 4. 提取尺码 — 返回 {size: {stock_count, ean}} 格式
+        size_detail_dict = self._extract_size_detail(soup)
 
         # 5. hybrid_barbour_matcher 多级匹配 Product Code
         with self._engine.begin() as conn:
@@ -224,8 +252,8 @@ class HouseOfFraserFetcher(BaseFetcher):
         # 6. 推断性别
         gender_for_logic = self._decide_gender(final_code, soup, html, url)
 
-        # 7. 格式化尺码
-        product_size_str, product_size_detail_str = self._finalize_sizes(raw_sizes, gender_for_logic)
+        # 7. 格式化尺码（有货/无货均包含）
+        product_size_str, product_size_detail_str = self.build_size_lines(size_detail_dict, gender_for_logic)
 
         # 8. 返回标准化字典
         return {
@@ -279,11 +307,18 @@ class HouseOfFraserFetcher(BaseFetcher):
 
         return out
 
-    def _extract_color(self, soup: BeautifulSoup, html: str) -> str:
-        """提取颜色"""
+    def _extract_color(self, soup: BeautifulSoup, html: str, url: str = "") -> str:
+        """提取颜色（从渲染后的 HTML 或 URL fragment 中的 colcode 提取）"""
         m = re.search(r'"color"\s*:\s*"([^"]+)"', html or "")
         if m:
             return m.group(1).strip()
+
+        # 从 URL fragment 提取 colcode（HoF 格式：#colcode=54836103）
+        if url:
+            fm = re.search(r'[#&]colcode=([A-Za-z0-9]+)', url)
+            if fm:
+                return fm.group(1)
+
         return "No Data"
 
     def _extract_prices(self, soup: BeautifulSoup) -> tuple:
@@ -348,14 +383,196 @@ class HouseOfFraserFetcher(BaseFetcher):
 
         return None
 
-    def _extract_sizes(self, soup: BeautifulSoup) -> list:
-        """提取尺码"""
-        sizes = []
-        for opt in soup.select("[data-testid*='size'] option, select option"):
-            t = opt.get_text(strip=True)
-            if t and t not in sizes:
-                sizes.append(t)
-        return sizes
+    # 有效尺码格式正则（编译一次复用）
+    _SIZE_PATTERN = re.compile(
+        r'^(XS|S|M|L|XL|2XL|XXL|XXXL|3XL|ONE SIZE|[0-9]{1,2}(\.[05])?|[0-9]{1,2}[RSL]?)$',
+        re.IGNORECASE
+    )
+
+    def _extract_size_detail(self, soup: BeautifulSoup) -> Dict[str, Dict]:
+        """
+        提取尺码详情 dict，格式与其他供应商一致：
+          {"S": {"stock_count": 3, "ean": "0000000000000"},
+           "M": {"stock_count": 0, "ean": "0000000000000"}, ...}
+
+        策略：
+        1. BeautifulSoup 快速尝试（Selenium 渲染后 DOM 有效）
+        2. 兜底：JavaScript 聚类法（按三级祖先容器分组，最大组 = 尺码选择器）
+        JS 对每个元素同时判断有货/无货（aria-disabled / class / 删除线 / 透明度）。
+        """
+        from common.product.size_utils import clean_size_for_barbour
+
+        # --- BeautifulSoup 快速路 ---
+        bs4_detail = self._extract_size_detail_from_soup(soup)
+        if bs4_detail:
+            return bs4_detail
+
+        # --- JS 聚类法 ---
+        try:
+            driver = self.get_driver()
+
+            js = r"""
+            var SIZE_PAT = /^(XS|S|M|L|XL|2XL|XXL|XXXL|3XL|ONE SIZE|[0-9]{1,2}(\.[05])?|[0-9]{1,2}[RSL]?)$/i;
+
+            function getAncestor(el, levels) {
+                var cur = el;
+                for (var i = 0; i < levels; i++) {
+                    if (!cur.parentElement) break;
+                    cur = cur.parentElement;
+                }
+                return cur;
+            }
+
+            function isUnavailable(el) {
+                if (el.disabled) return true;
+                if (el.getAttribute('aria-disabled') === 'true') return true;
+                var cls = (el.className || '').toLowerCase();
+                if (cls.indexOf('unavailable') >= 0 || cls.indexOf('out-of-stock') >= 0 ||
+                    cls.indexOf('sold-out') >= 0) return true;
+                // 删除线 = 无货
+                var style = window.getComputedStyle(el);
+                var dec = style.textDecoration || style.webkitTextDecoration || '';
+                if (dec.indexOf('line-through') >= 0) return true;
+                // 极低透明度 = 无货
+                var opacity = parseFloat(style.opacity || '1');
+                if (opacity < 0.4) return true;
+                return false;
+            }
+
+            var candidates = [];
+            var els = document.querySelectorAll(
+                'button, li, span, [role="option"], [role="radio"], input[type="radio"] + label'
+            );
+
+            for (var i = 0; i < els.length; i++) {
+                var el = els[i];
+                var text = (el.textContent || '').trim();
+                if (!SIZE_PAT.test(text)) continue;
+
+                var unavail = isUnavailable(el);
+                var ancestor = getAncestor(el, 3);
+                candidates.push({ text: text, unavail: unavail, ancestor: ancestor });
+            }
+
+            // 按祖先容器分组（每组记录每个 size 及其有效库存标志）
+            var groups = [];
+            for (var j = 0; j < candidates.length; j++) {
+                var c = candidates[j];
+                var found = false;
+                for (var k = 0; k < groups.length; k++) {
+                    if (groups[k].ancestor === c.ancestor) {
+                        // 同一尺码出现多次：有货优先
+                        var existing = null;
+                        for (var m = 0; m < groups[k].items.length; m++) {
+                            if (groups[k].items[m].text === c.text) {
+                                existing = groups[k].items[m];
+                                break;
+                            }
+                        }
+                        if (existing) {
+                            if (!c.unavail) existing.unavail = false; // 有货优先
+                        } else {
+                            groups[k].items.push({ text: c.text, unavail: c.unavail });
+                        }
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    groups.push({ ancestor: c.ancestor, items: [{ text: c.text, unavail: c.unavail }] });
+                }
+            }
+
+            // 最大组 = 尺码选择器
+            var bestItems = [];
+            for (var g = 0; g < groups.length; g++) {
+                if (groups[g].items.length > bestItems.length) {
+                    bestItems = groups[g].items;
+                }
+            }
+
+            return { items: bestItems };
+            """
+
+            result = driver.execute_script(js)
+            if not result:
+                return {}
+
+            items = result.get("items", [])
+            if not items:
+                self.logger.warning("⚠️  JS 聚类法未找到尺码")
+                return {}
+
+            size_detail: Dict[str, Dict] = {}
+            for item in items:
+                raw = (item.get("text") or "").strip()
+                cleaned = clean_size_for_barbour(raw) or raw
+                if not cleaned:
+                    continue
+                unavail = item.get("unavail", False)
+                stock = 0 if unavail else self.default_stock
+                size_detail[cleaned] = {"stock_count": stock, "ean": "0000000000000"}
+
+            self.logger.info(f"✅ JS 聚类提取到尺码: { {k: v['stock_count'] for k, v in size_detail.items()} }")
+            return size_detail
+
+        except Exception as e:
+            self.logger.warning(f"JS 提取尺码失败: {e}")
+            return {}
+
+    def _extract_size_detail_from_soup(self, soup: BeautifulSoup) -> Dict[str, Dict]:
+        """
+        BeautifulSoup 快速路（Selenium 渲染后 DOM 中已有尺码元素时使用）。
+        返回 {size: {stock_count, ean}} 或空 dict。
+        """
+        from common.product.size_utils import clean_size_for_barbour
+
+        size_detail: Dict[str, Dict] = {}
+        seen: set = set()
+
+        selectors = [
+            "button[data-testid*='size']",
+            "button[data-testid*='Size']",
+            "[data-testid='size-button']",
+            "[class*='SizeButton']",
+            "[class*='size-button']",
+            "[data-testid='size-selector'] button",
+            "[data-testid*='size'] option",
+            "select option",
+        ]
+
+        for sel in selectors:
+            elements = soup.select(sel)
+            if not elements:
+                continue
+
+            for el in elements:
+                text = (
+                    el.get("data-size")
+                    or el.get("data-value")
+                    or el.get("data-attr-value")
+                    or el.get("value")
+                    or el.get_text(strip=True)
+                )
+                text = (text or "").strip()
+                if not text or not self._SIZE_PATTERN.match(text):
+                    continue
+
+                cleaned = clean_size_for_barbour(text) or text
+                if not cleaned or cleaned in seen:
+                    continue
+                seen.add(cleaned)
+
+                classes = " ".join(el.get("class") or []).lower()
+                disabled = el.has_attr("disabled") or el.get("aria-disabled") == "true"
+                is_unavail = any(kw in classes for kw in ("unavailable", "unselectable", "not-available", "out-of-stock"))
+                stock = 0 if (disabled or is_unavail) else self.default_stock
+                size_detail[cleaned] = {"stock_count": stock, "ean": "0000000000000"}
+
+            if size_detail:
+                return size_detail
+
+        return {}
 
     def _decide_gender(self, sku: str, soup: BeautifulSoup, html: str, url: str) -> str:
         """推断性别"""
@@ -389,23 +606,6 @@ class HouseOfFraserFetcher(BaseFetcher):
             return "Women"
         return "No Data"
 
-    def _finalize_sizes(self, raw_sizes: list, gender_for_logic: str) -> tuple:
-        """格式化尺码"""
-        from common.product.size_utils import clean_size_for_barbour
-
-        cleaned = []
-        for s in raw_sizes or []:
-            ns = clean_size_for_barbour(str(s))
-            if ns and ns != "No Data" and ns not in cleaned:
-                cleaned.append(ns)
-
-        if not cleaned:
-            return ("No Data", "No Data")
-
-        product_size_str = ";".join([f"{x}:有货" for x in cleaned])
-        product_size_detail_str = ";".join([f"{x}:{DEFAULT_STOCK_COUNT}:0000000000000" for x in cleaned])
-
-        return product_size_str, product_size_detail_str
 
 
 # ================== 主入口 ==================
