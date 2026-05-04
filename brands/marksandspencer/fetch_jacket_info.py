@@ -9,19 +9,27 @@ import re
 import time
 from pathlib import Path
 
-from attr import attrs
+import requests
 from bs4 import BeautifulSoup
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 
 from config import MARKSANDSPENCER
-from common.browser.selenium_utils import get_driver
 from common.ingest.txt_writer import format_txt
 from common.product.style_category_normalizer import normalize_style_category
 
 
 CANON_SITE = "Marks & Spencer"
+
+_SESSION = requests.Session()
+_SESSION.headers.update({
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-GB,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+})
 
 
 # ===================== 工具函数 =====================
@@ -392,11 +400,11 @@ def _parse_price(sheet: dict):
     if prev_f and cur_f and prev_f > cur_f:
         return prev_f, cur_f
 
-    # 无折扣，只有 current
+    # 无折扣，Adjusted Price 与原价相同
     if cur_f:
-        return cur_f, 0
+        return cur_f, cur_f
 
-    return "No Data", 0
+    return "No Data", "No Data"
 
 
 # ===================== 材质与 Feature =====================
@@ -542,19 +550,10 @@ def _infer_gender(name: str, sheet: dict, url: str):
 # ===================== 单页面解析 =====================
 
 def extract_page(url: str) -> dict:
-    """使用 Selenium 加载页面并解析"""
-    driver = get_driver("marksandspencer", headless=True)
-    driver.get(url)
-
-    try:
-        WebDriverWait(driver, 12).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
-        )
-    except:
-        time.sleep(5)
-
-    html = driver.page_source
-    soup = BeautifulSoup(html, "html.parser")
+    """用 requests 抓取页面 HTML，解析 __NEXT_DATA__ JSON（SSR，不需要 JS 执行）"""
+    resp = _SESSION.get(url, timeout=30)
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.text, "html.parser")
 
     title_tag = soup.find("title")
     title = _clean(title_tag.text) if title_tag else "No Data"
@@ -655,18 +654,16 @@ def fetch_jackcet_info():
 
     print(f"📄 共 {len(urls)} 个 M&S 商品待抓取")
 
+    def _try_save(info: dict):
+        fname = info["Product Code"].replace("/", "_")
+        txt_path = txt_dir / f"{fname}.txt"
+        format_txt(info, txt_path, brand="marksandspencer")
+        print(f"✅ 成功写入 TXT: {txt_path.name}")
+
     for idx, url in enumerate(urls, 1):
         print(f"\n—— [{idx}/{len(urls)}] ——")
         try:
-            info = extract_page(url)
-
-            fname = info["Product Code"].replace("/", "_")
-            txt_path = txt_dir / f"{fname}.txt"
-
-            format_txt(info, txt_path, brand="marksandspencer")
-
-            print(f"✅ 成功写入 TXT: {txt_path.name}")
-
+            _try_save(extract_page(url))
         except Exception as e:
             print(f"❌ 解析失败: {url}\n   错误: {e}")
 

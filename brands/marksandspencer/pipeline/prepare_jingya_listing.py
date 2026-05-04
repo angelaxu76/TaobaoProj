@@ -15,23 +15,23 @@ from channels.jingya.maintenance.export_low_stock_products import export_low_sto
 
 
 def main():
-    print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    backup_and_clear_brand_dirs(MARKSANDSPENCER)
+    # print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
+    # backup_and_clear_brand_dirs(MARKSANDSPENCER)
 
-    print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    collect_lingerie_links()
-    collect_jacket_links()
+    # print("\n🟡 Step: 2️⃣ 抓取商品链接")
+    # collect_lingerie_links()
+    # collect_jacket_links()
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    fetch_jackcet_info()
-    fetch_lingerie_info()
+    # fetch_jackcet_info()
+    # fetch_lingerie_info()
 
     # TODO: fetch_jackcet_info / fetch_lingerie_info 尚不支持 links_file 参数，
     #       补抓遗漏商品暂时跳过。如需启用，需先给两个 fetch 函数加 links_file 参数。
     missing_product_link = r"D:\TB\Products\marksandspencer\publication\missing_product_links.txt"
     # generate_missing_links_for_brand("marksandspencer", missing_product_link)
-    fetch_jackcet_info(links_file=missing_product_link)
-    fetch_lingerie_info(links_file=missing_product_link)
+    # fetch_jackcet_info(links_file=missing_product_link)
+    # fetch_lingerie_info(links_file=missing_product_link)
 
     print("\n🟡 Step: 4️⃣ TXT导入数据库 -----将各个商品的TXT中信息导入到数据库中")
     import_txt_to_db_supplier("marksandspencer")

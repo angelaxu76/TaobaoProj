@@ -6,6 +6,7 @@ from cfg.paths import BASE_DIR, DISCOUNT_EXCEL_DIR, ensure_all_dirs
 from cfg.settings import (
     API_KEYS,
     SETTINGS,
+    DEFAULT_STOCK_COUNT,
     DRIVER_DIR,
     GLOBAL_CHROMEDRIVER_PATH,
     GLOBAL_GECKODRIVER_PATH,
@@ -76,7 +77,7 @@ from cfg.ai_config import (
 
 __all__ = [
     "BASE_DIR", "DISCOUNT_EXCEL_DIR", "ensure_all_dirs",
-    "API_KEYS", "SETTINGS", "DRIVER_DIR",
+    "API_KEYS", "SETTINGS", "DEFAULT_STOCK_COUNT", "DRIVER_DIR",
     "GLOBAL_CHROMEDRIVER_PATH", "GLOBAL_GECKODRIVER_PATH",
     "PGSQL_CONFIG",
     "EXCEL_CONSTANTS_BASE", "EXCEL_CONSTANTS_BY_BRAND",

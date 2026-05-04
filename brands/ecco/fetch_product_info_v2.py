@@ -15,7 +15,7 @@ import hashlib
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from html import unescape
-from config import ECCO, SIZE_RANGE_CONFIG
+from config import ECCO, SIZE_RANGE_CONFIG, DEFAULT_STOCK_COUNT
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -183,7 +183,7 @@ def build_size_maps_jingya(rows):
         sku = str(r.get("sku") or "").strip()
         ean = sku if (len(sku) == 13 and sku.isdigit()) else "0000000000000"
         size_map[eu]    = "有货" if ok else "无货"
-        size_detail[eu] = {"stock_count": 3 if ok else 0, "ean": ean}
+        size_detail[eu] = {"stock_count": DEFAULT_STOCK_COUNT if ok else 0, "ean": ean}
     return size_map, size_detail
 
 
@@ -559,7 +559,7 @@ def process_one(url: str, idx: int, total: int):
                 eu = eu.strip()
                 has = "无货" not in flag
                 size_map[eu]    = "有货" if has else "无货"
-                size_detail[eu] = {"stock_count": 3 if has else 0, "ean": "0000000000000"}
+                size_detail[eu] = {"stock_count": DEFAULT_STOCK_COUNT if has else 0, "ean": "0000000000000"}
 
         # 尺码辅助判断性别
         eu_sizes_arr = [k for k in size_map if k.isdigit()]

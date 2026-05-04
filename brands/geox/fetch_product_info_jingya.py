@@ -12,7 +12,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from config import SIZE_RANGE_CONFIG, GEOX
+from config import SIZE_RANGE_CONFIG, GEOX, DEFAULT_STOCK_COUNT
 from common.ingest.txt_writer import format_txt
 from common.product.category_utils import infer_style_category
 
@@ -327,7 +327,7 @@ def parse_product(html: str, url: str) -> Dict:
     for eu, flag in size_stock.items():
         has = (str(flag) == "1")
         size_map[eu] = "有货" if has else "无货"
-        size_detail[eu] = {"stock_count": 3 if has else 0, "ean": "0000000000000"}
+        size_detail[eu] = {"stock_count": DEFAULT_STOCK_COUNT if has else 0, "ean": "0000000000000"}
 
     # 风格分类
     style_category = infer_style_category(f"{name} {description}")

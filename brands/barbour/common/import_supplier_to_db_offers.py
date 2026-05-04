@@ -9,7 +9,7 @@ from pathlib import Path
 from brands.barbour.core.keyword_mapping import KEYWORD_EQUIVALENTS
 from common.product.size_utils import clean_size_for_barbour  # 旧名保留
 from brands.barbour.core.site_utils import canonical_site, assert_site_or_raise
-from config import BARBOUR  # 已有导入就不要重复
+from config import BARBOUR, DEFAULT_STOCK_COUNT  # 已有导入就不要重复
 from brands.barbour.core.supplier_price_rules import (
     strategy_all_ratio,
     strategy_ratio_when_no_discount,
@@ -224,7 +224,7 @@ def parse_txt(filepath: Path):
                 if ":" not in token:
                     continue
                 raw_size, status = token.split(":", 1)
-                stock_count = _to_stock_count(status, None, default_has_stock=3)
+                stock_count = _to_stock_count(status, None, default_has_stock=DEFAULT_STOCK_COUNT)
                 std_size = clean_size_for_barbour(raw_size)
                 info["offers"].append({
                     "size": std_size,

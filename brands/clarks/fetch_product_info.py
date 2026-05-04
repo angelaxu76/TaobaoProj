@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from config import SIZE_RANGE_CONFIG
+from config import SIZE_RANGE_CONFIG, DEFAULT_STOCK_COUNT
 from common.product.category_utils import infer_style_category
 
 # ✅ 加入项目根目录
@@ -203,7 +203,7 @@ def extract_adult_size_stock(soup, gender: str):
             uk for uk, status in size_map_uk.items()
             if UK_TO_EU_CM.get(uk) == eu and status == "有货"
         ]
-        stock = 3 if matched else 0
+        stock = DEFAULT_STOCK_COUNT if matched else 0
         size_map_str[eu] = "有货" if stock > 0 else "无货"
         size_detail_dict[eu] = {"stock_count": stock, "ean": "0000000000000"}
 
@@ -236,7 +236,7 @@ def extract_kids_size_stock(soup):
             uk for uk, status in size_map_uk.items()
             if UK_TO_EU_KIDS.get(uk) == eu and status == "有货"
         ]
-        stock = 3 if matched else 0
+        stock = DEFAULT_STOCK_COUNT if matched else 0
         size_map_str[eu] = "有货" if stock > 0 else "无货"
         size_detail_dict[eu] = {"stock_count": stock, "ean": "0000000000000"}
 

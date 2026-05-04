@@ -9,9 +9,10 @@ from bs4 import BeautifulSoup
 
 # === 项目内路径/配置 ===
 try:
-    from config import REISS  # 包含 TXT_DIR / LINKS_FILE / BRAND / ...
+    from config import REISS, DEFAULT_STOCK_COUNT  # 包含 TXT_DIR / LINKS_FILE / BRAND / ...
 except ImportError:
     REISS = None
+    from cfg.settings import DEFAULT_STOCK_COUNT
 
 # === 文本写入：沿用你的 writer ===
 from common.ingest.txt_writer import format_txt
@@ -184,7 +185,7 @@ def _fill_and_quantify_sizes(size_map: Dict[str, str],
     schema = _detect_size_schema(keys)
 
     def quantize(status: str) -> int:
-        return 3 if (status or "").strip() == "有货" else 0
+        return DEFAULT_STOCK_COUNT if (status or "").strip() == "有货" else 0
 
     if schema == "numeric":
         full = NUMERIC_RANGE

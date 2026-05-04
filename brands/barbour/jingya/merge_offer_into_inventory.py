@@ -22,7 +22,7 @@ import sys, inspect
 
 from sqlalchemy import create_engine, text
 import pandas as pd
-from config import BRAND_CONFIG
+from config import BRAND_CONFIG, DEFAULT_STOCK_COUNT
 from brands.barbour.core.site_utils import canonical_site
 
 def merge_band_stock_into_inventory(band_ratio: float = 0.10, size_threshold: int = 1):
@@ -145,7 +145,7 @@ def merge_band_stock_into_inventory(band_ratio: float = 0.10, size_threshold: in
                 bi_id = inv_row["id"]
                 szn = inv_row["size_norm"]
                 has_stock = size_stock.get(szn, 0)
-                new_stock = 3 if has_stock else 0
+                new_stock = DEFAULT_STOCK_COUNT if has_stock else 0
                 updates.append({"bi_id": bi_id, "stock_count": new_stock})
 
         if updates:

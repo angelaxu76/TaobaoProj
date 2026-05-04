@@ -10,7 +10,7 @@ import hashlib
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from html import unescape
-from config import ECCO, SIZE_RANGE_CONFIG, GLOBAL_CHROMEDRIVER_PATH
+from config import ECCO, SIZE_RANGE_CONFIG, GLOBAL_CHROMEDRIVER_PATH, DEFAULT_STOCK_COUNT
 import requests
 from bs4 import BeautifulSoup
 import json
@@ -590,7 +590,7 @@ def build_size_fields_jingya(rows):
         has = r.get("has_stock")
         in_stock = (has is True) or (isinstance(qty, (int, float)) and qty > 0) or (isinstance(qty, str) and qty.isdigit() and int(qty) > 0)
         status_word = "有货" if in_stock else "无货"
-        status_code = 3 if in_stock else 0
+        status_code = DEFAULT_STOCK_COUNT if in_stock else 0
 
         sku = str(r.get("sku") or "").strip()
         ean = sku if len(sku) == 13 and sku.isdigit() else "0000000000000"
@@ -739,7 +739,7 @@ def process_one(url: str, idx: int, total: int):
                 eu = eu.strip()
                 has = ("无货" not in flag)
                 size_map[eu] = "有货" if has else "无货"
-                size_detail[eu] = {"stock_count": 3 if has else 0, "ean": "0000000000000"}
+                size_detail[eu] = {"stock_count": DEFAULT_STOCK_COUNT if has else 0, "ean": "0000000000000"}
 
 # 用尺码辅助判断性别（从 SizeMap 的尺码键推断）
         eu_sizes_arr     = [k for k in size_map.keys() if k.isdigit()]

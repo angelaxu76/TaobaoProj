@@ -69,11 +69,20 @@ BASE_URLS_JACKET = [
     "https://www.marksandspencer.com/l/women/coats-and-jackets?filter=Brand%253DM%2526S&page={}",
     "https://www.marksandspencer.com/l/women/dresses?filter=Brand%253DM%2526S&page={}",
     "https://www.marksandspencer.com/l/women/knitwear/jumpers?filter=Brand%253DM%2526S&page={}",
+    "https://www.marksandspencer.com/l/women/dresses?filter=Brand%253DM%2526S&page={}",
+    "https://www.marksandspencer.com/l/women/knitwear/jumpers?filter=Brand%253DM%2526S&page={}",
+    "https://www.marksandspencer.com/l/women/tops/shirts-and-blouses?filter=Brand%253DM%2526S&page={}",
+    "https://www.marksandspencer.com/l/women/skirts?filter=Brand%253DM%2526S&page={}",
+    "https://www.marksandspencer.com/l/women/tops/tshirts?filter=Brand%253DM%2526S&page={}",
 
     "https://www.marksandspencer.com/l/men/mens-coats-and-jackets?filter=Brand%253DM%2526S&page={}",
     "https://www.marksandspencer.com/l/men/mens-coats-and-jackets/fs5/gilet?filter=Brand%253DM%2526S&page={}",
     "https://www.marksandspencer.com/l/men/mens-hoodies-and-sweatshirts?filter=Brand%253DM%2526S&page={}",
     "https://www.marksandspencer.com/l/men/mens-knitwear?filter=Brand%253DM%2526S&page={}",
+    "https://www.marksandspencer.com/l/men/mens-tops/mens-polo-shirts?filter=Brand%253DM%2526S&page={}",
+    "https://www.marksandspencer.com/l/men/mens-shirts/casual-shirts?filter=Brand%253DM%2526S&page={}",
+    "https://www.marksandspencer.com/l/men/mens-shirts/fs5/overshirts?filter=Brand%253DM%2526S&page={}",
+    "https://www.marksandspencer.com/l/men/mens-shirts?filter=Brand%253DM%2526S&page={}",
     # 你可以继续加入 jumper、coat 等
 ]
 
