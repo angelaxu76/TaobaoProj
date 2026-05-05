@@ -182,18 +182,28 @@ def fill_supplier_map(force_refresh: bool = False, exclude_xlsx: Optional[str] =
         except Exception:
             existing = set()
 
-        # 3) 按发布清单覆盖（跳过排除编码）
+        # 3) 为所有已发布商品选取最优供应商（offers 最低价优先，pub_map 兜底）
         pub_map = _load_publication_mappings(PUBLICATION_DIR)
         pub_hit: List[str] = []
-        for code, site in pub_map.items():
+        offer_used: List[str] = []
+        pub_fallback: List[str] = []
+        for code, pub_site in pub_map.items():
             if code in exclude_codes:
                 continue
-            if code in published:
-                conn.execute(SQL_UPSERT, {"code": code, "site": site})
-                pub_hit.append(code)
-        print(f"✅ 按发布文件更新：{len(pub_hit)} 条。")
-        if pub_hit:
-            print("→ 来自 publication 的编码：", ", ".join(pub_hit))
+            if code not in published:
+                continue
+            best = _pick_lowest_site(conn, code)
+            if best:
+                conn.execute(SQL_UPSERT, {"code": code, "site": best})
+                offer_used.append(code)
+            else:
+                # offers 无可用数据，回退到 publication Excel 记录的供应商
+                conn.execute(SQL_UPSERT, {"code": code, "site": pub_site})
+                pub_fallback.append(code)
+            pub_hit.append(code)
+        print(f"✅ 按 offers 最低价更新：{len(offer_used)} 条；pub_map 兜底（无 offers）：{len(pub_fallback)} 条。")
+        if pub_fallback:
+            print("→ pub_map 兜底编码（无 offers 数据）：", ", ".join(pub_fallback))
 
         # 4) 兜底（仅对未命中且未映射的已发布编码，且跳过排除编码）
         need = (published - set(pub_hit)) - existing
@@ -258,17 +268,20 @@ def fill_supplier_map(force_refresh: bool = False, exclude_xlsx: Optional[str] =
 
 
 def reassign_low_stock_suppliers(
-    size_threshold: int = 3,
+    size_threshold: int | None = None,
     dry_run: bool = True,
     exclude_xlsx: Optional[str] = None
 ) -> list[dict]:
     """
     找出当前映射站点"在售尺码数 < size_threshold"的商品；
     若存在其它站点满足(尺码≥阈值 & 最低价最低)，则建议/执行切换。
+    - size_threshold=None：使用全局配置 BARBOUR["SUPPLIER_MIN_SIZES"]（在 cfg/brands/barbour.py 中设置）
     - dry_run=True：只打印与返回建议，不改库
     - exclude_xlsx: Excel文件路径，含需排除更新的商品编码（Product Code / 商品编码）
     - 返回：[{code, old_site, old_sizes, new_site, new_sizes, old_min_price, new_min_price}]
     """
+    if size_threshold is None:
+        size_threshold = MIN_SIZES
     cfg = BRAND_CONFIG["barbour"]["PGSQL_CONFIG"]
     eng = create_engine(
         f"postgresql+psycopg2://{cfg['user']}:{cfg['password']}@{cfg['host']}:{cfg['port']}/{cfg['dbname']}"

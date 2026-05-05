@@ -35,8 +35,7 @@ RUN_D_EXPORT    = True   # 导出库存 / 价格 Excel
 # ── C 阶段：供应商策略参数 ────────────────────────────────────────
 # 是否对低库存商品自动切换到更优供应商（True = 每次都执行）
 C_REASSIGN_LOW_STOCK = True
-# 有货尺码数低于此值时视为"低库存"，触发换供应商
-C_SIZE_THRESHOLD     = 3
+# 有货尺码数阈值统一在 cfg/brands/barbour.py 的 SUPPLIER_MIN_SIZES 中配置
 
 # ── 路径配置 ─────────────────────────────────────────────────────
 EXCLUDE_LIST_XLSX    = r"D:\TB\Products\barbour\document\barbour_exclude_list.xlsx"
@@ -351,11 +350,10 @@ def run_c_inventory():
 
     # ── 步骤 C5（可选）：低库存商品换供应商 ───────────────────────────
     if C_REASSIGN_LOW_STOCK:
-        _step(f"C5：低库存换供应商（有货尺码 < {C_SIZE_THRESHOLD} 时触发）")
+        _step("C5：低库存换供应商（阈值读自 cfg/brands/barbour.py SUPPLIER_MIN_SIZES）")
         t = time.time()
         try:
             reassign_low_stock_suppliers(
-                size_threshold=C_SIZE_THRESHOLD,
                 dry_run=False,
                 exclude_xlsx=EXCLUDE_LIST_XLSX,
             )

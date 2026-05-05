@@ -5,8 +5,8 @@ from channels.jingya.cainiao.generate_binding_goods_excel_shoes import generate_
 
 # 👇 选择品牌（取消注释其中一行）
 # BRAND = "camper"
-# BRAND = "ecco"
-BRAND = "clarks"
+BRAND = "ecco"
+# BRAND = "clarks"
 
 GOODS_DIR = Path("D:/TB/taofenxiao/goods")
 GROUP_SIZE = 500
