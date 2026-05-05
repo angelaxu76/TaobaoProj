@@ -26,7 +26,7 @@ from pathlib import Path
 # ══════════════════════════════════════════════════════════════════
 
 # ── 阶段开关 ──────────────────────────────────────────────────────
-RUN_A_BACKUP    = False   # 备份并清空 TXT 目录（重跑某供货商时设 False）
+RUN_A_BACKUP    = True   # 备份并清空 TXT 目录（重跑某供货商时设 False）
 RUN_A_CRAWL     = True   # A 阶段总开关（False = 跳过整个 A 阶段）
 RUN_B_IMPORT    = True   # TXT 导入 products + offers
 RUN_C_INVENTORY = True   # 重建 supplier_map + inventory
@@ -51,13 +51,13 @@ LOG_DIR = r"D:\TB\Logs\barbour"
 # fetch_info：True = 抓取商品详情并写 TXT；False = 跳过（保留上次的 TXT）
 A_SUPPLIERS = {
     #  supplier             get_links  fetch_info
-    "barbour":           (  False,      False  ),
-    "outdoorandcountry": (  False,     False ),
-    "allweathers":       (  False,     False ),
-    "houseoffraser":     (  False,     False ),
-    "terraces":          (  False,     False ),
-    "philipmorris":      (  False,     False ),
-    "cho":               (  False,     True ),
+    "barbour":           (  True,      True  ),
+    "outdoorandcountry": (  True,     True ),
+    "allweathers":       (  True,     True ),
+    "houseoffraser":     (  True,     True ),
+    "terraces":          (  True,     True ),
+    "philipmorris":      (  True,     True ),
+    "cho":               (  True,     True ),
     # "very":            (  False,     False ),
 }
 
