@@ -46,13 +46,13 @@ def barbour_export_price_stock():
     # )
 
 
-    print("导出excel 用于更新鲸芽价格=====SKU级别"    )
-    export_channel_price_by_sku(
-    brand="barbour",
-    output_excel_path=r"D:\TB\Products\barbour\repulibcation\publication_sku_prices\sku_level_prices",
-    exclude_excel_file=exclude_xlsx_path,
-    chunk_size=200   # 用的是默认值
-    )
+    # print("导出excel 用于更新鲸芽价格=====SKU级别"    )
+    # export_channel_price_by_sku(
+    # brand="barbour",
+    # output_excel_path=r"D:\TB\Products\barbour\repulibcation\publication_sku_prices\sku_level_prices",
+    # exclude_excel_file=exclude_xlsx_path,
+    # chunk_size=200   # 用的是默认值
+    # )
 
     # export_channel_price_by_sku(
     # brand="barbour",

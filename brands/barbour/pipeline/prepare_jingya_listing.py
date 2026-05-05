@@ -38,9 +38,15 @@ C_REASSIGN_LOW_STOCK = True
 # 有货尺码数阈值统一在 cfg/brands/barbour.py 的 SUPPLIER_MIN_SIZES 中配置
 
 # ── 路径配置 ─────────────────────────────────────────────────────
-EXCLUDE_LIST_XLSX    = r"D:\TB\Products\barbour\document\barbour_exclude_list.xlsx"
+EXCLUDE_LIST_XLSX    = r"\\vmware-host\Shared Folders\shared\barbour\barbour_exclude_list.xlsx"
 STOCK_EXPORT_DIR     = r"\\vmware-host\Shared Folders\VMShared\barbour_input"
-PRICE_EXPORT_DIR     = r"D:\TB\Products\barbour\repulibcation\publication_prices"
+PRICE_EXPORT_DIR     = r"\\vmware-host\Shared Folders\VMShared\barbour\publication_prices"
+
+# ── D 阶段：淘宝店铺价格导出 ──────────────────────────────────────
+# 淘宝店铺导出的 Excel 所在文件夹（每个店铺一个文件）
+STORE_PRICE_INPUT_DIR  = r"\\vmware-host\Shared Folders\shared\barbour\store_prices"
+# 生成的店铺价格导入表保存位置
+STORE_PRICE_OUTPUT_DIR = r"\\vmware-host\Shared Folders\VMShared\barbour\store_prices"
 
 # ── 日志目录（留空则不写文件日志）────────────────────────────────
 LOG_DIR = r"D:\TB\Logs\barbour"
@@ -403,6 +409,7 @@ def run_d_export():
 
     from channels.jingya.export.export_stock_to_excel import export_stock_excel
     from channels.jingya.export.export_channel_price_excel_jingya import export_jiangya_channel_prices
+    from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
 
     _step("导出库存 Excel → 用于鲸芽批量更新库存")
     t = time.time()
@@ -415,10 +422,25 @@ def run_d_export():
     _step("导出价格 Excel → 用于鲸芽批量更新价格")
     t = time.time()
     try:
-        export_jiangya_channel_prices(brand="barbour", output_dir=PRICE_EXPORT_DIR)
+        export_jiangya_channel_prices(brand="barbour", output_dir=PRICE_EXPORT_DIR, exclude_excel_file=EXCLUDE_LIST_XLSX,chunk_size=200)
         _ok(f"价格 Excel 已生成：{PRICE_EXPORT_DIR}", time.time() - t)
     except Exception as e:
         _fail("D-export_price", e)
+
+    _step(f"导出淘宝店铺价格 Excel → 用于批量更新淘宝店铺价格\n   输入：{STORE_PRICE_INPUT_DIR}\n   输出：{STORE_PRICE_OUTPUT_DIR}")
+    t = time.time()
+    try:
+        generate_price_excels_bulk(
+            brand="barbour",
+            input_dir=STORE_PRICE_INPUT_DIR,
+            output_dir=STORE_PRICE_OUTPUT_DIR,
+            suffix="_价格",
+            drop_rows_without_price=False,
+            blacklist_excel_file=EXCLUDE_LIST_XLSX,
+        )
+        _ok(f"淘宝店铺价格 Excel 已生成：{STORE_PRICE_OUTPUT_DIR}", time.time() - t)
+    except Exception as e:
+        _fail("D-export_store_price", e)
 
 
 # ══════════════════════════════════════════════════════════════════
