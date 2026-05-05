@@ -7,31 +7,25 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from config import BARBOUR
-from common.browser.selenium_utils import get_driver as get_shared_driver, quit_driver
+from common.browser.driver_auto import build_uc_driver
 
 # ====== 多个分类 URL，按需增减 ======
 CATEGORY_URLS = [
     "https://www.philipmorrisdirect.co.uk/brand/barbour/",
-    "https://www.philipmorrisdirect.co.uk/brand/barbour/barbour-menswear/",
-    "https://www.philipmorrisdirect.co.uk/brand/barbour/barbour-jackets/",
-    "https://www.philipmorrisdirect.co.uk/brand/barbour/barbour-womenswear/",
+    "https://www.philipmorrisdirect.co.uk/brand/barbour/barbour-bags-luggage/",
+    "https://www.philipmorrisdirect.co.uk/brand/barbour/barbour-shirts/",
+    "https://www.philipmorrisdirect.co.uk/brand/barbour/barbour-t-shirts-polo-shirts-and-rugby-tops/",
     "https://www.philipmorrisdirect.co.uk/brand/barbour/barbour-gilets/",
-    "https://www.philipmorrisdirect.co.uk/brand/barbour/barbour-jumpers/",
-]
+    "https://www.philipmorrisdirect.co.uk/brand/barbour/barbour-womenswear/",
+    "https://www.philipmorrisdirect.co.uk/brand/barbour/barbour-jackets/",
+    ]
 
 OUTPUT_PATH = BARBOUR["LINKS_FILES"]["philipmorris"]
 OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 
 def get_philipmorris_driver():
-    """
-    使用统一的 selenium_utils 获取 driver，不再走 undetected_chromedriver。
-    """
-    return get_shared_driver(
-        name="philipmorris",
-        headless=False,          # 需要无头可以改 True
-        window_size="1200,2000",
-    )
+    return build_uc_driver(headless=False)
 
 
 def extract_links_from_html(html: str):
@@ -80,15 +74,14 @@ def philipmorris_get_links():
                     print(f"⚠️ 第 {page} 页未提取到链接，结束该分类")
                     break
 
-                print(f"✅ 第 {page} 页提取 {len(links)} 个商品链接")
                 all_links.update(links)
+                print(f"✅ 第 {page} 页提取 {len(links)} 个，累计去重 {len(all_links)} 个")
 
                 page += 1
                 time.sleep(1)
 
     finally:
-        # 用统一的 quit_driver 管理关闭
-        quit_driver("philipmorris")
+        driver.quit()
 
     # 统一去重后写入文件
     sorted_links = sorted(all_links)
