@@ -182,43 +182,31 @@ def fill_supplier_map(force_refresh: bool = False, exclude_xlsx: Optional[str] =
         except Exception:
             existing = set()
 
-        # 3) 为所有已发布商品选取最优供应商（offers 最低价优先，pub_map 兜底）
+        # 3) 为所有已发布商品选取最优供应商
+        #    优先级：offers 最低价 → pub_map 历史记录 → 保留现有映射 → 报失败
         pub_map = _load_publication_mappings(PUBLICATION_DIR)
-        pub_hit: List[str] = []
         offer_used: List[str] = []
         pub_fallback: List[str] = []
-        for code, pub_site in pub_map.items():
+        kept_existing: List[str] = []
+        fail_no_offers: List[str] = []
+        fail_low_stock: List[tuple] = []
+
+        for code in sorted(published):
             if code in exclude_codes:
-                continue
-            if code not in published:
                 continue
             best = _pick_lowest_site(conn, code)
             if best:
                 conn.execute(SQL_UPSERT, {"code": code, "site": best})
                 offer_used.append(code)
-            else:
-                # offers 无可用数据，回退到 publication Excel 记录的供应商
-                conn.execute(SQL_UPSERT, {"code": code, "site": pub_site})
+            elif code in pub_map:
+                # offers 无可用数据，用 publication Excel 记录的历史供应商
+                conn.execute(SQL_UPSERT, {"code": code, "site": pub_map[code]})
                 pub_fallback.append(code)
-            pub_hit.append(code)
-        print(f"✅ 按 offers 最低价更新：{len(offer_used)} 条；pub_map 兜底（无 offers）：{len(pub_fallback)} 条。")
-        if pub_fallback:
-            print("→ pub_map 兜底编码（无 offers 数据）：", ", ".join(pub_fallback))
-
-        # 4) 兜底（仅对未命中且未映射的已发布编码，且跳过排除编码）
-        need = (published - set(pub_hit)) - existing
-        offer_filled: List[str] = []
-        fail_no_offers: List[str] = []       # 在 barbour_offers 里完全没有记录
-        fail_low_stock: List[tuple] = []     # 有 offers 但所有站点有货尺码数 < MIN_SIZES
-        for code in sorted(need):
-            if code in exclude_codes:
-                continue
-            site = _pick_lowest_site(conn, code)
-            if site:
-                conn.execute(SQL_UPSERT, {"code": code, "site": site})
-                offer_filled.append(code)
+            elif code in existing:
+                # offers 无数据且无 pub_map，保留现有映射不动
+                kept_existing.append(code)
             else:
-                # 诊断：查询该编码在 offers 里的最优情况
+                # 全无数据：诊断原因
                 diag = conn.execute(text("""
                     SELECT site_name,
                            SUM(CASE WHEN COALESCE(stock_count,0) > 0 THEN 1 ELSE 0 END) AS sizes_in_stock
@@ -235,9 +223,13 @@ def fill_supplier_map(force_refresh: bool = False, exclude_xlsx: Optional[str] =
                     summary = ", ".join(f"{r[0]}({r[1]}尺)" for r in diag)
                     fail_low_stock.append((code, best_sizes, summary))
 
-        print(f"✅ 按 offers 兜底：{len(offer_filled)} 条。")
-        if offer_filled:
-            print("→ 来自 offers 兜底的编码：", ", ".join(offer_filled))
+        print(
+            f"✅ offers 最低价：{len(offer_used)} 条；"
+            f"pub_map 兜底：{len(pub_fallback)} 条；"
+            f"保留现有映射：{len(kept_existing)} 条。"
+        )
+        if pub_fallback:
+            print("→ pub_map 兜底（无 offers 数据）：", ", ".join(pub_fallback))
 
         # 打印映射失败原因
         unmapped_total = len(fail_no_offers) + len(fail_low_stock)
