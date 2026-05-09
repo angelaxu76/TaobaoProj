@@ -7,6 +7,13 @@ LINK_PATTERN = r"https://www\.clarksoutlet\.co\.uk/[\w\-]+/\d+-p"
 
 URLS = {
     "women_shoes": "https://www.clarksoutlet.co.uk/womens/womens-shoes/w_shoes_uko-c?page=5",
+    "women_new": "https://www.clarksoutlet.co.uk/womens/womens-black-shoes/w_blackshoes_uko-c",
+    "women_flats": "https://www.clarksoutlet.co.uk/womens/womens-flat-shoes/w_flats_uko-c",
+    "women_heels_uko": "https://www.clarksoutlet.co.uk/womens/womens-heels/w_heels_uko-c",
+    "women_balletpumps": "https://www.clarksoutlet.co.uk/womens/womens-pumps/w_balletpumps_uko-c",
+    "women_loafers": "https://www.clarksoutlet.co.uk/womens/womens-loafers/w_loafers_uko-c",
+    "women_sport": "https://www.clarksoutlet.co.uk/womens/womens-sport/w_sport_uko-c",
+    "women_slippers": "https://www.clarksoutlet.co.uk/womens/womens-slippers/w_slippers_uko-c",
     "women_new": "https://www.clarksoutlet.co.uk/womens/womens-new-in/w_new_uko-c?page=5",
     "women_sandals": "https://www.clarksoutlet.co.uk/womens/womens-sandals/w_sandals_uko-c?page=3",
     "women_originals": "https://www.clarksoutlet.co.uk/womens-originals/wo_allstyles_uko-c?page=3",
@@ -15,10 +22,6 @@ URLS = {
     "men_new": "https://www.clarksoutlet.co.uk/mens/mens-new-in/m_new_uko-c?page=5",
     "men_boots": "https://www.clarksoutlet.co.uk/mens/mens-boots/m_boots_uko-c?page=3",
     "men_originals": "https://www.clarksoutlet.co.uk/mens-originals/mo_allstyles_uko-c?page=3",
-    "girls_shoes": "https://www.clarksoutlet.co.uk/girls/girls-shoes/g_shoes_uko-c?page=3",
-    "boys_shoes": "https://www.clarksoutlet.co.uk/boys/boys-shoes/b_shoes_uko-c?page=3",
-    "girls_school_shoes": "https://www.clarksoutlet.co.uk/girls/girls-school-shoes/g_school_uko-c?page=3",
-    "boys_school_shoes": "https://www.clarksoutlet.co.uk/boys/boys-school-shoes/b_school_uko-c?page=3"
 }
 
 def get_outlet_product_links():
