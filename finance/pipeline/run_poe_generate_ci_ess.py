@@ -6,9 +6,15 @@ import shutil  # 用于复制 HK 目录下的 POE PDF
 import psycopg2
 from config import PGSQL_CONFIG
 
-from finance.ingest.generate_poe_invoice_v2 import generate_poe_invoice_and_report
-from finance.ingest.generate_poe_ees_pdf_v2 import generate_poe_ees_pdf
-from finance.ingest.generate_poe_ees_pdf_v2 import fetch_poe_header  # 复用 EES 的头信息查询函数
+from finance.ingest.generate_poe_invoice_v2 import (
+    generate_poe_invoice_and_report,
+    generate_poe_invoice_and_report_by_folder,
+)
+from finance.ingest.generate_poe_ees_pdf_v2 import (
+    generate_poe_ees_pdf,
+    generate_poe_ees_pdf_by_folder,
+    fetch_poe_header,
+)
 
 # UK 这边 CI + EES 输出目录
 BASE_OUTPUT = Path(r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\06_Export_Proofs")
@@ -18,9 +24,41 @@ HK_POE_BASE = Path(r"C:\Users\angel\OneDrive\CrossBorderDocs_HK\06_Shipping_And_
 
 # ── 日期范围过滤（按 poe_date）────────────────────────────────────────
 # 留空字符串 "" 表示不限制该端，格式 "YYYY-MM-DD"
-DATE_FROM = "2025-11-30"
-DATE_TO   = "2026-05-01"
+DATE_FROM = "2025-09-30"
+DATE_TO   = "2026-04-02"
 # ──────────────────────────────────────────────────────────────────────
+
+
+def get_null_poe_folders():
+    """
+    获取日期范围内所有 poe_id 为空的批次，按 folder_name 返回。
+    使用 folder_name (YYYYMMDD) 作为日期过滤，因为这类批次的 poe_date 也可能为空。
+    """
+    conditions = []
+    params = []
+    if DATE_FROM:
+        conditions.append("folder_name >= %s")
+        params.append(DATE_FROM.replace("-", ""))
+    if DATE_TO:
+        conditions.append("folder_name <= %s")
+        params.append(DATE_TO.replace("-", ""))
+
+    where_date = ("AND " + " AND ".join(conditions)) if conditions else ""
+
+    conn = psycopg2.connect(**PGSQL_CONFIG)
+    cur = conn.cursor()
+    cur.execute(f"""
+        SELECT DISTINCT folder_name
+        FROM export_shipments
+        WHERE (poe_id IS NULL OR poe_id = '')
+          AND folder_name IS NOT NULL AND folder_name != ''
+          {where_date}
+        ORDER BY folder_name
+    """, params)
+    folders = [row[0] for row in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return folders
 
 
 def get_all_poe_ids():
@@ -151,6 +189,38 @@ def main():
         # print("[DONE] Invoice DOCX:", docx_path)
         # print("[DONE] Invoice PDF :", pdf_path)
         print("[DONE] EES PDF 已生成到：", out_dir)
+
+    # ── 处理无 POE ID 的批次（按 folder_name）──────────────────────────────
+    null_folders = get_null_poe_folders()
+    if null_folders:
+        print(f"\n[INFO] 以下批次无 POE ID，将按 folder_name 仅生成 CI（跳过 EES）：")
+        for fn in null_folders:
+            print(f"  - {fn}")
+
+        for folder_name in null_folders:
+            out_dir = BASE_OUTPUT / f"FOLDER-{folder_name}"
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            print(f"\n[RUN] 生成 CI (no POE ID): folder_name={folder_name}")
+            try:
+                excel_path, docx_path, pdf_path = generate_poe_invoice_and_report_by_folder(
+                    folder_name, str(out_dir)
+                )
+                print("[OK]  CI 已生成")
+                print("      Excel:", excel_path)
+                print("      DOCX :", docx_path)
+                print("      PDF  :", pdf_path)
+            except ValueError as e:
+                print(f"[SKIP] CI 跳过：{e}")
+
+            # EES：用 folder_name 作为 POE Reference 生成（做账用）
+            try:
+                ees_path = generate_poe_ees_pdf_by_folder(folder_name, str(out_dir))
+                print(f"[OK]  EES 已生成：{ees_path}")
+            except Exception as e:
+                print(f"[WARN] EES 跳过：{e}")
+
+            print(f"[DONE] 输出目录：{out_dir}")
 
     print("\n[ALL DONE] 全部 POE 已处理完成。")
 

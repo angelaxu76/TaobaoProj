@@ -120,26 +120,25 @@ def _clean_description(desc: str) -> str:
 
 def build_cost_and_price(df: pd.DataFrame) -> pd.DataFrame:
     """
-    你在 Excel 填写的是含 VAT 的价格（gross price）。
-    这里自动做三件事：
+    计算 CI 定价。
 
-      1）自动去掉 20% VAT 得到净成本 net_cost_unit
-      2）在净成本基础上加 15% 批发加成（unit_price_gbp）
-      3）计算行金额 line_price_gbp
+    VAT_RATE = 0（finance_config）时，填入的采购价直接作为净成本：
+      net_cost_unit  = purchase_unit_cost_gbp ÷ (1 + VAT_RATE)
+      unit_price_gbp = net_cost_unit × (1 + MARGIN_RATE)
+      line_price_gbp = unit_price_gbp × quantity
     """
     df = df.copy()
     df["quantity"] = df["quantity"].fillna(0).astype(int)
 
-    # 你填入的含税价（gross cost）
     df["gross_cost_unit"] = df["purchase_unit_cost_gbp"].astype(float)
 
-    # 1) 自动转换成净价（net price）
+    # 剥离 VAT（VAT_RATE=0 时 net = gross）
     df["net_cost_unit"] = (df["gross_cost_unit"] / (1 + VAT_RATE)).round(4)
 
-    # 成本小计（用于内部参考，不出现在发票上）
+    # 成本小计（内部参考，不出现在发票上）
     df["line_net_cost"] = (df["net_cost_unit"] * df["quantity"]).round(2)
 
-    # 2) 批发单价 = 净价 * (1 + 15%)
+    # 批发单价 = 净成本 × (1 + MARGIN_RATE)
     df["unit_price_gbp"] = (df["net_cost_unit"] * (1 + MARGIN_RATE)).round(4)
 
     # 3) 行发票金额 = 批发单价 * 数量
@@ -308,7 +307,7 @@ def create_poe_invoice_docx(df: pd.DataFrame, output_path: Path) -> Path:
         "on a wholesale basis.\n\n"
         "Delivery Terms: FCA (ECMS UK warehouse), Incoterms® 2020.\n\n"
         f"Pricing Method: The unit prices are determined by applying the agreed cost-plus {int(MARGIN_RATE * 100)}% "
-        "wholesale margin to the Seller's net landed cost, in accordance with the agreed Pricing Policy.\n\n"
+        "wholesale margin to the Seller's supplier purchase cost of goods, in accordance with the agreed Pricing Policy.\n\n"
         "VAT Treatment: This supply qualifies as a zero-rated export of goods for UK VAT "
         "purposes under HMRC Notice 703."
     )
@@ -445,6 +444,103 @@ def generate_poe_invoice_and_report(poe_id: str, output_dir: str):
     excel_path = create_poe_cost_report(df, excel_path)
 
     # 2) 发票 DOCX + PDF
+    invoice_docx_path = out_dir / f"CommercialInvoice_{file_stem}.docx"
+    invoice_docx_path = create_poe_invoice_docx(df, invoice_docx_path)
+
+    invoice_pdf_path = out_dir / f"CommercialInvoice_{file_stem}.pdf"
+    create_invoice_pdf(invoice_docx_path, invoice_pdf_path)
+
+    return excel_path, invoice_docx_path, invoice_pdf_path
+
+
+def load_poe_lines_by_folder(folder_name: str) -> pd.DataFrame:
+    """
+    按 folder_name 查询，适用于 poe_id 为 NULL 的批次（无 POE PDF 的货柜）。
+
+    与 load_poe_lines 逻辑相同，但以 folder_name 为键，并：
+    - 将 poe_id 列填充为合成标识 "FOLDER-{folder_name}"
+    - 若 poe_date 全为空，则从 folder_name (YYYYMMDD) 推导日期
+    """
+    sql = """
+        SELECT
+            id, shipment_id, skuid, product_description, hs_code, quantity,
+            poe_id, poe_mrn, poe_office, poe_date, carrier_name, tracking_no,
+            purchase_unit_cost_gbp
+        FROM public.export_shipments
+        WHERE folder_name = %s
+          AND (poe_id IS NULL OR poe_id = '')
+        ORDER BY shipment_id, skuid, id;
+    """
+    with get_conn() as conn:
+        df = pd.read_sql(sql, conn, params=(folder_name,))
+
+    if df.empty:
+        raise ValueError(f"export_shipments 中没有找到 folder_name={folder_name} 且 poe_id 为空的记录。")
+
+    df["skuid"] = df["skuid"].fillna("").astype(str).str.strip()
+    df_products = df[df["skuid"] != ""].copy()
+
+    if df_products.empty:
+        raise ValueError(f"folder_name={folder_name} 没有任何带 SKU 的商品行，无法生成发票。")
+
+    missing_mask = df_products["purchase_unit_cost_gbp"].isna()
+    df_missing = df_products[missing_mask]
+    df_with_cost = df_products[~missing_mask].copy()
+
+    if not df_missing.empty:
+        print(
+            f"[WARN] folder_name={folder_name} 中有 {len(df_missing)} 条商品未填写采购成本，"
+            f"视为 HK 旧库存，不计入本次 CI。"
+        )
+
+    if df_with_cost.empty:
+        raise ValueError(
+            f"folder_name={folder_name} 中没有任何填写采购成本的商品，无法生成 CI。"
+        )
+
+    # 合成 poe_id，方便 create_poe_invoice_docx 直接使用
+    df_with_cost = df_with_cost.copy()
+    df_with_cost["poe_id"] = f"FOLDER-{folder_name}"
+
+    # 若 poe_date 全为空，从 folder_name 推导（格式 YYYYMMDD）
+    if df_with_cost["poe_date"].isna().all() and len(folder_name) == 8:
+        try:
+            folder_date = pd.Timestamp(f"{folder_name[:4]}-{folder_name[4:6]}-{folder_name[6:8]}")
+            df_with_cost["poe_date"] = folder_date
+        except Exception:
+            pass
+
+    return df_with_cost
+
+
+def generate_poe_invoice_and_report_by_folder(folder_name: str, output_dir: str):
+    """
+    按 folder_name 生成 CI（适用于 poe_id 为 NULL 的批次）。
+
+    生成内容与 generate_poe_invoice_and_report 相同：
+      1）商业发票（DOCX + 可选 PDF），POE Reference 显示 "FOLDER-{folder_name}"
+      2）POE 成本/售价明细 Excel
+    注意：此类批次无真实 POE，不生成 EES。
+    """
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    df_raw = load_poe_lines_by_folder(folder_name)
+    df_raw["product_description"] = df_raw["product_description"].apply(_clean_description)
+    df = build_cost_and_price(df_raw)
+
+    # poe_date 已在 load_poe_lines_by_folder 中填充（若为空则从 folder_name 推导）
+    poe_date_val = df["poe_date"].iloc[0]
+    if pd.isna(poe_date_val):
+        poe_date_str = f"{folder_name[:4]}-{folder_name[4:6]}-{folder_name[6:8]}" if len(folder_name) == 8 else folder_name
+    else:
+        poe_date_str = pd.to_datetime(poe_date_val).strftime("%Y-%m-%d")
+
+    file_stem = f"PoE_{poe_date_str}_FOLDER-{folder_name}"
+
+    excel_path = out_dir / f"POE_CostBreakdown_{file_stem}.xlsx"
+    excel_path = create_poe_cost_report(df, excel_path)
+
     invoice_docx_path = out_dir / f"CommercialInvoice_{file_stem}.docx"
     invoice_docx_path = create_poe_invoice_docx(df, invoice_docx_path)
 

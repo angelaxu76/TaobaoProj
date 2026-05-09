@@ -26,6 +26,7 @@ import psycopg2
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config import PGSQL_CONFIG
+from finance_config import MARGIN_RATE
 
 # ============================================================
 # CONFIG
@@ -62,8 +63,6 @@ RECIPIENT = {
 }
 
 # ============================================================
-
-MARGIN_RATE = 0.15   # 与 generate_poe_invoice.py 保持一致
 
 
 def get_conn():

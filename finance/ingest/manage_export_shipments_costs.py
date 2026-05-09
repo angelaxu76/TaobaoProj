@@ -54,6 +54,8 @@ def export_poe_cost_template(poe_id: str, output_excel_path: str) -> str:
             value_gbp
         FROM public.export_shipments
         WHERE poe_id = %s
+          AND shipment_id IS NOT NULL AND shipment_id != ''
+          AND skuid       IS NOT NULL AND skuid       != ''
         ORDER BY shipment_id NULLS LAST, skuid NULLS LAST, id;
     """
 
@@ -65,24 +67,73 @@ def export_poe_cost_template(poe_id: str, output_excel_path: str) -> str:
     if not rows:
         raise ValueError(f"没有找到 poe_id = {poe_id} 的记录。")
 
-    # 构造 DataFrame —— 列名要和 SELECT 的顺序一致
     df = pd.DataFrame(rows, columns=["id", "shipment_id", "skuid", "value_gbp"])
 
-    # 按你要求的列顺序输出到 Excel
     df_export = pd.DataFrame()
     df_export["shipment_id"] = df["shipment_id"]
     df_export["skuid"] = df["skuid"]
     df_export["value_gbp"] = df["value_gbp"]
-
-    # 三个空白栏供手工填写
     df_export["supplier_name"] = ""
     df_export["supplier_order_no"] = ""
     df_export["purchase_unit_cost_gbp"] = ""
-
-    # id 用于回写数据库
     df_export["id"] = df["id"]
 
-    # 写 Excel
+    with pd.ExcelWriter(output_path, engine="xlsxwriter") as writer:
+        df_export.to_excel(writer, sheet_name="POE_COST_TEMPLATE", index=False)
+
+    return str(output_path.resolve())
+
+
+def export_cost_template_by_folder(folder_name: str, output_excel_path: str) -> str:
+    """
+    按日期目录名（folder_name，如 "20251127"）从 export_shipments 导出成本填写模板。
+
+    不依赖 poe_id，适用于 POE PDF 缺失或 poe_id 未正确入库的批次。
+    输出列：
+      poe_id（参考用，可能为空）/ shipment_id / skuid / value_gbp /
+      supplier_name（空）/ supplier_order_no（空）/ purchase_unit_cost_gbp（空）/ id
+    """
+    output_path = Path(output_excel_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if output_path.exists():
+        print(f"[跳过] 文件已存在，不覆盖: {output_path.name}")
+        return "跳过"
+
+    sql = """
+        SELECT
+            id,
+            poe_id,
+            shipment_id,
+            skuid,
+            value_gbp
+        FROM public.export_shipments
+        WHERE folder_name = %s
+          AND shipment_id IS NOT NULL AND shipment_id != ''
+          AND skuid       IS NOT NULL AND skuid       != ''
+        ORDER BY shipment_id NULLS LAST, skuid NULLS LAST, id;
+    """
+
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, (folder_name,))
+            rows = cur.fetchall()
+
+    if not rows:
+        raise ValueError(f"没有找到 folder_name = {folder_name} 的记录。")
+
+    df = pd.DataFrame(rows, columns=["id", "poe_id", "shipment_id", "skuid", "value_gbp"])
+
+    df_export = pd.DataFrame()
+    df_export["poe_id"] = df["poe_id"].fillna("")
+    df_export["shipment_id"] = df["shipment_id"]
+    df_export["skuid"] = df["skuid"]
+    df_export["value_gbp"] = df["value_gbp"]
+    df_export["supplier_name"] = ""
+    df_export["supplier_order_no"] = ""
+    df_export["purchase_unit_cost_gbp"] = ""
+    df_export["id"] = df["id"]
+
     with pd.ExcelWriter(output_path, engine="xlsxwriter") as writer:
         df_export.to_excel(writer, sheet_name="POE_COST_TEMPLATE", index=False)
 
@@ -92,84 +143,78 @@ def export_poe_cost_template(poe_id: str, output_excel_path: str) -> str:
 
 def import_poe_cost_from_excel(excel_path: str) -> int:
     """
-    将你手工填好的 Excel 导回 export_shipments：
+    将手工填好的 Excel 导回 export_shipments。
 
-    要求 Excel 至少包含列：
-      - id
-      - supplier_name
-      - supplier_order_no
-      - purchase_unit_cost_gbp
+    匹配键：(shipment_id, skuid) —— 业务唯一标识，与文件命名无关。
+    id 列若存在仅作参考，不用于匹配。
 
-    逻辑：
-      - 只更新那些任意一个供应商字段非空的行
-      - 对应记录通过 id 精确匹配
+    必需列：shipment_id / skuid / purchase_unit_cost_gbp
+    可选列：supplier_name / supplier_order_no
 
-    返回：成功更新的行数
+    只更新 purchase_unit_cost_gbp 非空的行；已有值的行也会被覆盖（以 Excel 为准）。
+    返回：成功更新的行数。
     """
     path = Path(excel_path)
     if not path.exists():
         raise FileNotFoundError(f"Excel 文件不存在: {path}")
 
-    df = pd.read_excel(path, sheet_name=0)
+    df = pd.read_excel(path, sheet_name=0, dtype=str)
 
-    required_cols = {"id", "supplier_name", "supplier_order_no", "purchase_unit_cost_gbp"}
+    required_cols = {"shipment_id", "skuid", "purchase_unit_cost_gbp"}
     missing = required_cols - set(df.columns)
     if missing:
         raise ValueError(f"Excel 缺少必需列: {', '.join(missing)}")
 
-    # 只保留有任意非空填写的行
-    mask = (
-        df["supplier_name"].astype(str).str.strip().ne("") |
-        df["supplier_order_no"].astype(str).str.strip().ne("") |
-        df["purchase_unit_cost_gbp"].notna()
-    )
-    df_update = df[mask].copy()
-
-    if df_update.empty:
-        print("Excel 中没有任何供应商字段被填写，不进行更新。")
-        return 0
-
-    # 转换 purchase_unit_cost_gbp 为 float（如果是空字符串则变为 None）
     def _to_float_or_none(x):
-        if pd.isna(x):
-            return None
-        if isinstance(x, str) and not x.strip():
+        if pd.isna(x) or str(x).strip() in ("", "nan"):
             return None
         try:
             return float(x)
         except ValueError:
             return None
 
-    df_update["purchase_unit_cost_gbp"] = df_update["purchase_unit_cost_gbp"].apply(_to_float_or_none)
+    def _norm_shipment_id(x):
+        """将可能是浮点字符串（如 '7.894e+13'）的 shipment_id 规范为纯整数字符串。"""
+        x = str(x).strip()
+        try:
+            return str(int(float(x)))
+        except (ValueError, OverflowError):
+            return x
+
+    df["purchase_unit_cost_gbp"] = df["purchase_unit_cost_gbp"].apply(_to_float_or_none)
+    df_update = df[df["purchase_unit_cost_gbp"].notna()].copy()
+
+    if df_update.empty:
+        print("Excel 中 purchase_unit_cost_gbp 均为空，不进行更新。")
+        return 0
 
     sql = """
         UPDATE public.export_shipments
-        SET supplier_name = %s,
-            supplier_order_no = %s,
+        SET supplier_name          = COALESCE(%s, supplier_name),
+            supplier_order_no      = COALESCE(%s, supplier_order_no),
             purchase_unit_cost_gbp = %s
-        WHERE id = %s
+        WHERE shipment_id = %s
+          AND skuid       = %s
     """
 
-    updated = 0
+    updated = not_found = 0
     with get_conn() as conn:
         with conn.cursor() as cur:
             for _, row in df_update.iterrows():
-                row_id = int(row["id"])
-                supplier_name = (str(row["supplier_name"]).strip()
-                                 if not pd.isna(row["supplier_name"]) else None)
-                supplier_order_no = (str(row["supplier_order_no"]).strip()
-                                     if not pd.isna(row["supplier_order_no"]) else None)
-                purchase_cost = row["purchase_unit_cost_gbp"]
+                sid  = _norm_shipment_id(row["shipment_id"])
+                skuid = str(row.get("skuid", "") or "").strip()
+                cost  = row["purchase_unit_cost_gbp"]
+                sname = str(row.get("supplier_name", "") or "").strip() or None
+                sno   = str(row.get("supplier_order_no", "") or "").strip() or None
 
-                cur.execute(
-                    sql,
-                    (supplier_name or None,
-                     supplier_order_no or None,
-                     purchase_cost,
-                     row_id),
-                )
-                updated += 1
+                cur.execute(sql, (sname, sno, cost, sid, skuid))
+                if cur.rowcount:
+                    updated += 1
+                else:
+                    not_found += 1
 
+    if not_found:
+        print(f"  [警告] {not_found} 行在数据库中未匹配（shipment_id+skuid 不存在）")
     return updated
 
 

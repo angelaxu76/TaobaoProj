@@ -1,6 +1,6 @@
 ================================================================
   POE 财务流水线操作手册
-  最后更新：2026-03-14
+  最后更新：2026-05-08
 ================================================================
 
 本手册描述从 POE 发货数据导入到生成 CI / EES 的完整操作步骤。
@@ -21,23 +21,43 @@ ANNA 相关脚本已停用（2026-01 后改用 Wise），不在本流程中。
 
 【Step 2】导出 POE 成本填写模板 Excel
   脚本：finance/pipeline/run_poe_order_export_excel.py
-  修改：打开脚本，在 POE_ID 列表中填入本批次的 POE_ID
-  输出：D:\OneDrive\CrossBorderDocs_UK\99_Backup\POE_TEMPLATES\{poe_id}_costs.xlsx
+  修改：打开脚本，修改 CONFIG 区域中的 DATE_FROM / DATE_TO 日期范围
+        以及 OUTPUT_DIR（模板存放目录，默认 G:\temp\taobao\poe）
+  输出：{OUTPUT_DIR}\{date}_costs.xlsx（如 20251001_costs.xlsx）
+
+  说明：主键改为日期目录名（folder_name），不再依赖 POE PDF 文件中的 poe_id。
+        已存在的模板文件自动跳过，不会覆盖已填写的数据。
 
   python finance/pipeline/run_poe_order_export_excel.py
 
 
-【Step 3】手工填写采购成本（人工操作）
-  打开 Step 2 生成的 {poe_id}_costs.xlsx
-  填写每款商品的采购单价（GBP）
-  保存并关闭文件
+【Step 3】填写采购成本（含可选的自动填充）
+
+  ① 自动填充 supplier_order_no（可选，建议先跑）
+    脚本：finance/pipeline/run_fill_supplier_order_no.py
+    前提：将淘宝后台导出的 ExportOrderList*.csv 放入 G:\temp\taobao\tx
+    逻辑：costs.xlsx 的 shipment_id ↔ CSV 的 物流单号（No:XXXXXXX）→ 写入商家备注
+    说明：仅填充空单元格，已有值不覆盖
+
+    python finance/pipeline/run_fill_supplier_order_no.py
+
+  ② 手工填写剩余字段
+    打开 Step 2 生成的 {date}_costs.xlsx
+    填写每款商品的采购单价（purchase_unit_cost_gbp，GBP）
+    确认 supplier_name、supplier_order_no 已填写（或由 ① 自动填充）
+    保存并关闭文件
 
 
 【Step 4】将填好的成本数据导入数据库
   脚本：finance/pipeline/run_poe_order_import_excel.py
-  输入：自动扫描 POE_TEMPLATES 目录下所有 *_costs.xlsx
-  操作：直接运行，无需修改参数
+  输入：自动扫描脚本内 BASE_DIR 目录下所有 *_costs.xlsx
+  说明：BASE_DIR 默认仍指向 OneDrive\...\POE_TEMPLATES，
+        若模板存放在 G:\temp\taobao\poe，需打开脚本将 BASE_DIR 改为对应路径
+  操作：确认 BASE_DIR 路径正确后直接运行
   结果：成本数据写入数据库
+
+  ℹ 注意：导入通过隐藏列 id 定位数据库记录，与 shipment_id 无关。
+          shipment_id 在 Excel 中显示为科学计数法（7.xxx E+13）不影响导入。
 
   python finance/pipeline/run_poe_order_import_excel.py
 
@@ -108,6 +128,16 @@ ANNA 相关脚本已停用（2026-01 后改用 Wise），不在本流程中。
 ----------------------------------------------------------------
 常见问题
 ----------------------------------------------------------------
+
+Q: Step 2 生成的文件名为什么不再带 poe_id？
+A: 生成逻辑已改为按日期目录名（folder_name）而不是 POE PDF 中的 poe_id。
+   新文件名格式为 {date}_costs.xlsx（如 20251001_costs.xlsx）。
+   好处是即使 POE PDF 缺失或 poe_id 未入库，模板照样可以生成。
+
+Q: run_fill_supplier_order_no.py 运行后部分行填充了 0 行，是正常的吗？
+A: 正常。该脚本只能匹配当前 G:\temp\taobao\tx 里 CSV 文件覆盖到的订单。
+   若某个批次的发货时间早于 CSV 导出时间段，就不会有匹配记录。
+   只需从淘宝后台重新导出对应时间段的订单 CSV 放入 tx 目录，再跑一次即可。
 
 Q: Step 5 运行后 CI 没有生成，只有 EES？
 A: 通常是 Step 4 的成本数据没有导入成功。

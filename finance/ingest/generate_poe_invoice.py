@@ -8,16 +8,14 @@ from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt, Cm
 
-from config import PGSQL_CONFIG          # 和 manage_export_shipments_costs 一样的数据库配置
-from finance_config import FINANCE_EES   # 出口方 / 收货方信息（和 anna_monthly_reports_v2 一致）
+from config import PGSQL_CONFIG
+from finance_config import FINANCE_EES, MARGIN_RATE, VAT_RATE
 
-# 利润率（UK → HK 批发的加成比例）
-MARGIN_RATE = 0.15
-
-# 签名相关（和 anna_monthly_reports_v2 对齐）
-SIGN_NAME = "XIAODAN MA"
-SIGN_TITLE = "Director, EMINZORA TRADE LTD"
-SIGN_IMAGE = r"D:\OneDrive\CrossBorderDocs_UK\00_Templates\signatures\xiaodan_ma_signature.png"
+# 签名常量（generate_poe_ees_pdf_v2 按名称 import，保留在此；值来自 finance_config）
+_sig = FINANCE_EES["signature"]
+SIGN_NAME  = _sig["sign_name"]
+SIGN_TITLE = _sig["sign_title"]
+SIGN_IMAGE = str(_sig["image_path"])
 
 
 def get_conn():
@@ -116,8 +114,6 @@ def build_cost_and_price(df: pd.DataFrame) -> pd.DataFrame:
     """
     df = df.copy()
     df["quantity"] = df["quantity"].fillna(0).astype(int)
-
-    VAT_RATE = 0.20  # 英国标准 VAT 20%
 
     # 你填入的含税价（gross cost）
     df["gross_cost_unit"] = df["purchase_unit_cost_gbp"].astype(float)
@@ -288,8 +284,8 @@ def create_poe_invoice_docx(df: pd.DataFrame, output_path: Path) -> Path:
         "This Commercial Invoice is issued under the UK–HK Cross-Border Trade Agreement (v4.2). "
         "The goods are sold by the UK Seller to the Hong Kong Buyer on a wholesale basis.\n\n"
         "Delivery Terms: FCA (ECMS UK warehouse), Incoterms® 2020.\n\n"
-        "Pricing Method: The unit prices are determined by applying the agreed cost-plus 15% "
-        "wholesale margin to the Seller's net landed cost, in accordance with the agreed Pricing Policy.\n\n"
+        f"Pricing Method: The unit prices are determined by applying the agreed cost-plus {int(MARGIN_RATE * 100)}% "
+        "wholesale margin to the Seller's supplier purchase cost of goods, in accordance with the agreed Pricing Policy.\n\n"
         "VAT Treatment: This supply qualifies as a zero-rated export of goods for UK VAT "
         "purposes under HMRC Notice 703."
     )

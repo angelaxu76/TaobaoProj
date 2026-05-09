@@ -200,6 +200,61 @@ def fetch_poe_items(poe_id: str) -> pd.DataFrame:
     return df
 
 
+def fetch_poe_header_by_folder(folder_name: str) -> Dict[str, Any]:
+    """
+    按 folder_name 查询头信息，适用于 poe_id 为 NULL 的批次。
+    poe_id 字段返回合成标识 "FOLDER-{folder_name}"；
+    若 poe_date 为空则从 folder_name (YYYYMMDD) 推导。
+    """
+    sql = """
+        SELECT poe_id, poe_mrn, poe_office, poe_date, carrier_name, tracking_no, poe_file
+        FROM public.export_shipments
+        WHERE folder_name = %s
+          AND (poe_id IS NULL OR poe_id = '')
+        ORDER BY id LIMIT 1;
+    """
+    with get_conn() as conn:
+        df = pd.read_sql(sql, conn, params=(folder_name,))
+    if df.empty:
+        raise ValueError(f"export_shipments 中未找到 folder_name={folder_name} 且 poe_id 为空的记录。")
+
+    row = df.iloc[0]
+    poe_date = row.get("poe_date")
+    if pd.isna(poe_date) or poe_date is None:
+        try:
+            poe_date = dt.date(int(folder_name[:4]), int(folder_name[4:6]), int(folder_name[6:8]))
+        except Exception:
+            poe_date = None
+
+    return {
+        "poe_id": f"FOLDER-{folder_name}",
+        "poe_mrn":      row.get("poe_mrn"),
+        "poe_office":   row.get("poe_office"),
+        "poe_date":     poe_date,
+        "carrier_name": row.get("carrier_name"),
+        "tracking_no":  row.get("tracking_no"),
+        "poe_file":     row.get("poe_file"),
+    }
+
+
+def fetch_poe_items_by_folder(folder_name: str) -> pd.DataFrame:
+    """按 folder_name 查询商品行，适用于 poe_id 为 NULL 的批次。"""
+    sql = """
+        SELECT skuid, product_description, quantity
+        FROM public.export_shipments
+        WHERE folder_name = %s
+          AND (poe_id IS NULL OR poe_id = '')
+          AND skuid IS NOT NULL AND skuid <> ''
+        ORDER BY skuid;
+    """
+    with get_conn() as conn:
+        df = pd.read_sql(sql, conn, params=(folder_name,))
+    if df.empty:
+        raise ValueError(f"folder_name={folder_name} 未找到任何带 SKU 的商品行，无法生成 EES。")
+    df["quantity"] = df["quantity"].fillna(0).astype(int)
+    return df
+
+
 # ---------------------------------------------------------------------------
 # PDF generation
 # ---------------------------------------------------------------------------
@@ -210,12 +265,28 @@ def generate_poe_ees_pdf(poe_id: str, output_dir: str) -> str:
 
     Public API:
         generate_poe_ees_pdf(poe_id: str, output_dir: str) -> str (pdf_path)
+    """
+    header   = fetch_poe_header(poe_id)
+    items_df = fetch_poe_items(poe_id)
+    return _build_ees_pdf(poe_id, header, items_df, output_dir)
 
-    特点：
-    - 不显示任何价格或金额；
-    - 仅列出 SKU / 描述 / 数量；
-    - 提供一段解释性文字，说明 CI 与 POE 的差异；
-    - 作为 CI 与 POE 之间的“逻辑连接说明书”。
+
+def generate_poe_ees_pdf_by_folder(folder_name: str, output_dir: str) -> str:
+    """
+    按 folder_name 生成 EES，适用于 poe_id 为 NULL 的批次。
+
+    POE Reference 显示 "FOLDER-{folder_name}"，其余格式与正常 EES 完全相同。
+    """
+    header   = fetch_poe_header_by_folder(folder_name)
+    items_df = fetch_poe_items_by_folder(folder_name)
+    return _build_ees_pdf(f"FOLDER-{folder_name}", header, items_df, output_dir)
+
+
+def _build_ees_pdf(poe_id_label: str, header: Dict[str, Any],
+                   items_df: "pd.DataFrame", output_dir: str) -> str:
+    """
+    PDF 生成核心逻辑。
+    poe_id_label 作为文档中的 POE Reference 显示，可以是真实 poe_id 或合成标识。
     """
     # 确保输出目录存在
     out_dir = Path(output_dir)
@@ -228,8 +299,6 @@ def generate_poe_ees_pdf(poe_id: str, output_dir: str) -> str:
     except Exception:
         base_font_name = "Helvetica"
 
-    # 读取 POE 头信息 + 商品行
-    header = fetch_poe_header(poe_id)
     poe_mrn = header.get("poe_mrn")
     poe_office = header.get("poe_office")
     poe_date = header.get("poe_date")
@@ -239,17 +308,16 @@ def generate_poe_ees_pdf(poe_id: str, output_dir: str) -> str:
         carrier_name = "ECMS"
     tracking_no = header.get("tracking_no")  # 不再打印出来，只是保留变量
 
-    items_df = fetch_poe_items(poe_id)
     total_qty = int(items_df["quantity"].sum())
 
     # 从 POE 推导对应的 Commercial Invoice 号（需要 poe_date）
-    invoice_no = _make_poe_invoice_no(poe_id, poe_date)
+    invoice_no = _make_poe_invoice_no(poe_id_label, poe_date)
     sign_date_str = _get_ees_sign_date(poe_date)
 
     # ------------------------------------------------------------------
     # Build PDF
     # ------------------------------------------------------------------
-    pdf_path = out_dir / f"EES_{poe_id}.pdf"
+    pdf_path = out_dir / f"EES_{poe_id_label}.pdf"
 
     doc = SimpleDocTemplate(
         str(pdf_path),
@@ -299,7 +367,7 @@ def generate_poe_ees_pdf(poe_id: str, output_dir: str) -> str:
     # ---------- Header Meta ----------
     # 注意：这里已移除 Tracking Number 行
     meta_rows = [
-        ["POE / Shipment Reference", _nz(poe_id)],
+        ["POE / Shipment Reference", _nz(poe_id_label)],
         ["Related Commercial Invoice", _nz(invoice_no)],
         ["MRN / Customs Reference", _nz(poe_mrn)],
         ["Customs Office", _nz(poe_office)],
@@ -341,7 +409,7 @@ def generate_poe_ees_pdf(poe_id: str, output_dir: str) -> str:
         Differences between the Commercial Invoice (CI) and the Proof of Export (POE)
         are expected and arise from the consolidated cross-border fulfilment model
         used in this supply chain. These differences are governed by the UK–HK
-        Cross-Border Trade Agreement (the “Agreement”), in particular Clauses
+        Cross-Border Trade Agreement (the "Agreement"), in particular Clauses
         <b>1A</b> and <b>5 / 5A</b>:
         
         <br/><br/>
