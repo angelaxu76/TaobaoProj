@@ -138,7 +138,8 @@ def process_product_url(PRODUCT_URL):
                 value_html = f.get("value", "")
                 clean_text = BeautifulSoup(value_html, "html.parser").get_text(strip=True)
                 if clean_text:
-                    feature_texts.append(clean_text)
+                    label = (f.get("name") or "").strip()
+                    feature_texts.append(f"{label}: {clean_text}" if label else clean_text)
             except Exception as e:
                 print(f"⚠️ Feature 解析失败: {e}")
         feature_str = " | ".join(feature_texts) if feature_texts else "No Data"

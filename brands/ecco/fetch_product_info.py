@@ -774,10 +774,16 @@ def process_one(url: str, idx: int, total: int):
         # ===== 要点（Features）=====
         feature = ""
         li_texts = []
-        for li in soup.select("div.about-this-product__container div.product-description-list ul li"):
-            t = clean(li.get_text(" ", strip=True))
-            if t:
-                li_texts.append(t)
+        for item in soup.select("div.chakra-accordion__item"):
+            btn = item.find("button")
+            if btn and "feature" in btn.get_text(strip=True).lower():
+                panel = item.find("div", class_="chakra-accordion__panel")
+                if panel:
+                    for li in panel.select("ul li"):
+                        t = clean(li.get_text(" ", strip=True))
+                        if t:
+                            li_texts.append(t)
+                break
         if li_texts:
             feature = " | ".join(li_texts)
 

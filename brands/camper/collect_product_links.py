@@ -31,51 +31,37 @@ PAGE_REPEAT_LIMIT = 1           # 页面签名重复 1 次即认为卡死（可�
 
 # ✅ 类目入口（注意每一行末尾都有逗号！）
 BASE_URLS = [
-    # 汇总页
-    "https://www.camper.com/en_GB/men/shoes?sort=default&page={}",
+    # 女鞋
+	"https://www.camper.com/en_GB/women/shoes?sort=default&page={}",
+	"https://www.camper.com/en_GB/women/shoes/new_in?page={}",
+	"https://www.camper.com/en_GB/women/shoes/spring_summer?page={}",
+	"https://www.camper.com/en_GB/women/shoes/top_sellers?page={}",
+	"https://www.camper.com/en_GB/women/shoes/ballerinas?&page={}",
+	"https://www.camper.com/en_GB/women/shoes/loafers?&page={}",
+	"https://www.camper.com/en_GB/women/shoes/sandals?&page={}",
+	"https://www.camper.com/en_GB/women/shoes/formal_shoes?&page={}",
+	"https://www.camper.com/en_GB/women/shoes/casual?&page={}",
+	"https://www.camper.com/en_GB/women/shoes/sneakers?&page={}",
+	"https://www.camper.com/en_GB/women/shoes/heels?&page={}",
+	"https://www.camper.com/en_GB/women/shoes/slippers?&page={}",
+	
+	# 男鞋
+	"https://www.camper.com/en_GB/men/shoes?sort=default&page={}",
+	"https://www.camper.com/en_GB/men/shoes/formal_shoes?page={}",
+	"https://www.camper.com/en_GB/men/shoes/casual?page={}",
+	"https://www.camper.com/en_GB/men/shoes/sneakers?page={}",
+	"https://www.camper.com/en_GB/men/shoes/loafers?page={}",
+	"https://www.camper.com/en_GB/men/shoes/ankle_boots?page={}",
+	"https://www.camper.com/en_GB/men/shoes/sandals?page={}",
+	"https://www.camper.com/en_GB/men/shoes/slippers?page={}",
+	"https://www.camper.com/en_GB/men/shoes/new_in?page={}",
+	"https://www.camper.com/en_GB/men/shoes/spring_summer?page={}",
+	"https://www.camper.com/en_GB/men/shoes/top_sellers?page={}",
+	
+	# LAB	
+	"https://www.camperlab.com/en_GB/women/shoes?sort=default&page={}",
+	"https://www.camperlab.com/en_GB/men/shoes?sort=default&page={}",
 
-    "https://www.camper.com/en_GB/women/shoes/casual?filter.typology=_CST_T01&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes?sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/ballerinas?filter.typology=_CST_T10&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/boots?filter.typology=T01&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/loafers?filter.typology=_CST_T17&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/sneakers?filter.typology=_CST_T04&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/heels?filter.typology=_CST_T07&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/casual?filter.typology=_CST_T01&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/formal_shoes?filter.typology=_CST_T05&sort=default&page={}",
-    "https://www.camperlab.com/en_GB/women/shoes/all_shoes_lab_women?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes/fall_winter?filter.collection=fw&sort=default&page={}",
-    "https://www.camperlab.com/en_GB/men/shoes/all_shoes_lab_men?filter.collection=allabm&sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes/fall_winter?filter.collection=fw&sort=default&page={}",
-
-    "https://www.camper.com/en_GB/men/shoes/ankle_boots?filter.typology=_CST_T09&sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes/sneakers?filter.typology=_CST_T04&sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes/formal_shoes?filter.typology=_CST_T05&sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes/casual?filter.typology=_CST_T01&sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes/loafers?page={}",
-
-    # LAB/ALL 系列
-    "https://www.camper.com/en_GB/women/shoes/all_shoes_lab_women?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes/all_shoes_lab_men?filter.collection=allabm&sort=default&page={}",
-
-    # 女款细分
-    "https://www.camper.com/en_GB/women/shoes/ballerinas?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/sneakers?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/formal_shoes?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/casual?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/ankle_boots?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/boots?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/heels?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/loafers?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/women/shoes/fall_winter?filter.collection=allabw&sort=default&page={}",
-
-    # 男款细分
-    "https://www.camper.com/en_GB/men/shoes/sneakers?filter.collection=allabm&sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes/formal_shoes?filter.collection=allabm&sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes/casual?filter.collection=allabm&sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes/ankle_boots?filter.collection=allabm&sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes/loafers?filter.collection=allabw&sort=default&page={}",
-    "https://www.camper.com/en_GB/men/shoes/fall_winter?filter.collection=allabw&sort=default&page={}",
 ]
 
 HEADERS = {

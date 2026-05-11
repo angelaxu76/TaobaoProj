@@ -49,7 +49,15 @@ def extract_product_code(url):
     return match.group(1) if match else "unknown"
 
 
-def extract_material(soup):
+def extract_material(soup, product_data=None):
+    # Primary: __NEXT_DATA__ product.materials
+    if product_data:
+        for item in (product_data.get("materials") or []):
+            if item.get("label") == "Upper Material":
+                val = item.get("value", "")
+                if val and val.lower() != "none":
+                    return val
+    # Fallback: old CSS selector (clarks.co.uk)
     tags = soup.select("li.sc-ac92809-1 span")
     for i in range(0, len(tags) - 1, 2):
         key = tags[i].get_text(strip=True)
@@ -57,6 +65,16 @@ def extract_material(soup):
         if "Upper Material" in key:
             return val
     return "No Data"
+
+
+def extract_features(product_data):
+    """Parse features HTML from __NEXT_DATA__ product.features into a semicolon-joined string."""
+    features_list = product_data.get("features") or [] if product_data else []
+    if not features_list:
+        return "No Data"
+    fsoup = BeautifulSoup(features_list[0], "html.parser")
+    items = [li.get_text(strip=True) for li in fsoup.find_all("li") if li.get_text(strip=True)]
+    return "; ".join(items) if items else "No Data"
 
 def detect_gender_from_text(text: str) -> str:
     t = text.lower()
@@ -255,11 +273,23 @@ def process_product(url):
         code = extract_product_code(url)
         title = soup.title.get_text(strip=True) if soup.title else "No Title"
         color_name = extract_simple_color(title)
-        name = title.replace("| Clarks UK", "").strip()
+        name = title.replace("| Clarks UK", "").replace("| Clarks Outlet", "").strip()
+
+        # Extract __NEXT_DATA__ product object (Next.js SSR)
+        product_data = {}
+        nd = soup.find("script", id="__NEXT_DATA__")
+        if nd and nd.string:
+            try:
+                next_data = json.loads(nd.string)
+                product_data = (
+                    next_data.get("props", {}).get("pageProps", {}).get("product", {})
+                )
+            except Exception:
+                pass
 
         json_ld = soup.find("script", type="application/ld+json")
         data = json.loads(json_ld.string) if json_ld else {}
-        desc = data.get("description", "No Description")
+        desc = data.get("description") or product_data.get("description") or "No Description"
 
         # ✅ 先根据标题 + 描述识别男女/童款
         gender = detect_gender(soup, title, desc, url)
@@ -278,10 +308,8 @@ def process_product(url):
         else:
             original_price = discount_price  # ✅ fallback 为折扣价
 
-        material = extract_material(soup)
-
-        # ✅ Feature 占位（Clarks 没有结构化 feature）
-        feature_str = "No Data"
+        material = extract_material(soup, product_data)
+        feature_str = extract_features(product_data)
 
         # ✅ 提取颜色（通过 JSON）
         try:
