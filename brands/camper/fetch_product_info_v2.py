@@ -101,24 +101,41 @@ def extract_prices(product_sheet: dict) -> tuple[float, float]:
 
 
 def extract_features_and_upper(product_sheet: dict) -> tuple[str, str]:
+    # name 字段有时含 <b> HTML；有 <b> 的是真正的标签，没有的是上一个标签值的延续（数据不规范）
     features_raw = product_sheet.get("features") or []
     feature_texts = []
     upper_material = "No Data"
+    cur_label = None
+    cur_parts = []
 
     for f in features_raw:
         if not isinstance(f, dict):
             continue
-
-        # Feature 文本
+        name_html = f.get("name") or ""
         value_html = f.get("value") or ""
-        clean_text = BeautifulSoup(value_html, "html.parser").get_text(strip=True)
-        if clean_text:
-            feature_texts.append(clean_text)
+        name_clean = BeautifulSoup(name_html, "html.parser").get_text(strip=True)
+        value_clean = BeautifulSoup(value_html, "html.parser").get_text(strip=True)
 
-        # Upper 材质
-        name = (f.get("name") or "").lower()
-        if upper_material == "No Data" and "upper" in name:
-            upper_material = clean_text or "No Data"
+        if re.search(r"<b>|<strong>", name_html, re.I):
+            # 新标签行：先保存上一个
+            if cur_label is not None:
+                combined = " ".join(p for p in cur_parts if p)
+                feature_texts.append(f"{cur_label}: {combined}" if combined else cur_label)
+            cur_label = name_clean
+            cur_parts = [value_clean] if value_clean else []
+            # Upper 材质
+            if upper_material == "No Data" and "upper" in name_clean.lower():
+                upper_material = value_clean or "No Data"
+        else:
+            # 延续行：拼到当前标签的值里
+            if name_clean:
+                cur_parts.append(name_clean)
+            if value_clean:
+                cur_parts.append(value_clean)
+
+    if cur_label is not None:
+        combined = " ".join(p for p in cur_parts if p)
+        feature_texts.append(f"{cur_label}: {combined}" if combined else cur_label)
 
     feature_str = " | ".join(feature_texts) if feature_texts else "No Data"
     return feature_str, upper_material

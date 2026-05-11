@@ -138,25 +138,41 @@ def process_product_url(PRODUCT_URL):
         color = color_data.get("name", "") if isinstance(color_data, dict) else str(color_data)
 
         # === 提取 features ===
-        features_raw = data.get("features") or []  # ✅ 保证是列表
+        # name 字段有时含 <b> HTML；有 <b> 的是真正的标签，没有的是上一个标签值的延续（数据不规范）
+        features_raw = data.get("features") or []
         feature_texts = []
+        cur_label = None
+        cur_parts = []
         for f in features_raw:
             try:
-                value_html = f.get("value", "")
-                clean_text = BeautifulSoup(value_html, "html.parser").get_text(strip=True)
-                if clean_text:
-                    feature_texts.append(clean_text)
+                name_html = f.get("name") or ""
+                value_html = f.get("value") or ""
+                name_clean = BeautifulSoup(name_html, "html.parser").get_text(strip=True)
+                value_clean = BeautifulSoup(value_html, "html.parser").get_text(strip=True)
+                if re.search(r"<b>|<strong>", name_html, re.I):
+                    if cur_label is not None:
+                        combined = " ".join(p for p in cur_parts if p)
+                        feature_texts.append(f"{cur_label}: {combined}" if combined else cur_label)
+                    cur_label = name_clean
+                    cur_parts = [value_clean] if value_clean else []
+                else:
+                    if name_clean:
+                        cur_parts.append(name_clean)
+                    if value_clean:
+                        cur_parts.append(value_clean)
             except Exception as e:
                 print(f"⚠️ Feature 解析失败: {e}")
+        if cur_label is not None:
+            combined = " ".join(p for p in cur_parts if p)
+            feature_texts.append(f"{cur_label}: {combined}" if combined else cur_label)
         feature_str = " | ".join(feature_texts) if feature_texts else "No Data"
 
-        # === 提取 Upper 材质（优先 features） ===
+        # === 提取 Upper 材质（优先 features，name 含 HTML 需先剥离）===
         upper_material = "No Data"
         for feature in features_raw:
-            name = (feature.get("name") or "").lower()
-            if "upper" in name:
-                raw_html = feature.get("value") or ""
-                upper_material = BeautifulSoup(raw_html, "html.parser").get_text(strip=True)
+            name_text = BeautifulSoup(feature.get("name") or "", "html.parser").get_text(strip=True).lower()
+            if "upper" in name_text:
+                upper_material = BeautifulSoup(feature.get("value") or "", "html.parser").get_text(strip=True)
                 break
 
         # === 提取尺码、库存、EAN ===
