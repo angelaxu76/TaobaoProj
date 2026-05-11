@@ -8,6 +8,7 @@ CAMPER = {
     "BRAND": "camper",
     "BASE": CAMPER_BASE,
     "GEI_DIR": GEI_SHARED_BASE / "camper",
+    "FEATURE_DELIMITER": "|",
     "IMAGE_FIRST_PRIORITY": ["F", "C", "L", "T"],
     "IMAGE_DES_PRIORITY": ["C", "F", "L", "T"],
     "TXT_DIR": CAMPER_BASE / "publication" / "TXT",

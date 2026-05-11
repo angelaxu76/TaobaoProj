@@ -260,7 +260,8 @@ def generate_html(data, output_path, image_dir, brand):
     # 特性
     feature_field = data.get("Feature", "")
     if feature_field and feature_field.lower() != "no data":
-        raw_features = [f.strip() for f in feature_field.split("|") if f.strip()]
+        sep = BRAND_CONFIG.get(brand, {}).get("FEATURE_DELIMITER", "|")
+        raw_features = [f.strip() for f in feature_field.split(sep) if f.strip()]
 
         # 先清英文敏感词 → 翻译 → 再清中文敏感词/正面化替换
         zh_features = [

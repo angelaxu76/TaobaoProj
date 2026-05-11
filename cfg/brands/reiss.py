@@ -5,6 +5,7 @@ REISS_BASE = BASE_DIR / "reiss"
 REISS = {
     "BRAND": "reiss",
     "BASE": REISS_BASE,
+    "FEATURE_DELIMITER": "|",
     "IMAGE_FIRST_PRIORITY": ["s", "s3", "s4"],
     "IMAGE_DES_PRIORITY": ["s2", "s3", "s4", "s5"],
     "TXT_DIR": REISS_BASE / "publication" / "TXT",

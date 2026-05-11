@@ -6,6 +6,7 @@ BIRKENSTOCK_BASE = BASE_DIR / "birkenstock"
 BIRKENSTOCK = {
     "BRAND": "birkenstock",
     "BASE": BIRKENSTOCK_BASE,
+    "FEATURE_DELIMITER": "|",
     "TXT_DIR": BIRKENSTOCK_BASE / "publication" / "TXT",
     "OUTPUT_DIR": BIRKENSTOCK_BASE / "repulibcation",
     "STORE_DIR": BIRKENSTOCK_BASE / "document" / "store",

@@ -6,6 +6,7 @@ MARKSANDSPENCER = {
     "BRAND": "marksandspencer",
     "BASE": MARKSANDSPENCER_BASE,
     "GEI_DIR": GEI_SHARED_BASE / "marksandspencer",
+    "FEATURE_DELIMITER": "|",
     "IMAGE_FIRST_PRIORITY": ["F", "C", "L", "T"],
     "IMAGE_DES_PRIORITY": ["C", "F", "L", "T"],
     "TXT_DIR": MARKSANDSPENCER_BASE / "publication" / "TXT",

@@ -7,6 +7,7 @@ GEOX = {
     "BRAND": "geox",
     "BASE": GEOX_BASE,
     "GEI_DIR": GEI_SHARED_BASE / "geox",
+    "FEATURE_DELIMITER": "|",
     "IMAGE_PRIORITY": ["1", "6", "4", "2"],
     "IMAGE_FIRST_PRIORITY": ["07", "00", "01", "2"],
     "IMAGE_DES_PRIORITY": ["01", "00", "07", "2"],

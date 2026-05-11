@@ -8,6 +8,7 @@ CLARKS = {
     "BRAND": "clarks",
     "BASE": CLARKS_BASE,
     "GEI_DIR": GEI_SHARED_BASE / "clarks",
+    "FEATURE_DELIMITER": ";",
     "IMAGE_PRIORITY": ["1", "6", "4", "2"],
     "IMAGE_FIRST_PRIORITY": ["1", "6", "4", "2"],
     "IMAGE_DES_PRIORITY": ["6", "1", "4", "2"],
