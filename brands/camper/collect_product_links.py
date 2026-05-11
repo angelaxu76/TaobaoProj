@@ -24,44 +24,45 @@ MAX_EMPTY_PAGES = 3             # 连续多少页无数据就换类目（保留�
 LINK_PREFIX = "https://www.camper.com"
 
 # ✅ 新增：连续无新增页数限制（解决“每页都有8条但都是重复/推荐位”）
-NO_NEW_LIMIT = 2                # 连续 2 页无新增 -> 停止该入口（你想更保守可改 3）
+NO_NEW_LIMIT = 7                # 连续 7 页无新增 -> 停止该入口
 
 # ✅ 新增：页面内容重复限制（同一批链接反复出现）
 PAGE_REPEAT_LIMIT = 1           # 页面签名重复 1 次即认为卡死（可改 2 更宽松）
 
 # ✅ 类目入口（注意每一行末尾都有逗号！）
 BASE_URLS = [
-    # 女鞋
-	"https://www.camper.com/en_GB/women/shoes?sort=default&page={}",
-	"https://www.camper.com/en_GB/women/shoes/new_in?page={}",
-	"https://www.camper.com/en_GB/women/shoes/spring_summer?page={}",
-	"https://www.camper.com/en_GB/women/shoes/top_sellers?page={}",
-	"https://www.camper.com/en_GB/women/shoes/ballerinas?&page={}",
-	"https://www.camper.com/en_GB/women/shoes/loafers?&page={}",
-	"https://www.camper.com/en_GB/women/shoes/sandals?&page={}",
-	"https://www.camper.com/en_GB/women/shoes/formal_shoes?&page={}",
-	"https://www.camper.com/en_GB/women/shoes/casual?&page={}",
-	"https://www.camper.com/en_GB/women/shoes/sneakers?&page={}",
-	"https://www.camper.com/en_GB/women/shoes/heels?&page={}",
-	"https://www.camper.com/en_GB/women/shoes/slippers?&page={}",
-	
-	# 男鞋
-	"https://www.camper.com/en_GB/men/shoes?sort=default&page={}",
-	"https://www.camper.com/en_GB/men/shoes/formal_shoes?page={}",
-	"https://www.camper.com/en_GB/men/shoes/casual?page={}",
-	"https://www.camper.com/en_GB/men/shoes/sneakers?page={}",
-	"https://www.camper.com/en_GB/men/shoes/loafers?page={}",
-	"https://www.camper.com/en_GB/men/shoes/ankle_boots?page={}",
-	"https://www.camper.com/en_GB/men/shoes/sandals?page={}",
-	"https://www.camper.com/en_GB/men/shoes/slippers?page={}",
-	"https://www.camper.com/en_GB/men/shoes/new_in?page={}",
-	"https://www.camper.com/en_GB/men/shoes/spring_summer?page={}",
-	"https://www.camper.com/en_GB/men/shoes/top_sellers?page={}",
-	
-	# LAB	
-	"https://www.camperlab.com/en_GB/women/shoes?sort=default&page={}",
-	"https://www.camperlab.com/en_GB/men/shoes?sort=default&page={}",
+    # ── 女鞋：通用页优先（all_links 为空，跑满所有页）──
+    "https://www.camper.com/en_GB/women/shoes?sort=default&page={}",
+    # 子类目补漏（NO_NEW_LIMIT=7 保证不会漏掉通用页未覆盖的产品）
+    "https://www.camper.com/en_GB/women/shoes/new_in?page={}",
+    "https://www.camper.com/en_GB/women/shoes/spring_summer?page={}",
+    "https://www.camper.com/en_GB/women/shoes/top_sellers?page={}",
+    "https://www.camper.com/en_GB/women/shoes/ballerinas?&page={}",
+    "https://www.camper.com/en_GB/women/shoes/loafers?&page={}",
+    "https://www.camper.com/en_GB/women/shoes/sandals?&page={}",
+    "https://www.camper.com/en_GB/women/shoes/formal_shoes?&page={}",
+    "https://www.camper.com/en_GB/women/shoes/casual?&page={}",
+    "https://www.camper.com/en_GB/women/shoes/sneakers?&page={}",
+    "https://www.camper.com/en_GB/women/shoes/heels?&page={}",
+    "https://www.camper.com/en_GB/women/shoes/slippers?&page={}",
 
+    # ── 男鞋：通用页优先 ──
+    "https://www.camper.com/en_GB/men/shoes?sort=default&page={}",
+    # 子类目补漏
+    "https://www.camper.com/en_GB/men/shoes/formal_shoes?page={}",
+    "https://www.camper.com/en_GB/men/shoes/casual?page={}",
+    "https://www.camper.com/en_GB/men/shoes/sneakers?page={}",
+    "https://www.camper.com/en_GB/men/shoes/loafers?page={}",
+    "https://www.camper.com/en_GB/men/shoes/ankle_boots?page={}",
+    "https://www.camper.com/en_GB/men/shoes/sandals?page={}",
+    "https://www.camper.com/en_GB/men/shoes/slippers?page={}",
+    "https://www.camper.com/en_GB/men/shoes/new_in?page={}",
+    "https://www.camper.com/en_GB/men/shoes/spring_summer?page={}",
+    "https://www.camper.com/en_GB/men/shoes/top_sellers?page={}",
+
+    # ── LAB ──
+    "https://www.camperlab.com/en_GB/women/shoes?sort=default&page={}",
+    "https://www.camperlab.com/en_GB/men/shoes?sort=default&page={}",
 ]
 
 HEADERS = {
