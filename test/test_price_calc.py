@@ -117,7 +117,7 @@ def print_table(cases: list[tuple]):
 if __name__ == "__main__":
 
     # 详细推导（适合查看单个商品）
-    print_price(81,  brand="barbour")
+    print_price(76,  brand="barbour")
     # print_price(100, brand="ecco")
     print_price(38,  brand="clarks")
     print_price(96,  brand="geox")

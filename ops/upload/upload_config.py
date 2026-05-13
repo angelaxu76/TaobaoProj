@@ -49,19 +49,43 @@ BATCH_SETTLE_SECONDS = 10
 #  UiPath 配置（通过 UiPath Assistant 部署的流程）
 # ─────────────────────────────────────────────────────────────────
 
-# UiRobot.exe 路径：从环境变量 UIPATH_ROBOT_EXE 读取，各机器自行配置，不入 git
-# 设置方式（Windows 系统环境变量或用户环境变量）：
-#   变量名: UIPATH_ROBOT_EXE
-#   变量值: C:\Users\<用户名>\AppData\Local\Programs\UiPathPlatform\Studio\<版本>\UiRobot.exe
-_robot_exe = os.environ.get("UIPATH_ROBOT_EXE", "")
-if not _robot_exe:
-    raise EnvironmentError(
-        "环境变量 UIPATH_ROBOT_EXE 未设置。\n"
-        "请在系统环境变量中添加：\n"
-        "  变量名: UIPATH_ROBOT_EXE\n"
-        "  变量值: <UiRobot.exe 的完整路径>"
-    )
-UIPATH_ROBOT_EXE = _robot_exe
+# UiRobot.exe 路径解析优先级：
+#   1. 环境变量 UIPATH_ROBOT_EXE（手动指定，最高优先级）
+#   2. 自动扫描 %LOCALAPPDATA%\Programs\UiPathPlatform\Studio\*\UiRobot.exe
+#      选修改时间最新的版本目录（即最后一次升级安装的版本）
+#   3. 以上均未找到时报错
+
+def _find_uirobot_exe() -> str:
+    # 优先：手动设置的环境变量
+    manual = os.environ.get("UIPATH_ROBOT_EXE", "").strip()
+    if manual:
+        return manual
+
+    # 自动：扫描标准安装目录（用户级安装和系统级安装）
+    local_appdata = os.environ.get("LOCALAPPDATA", "")
+    program_files = os.environ.get("PROGRAMFILES", r"C:\Program Files")
+    search_roots = [
+        Path(local_appdata) / "Programs" / "UiPathPlatform" / "Studio",
+        Path(program_files) / "UiPath" / "Studio",
+    ]
+    candidates: list[Path] = []
+    for root in search_roots:
+        if root.exists():
+            candidates.extend(root.glob("*/UiRobot.exe"))
+
+    if not candidates:
+        raise FileNotFoundError(
+            "自动探测 UiRobot.exe 失败，未在标准路径下找到安装文件。\n"
+            "可手动设置环境变量来指定路径：\n"
+            "  变量名: UIPATH_ROBOT_EXE\n"
+            "  变量值: <UiRobot.exe 的完整路径>"
+        )
+
+    # 取修改时间最新的（= 最近一次升级安装的版本）
+    latest = max(candidates, key=lambda p: p.stat().st_mtime)
+    return str(latest)
+
+UIPATH_ROBOT_EXE = _find_uirobot_exe()
 
 # 已发布的流程名称（在 UiPath Assistant 里显示的名字，区分大小写）
 # 对应 Orchestrator 上的 Process Name（不是 project.json 路径）
