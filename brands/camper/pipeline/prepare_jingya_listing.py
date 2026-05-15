@@ -1,3 +1,4 @@
+import os
 from config import CAMPER
 from channels.jingya.ingest.import_channel_info import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
 from channels.jingya.export.export_stock_to_excel import export_stock_excel
@@ -26,9 +27,13 @@ def main():
 
 
     print("\n🟡 Step: 3️⃣ 将鲸牙存在但TXT中不存在的商品抓一遍")
-    missing_product_link = r"D:\TB\Products\camper\publication\missing_product_links.txt";
-    generate_missing_links_for_brand("camper",missing_product_link )
-    camper_fetch_product_info(links_file=missing_product_link )
+    missing_product_link = r"D:\TB\Products\camper\publication\missing_product_links.txt"
+    generate_missing_links_for_brand("camper", missing_product_link)
+    import os
+    if os.path.exists(missing_product_link):
+        camper_fetch_product_info(links_file=missing_product_link)
+    else:
+        print("  - 无缺失商品，跳过")
 
     print("\n🟡 Step: 4️⃣ TXT导入数据库 -----将各个商品的TXT中信息导入到数据库中")
     import_txt_to_db_supplier("camper")

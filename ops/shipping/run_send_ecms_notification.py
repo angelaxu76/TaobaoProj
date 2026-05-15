@@ -9,7 +9,7 @@ run_send_ecms_notification.py
     send_ecms_notification(
         shipment_ref="ECMSTMET20260325",
         couriers=[("884256064655", "Fedex")],
-        lp_file=r"C:\...\lp_numbers.txt",
+        lp_file=r"C:\\...\\lp_numbers.txt",
     )
 """
 
@@ -121,8 +121,8 @@ def main():
     send_ecms_notification(
         shipment_ref = SHIPMENT_REF,
         couriers     = [
-            ("GI045891554GB", "Parcelforce"),
-            ("GI045891568GB", "Parcelforce"),
+            ("GI045969364GB", "Parcelforce"),
+            ("GI045969355GB", "Parcelforce"),
         ],
         lp_file      = r"D:\Projects\VS-TaobaoProj\TaobaoProj\ops\shipping\lp_numbers.txt",
         ship_date    = SHIP_DATE,

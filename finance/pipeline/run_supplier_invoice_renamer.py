@@ -13,8 +13,8 @@ def main():
     # )
 
     rename_clarks_invoices(
-        r"G:\temp\clarks_invoice\orgin",
-        r"G:\temp\clarks_invoice\generated",
+        r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\99_Backup\clarks invoice\202605",
+        r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\03_Purchase_Records\01_Supplier_Invoices\202503-202605\Clarks",
     )
 
     # rename_ecco_invoices(
