@@ -55,10 +55,10 @@ def _read_gei_as_str(gei_file: Path) -> pd.DataFrame:
     return df
 
 
-def find_latest_gei_file(document_dir: Path) -> Path:
+def find_latest_gei_file(document_dir: Path) -> Path | None:
     files = list(document_dir.glob("GEI@sales_catalogue_export@*.xlsx"))
     if not files:
-        raise FileNotFoundError("❌ 未找到 GEI@sales_catalogue_export@ 开头的文件")
+        return None
     latest = max(files, key=lambda f: f.stat().st_mtime)
     print(f"📄 使用文件: {latest.name}")
     return latest
@@ -84,6 +84,9 @@ def insert_jingyaid_to_db(brand: str, debug: bool = False):
     table_name = config["TABLE_NAME"]
 
     gei_file = find_latest_gei_file(document_dir)
+    if gei_file is None:
+        print(f"⏭️ 未找到 GEI 文件，跳过 insert_jingyaid_to_db（{brand}）")
+        return
     df = _read_gei_as_str(gei_file)
 
     updated = 0
@@ -228,6 +231,9 @@ def insert_missing_products_with_zero_stock(brand: str):
     table_name = config["TABLE_NAME"]
 
     gei_file = find_latest_gei_file(document_dir)
+    if gei_file is None:
+        print(f"⏭️ 未找到 GEI 文件，跳过 insert_missing_products_with_zero_stock（{brand}）")
+        return
     df = _read_gei_as_str(gei_file)
 
     # —— 1) 解析 GEI：构建 (product_code, size) → info 映射（含 skuid）

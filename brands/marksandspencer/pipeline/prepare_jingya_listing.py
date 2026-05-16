@@ -22,7 +22,7 @@ def main():
     # collect_lingerie_links()
     # collect_jacket_links()
 
-    print("\n🟡 Step: 3️⃣ 抓取商品信息")
+    # print("\n🟡 Step: 3️⃣ 抓取商品信息")
     # fetch_jackcet_info()
     # fetch_lingerie_info()
 
