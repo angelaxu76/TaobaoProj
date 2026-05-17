@@ -134,14 +134,14 @@ if __name__ == "__main__":
     # 对比表（适合批量检查价格合理性）
     print()
     CASES = [
-        (50,  "camper"),
-        (80,  "camper"),
-        (100, "camper"),
-        (150, "camper"),
-        (60,  "ecco"),
-        (90,  "ecco"),
-        (50,  "geox"),
-        (80,  "clarks"),
-        (200, "barbour"),
+        # (50,  "camper"),
+        # (80,  "camper"),
+        # (100, "camper"),
+        # (150, "camper"),
+        # (60,  "ecco"),
+        # (90,  "ecco"),
+        # (50,  "geox"),
+        (30,  "clarks"),
+        # (200, "barbour"),
     ]
     print_table(CASES)

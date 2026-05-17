@@ -741,6 +741,337 @@ def _generate_price_excel_from_file(
 
 
 
+# ===== 新增：批量比较一口价 vs 数据库 taobao_store_price =====
+
+def _fetch_product_prices_by_code(conn, table: str, codes: list[str]) -> pd.DataFrame:
+    """
+    按 product_code 批量查询两个价格字段（同款多尺码聚合为一行）：
+    - taobao_store_price  取 AVG（均值作为代表价）
+    - jingya_untaxed_price 取 MAX（保守取最高，与 check_taobao_item_price_diff 一致）
+    返回 DataFrame: product_code | taobao_store_price | jingya_untaxed_price
+    """
+    empty = pd.DataFrame(columns=["product_code", "taobao_store_price", "jingya_untaxed_price"])
+    if not codes:
+        return empty
+    unique_codes = list(dict.fromkeys(str(c).strip() for c in codes if c and str(c).strip()))
+    if not unique_codes:
+        return empty
+
+    rows: list[dict] = []
+    CHUNK_SIZE = 500
+    with conn.cursor() as cur:
+        for start in range(0, len(unique_codes), CHUNK_SIZE):
+            chunk = unique_codes[start:start + CHUNK_SIZE]
+            cur.execute(
+                f"SELECT product_code, AVG(taobao_store_price), MAX(jingya_untaxed_price) "
+                f"FROM {table} "
+                f"WHERE product_code = ANY(%s) AND taobao_store_price IS NOT NULL "
+                f"GROUP BY product_code",
+                (chunk,)
+            )
+            for code, avg_store, max_jingya in cur.fetchall():
+                try:
+                    rows.append({
+                        "product_code": str(code).strip(),
+                        "taobao_store_price":   float(avg_store)  if avg_store  is not None else None,
+                        "jingya_untaxed_price": float(max_jingya) if max_jingya is not None else None,
+                    })
+                except (ValueError, TypeError):
+                    pass
+    return pd.DataFrame(rows) if rows else empty
+
+
+def _write_diff_excel_with_highlight(df_out: pd.DataFrame, out_path: "Path") -> None:
+    """写 Excel 并对倒挂行（倒挂安全比例 ≤ 0）高亮红色。"""
+    df_out.to_excel(out_path, index=False)
+    try:
+        from openpyxl import load_workbook
+        from openpyxl.styles import PatternFill, Font
+
+        wb = load_workbook(out_path)
+        ws = wb.active
+        headers = [cell.value for cell in ws[1]]
+
+        inv_col_idx = next(
+            (i + 1 for i, h in enumerate(headers) if str(h) == "倒挂安全比例"),
+            None,
+        )
+        if inv_col_idx:
+            red_fill = PatternFill(start_color="FFCCCC", end_color="FFCCCC", fill_type="solid")
+            bold_red = Font(bold=True, color="CC0000")
+            for r in range(2, ws.max_row + 1):
+                v = ws.cell(row=r, column=inv_col_idx).value
+                try:
+                    if float(v) <= 0:
+                        for c in range(1, ws.max_column + 1):
+                            ws.cell(row=r, column=c).fill = red_fill
+                        ws.cell(row=r, column=inv_col_idx).font = bold_red
+                except (TypeError, ValueError):
+                    pass
+        wb.save(out_path)
+    except Exception:
+        pass
+
+
+def _compare_price_vs_db_single(
+    file_path: str,
+    output_dir: "Path",
+    table: str,
+    pgsql_config: dict,
+    suffix: str,
+    price_diff_threshold: float,
+    blacklist_codes: "set[str]",
+    taobao_discount: float,
+    tax_factor: float,
+    min_profit: float,
+    logger,
+):
+    """
+    单文件：比较一口价 vs 数据库价格，输出差价 + 倒挂安全报告。
+
+    倒挂计算：
+      到手价         = 一口价 × taobao_discount × tax_factor
+      安全线         = jingya_untaxed_price × (1 + min_profit)
+      倒挂安全比例   = (到手价 - 安全线) / 安全线   （> 0 才能卖）
+
+    输出行条件（满足其一即输出）：
+      - |差异百分比| > price_diff_threshold
+      - 倒挂安全比例 ≤ 0
+      - jingya_untaxed_price 在 DB 中缺失（无法验证利润）
+    """
+    df_raw = pd.read_excel(file_path, dtype=object)
+    logger.info(f"原始行数: {len(df_raw)} | 列: {list(df_raw.columns)}")
+
+    # 1) 识别列名
+    def _find_col(df, candidates):
+        for c in candidates:
+            if c in df.columns:
+                return c
+        return None
+
+    item_id_col = _find_col(df_raw, ["宝贝ID", "宝贝id", "宝贝Id", "item_id", "itemid", "商品ID"])
+    title_col   = _find_col(df_raw, ["宝贝标题", "标题", "商品标题", "title"])
+    price_col   = _find_col(df_raw, ["一口价", "售价", "销售价", "price"])
+    spec_col    = _find_col(df_raw, ["sku规格", "SKU规格", "规格", "sku spec", "销售属性"])
+
+    missing = [n for n, c in [("宝贝ID", item_id_col), ("一口价", price_col), ("sku规格", spec_col)] if c is None]
+    if missing:
+        raise ValueError(f"Excel缺少必要列: {missing}，当前列: {list(df_raw.columns)}")
+
+    # 2) 向下填充（一款对应多 SKU 行）
+    df = df_raw.copy()
+    df[item_id_col] = df[item_id_col].ffill()
+    df[price_col]   = df[price_col].ffill()
+    if title_col:
+        df[title_col] = df[title_col].ffill()
+
+    # 3) 从 sku规格 提取 product_code（格式：CODE,SIZE[,]）
+    df["_product_code"] = df[spec_col].map(
+        lambda v: _split_spec_value(str(v) if v is not None else "")[0]
+    )
+
+    def _to_float_safe(v):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    df["_item_id_str"] = df[item_id_col].map(_to_text)
+    df["_price_float"] = df[price_col].map(_to_float_safe)
+
+    # 4) 聚合到商品级（一款一行）
+    product_rows = []
+    for item_id, gdf in df.groupby("_item_id_str", sort=False):
+        if not item_id:
+            continue
+        codes = gdf["_product_code"].dropna()
+        if codes.empty:
+            continue
+        prices = gdf["_price_float"].dropna()
+        title  = gdf[title_col].dropna().iloc[0] if (title_col and not gdf[title_col].dropna().empty) else None
+        product_rows.append({
+            "channel_product_id": item_id,
+            "product_code":       str(codes.iloc[0]),
+            "宝贝标题":            title,
+            "一口价":              float(prices.iloc[0]) if not prices.empty else None,
+        })
+
+    df_products = pd.DataFrame(product_rows)
+    logger.info(f"识别到商品数: {len(df_products)}")
+
+    if df_products.empty:
+        logger.warning("无有效商品，跳过该文件。")
+        return
+
+    # 5) 黑名单过滤
+    if blacklist_codes:
+        before = len(df_products)
+        df_products = df_products[~df_products["product_code"].str.upper().isin(blacklist_codes)]
+        logger.info(f"黑名单过滤: {before} -> {len(df_products)}")
+
+    # 6) 过滤一口价无效行
+    df_products = df_products.dropna(subset=["一口价"])
+    df_products = df_products[df_products["一口价"] > 0]
+    logger.info(f"有效一口价商品数: {len(df_products)}")
+    if df_products.empty:
+        logger.warning("无有效一口价，跳过输出。")
+        return
+
+    # 7) 批量查 DB 价格（taobao_store_price + jingya_untaxed_price）
+    conn = psycopg2.connect(**pgsql_config)
+    try:
+        df_db = _fetch_product_prices_by_code(conn, table, df_products["product_code"].tolist())
+    finally:
+        conn.close()
+    logger.info(f"DB返回价格行数: {len(df_db)}")
+
+    # 8) 合并 DB 价格（左连接，保留 DB 缺失的商品以便标记）
+    df_cmp = df_products.merge(df_db, on="product_code", how="left")
+
+    # 9) 计算差异百分比：(一口价 - taobao_store_price) / taobao_store_price × 100
+    mask_has_store = df_cmp["taobao_store_price"].notna() & (df_cmp["taobao_store_price"] > 0)
+    df_cmp["差异百分比"] = pd.NA
+    df_cmp.loc[mask_has_store, "差异百分比"] = (
+        (df_cmp.loc[mask_has_store, "一口价"] - df_cmp.loc[mask_has_store, "taobao_store_price"])
+        / df_cmp.loc[mask_has_store, "taobao_store_price"] * 100
+    ).round(2)
+
+    # 10) 计算倒挂安全比例
+    #     到手价 = 一口价 × taobao_discount × tax_factor
+    #     安全线 = jingya_untaxed_price × (1 + min_profit)
+    #     倒挂安全比例 = (到手价 - 安全线) / 安全线
+    mask_has_jingya = df_cmp["jingya_untaxed_price"].notna() & (df_cmp["jingya_untaxed_price"] > 0)
+    df_cmp["倒挂安全比例"] = pd.NA
+    net_price  = df_cmp.loc[mask_has_jingya, "一口价"] * taobao_discount * tax_factor
+    safe_line  = df_cmp.loc[mask_has_jingya, "jingya_untaxed_price"] * (1 + min_profit)
+    df_cmp.loc[mask_has_jingya, "倒挂安全比例"] = ((net_price - safe_line) / safe_line).round(4)
+
+    # 11) 筛选需要输出的行
+    has_diff       = df_cmp["差异百分比"].notna() & (df_cmp["差异百分比"].abs() > price_diff_threshold)
+    is_inverted    = df_cmp["倒挂安全比例"].notna() & (df_cmp["倒挂安全比例"] <= 0)
+    no_jingya      = df_cmp["jingya_untaxed_price"].isna()  # 无法验证利润
+    df_diff = df_cmp[has_diff | is_inverted | no_jingya].copy()
+
+    logger.info(
+        f"输出行数: {len(df_diff)} "
+        f"（价格偏差: {has_diff.sum()}, 倒挂: {is_inverted.sum()}, DB缺失未税价: {no_jingya.sum()}）"
+    )
+    if df_diff.empty:
+        logger.info("无问题商品，跳过输出。")
+        return
+
+    # 12) 排序：倒挂行优先，其次按差异百分比绝对值降序
+    df_diff["_inv_flag"]  = (~df_diff["倒挂安全比例"].isna()) & (df_diff["倒挂安全比例"] <= 0)
+    df_diff["_abs_diff"]  = df_diff["差异百分比"].fillna(0).abs()
+    df_diff = df_diff.sort_values(["_inv_flag", "_abs_diff"], ascending=[False, False])
+    df_diff = df_diff.drop(columns=["_inv_flag", "_abs_diff"])
+
+    # 13) 整理输出列
+    out_cols = [
+        "宝贝标题", "channel_product_id", "product_code",
+        "一口价", "taobao_store_price", "jingya_untaxed_price",
+        "差异百分比", "倒挂安全比例",
+    ]
+    if not title_col:
+        out_cols = [c for c in out_cols if c != "宝贝标题"]
+    df_out = df_diff[[c for c in out_cols if c in df_diff.columns]].copy()
+    df_out["channel_product_id"] = df_out["channel_product_id"].astype(str)
+
+    # 14) 写 Excel + 高亮倒挂行
+    out_path = output_dir / f"{Path(file_path).stem}{suffix}.xlsx"
+    _write_diff_excel_with_highlight(df_out, out_path)
+    logger.info(f"差价报告已生成: {out_path} | rows={len(df_out)}")
+
+
+def compare_price_vs_db_bulk(
+    brand: str,
+    input_dir: str,
+    output_dir: str,
+    suffix: str = "_差价",
+    price_diff_threshold: float = 0.0,
+    blacklist_excel_file: str | None = None,
+    taobao_discount: float = 0.85,
+    tax_factor: float = 0.9,
+    min_profit: float = 0.03,
+):
+    """
+    批量比较店铺 Excel 的一口价 与数据库价格的差异，同时检查倒挂风险。
+
+    Excel 格式（淘宝导出）：
+      - 宝贝标题/宝贝ID/一口价 只在每款的第一行出现，其余行为空（向下填充）
+      - sku规格 格式为 "product_code,size[,]"，每 SKU 一行
+
+    输出列（每个输入文件对应一个输出 Excel）：
+      宝贝标题 | channel_product_id | product_code | 一口价
+      | taobao_store_price | jingya_untaxed_price | 差异百分比 | 倒挂安全比例
+
+    输出行条件（满足其一即输出）：
+      - |差异百分比| > price_diff_threshold
+      - 倒挂安全比例 ≤ 0（到手价已低于未税成本线）
+      - DB 中缺少 jingya_untaxed_price（无法验证利润）
+
+    排序：倒挂行排最前，其次按差异百分比绝对值降序。
+    倒挂行高亮红色。
+
+    参数：
+      brand                  品牌 key（小写）
+      input_dir              存放店铺导出 Excel 的目录
+      output_dir             输出报告的目录
+      suffix                 输出文件名后缀，默认 "_差价"
+      price_diff_threshold   差异绝对值超过该百分比才输出（默认 0.0 = 全部差异）
+      blacklist_excel_file   黑名单 Excel 路径（可选）
+      taobao_discount        淘宝平台扣点（默认 0.85）
+      tax_factor             关税/税费系数（默认 0.9）
+      min_profit             最低利润率要求（默认 0.03 = 3%）
+    """
+    brand = brand.lower().strip()
+    if brand not in BRAND_CONFIG:
+        raise ValueError(f"未知品牌：{brand}")
+    cfg   = BRAND_CONFIG[brand]
+    table = cfg["TABLE_NAME"]
+    pg    = cfg["PGSQL_CONFIG"]
+
+    input_dir  = Path(input_dir)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    excel_files = list(input_dir.glob("*.xlsx"))
+    if not excel_files:
+        print(f"⚠ 没找到任何 Excel 文件: {input_dir}")
+        return
+
+    blacklist_codes = _load_blacklist_codes(blacklist_excel_file)
+    logger = _get_logger(f"price_compare.{brand}")
+    logger.info(f"共发现 {len(excel_files)} 个输入文件 | 品牌: {brand} | 表: {table}")
+    logger.info(
+        f"差异阈值: {price_diff_threshold}% | 黑名单: {len(blacklist_codes)} 条 | "
+        f"折扣系数: {taobao_discount} × {tax_factor} | 最低利润: {min_profit*100:.0f}%"
+    )
+
+    for f in excel_files:
+        try:
+            logger.info(f"\n[START] 处理文件: {f.name}")
+            _compare_price_vs_db_single(
+                file_path=str(f),
+                output_dir=output_dir,
+                table=table,
+                pgsql_config=pg,
+                suffix=suffix,
+                price_diff_threshold=price_diff_threshold,
+                blacklist_codes=blacklist_codes,
+                taobao_discount=taobao_discount,
+                tax_factor=tax_factor,
+                min_profit=min_profit,
+                logger=logger,
+            )
+        except Exception as e:
+            logger.error(f"处理 {f.name} 失败: {e}")
+            import traceback
+            traceback.print_exc()
+
+    logger.info(f"\n✅ 所有文件处理完成。输出路径: {output_dir}")
+
+
 # ===== 新增：批量导出 SKU 库存 =====
 def generate_stock_excels_bulk(
     brand: str,
