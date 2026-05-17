@@ -93,7 +93,8 @@ _face_cascade = cv2.CascadeClassifier(
 
 def _load_pose_model():
     from ultralytics import YOLO
-    return YOLO("yolov8n-pose.pt")
+    _models_dir = Path(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))) / "models"
+    return YOLO(str(_models_dir / "yolov8n-pose.pt"))
 
 
 def _detect_face(gray: np.ndarray) -> tuple[int, int, int, int] | None:

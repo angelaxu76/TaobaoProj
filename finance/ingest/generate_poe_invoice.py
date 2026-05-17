@@ -9,7 +9,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt, Cm
 
 from config import PGSQL_CONFIG
-from finance_config import FINANCE_EES, MARGIN_RATE, VAT_RATE
+from finance.finance_config import FINANCE_EES, MARGIN_RATE, VAT_RATE
 
 # 签名常量（generate_poe_ees_pdf_v2 按名称 import，保留在此；值来自 finance_config）
 _sig = FINANCE_EES["signature"]

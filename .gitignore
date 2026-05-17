@@ -15,6 +15,12 @@ __pycache__/
 *.tmp
 *.bak
 
+# ML models (auto-downloaded by ultralytics)
+models/*.pt
+
+# IDE session files
+*.session.sql
+
 # System
 .DS_Store
 Thumbs.db

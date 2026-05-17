@@ -102,6 +102,7 @@ def classify_images(
         print(f"未找到任何图片：{input_dir}")
         return
 
+    _models_dir = Path(__file__).resolve().parents[2] / "models"
     if require_head:
         model_name = "yolov8n-pose.pt"  # 姿态估计，检测头部关键点
         print(f"模式：require_head=True（使用姿态估计模型 {model_name}）")
@@ -110,7 +111,7 @@ def classify_images(
         print(f"模式：require_head=False（使用目标检测模型 {model_name}）")
 
     print(f"共找到 {len(images)} 张图片，加载模型中...")
-    model = YOLO(model_name)  # 首次运行自动下载
+    model = YOLO(str(_models_dir / model_name))
 
     person_count = detail_count = fail_count = 0
 

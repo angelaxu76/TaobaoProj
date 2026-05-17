@@ -2,7 +2,7 @@ from pathlib import Path
 from datetime import datetime
 
 from docx import Document
-from finance_config import FINANCE_EES
+from finance.finance_config import FINANCE_EES
 
 
 def generate_payment_receipt_docx(

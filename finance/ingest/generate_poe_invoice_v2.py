@@ -10,7 +10,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt, Cm
 
 from config import PGSQL_CONFIG          # 和 manage_export_shipments_costs 一样的数据库配置
-from finance_config import FINANCE_EES, MARGIN_RATE, VAT_RATE   # 出口方 / 收货方信息 + 定价参数
+from finance.finance_config import FINANCE_EES, MARGIN_RATE, VAT_RATE   # 出口方 / 收货方信息 + 定价参数
 
 # 签名相关（和 anna_monthly_reports_v2 对齐）
 SIGN_NAME = "XIAODAN MA"

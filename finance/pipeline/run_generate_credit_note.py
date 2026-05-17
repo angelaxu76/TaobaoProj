@@ -26,7 +26,7 @@ import psycopg2
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config import PGSQL_CONFIG
-from finance_config import MARGIN_RATE
+from finance.finance_config import MARGIN_RATE
 
 # ============================================================
 # CONFIG

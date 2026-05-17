@@ -26,7 +26,7 @@ from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 
 # ------- 项目内配置 -------
 from config import PGSQL_CONFIG
-from finance_config import FINANCE_EES
+from finance.finance_config import FINANCE_EES
 
 # 复用发票模块的逻辑，确保金额完全一致
 from finance.ingest.generate_poe_invoice import (

@@ -17,7 +17,9 @@
       "Bash(xargs sed -i 's/product_analytics/analytics/g')",
       "Bash(git rm channels/taobao/utils/prepare_utils_extended.py)",
       "Bash(xargs sed -i 's/from common\\\\.publication\\\\.export_low_stock_products/from channels.jingya.maintenance.export_low_stock_products/g')",
-      "Bash(git rm common/publication/export_low_stock_products.py)"
+      "Bash(git rm common/publication/export_low_stock_products.py)",
+      "Bash(Select-Object Name, Length)",
+      "Bash(git rm *)"
     ]
   }
 }

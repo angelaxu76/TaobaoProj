@@ -30,7 +30,7 @@ from reportlab.lib import colors
 def _load_finance_ees():
     # Expect finance_config.py in the same folder as this script OR in PYTHONPATH
     here = Path(__file__).resolve().parent
-    local_cfg = here / "finance_config.py"
+    local_cfg = here.parent / "finance_config.py"
     if local_cfg.exists():
         spec = importlib.util.spec_from_file_location("finance_config", str(local_cfg))
         mod = importlib.util.module_from_spec(spec)
@@ -245,7 +245,7 @@ from datetime import date
 from pathlib import Path
 from typing import Optional
 
-from finance_config import FINANCE_EES
+from finance.finance_config import FINANCE_EES
 
 
 def generate_pi_simple(
