@@ -20,9 +20,7 @@ import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-
-from config import BRAND_CONFIG
+from config import BRAND_CONFIG, GLOBAL_CHROMEDRIVER_PATH
 
 # ===== 配置 =====
 REISS_CFG = BRAND_CONFIG["reiss"]  # 专用
@@ -40,7 +38,7 @@ def make_driver(headless: bool = HEADLESS):
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/120.0.0.0 Safari/537.36"
     )
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    driver = webdriver.Chrome(service=Service(GLOBAL_CHROMEDRIVER_PATH), options=options)
     return driver
 
 # ===== 工具函数 =====

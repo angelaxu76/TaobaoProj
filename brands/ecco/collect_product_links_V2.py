@@ -4,7 +4,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from pathlib import Path
-from config import ECCO, ensure_all_dirs
+from config import ECCO, ensure_all_dirs, GLOBAL_CHROMEDRIVER_PATH
+from selenium.webdriver.chrome.service import Service
 import time
 import sys
 
@@ -137,7 +138,7 @@ def ecco_get_links():
     options.add_argument("--disable-gpu")
     options.add_argument("--start-maximized")
 
-    driver = webdriver.Chrome(options=options)
+    driver = webdriver.Chrome(service=Service(GLOBAL_CHROMEDRIVER_PATH), options=options)
 
     try:
         all_links = set()

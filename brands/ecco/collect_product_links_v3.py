@@ -8,7 +8,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from config import ECCO, ensure_all_dirs
+from config import ECCO, ensure_all_dirs, GLOBAL_CHROMEDRIVER_PATH
+from selenium.webdriver.chrome.service import Service
 
 # 解决 Windows 控制台中文输出问题
 try:
@@ -55,7 +56,7 @@ def build_driver() -> webdriver.Chrome:
     }
     options.add_experimental_option("prefs", prefs)
 
-    driver = webdriver.Chrome(options=options)
+    driver = webdriver.Chrome(service=Service(GLOBAL_CHROMEDRIVER_PATH), options=options)
     return driver
 
 

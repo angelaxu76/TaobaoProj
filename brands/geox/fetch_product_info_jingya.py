@@ -12,7 +12,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from config import SIZE_RANGE_CONFIG, GEOX, DEFAULT_STOCK_COUNT
+from config import SIZE_RANGE_CONFIG, GEOX, DEFAULT_STOCK_COUNT, GLOBAL_CHROMEDRIVER_PATH
 from common.ingest.txt_writer import format_txt
 from common.product.category_utils import infer_style_category
 
@@ -27,6 +27,7 @@ TXT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ===================== WebDriver 创建（固定使用已存在的 Chrome Profile） =====================
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import SessionNotCreatedException
 
 # ⚠️ 重要：把 PROFILE_ROOT 指向 “非默认目录” 的根（避免 DevToolsActivePort 报错）
@@ -79,7 +80,7 @@ def create_driver(headless: bool = False) -> webdriver.Chrome:
     print("Using profile-directory =", PROFILE_NAME)
     try:
         opts = _build_options(headless=headless)
-        driver = webdriver.Chrome(options=opts)
+        driver = webdriver.Chrome(service=Service(GLOBAL_CHROMEDRIVER_PATH), options=opts)
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined});")
         print("Chrome =", driver.capabilities.get("browserVersion"),
               "| Chromedriver =", driver.capabilities.get("chrome", {}).get("chromedriverVersion"))
@@ -89,7 +90,7 @@ def create_driver(headless: bool = False) -> webdriver.Chrome:
         _kill_chrome()
         time.sleep(0.5)
         opts = _build_options(headless=headless)
-        driver = webdriver.Chrome(options=opts)
+        driver = webdriver.Chrome(service=Service(GLOBAL_CHROMEDRIVER_PATH), options=opts)
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined});")
         print("Chrome =", driver.capabilities.get("browserVersion"),
               "| Chromedriver =", driver.capabilities.get("chrome", {}).get("chromedriverVersion"))
@@ -115,7 +116,7 @@ def create_worker_driver() -> webdriver.Chrome:
     )
     # DOMContentLoaded 即返回，减少等待
     o.set_capability("pageLoadStrategy", "eager")
-    d = webdriver.Chrome(options=o)
+    d = webdriver.Chrome(service=Service(GLOBAL_CHROMEDRIVER_PATH), options=o)
     d.execute_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined});")
     return d
 

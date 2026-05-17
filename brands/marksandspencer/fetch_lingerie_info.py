@@ -21,6 +21,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -62,7 +63,7 @@ def create_driver() -> webdriver.Chrome:
     chrome_options.add_argument("--disable-features=Translate,MediaRouter,AutofillServerCommunication")
     chrome_options.add_argument("--blink-settings=imagesEnabled=false")
 
-    driver = webdriver.Chrome(options=chrome_options)
+    driver = webdriver.Chrome(service=Service(CHROMEDRIVER_PATH), options=chrome_options)
     try:
         caps = driver.capabilities
         print("Chrome:", caps.get("browserVersion"))

@@ -5,8 +5,20 @@ API_KEYS = {
     "DEEPL": "35bb3d6c-c839-49f6-9a8f-7e00aecf24eb",
 }
 
-# 所有浏览器 driver 统一放到一个目录；迁移到新机器时优先改这里。
-DRIVER_DIR = Path(r"D:\TB\drivers")
+# 按优先级检测 driver 目录：先找共享目录（VMware Shared Folders），再用本地目录。
+# 新增虚拟机时只需把 chromedriver.exe 放到共享目录，无需每台机器单独配置。
+_DRIVER_DIR_CANDIDATES = [
+    Path(r"\\vmware-host\Shared Folders\shared"),
+    Path(r"D:\TB\drivers"),
+]
+
+def _pick_driver_dir() -> Path:
+    for p in _DRIVER_DIR_CANDIDATES:
+        if (p / "chromedriver.exe").exists():
+            return p
+    return _DRIVER_DIR_CANDIDATES[-1]   # 找不到时返回最后一个，运行时再报错
+
+DRIVER_DIR = _pick_driver_dir()
 GLOBAL_CHROMEDRIVER_PATH = str(DRIVER_DIR / "chromedriver.exe")
 GLOBAL_GECKODRIVER_PATH = str(DRIVER_DIR / "geckodriver.exe")
 

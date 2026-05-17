@@ -14,7 +14,7 @@ from config import CAMPER, SIZE_RANGE_CONFIG, GLOBAL_CHROMEDRIVER_PATH  # ✅ �
 from common.ingest.txt_writer import format_txt
 from common.product.category_utils import infer_style_category
 from selenium import webdriver
-driver = webdriver.Chrome()
+from selenium.webdriver.chrome.service import Service
 
 CHROMEDRIVER_PATH = GLOBAL_CHROMEDRIVER_PATH
 PRODUCT_URLS_FILE = CAMPER["LINKS_FILE"]
@@ -56,8 +56,7 @@ def create_driver():
     chrome_options.add_argument("--disable-features=Translate,MediaRouter,AutofillServerCommunication")
     chrome_options.add_argument("--blink-settings=imagesEnabled=false")
 
-    # ✅ 不再手动指定路径，也不使用 chromedriver_autoinstaller
-    driver = webdriver.Chrome(options=chrome_options)
+    driver = webdriver.Chrome(service=Service(CHROMEDRIVER_PATH), options=chrome_options)
 
     # 打印版本确认匹配
     try:

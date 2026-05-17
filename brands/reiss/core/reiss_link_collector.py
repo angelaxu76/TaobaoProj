@@ -20,7 +20,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from webdriver_manager.chrome import ChromeDriverManager
+from config import GLOBAL_CHROMEDRIVER_PATH
 
 # ==== 可从 config 读取，没配也能跑 ====
 try:
@@ -51,7 +51,7 @@ def _new_driver(headless: bool = HEADLESS_DEFAULT) -> webdriver.Chrome:
     # options.add_argument("--enable-unsafe-swiftshader")
     # options.add_argument("--use-angle=swiftshader")
 
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    driver = webdriver.Chrome(service=Service(GLOBAL_CHROMEDRIVER_PATH), options=options)
     driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
         "source": "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});"
     })
@@ -183,7 +183,7 @@ def reiss_get_links(
             options.add_experimental_option("useAutomationExtension", False)
             options.add_argument("--enable-unsafe-swiftshader")
             options.add_argument("--use-angle=swiftshader")
-            drv = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+            drv = webdriver.Chrome(service=Service(GLOBAL_CHROMEDRIVER_PATH), options=options)
             drv.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
                 "source": "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});"
             })

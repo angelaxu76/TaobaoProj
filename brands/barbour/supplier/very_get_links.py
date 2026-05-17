@@ -19,7 +19,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 
 from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
-from config import BARBOUR
+from config import BARBOUR, GLOBAL_CHROMEDRIVER_PATH
+from selenium.webdriver.chrome.service import Service
 
 # ===== 站点与输出 =====
 BASE = "https://www.very.co.uk"
@@ -97,7 +98,7 @@ def _build_driver() -> webdriver.Chrome:
     opts.add_argument("--disable-dev-shm-usage")
     # 如有兼容性问题，可启用：
     # opts.add_argument("--remote-allow-origins=*")
-    return webdriver.Chrome(options=opts)
+    return webdriver.Chrome(service=Service(GLOBAL_CHROMEDRIVER_PATH), options=opts)
 
 # ===== 交互动作 =====
 def _accept_cookies(driver):

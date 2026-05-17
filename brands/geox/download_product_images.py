@@ -40,7 +40,7 @@ def create_driver():
     chrome_options.add_argument("--disable-gcm-driver")
     chrome_options.add_argument("--disable-features=Translate,MediaRouter,AutofillServerCommunication")
     chrome_options.add_argument("--blink-settings=imagesEnabled=false")
-    driver = webdriver.Chrome(options=chrome_options)
+    driver = webdriver.Chrome(service=Service(CHROMEDRIVER_PATH), options=chrome_options)
     return driver
 
 def download_image(url, path):

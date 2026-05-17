@@ -21,7 +21,8 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
 # === 你的项目内配置 ===
-from config import ECCO, ensure_all_dirs
+from config import ECCO, ensure_all_dirs, GLOBAL_CHROMEDRIVER_PATH
+from selenium.webdriver.chrome.service import Service
 
 # ---------------- 基本配置 ----------------
 PRODUCT_LINKS_FILE = ECCO["BASE"] / "publication" / "product_links.txt"
@@ -33,33 +34,13 @@ MAX_WORKERS = 5
 
 ensure_all_dirs(IMAGE_DIR)
 
-# ============== WebDriver（稳）=============
-try:
-    from selenium.webdriver.chrome.service import Service
-    from webdriver_manager.chrome import ChromeDriverManager
-except Exception:
-    ChromeDriverManager = None
-    Service = None
-
-
+# ============== WebDriver ==============
 def create_driver():
     opts = Options()
     for a in ["--headless=new", "--disable-gpu", "--no-sandbox",
               "--disable-dev-shm-usage", "--window-size=1920x1080"]:
         opts.add_argument(a)
-
-    # A. Selenium Manager
-    try:
-        return webdriver.Chrome(options=opts)
-    except Exception as e:
-        print(f"[WARN] Selenium Manager 启动失败：{e}")
-
-    # B. webdriver-manager 回退
-    if ChromeDriverManager and Service:
-        driver_path = ChromeDriverManager().install()
-        return webdriver.Chrome(service=Service(driver_path), options=opts)
-
-    raise RuntimeError("无法创建 Chrome WebDriver。请安装 selenium>=4.6；必要时安装 webdriver-manager。")
+    return webdriver.Chrome(service=Service(GLOBAL_CHROMEDRIVER_PATH), options=opts)
 
 
 # ============== 工具函数：srcset / 解析 / 过滤 ==============

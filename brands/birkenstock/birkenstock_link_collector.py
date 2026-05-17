@@ -2,7 +2,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from pathlib import Path
-from config import BIRKENSTOCK, ensure_all_dirs
+from config import BIRKENSTOCK, ensure_all_dirs, GLOBAL_CHROMEDRIVER_PATH
+from selenium.webdriver.chrome.service import Service
 import time
 
 BASE_URLS = [
@@ -31,7 +32,7 @@ def main():
     # options.add_argument("--headless")  # 显示浏览器窗口，方便手动加载
     options.add_argument("--disable-gpu")
     options.add_argument("--start-maximized")
-    driver = webdriver.Chrome(options=options)
+    driver = webdriver.Chrome(service=Service(GLOBAL_CHROMEDRIVER_PATH), options=options)
 
     try:
         all_links = set()
