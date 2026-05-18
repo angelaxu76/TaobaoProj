@@ -9,9 +9,12 @@ import shutil
 PATTERN = re.compile(r'^([A-Za-z0-9]{11})-[^-].*?_(\d+)\.(jpg|jpeg|png|webp)$', re.IGNORECASE)
 
 def group_and_rename_images(images_dir: Path, code_len: int = 11, overwrite: bool = True):
-    if not images_dir.exists() or not images_dir.is_dir():
-        print(f"❌ 目录不存在或不是文件夹：{images_dir}")
+    if images_dir.exists() and not images_dir.is_dir():
+        print(f"❌ 路径已存在但不是文件夹：{images_dir}")
         return
+    if not images_dir.exists():
+        images_dir.mkdir(parents=True, exist_ok=True)
+        print(f"📁 目录不存在，已自动创建：{images_dir}")
 
     # 收集：code -> [(seq_num:int, file_path:Path, ext:str)]
     bucket = {}
@@ -79,9 +82,12 @@ def group_by_strip_seq(images_dir: Path, overwrite: bool = True):
     SEQ_RE = re.compile(r'^(.+)_(\d+)$')
     images_dir = Path(images_dir)
 
-    if not images_dir.exists() or not images_dir.is_dir():
-        print(f"❌ 目录不存在或不是文件夹：{images_dir}")
+    if images_dir.exists() and not images_dir.is_dir():
+        print(f"❌ 路径已存在但不是文件夹：{images_dir}")
         return
+    if not images_dir.exists():
+        images_dir.mkdir(parents=True, exist_ok=True)
+        print(f"📁 目录不存在，已自动创建：{images_dir}")
 
     # 收集：group_key -> [(seq:int, path, ext)]
     bucket = {}
