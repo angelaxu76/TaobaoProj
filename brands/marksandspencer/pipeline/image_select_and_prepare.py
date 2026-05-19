@@ -15,46 +15,58 @@
 
 from cfg.brands.marksandspencer import MARKSANDSPENCER
 
+_PUB = MARKSANDSPENCER["BASE"] / "publication"
+
 # ══════════════════════════════════════════════════════════════════
 #  CONFIG — 按需修改
+#
+#  推荐流程：
+#    Step 0a  下载图片      → publication/image_download/
+#    Step 0c  抠图+补白底   → publication/image_process/
+#    Step 2b  分类（有/无人脸）
+#               有人脸  →  publication/classify/person/   ← Linkfox 换脸
+#               无人脸  →  publication/classify/detail/   ← 保留备用
+#
+#  所有目录均在 publication/ 下，清空时只需清这一个文件夹。
 # ══════════════════════════════════════════════════════════════════
 
 # ── 步骤开关 ──────────────────────────────────────────────────────
 RUN_0A_DOWNLOAD = True    # 按编码文件从数据库查询 URL 并下载图片
-RUN_0C_CUTOUT   = False    # rembg 抠图 + 去白毛边 + 补白正方形
-RUN_1_GROUP     = False    # 将图片按编码分组
-RUN_2A_SELECT   = False    # 将发布商品图片复制到 OUTPUT DIR
-RUN_2B_CLASSIFY = False    # 分类模特图 / 详情图
+RUN_0C_CUTOUT   = True    # rembg 抠图 + 去白毛边 + 补白正方形
+RUN_1_GROUP     = False    # 将图片按编码分组（新流程不需要）
+RUN_2A_SELECT   = False    # 将发布商品图片复制到 OUTPUT DIR（新流程不需要）
+RUN_2B_CLASSIFY = True    # 分类模特图（有人脸）/ 详情图（无人脸）
 
 # ── Step 0a：按编码下载 ───────────────────────────────────────────
-CODE_TXT_PATH = r"D:\TB\Products\marksandspencer\codes_to_download.txt"
+# 下载目录由 cfg 统一管理：publication/image_download/
+CODE_TXT_PATH = str(_PUB / "codes_to_download.txt")
 
 # ── Step 0c：抠图参数 ─────────────────────────────────────────────
-CUTOUT_MODEL       = "birefnet-fashion"   # 服装专用模型（比 general 更准）
-CUTOUT_AUTO_CUTOUT = False
-CUTOUT_WHITE_BG_SKIP = True              # 检测到白底则跳过，节省时间
-CUTOUT_TARGET_SIZE = 1500
-CUTOUT_MAX_WORKERS = 4
+CUTOUT_MODEL         = "birefnet-fashion"   # 服装专用模型（比 general 更准）
+CUTOUT_AUTO_CUTOUT   = True
+CUTOUT_WHITE_BG_SKIP = True                 # 检测到白底则跳过，节省时间
+CUTOUT_TARGET_SIZE   = 1500
+CUTOUT_MAX_WORKERS   = 4
 
-# ── Step 1：分组目录（列表，每个目录独立执行 group_by_strip_seq） ──
+# ── Step 1：分组目录（新流程已弃用，保留供临时手动使用） ────────────
 GROUP_DIRS = [
-    # str(MARKSANDSPENCER["IMAGE_PROCESS"]),
-    r"D:\TB\Products\marksandspencer\repulibcation\classify\person",
+    # str(_PUB / "image_process"),
 ]
 
-# ── Step 2a：选图路径 ─────────────────────────────────────────────
-SELECT_EXCEL_PATH        = r"D:\TB\Products\marksandspencer\repulibcation\publication_excels_outerwear\marksandspencer_男装_外套.xlsx"
+# ── Step 2a：选图路径（新流程已弃用） ────────────────────────────
+SELECT_EXCEL_PATH        = r""
 SELECT_DOWNLOADED_DIR    = str(MARKSANDSPENCER["IMAGE_PROCESS"])
 SELECT_PROCESSED_DIR     = str(MARKSANDSPENCER["IMAGE_PROCESS"])
-SELECT_READY_DIR         = str(MARKSANDSPENCER["OUTPUT_DIR"] / "images_selected")
-SELECT_NEED_PROCESS_DIR  = str(MARKSANDSPENCER["OUTPUT_DIR"] / "need_edit")
-SELECT_MISSING_TXT_PATH  = str(MARKSANDSPENCER["OUTPUT_DIR"] / "missing_codes.txt")
+SELECT_READY_DIR         = str(_PUB / "images_selected")
+SELECT_NEED_PROCESS_DIR  = str(_PUB / "need_edit")
+SELECT_MISSING_TXT_PATH  = str(_PUB / "missing_codes.txt")
 
 # ── Step 2b：分类参数 ─────────────────────────────────────────────
-CLASSIFY_INPUT_DIR    = r"D:\TB\Products\marksandspencer\repulibcation\images_selected"
-CLASSIFY_PERSON_DIR   = r"D:\TB\Products\marksandspencer\repulibcation\classify\person"
-CLASSIFY_DETAIL_DIR   = r"D:\TB\Products\marksandspencer\repulibcation\classify\detail"
-CLASSIFY_RECURSIVE    = True
+# 输入 = Step 0c 抠图输出目录；输出分两路
+CLASSIFY_INPUT_DIR    = str(MARKSANDSPENCER["IMAGE_PROCESS"])
+CLASSIFY_PERSON_DIR   = str(_PUB / "classify" / "person")   # 有人脸 → Linkfox 换脸
+CLASSIFY_DETAIL_DIR   = str(_PUB / "classify" / "detail")   # 无人脸 → 备用
+CLASSIFY_RECURSIVE    = False
 CLASSIFY_CONFIDENCE   = 0.4
 CLASSIFY_REQUIRE_HEAD = True    # True = 只有检测到头部才算人物图
 CLASSIFY_HEAD_CONF    = 0.3     # 头部关键点置信度阈值（降低可减少漏检）
