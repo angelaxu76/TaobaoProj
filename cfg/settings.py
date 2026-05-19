@@ -22,8 +22,78 @@ def _pick_driver_dir() -> Path:
             pass  # 网络路径不可达（如 VMware 共享目录认证失败），跳过
     return _DRIVER_DIR_CANDIDATES[-1]   # 找不到时返回最后一个，运行时再报错
 
+
+def _resolve_chromedriver_path() -> str:
+    """
+    返回可用的 chromedriver.exe 路径。
+    优先使用手动放置的 driver；若找不到或版本不匹配，
+    自动用 webdriver-manager 下载与当前 Chrome 匹配的版本。
+    """
+    import subprocess, re
+
+    def _chrome_major() -> int | None:
+        try:
+            import winreg
+            for root in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+                try:
+                    key = winreg.OpenKey(root, r"SOFTWARE\Google\Chrome\BLBeacon")
+                    ver, _ = winreg.QueryValueEx(key, "version")
+                    m = re.match(r"(\d+)", ver)
+                    if m:
+                        return int(m.group(1))
+                except OSError:
+                    pass
+        except Exception:
+            pass
+        for exe in [r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"]:
+            if Path(exe).exists():
+                try:
+                    out = subprocess.check_output([exe, "--version"], timeout=5).decode("utf-8", "ignore")
+                    m = re.search(r"\b(\d+)\b", out)
+                    if m:
+                        return int(m.group(1))
+                except Exception:
+                    pass
+        return None
+
+    def _driver_major(path: str) -> int | None:
+        try:
+            out = subprocess.check_output([path, "--version"], timeout=5).decode("utf-8", "ignore")
+            m = re.search(r"\b(\d+)\b", out)
+            return int(m.group(1)) if m else None
+        except Exception:
+            return None
+
+    # 1) 检查手动放置的 driver 是否与当前 Chrome 版本匹配
+    for p in _DRIVER_DIR_CANDIDATES:
+        candidate = p / "chromedriver.exe"
+        try:
+            if candidate.exists():
+                chrome_v = _chrome_major()
+                driver_v = _driver_major(str(candidate))
+                if chrome_v and driver_v and chrome_v == driver_v:
+                    return str(candidate)
+                if chrome_v is None or driver_v is None:
+                    return str(candidate)  # 无法检测版本时沿用
+        except OSError:
+            pass
+
+    # 2) 自动下载匹配版本
+    try:
+        from webdriver_manager.chrome import ChromeDriverManager
+        path = ChromeDriverManager().install()
+        print(f"[settings] webdriver-manager downloaded ChromeDriver: {path}")
+        return path
+    except Exception as e:
+        print(f"[settings] webdriver-manager failed: {e}, falling back to default path")
+
+    # 3) 兜底
+    return str(_DRIVER_DIR_CANDIDATES[-1] / "chromedriver.exe")
+
+
 DRIVER_DIR = _pick_driver_dir()
-GLOBAL_CHROMEDRIVER_PATH = str(DRIVER_DIR / "chromedriver.exe")
+GLOBAL_CHROMEDRIVER_PATH = _resolve_chromedriver_path()
 GLOBAL_GECKODRIVER_PATH = str(DRIVER_DIR / "geckodriver.exe")
 
 DEFAULT_STOCK_COUNT = 10

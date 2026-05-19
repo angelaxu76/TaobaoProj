@@ -20,7 +20,9 @@
       "Bash(git rm common/publication/export_low_stock_products.py)",
       "Bash(Select-Object Name, Length)",
       "Bash(git rm *)",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "PowerShell(python -c \"import webdriver_manager; print\\(webdriver_manager.__version__\\)\" 2>&1)",
+      "PowerShell(python -c \"from cfg.settings import GLOBAL_CHROMEDRIVER_PATH; print\\('GLOBAL_CHROMEDRIVER_PATH =', GLOBAL_CHROMEDRIVER_PATH\\)\" 2>&1)"
     ]
   }
 }
