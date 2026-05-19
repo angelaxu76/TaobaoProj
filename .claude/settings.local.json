@@ -22,7 +22,10 @@
       "Bash(git rm *)",
       "Bash(python3 *)",
       "PowerShell(python -c \"import webdriver_manager; print\\(webdriver_manager.__version__\\)\" 2>&1)",
-      "PowerShell(python -c \"from cfg.settings import GLOBAL_CHROMEDRIVER_PATH; print\\('GLOBAL_CHROMEDRIVER_PATH =', GLOBAL_CHROMEDRIVER_PATH\\)\" 2>&1)"
+      "PowerShell(python -c \"from cfg.settings import GLOBAL_CHROMEDRIVER_PATH; print\\('GLOBAL_CHROMEDRIVER_PATH =', GLOBAL_CHROMEDRIVER_PATH\\)\" 2>&1)",
+      "Bash(git reset *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }
