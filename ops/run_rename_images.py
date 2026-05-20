@@ -19,7 +19,7 @@ from helper.image.add_shot_keyword import add_shot_keyword
 # 运行参数（按需修改）
 # ============================================================
 
-INPUT_DIR  = r"D:\TB\Products\barbour\repulibcation\classify\person"
+INPUT_DIR  = r"D:\TB\Products\marksandspencer\publication\classify\target"
 OUTPUT_DIR = INPUT_DIR          # 与 INPUT_DIR 相同则就地重命名
 KEYWORD    = "front"            # front / flat / detail / ...
 DRY_RUN    = False               # True = 仅预览；False = 实际执行

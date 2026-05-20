@@ -9,7 +9,7 @@ from pathlib import Path
 # ============================================================
 # 1. 品牌根目录（切换品牌改这一行）
 # ============================================================
-BRAND_ROOT = Path(r"D:\TB\Products\barbour\repulibcation")
+BRAND_ROOT = Path(r"D:\TB\Products\marksandspencer\publication")
 # ============================================================
 
 # 以下是从 BRAND_ROOT 自动推导的标准子路径，一般不需要改动
