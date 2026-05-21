@@ -39,7 +39,7 @@ from cfg.brands.marksandspencer import MARKSANDSPENCER
 # ══════════════════════════════════════════════════════════════════
 
 # ── 步骤开关 ──────────────────────────────────────────────────────
-RUN_1_MERGE        = True   # 图片横向合并
+RUN_1_MERGE        = False   # 图片横向合并
 RUN_2_HTML_DES     = True   # 生成详情卡 HTML
 RUN_3_HTML_FIRST   = True   # 生成首页 HTML
 RUN_4_RENDER_DES   = True   # 渲染详情 HTML → 图片

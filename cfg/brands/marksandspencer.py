@@ -9,8 +9,8 @@ MARKSANDSPENCER = {
     "BASE": MARKSANDSPENCER_BASE,
     "GEI_DIR": GEI_SHARED_BASE / "marksandspencer",
     "FEATURE_DELIMITER": "|",
-    "IMAGE_FIRST_PRIORITY": ["F", "C", "L", "T"],
-    "IMAGE_DES_PRIORITY": ["C", "F", "L", "T"],
+    "IMAGE_FIRST_PRIORITY": ["front_1_faceswap", "front_2_faceswap", "1", "2"],
+    "IMAGE_DES_PRIORITY": ["front_2_faceswap", "1", "2", "3"],
     # ── 文本 ──────────────────────────────────────────────────────
     "TXT_DIR": _PUB / "TXT",
     # ── 图片处理流程（均在 publication/ 下，整批清理只需清此目录）──
