@@ -365,13 +365,19 @@ def extract_code(soup, url="") -> str:
             for item in items:
                 for k in ("sku", "mpn", "productID", "productId"):
                     v = str(item.get(k, "")).strip()
-                    if v:
-                        m = re.search(r"(\d{6})\D*(\d{5})", v)
-                        if m:
-                            return f"{m.group(1)}{m.group(2)}"
-                        m2 = re.search(r"\b(\d{10,12})\b", v)
-                        if m2:
-                            return m2.group(1)
+                    if not v:
+                        continue
+                    # EAN-13 条形码（纯13位数字）会被正则误截为11位编码，跳过
+                    if re.fullmatch(r"\d{13}", v):
+                        continue
+                    # \D+ 要求6位与5位之间必须有分隔符，防止匹配EAN子串
+                    m = re.search(r"(\d{6})\D+(\d{5})", v)
+                    if m:
+                        return f"{m.group(1)}{m.group(2)}"
+                    # 无分隔符的纯数字编码（如 83071400001）由此兜底
+                    m2 = re.search(r"\b(\d{10,12})\b", v)
+                    if m2:
+                        return m2.group(1)
         except Exception:
             pass
     # B. 可见“Product number:”老模板

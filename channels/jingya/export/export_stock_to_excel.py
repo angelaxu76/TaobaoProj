@@ -122,6 +122,21 @@ def export_stock_excel(
         df = df[~df["product_code"].astype(str).str.strip().str.upper().isin(exclude_codes)]
         print(f"[INFO] 白名单排除：{before - len(df)} 条（剩余 {len(df)} 条）")
 
+    # 1c) 安全校验：已发布商品库存全零比例检查
+    _ZERO_STOCK_ABORT_THRESHOLD = 0.70  # 超过70%的已发布商品库存全零时中止
+    _MIN_PRODUCTS_FOR_CHECK = 10        # 商品数量太少时不做检查（避免误判新品牌）
+    if not df.empty:
+        df["stock_count"] = pd.to_numeric(df["stock_count"], errors="coerce").fillna(0)
+        product_max_stock = df.groupby("product_code")["stock_count"].max()
+        total_products = len(product_max_stock)
+        zero_products = int((product_max_stock == 0).sum())
+        zero_rate = zero_products / total_products if total_products > 0 else 0
+        print(f"[CHECK] 已绑定商品 {total_products} 个 / 全尺码库存为0 {zero_products} 个 ({zero_rate:.0%})")
+        if total_products >= _MIN_PRODUCTS_FOR_CHECK and zero_rate >= _ZERO_STOCK_ABORT_THRESHOLD:
+            print(f"[🚨 中止] 库存全零商品占比 {zero_rate:.0%}，超过阈值 {_ZERO_STOCK_ABORT_THRESHOLD:.0%}，疑似数据异常")
+            print(f"[🚨 中止] 已取消导出，请检查数据库库存数据后手动重新运行")
+            return ""
+
     # 2) 清洗
     if df.empty:
         # 仍生成一个只有表头的空文件

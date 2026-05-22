@@ -149,7 +149,28 @@ def import_txt_to_db_supplier(brand_name: str):
             untaxed, retail
         ))
 
-    # 3️⃣ 入库
+    # 3️⃣ 安全校验：TRUNCATE 前检查编码重叠率，防止抓取数据错误导致库存清零
+    _OVERLAP_THRESHOLD = 0.25  # 低于25%视为异常
+    _MIN_DB_CODES = 30         # 数据库编码数量低于此值时跳过检查（首次导入）
+    new_codes = {r[0] for r in enriched if r[0]}
+    _conn_check = psycopg2.connect(**pg_config)
+    with _conn_check:
+        with _conn_check.cursor() as _cur:
+            _cur.execute(f"SELECT DISTINCT product_code FROM {table_name} WHERE product_code IS NOT NULL")
+            existing_db_codes = {row[0] for row in _cur.fetchall()}
+    _conn_check.close()
+    if len(existing_db_codes) >= _MIN_DB_CODES:
+        overlap = len(new_codes & existing_db_codes)
+        rate = overlap / len(existing_db_codes)
+        print(f"📊 编码重叠检查：TXT {len(new_codes)} 个 / DB {len(existing_db_codes)} 个 / 重叠 {overlap} ({rate:.0%})")
+        if rate < _OVERLAP_THRESHOLD:
+            print(f"🚨 导入中止：编码重叠率 {rate:.0%} 低于安全阈值 {_OVERLAP_THRESHOLD:.0%}，疑似抓取数据异常")
+            print(f"   TXT 编码样例: {sorted(new_codes)[:5]}")
+            print(f"   DB  编码样例: {sorted(existing_db_codes)[:5]}")
+            log_fp.close()
+            return
+
+    # 4️⃣ 入库
     conn = psycopg2.connect(**pg_config)
     with conn:
         with conn.cursor() as cur:
