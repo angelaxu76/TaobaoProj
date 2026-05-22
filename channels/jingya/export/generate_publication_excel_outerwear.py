@@ -272,16 +272,16 @@ def generate_publication_excels_clothing(
         品名_local, 海关款式_local = _name_and_customs_by_cat(cat_cn)
 
         rows.append({
-            "英文标题": title_en,
-            "标题": title_cn,
+            "Product Name EN": title_en,
+            "商品名称": title_cn,
             "商品编码": code,
-            "价格": rmb_price,
+            "淘宝价格": rmb_price,
             "上市年份季节": 上市年份季节,
             "版型": 版型, "面料": 面料, "衣门襟": 衣门襟, "厚薄": 厚薄, "领口设计": 领口设计,
             "地区国家": 地区国家, "发货时间": 发货时间, "运费模版": 运费模版,
             "品牌": brand, "性别": gender_cn, "类目": cat_cn,
             "品名": 品名_local, "海关款式": 海关款式_local,
-            "商品链接": r.get("product_url") or extract_field("Source URL", content),
+            "Offer URL": r.get("product_url") or extract_field("Source URL", content),
         })
 
     df_all = pd.DataFrame(rows)

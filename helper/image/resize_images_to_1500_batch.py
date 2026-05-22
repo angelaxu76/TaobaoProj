@@ -3,8 +3,8 @@ import os
 from pathlib import Path
 
 # === 配置项 ===
-IMAGE_DIR = Path(r"G:\temp\target")  # 替换为你的目录
-MAX_WIDTH = 1000
+IMAGE_DIR = Path(r"D:\TB\Products\marksandspencer\publication\linkfox_output_1")  # 替换为你的目录
+MAX_WIDTH = 1500
 
 def resize_image(image_path: Path):
     try:
@@ -19,8 +19,10 @@ def resize_image(image_path: Path):
             new_height = int(height * MAX_WIDTH / width)
             resized_img = img.resize((MAX_WIDTH, new_height), Image.LANCZOS)
 
-            # 保存，覆盖原图
-            resized_img.save(image_path, format=img.format, quality=95, optimize=True)
+            # 保存，覆盖原图（统一转 JPEG，兼容扩展名为 .jpg 但实为 WEBP 等格式的文件）
+            if resized_img.mode != 'RGB':
+                resized_img = resized_img.convert('RGB')
+            resized_img.save(image_path, format='JPEG', quality=95, optimize=True)
             print(f"✅ 已处理: {image_path.name} -> {MAX_WIDTH}px")
             return True
     except Exception as e:
