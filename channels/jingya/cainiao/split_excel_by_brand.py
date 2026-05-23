@@ -28,6 +28,7 @@ def _detect_brand(code: str) -> str:
       - 前三位全字母（无 '-'）        → barbour  (如 MOL0726GN87)
       - 11 位纯数字                  → ecco     (如 06956301378)
       - 8  位纯数字                  → clarks   (如 26170510)
+      - 字母+2数字+2字母开头          → geox     (如 U56MXB00022C1018)
       - 其他                         → other
     """
     if "-" in code:
@@ -38,6 +39,8 @@ def _detect_brand(code: str) -> str:
         return "ecco"
     if re.fullmatch(r"\d{8}", code):
         return "clarks"
+    if re.match(r"[A-Za-z]\d{2}[A-Za-z]{2}", code):
+        return "geox"
     return "other"
 
 
@@ -91,7 +94,7 @@ def split_excel_by_brand(input_path: str | Path, output_dir: str | Path) -> None
 
 # ======== 直接运行示例 ========
 if __name__ == "__main__":
-    input_file = Path(r"C:\Users\angel\Downloads\货品导出2026-05-11+22_54_26结果.xlsx")   # ← 修改为实际路径
+    input_file = Path(r"C:\Users\angel\Downloads\货品导出2026-05-23+19_48_53结果.xlsx")   # ← 修改为实际路径
     output_directory = Path(r"C:\Users\angel\Downloads")  # ← 修改为实际输出目录
 
     split_excel_by_brand(input_file, output_directory)
