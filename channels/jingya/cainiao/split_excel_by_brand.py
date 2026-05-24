@@ -28,7 +28,7 @@ def _detect_brand(code: str) -> str:
       - 前三位全字母（无 '-'）        → barbour  (如 MOL0726GN87)
       - 11 位纯数字                  → ecco     (如 06956301378)
       - 8  位纯数字                  → clarks   (如 26170510)
-      - 字母+2数字+2字母开头          → geox     (如 U56MXB00022C1018)
+      - 16位字母数字、首字母开头        → geox     (如 U56MXB00022C1018, D654JF0TU11C1122)
       - 其他                         → other
     """
     if "-" in code:
@@ -39,7 +39,7 @@ def _detect_brand(code: str) -> str:
         return "ecco"
     if re.fullmatch(r"\d{8}", code):
         return "clarks"
-    if re.match(r"[A-Za-z]\d{2}[A-Za-z]{2}", code):
+    if re.fullmatch(r"[A-Za-z][A-Za-z0-9]{15}", code):
         return "geox"
     return "other"
 
