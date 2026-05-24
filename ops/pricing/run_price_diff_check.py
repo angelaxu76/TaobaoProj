@@ -21,7 +21,7 @@ from pathlib import Path
 # ========== 运行参数（按需修改）==========
 
 # 输出报告的根目录，每个品牌单独一个子目录
-OUTPUT_BASE = Path(r"D:\TB\maintain\price_diff_report")
+OUTPUT_BASE = Path(r"\\vmware-host\Shared Folders\VMShared\price_diff_report")
 
 # 差异过滤阈值（百分比绝对值），低于此阈值且非倒挂的商品不输出
 # 0.0 = 输出所有有差异的商品；5.0 = 只看差异超过 5% 的（倒挂行始终输出）
