@@ -49,14 +49,6 @@ def main():
     print("\n🟡 Step: 6️⃣ 获取excel文件用来更新淘宝店铺价格")
     generate_price_excels_bulk(
         brand="clarks",
-        input_dir=r"D:\TB\Products\clarks\repulibcation\store_prices\input",
-        output_dir=r"D:\TB\Products\clarks\repulibcation\store_prices\output",
-        suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
-        drop_rows_without_price=False  # 不丢行，查不到的价格留空
-    )
-
-    generate_price_excels_bulk(
-        brand="clarks",
         input_dir=r"\\vmware-host\Shared Folders\shared\clarks\store_prices",
         output_dir=r"\\vmware-host\Shared Folders\VMShared\clarks\store_prices",
         suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
