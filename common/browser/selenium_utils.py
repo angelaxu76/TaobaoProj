@@ -97,7 +97,7 @@ def _build_chrome_options(
     options.add_argument("--disable-extensions")
     options.add_argument("--disable-translate")
     options.add_argument("--disable-plugins")
-    options.add_argument("--js-flags=--max-old-space-size=128")  # 限制每个 Tab 的 V8 堆
+    options.add_argument("--js-flags=--max-old-space-size=256")  # 限制每个 Tab 的 V8 堆（HoF 等 Next.js 站点需要更多空间）
     options.add_argument("--memory-pressure-off")
     options.add_argument("--disable-renderer-backgrounding")
 

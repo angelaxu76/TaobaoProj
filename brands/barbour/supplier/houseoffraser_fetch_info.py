@@ -30,6 +30,9 @@ import requests
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException
 
+# driver 轮换周期：每个线程每抓满 N 页就 quit 一次（防止 renderer 内存耗尽）
+_DRIVER_RECYCLE_EVERY = 100
+
 # 导入基类和工具
 from brands.barbour.core.base_fetcher import BaseFetcher, setup_logging
 
@@ -98,6 +101,9 @@ class HouseOfFraserFetcher(BaseFetcher):
         self._use_requests = use_requests
         self._session = requests.Session()
         self._session.headers.update(self._REQ_HEADERS)
+
+        # 每线程抓取计数（用于定期轮换 driver，防止 renderer 内存耗尽）
+        self._thread_fetch_count = threading.local()
 
         # 创建数据库引擎
         engine_url = (
@@ -178,8 +184,28 @@ class HouseOfFraserFetcher(BaseFetcher):
         客户端 JS 渲染，requests 获取的静态 HTML 中没有任何尺码信息，
         必须用 Selenium 等待 JS 执行完毕后才能抓取。
         """
+        # ── 定期轮换 driver（防止 Chrome renderer 内存耗尽） ──────────────
+        if not hasattr(self._thread_fetch_count, "n"):
+            self._thread_fetch_count.n = 0
+        self._thread_fetch_count.n += 1
+        if self._thread_fetch_count.n % _DRIVER_RECYCLE_EVERY == 0:
+            self.logger.debug(
+                f"[driver-recycle] 当前线程已抓取 {self._thread_fetch_count.n} 页，主动重置 driver"
+            )
+            self.quit_driver()          # 从池中移除，下一次 get_driver() 创建全新实例
+
         driver = self.get_driver()
-        driver.get(url)
+
+        try:
+            driver.get(url)
+        except Exception as e:
+            # Renderer 可能已崩溃 —— 立刻销毁这个 driver，
+            # 让重试逻辑拿到全新的 Chrome 实例，而不是继续打死 driver
+            self.logger.warning(
+                f"driver.get() 失败（{type(e).__name__}），重置 driver 以供重试"
+            )
+            self.quit_driver()
+            raise                       # 传给 fetch_one_product 的重试循环
 
         # 等待产品价格出现（表示 JS 已完成渲染）
         try:
@@ -518,6 +544,8 @@ class HouseOfFraserFetcher(BaseFetcher):
 
         except Exception as e:
             self.logger.warning(f"JS 提取尺码失败: {e}")
+            # execute_script 失败通常意味着 renderer 已崩溃，立刻重置 driver
+            self.quit_driver()
             return {}
 
     def _extract_size_detail_from_soup(self, soup: BeautifulSoup) -> Dict[str, Dict]:
