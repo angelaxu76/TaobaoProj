@@ -260,6 +260,23 @@ def extract_prices(html: str, soup: BeautifulSoup):
     except Exception:
         pass
 
+    # ── 1.5) Commercetools JSON（ECCO 用 Commercetools，价格在 __NEXT_DATA__ 里）──
+    # 结构："value".centAmount = 原价，"discounted".value.centAmount = 折后价
+    try:
+        m_ct = re.search(
+            r'"centAmount"\s*:\s*(\d+)'
+            r'(?:(?!"centAmount").){0,500}'
+            r'"discounted"[^[]*?"centAmount"\s*:\s*(\d+)',
+            html, re.DOTALL
+        )
+        if m_ct:
+            orig_cents = int(m_ct.group(1))
+            disc_cents = int(m_ct.group(2))
+            if orig_cents > disc_cents > 0:
+                return orig_cents / 100.0, disc_cents / 100.0
+    except Exception:
+        pass
+
     # ── 2) DOM：查找「明确的折后价元素」──────────────────────────────────────
     # 打折时 ECCO 页面会同时渲染一个独立的 sale/discount 价格元素；
     # 不打折时该元素不存在，只留 RecommendedPrice（或 RegularPrice）。

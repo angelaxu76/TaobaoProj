@@ -123,8 +123,10 @@ def process_product_url(PRODUCT_URL):
         description = data.get("description", "")
 
         price_info = data.get("prices", {})
-        original_price = price_info.get("previous", 0)
-        discount_price = price_info.get("current", 0)
+        discount_price = price_info.get("current", 0) or 0
+        _previous = price_info.get("previous", 0) or 0
+        # 非打折时 previous=0，统一用 current 作为原价，保证 original==discount 可从DB判断无折扣
+        original_price = _previous if _previous > 0 else discount_price
 
         color_data = data.get("color", "")
         color = color_data.get("name", "") if isinstance(color_data, dict) else str(color_data)

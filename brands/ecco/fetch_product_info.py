@@ -493,8 +493,15 @@ def extract_prices(html, soup):
     返回 (Price, AdjustedPrice)
 
     约定：
-      - Price         = 原价（RRP），如果能拿到；
-      - AdjustedPrice = 折后价（打折价），如果有打折，否则为 0。
+      - Price         = 原价（RRP）
+      - AdjustedPrice = 折后价（打折时），否则为 0
+
+    优先级：
+      1. 老站 onProductPageInit
+      2. Commercetools JSON（__NEXT_DATA__ 或内嵌脚本）：
+         "value".centAmount = 原价，"discounted".value.centAmount = 折后价
+      3. JSON-LD offers.price（当前售价）+ DOM RecommendedPrice（原价）
+      4. DOM 兜底
     """
 
     def _parse_money(text: str) -> float:
@@ -503,7 +510,7 @@ def extract_prices(html, soup):
         m = re.search(r'(\d+(?:\.\d+)?)', text.replace(",", ""))
         return float(m.group(1)) if m else 0.0
 
-    # 1) 旧逻辑：老站的 onProductPageInit
+    # 1) 老站 onProductPageInit
     try:
         m = re.search(r'productdetailctrl\.onProductPageInit\((\{.*?\})\)', html, re.DOTALL)
         if m:
@@ -515,7 +522,25 @@ def extract_prices(html, soup):
     except Exception:
         pass
 
-    # 2) JSON-LD 中的当前价格（一般是折后价）
+    # 2) Commercetools JSON（ECCO 用 Commercetools，价格在 __NEXT_DATA__ 里）
+    # 结构：..."value":{"centAmount":13000,...},...,"discounted":{"value":{"centAmount":9100,...}}...
+    # 正则：在 "discounted" 前 500 字符内找 centAmount（原价），再找 discounted 内的 centAmount（折后价）
+    try:
+        m_ct = re.search(
+            r'"centAmount"\s*:\s*(\d+)'           # 原价 centAmount
+            r'(?:(?!"centAmount").){0,500}'        # 最多 500 字符（不含另一个 centAmount）
+            r'"discounted"[^[]*?"centAmount"\s*:\s*(\d+)',  # discounted 内的 centAmount
+            html, re.DOTALL
+        )
+        if m_ct:
+            orig_cents = int(m_ct.group(1))
+            disc_cents = int(m_ct.group(2))
+            if orig_cents > disc_cents > 0:
+                return orig_cents / 100.0, disc_cents / 100.0
+    except Exception:
+        pass
+
+    # 3) JSON-LD 中的当前价格（一般是折后价）
     current_price = 0.0
     try:
         for s in soup.find_all("script", {"type": "application/ld+json"}):
@@ -531,24 +556,39 @@ def extract_prices(html, soup):
     except Exception:
         pass
 
-    # 3) DOM 里的原价：<p data-testid="RecommendedPrice">£170.00</p>
+    # 4) DOM 原价元素（多个 testid 尝试）
     orig_price = 0.0
     try:
-        p_orig = soup.find("p", attrs={"data-testid": "RecommendedPrice"})
-        if p_orig:
-            orig_price = _parse_money(p_orig.get_text(" ", strip=True))
+        for testid in ("RecommendedPrice", "OriginalPrice", "RegularPrice", "StrikethroughPrice"):
+            node = soup.find(attrs={"data-testid": testid})
+            if node:
+                orig_price = _parse_money(node.get_text(" ", strip=True))
+                if orig_price > 0:
+                    break
     except Exception:
         pass
 
-    # 3.1 优先用「原价 + 折后价」组合
+    # 4.1 <del> / <s> 划线价兜底
+    if orig_price == 0:
+        try:
+            for tag in ("del", "s"):
+                for node in soup.find_all(tag):
+                    val = _parse_money(node.get_text(" ", strip=True))
+                    if val > 0:
+                        orig_price = val
+                        break
+                if orig_price > 0:
+                    break
+        except Exception:
+            pass
+
     if orig_price > 0 and current_price > 0 and orig_price > current_price:
         return orig_price, current_price
 
-    # 3.2 只有一个价格：当成原价
     if current_price > 0:
-        return current_price, 0.0
+        return current_price, current_price  # 无折扣：存同值，方便数据库核查
 
-    # 4) 兜底：只从 DOM 拿折后价（极少数没有 JSON-LD 的页面）
+    # 5) DOM 兜底
     try:
         p_disc = soup.select_one("p.product-price")
         disc_val = _parse_money(p_disc.get_text(" ", strip=True)) if p_disc else 0.0
@@ -559,7 +599,6 @@ def extract_prices(html, soup):
     except Exception:
         pass
 
-    # 5) 全部失败
     return 0.0, 0.0
 
 

@@ -187,11 +187,11 @@ def strategy_discount_priority(o, d, brand):
     ratio = float(BRAND_DISCOUNT.get(brand_key, 1.0))
 
 
-    # 如果有折扣价 → 直接用折扣价（优先级最高）
-    if d > 0:
+    # 折扣价存在且严格小于原价 → 是真实折扣，直接用
+    if 0 < d < o:
         return d
 
-    # 否则用原价 × 比例
+    # 其余情况（d==0 抓取失败、d==o 无折扣、d>o 数据异常）均用原价 × 折扣率
     return o * ratio
 
 # =========================

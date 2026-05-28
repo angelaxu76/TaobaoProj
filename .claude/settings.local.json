@@ -32,7 +32,10 @@
       "Bash(T422681W\")",
       "PowerShell(Get-ChildItem \"D:\\\\TB\\\\Products\\\\marksandspencer\\\\publication\\\\linkfox_output_1\\\\\" | Where-Object { $_.Name -match \"T422675W|T422681W\" })",
       "PowerShell(& 'C:\\\\Users\\\\angel\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe' 'D:\\\\Projects\\\\VS-TaobaoProj\\\\TaobaoProj\\\\_legacy\\\\resize_images_to_1500_batch.py')",
-      "PowerShell(& 'C:\\\\Users\\\\angel\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe' -X utf8 'D:\\\\Projects\\\\VS-TaobaoProj\\\\TaobaoProj\\\\_legacy\\\\resize_images_to_1500_batch.py')"
+      "PowerShell(& 'C:\\\\Users\\\\angel\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe' -X utf8 'D:\\\\Projects\\\\VS-TaobaoProj\\\\TaobaoProj\\\\_legacy\\\\resize_images_to_1500_batch.py')",
+      "WebFetch(domain:gb.ecco.com)",
+      "Bash(Select-Object -Last 10)",
+      "PowerShell(Get-Content *)"
     ]
   }
 }
