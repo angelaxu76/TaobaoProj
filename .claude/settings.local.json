@@ -35,7 +35,9 @@
       "PowerShell(& 'C:\\\\Users\\\\angel\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe' -X utf8 'D:\\\\Projects\\\\VS-TaobaoProj\\\\TaobaoProj\\\\_legacy\\\\resize_images_to_1500_batch.py')",
       "WebFetch(domain:gb.ecco.com)",
       "Bash(Select-Object -Last 10)",
-      "PowerShell(Get-Content *)"
+      "PowerShell(Get-Content *)",
+      "Bash(Get-ChildItem \"D:\\\\TB\\\\Products\\\\ecco\\\\publication\\\\TXT\")",
+      "Bash(Select-Object -First 10 -ExpandProperty Name)"
     ]
   }
 }

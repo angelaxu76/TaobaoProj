@@ -41,7 +41,7 @@ HDRS = {
 }
 
 ENABLE_SELENIUM    = True
-SELENIUM_FIRST     = False  # True = 全程用浏览器（最准但慢）；False = requests 优先（推荐）
+SELENIUM_FIRST     = True   # True = 全程用浏览器（价格最准）；False = requests 优先
 MAX_WORKERS        = 1
 
 
@@ -260,68 +260,38 @@ def extract_prices(html: str, soup: BeautifulSoup):
     except Exception:
         pass
 
-    # ── 1.5) Commercetools JSON（ECCO 用 Commercetools，价格在 __NEXT_DATA__ 里）──
-    # 结构："value".centAmount = 原价，"discounted".value.centAmount = 折后价
+    # ── 2) DOM（ECCO 实际元素名）──────────────────────────────────────────────
+    # SelectedVariantPrice = 当前售价（无论是否打折）
+    # OmnibusPrice         = 参考原价（EU Omnibus 指令要求，只在打折时出现）
+    current_price_elem = soup.find(attrs={"data-testid": "SelectedVariantPrice"})
+    omnibus_elem       = soup.find(attrs={"data-testid": "OmnibusPrice"})
+
+    current_val = _money(current_price_elem.get_text(" ", strip=True)) if current_price_elem else 0.0
+    omnibus_val = _money(omnibus_elem.get_text(" ", strip=True))        if omnibus_elem       else 0.0
+
+    if current_val > 0:
+        if omnibus_val > current_val:
+            return omnibus_val, current_val   # 打折：原价, 折后价
+        else:
+            return current_val, 0.0           # 正价
+
+    # ── 2.5) JSON 自定义字段（ECCO 不用 Commercetools 标准 discounted 字段，
+    #         原价存在 price_CF_RecommendedRetailPrice，主 centAmount 是售价）──
     try:
-        m_ct = re.search(
-            r'"centAmount"\s*:\s*(\d+)'
-            r'(?:(?!"centAmount").){0,500}'
-            r'"discounted"[^[]*?"centAmount"\s*:\s*(\d+)',
-            html, re.DOTALL
+        m_rrp = re.search(
+            r'"price_CF_RecommendedRetailPrice"[^}]*"centAmount"\s*:\s*(\d+)',
+            html
         )
-        if m_ct:
-            orig_cents = int(m_ct.group(1))
-            disc_cents = int(m_ct.group(2))
-            if orig_cents > disc_cents > 0:
-                return orig_cents / 100.0, disc_cents / 100.0
+        m_sale = re.search(r'"centAmount"\s*:\s*(\d+)', html)
+        if m_rrp and m_sale:
+            rrp_cents  = int(m_rrp.group(1))
+            sale_cents = int(m_sale.group(1))
+            if rrp_cents > sale_cents > 0:
+                return rrp_cents / 100.0, sale_cents / 100.0
+            if sale_cents > 0:
+                return sale_cents / 100.0, 0.0
     except Exception:
         pass
-
-    # ── 2) DOM：查找「明确的折后价元素」──────────────────────────────────────
-    # 打折时 ECCO 页面会同时渲染一个独立的 sale/discount 价格元素；
-    # 不打折时该元素不存在，只留 RecommendedPrice（或 RegularPrice）。
-    sale_elem = (
-        soup.find(attrs={"data-testid": "SalePrice"}) or
-        soup.find(attrs={"data-testid": "DiscountedPrice"}) or
-        soup.find(attrs={"data-testid": "FinalPrice"}) or
-        soup.select_one("[class*='sale-price']") or
-        soup.select_one("[class*='discount-price']") or
-        soup.select_one("[class*='SalePrice']")
-    )
-
-    # 「原价 / 建议零售价」元素（打折时显示划线，不打折时就是售价）
-    rrp_elem = (
-        soup.find(attrs={"data-testid": "RecommendedPrice"}) or
-        soup.find(attrs={"data-testid": "RegularPrice"}) or
-        soup.find(attrs={"data-testid": "OriginalPrice"})
-    )
-
-    # 通用「当前售价」元素
-    current_elem = (
-        soup.find(attrs={"data-testid": "CurrentPrice"}) or
-        soup.find(attrs={"data-testid": "ProductPrice"}) or
-        soup.select_one("p.product-price") or
-        soup.select_one("[class*='ProductPrice']") or
-        soup.select_one("[class*='product-price']")
-    )
-
-    sale_val    = _money(sale_elem.get_text(" ", strip=True))    if sale_elem    else 0.0
-    rrp_val     = _money(rrp_elem.get_text(" ", strip=True))     if rrp_elem     else 0.0
-    current_val = _money(current_elem.get_text(" ", strip=True)) if current_elem else 0.0
-
-    # Case A：明确存在独立折后价 + 原价 → 有折扣
-    if sale_val > 0 and rrp_val > 0 and rrp_val > sale_val:
-        return rrp_val, sale_val
-
-    # Case B：只有「当前售价」+ 「原价」，且两者相同 → 无折扣
-    if rrp_val > 0 and current_val > 0 and rrp_val == current_val:
-        return rrp_val, 0.0
-
-    # Case C：只有单一价格元素（最常见的不打折情况）
-    if rrp_val > 0 and sale_val == 0:
-        return rrp_val, 0.0
-    if current_val > 0 and sale_val == 0:
-        return current_val, 0.0
 
     # ── 3) JSON-LD 最后兜底（DOM 完全取不到时才用）────────────────────────────
     # 注意：JSON-LD 价格可能有缓存，只返回 (price, 0.0)，不推断折扣。
@@ -351,11 +321,16 @@ def extract_code(soup, url=""):
             for item in items:
                 for k in ("sku", "mpn", "productID", "productId"):
                     v = str(item.get(k, "")).strip()
-                    if v:
-                        m = re.search(r"(\d{6})\D*(\d{5})", v)
-                        if m: return f"{m.group(1)}{m.group(2)}"
-                        m2 = re.search(r"\b(\d{10,12})\b", v)
-                        if m2: return m2.group(1)
+                    if not v:
+                        continue
+                    # EAN-13 条形码（纯13位数字）会被 regex 误截为11位编码，跳过
+                    if re.fullmatch(r"\d{13}", v):
+                        continue
+                    # \D+ 要求6位与5位之间必须有分隔符，防止在纯数字串内乱匹配
+                    m = re.search(r"(\d{6})\D+(\d{5})", v)
+                    if m: return f"{m.group(1)}{m.group(2)}"
+                    m2 = re.search(r"\b(\d{10,12})\b", v)
+                    if m2: return m2.group(1)
         except Exception:
             pass
     node = soup.find("div", class_="product_info__product-number")
@@ -405,6 +380,11 @@ def extract_names(soup):
 
 
 def extract_description(soup):
+    # meta description 最干净：只包含营销段落，不混入 features
+    tag = soup.find("meta", attrs={"name": "description"})
+    if tag and tag.get("content"):
+        return re.sub(r"\s+", " ", unescape(tag["content"])).strip()
+    # JSON-LD 兜底（ECCO 的 description 会把 features 也混进来，仅作最后手段）
     for s in soup.find_all("script", {"type": "application/ld+json"}):
         try:
             data = json.loads(s.string or "{}")
@@ -412,15 +392,10 @@ def extract_description(soup):
             for item in items:
                 desc = item.get("description", "")
                 if desc:
-                    text = re.sub(r"<[^>]+>", " ", desc)
-                    return re.sub(r"\s+", " ", unescape(text)).strip()
+                    return re.sub(r"\s+", " ", unescape(re.sub(r"<[^>]+>", " ", desc))).strip()
         except Exception:
             pass
-    tag = soup.find("meta", attrs={"name": "description"})
-    if tag and tag.get("content"):
-        return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", unescape(tag["content"]))).strip()
-    node = soup.select_one("div.product-description")
-    return re.sub(r"\s+", " ", node.get_text(" ", strip=True)).strip() if node else ""
+    return ""
 
 
 def extract_color(soup):
@@ -512,7 +487,7 @@ def get_driver():
     if _selenium_driver is not None:
         return _selenium_driver
     from common.browser.driver_auto import build_uc_driver
-    _selenium_driver = build_uc_driver(headless=True)
+    _selenium_driver = build_uc_driver(headless=False)
     return _selenium_driver
 
 def fetch_html_selenium(url):
@@ -594,21 +569,31 @@ def process_one(url: str, idx: int, total: int):
         # ── ★ 价格（v2 修复核心）─────────────────────────────────────────────
         price, adjusted = extract_prices(html, soup)
 
+        # 正价商品：Adjusted Price = Price（数据库约定两者相同）
+        if price > 0 and adjusted == 0.0:
+            adjusted = price
+
         # 日志：方便确认价格来源
-        if adjusted > 0:
+        if adjusted != price:
             print(f"   💰 {price} → 折后 {adjusted}")
         else:
             print(f"   💰 正价 {price}")
 
         # ── 要点（Features）──────────────────────────────────────────────────
-        li_texts = [
-            re.sub(r"\s+", " ", li.get_text(" ", strip=True)).strip()
-            for li in soup.select(
-                "div.about-this-product__container div.product-description-list ul li"
-            )
-            if li.get_text(strip=True)
-        ]
-        feature = " | ".join(li_texts)
+        # 找 button 含 "Features" 的 accordion item，取其 panel 下的 li
+        feature = ""
+        for acc_item in soup.find_all(class_=re.compile(r"chakra-accordion__item", re.I)):
+            btn = acc_item.find("button")
+            if btn and "feature" in btn.get_text(strip=True).lower():
+                panel = acc_item.find(class_=re.compile(r"accordion__panel", re.I))
+                if panel:
+                    li_texts = [
+                        re.sub(r"\s+", " ", li.get_text(" ", strip=True)).strip()
+                        for li in panel.find_all("li")
+                        if li.get_text(strip=True)
+                    ]
+                    feature = " | ".join(li_texts)
+                break
 
         # ── 写文件 ────────────────────────────────────────────────────────────
         ensure_dirs(TXT_DIR)

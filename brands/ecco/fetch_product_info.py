@@ -524,19 +524,24 @@ def extract_prices(html, soup):
 
     # 2) Commercetools JSON（ECCO 用 Commercetools，价格在 __NEXT_DATA__ 里）
     # 结构：..."value":{"centAmount":13000,...},...,"discounted":{"value":{"centAmount":9100,...}}...
-    # 正则：在 "discounted" 前 500 字符内找 centAmount（原价），再找 discounted 内的 centAmount（折后价）
+    # 改进：先找 "discounted" 块内的 centAmount（折后价），再向前找原价 centAmount
     try:
-        m_ct = re.search(
-            r'"centAmount"\s*:\s*(\d+)'           # 原价 centAmount
-            r'(?:(?!"centAmount").){0,500}'        # 最多 500 字符（不含另一个 centAmount）
-            r'"discounted"[^[]*?"centAmount"\s*:\s*(\d+)',  # discounted 内的 centAmount
-            html, re.DOTALL
+        # 策略 A：在 discounted 块里找折后价 centAmount
+        m_disc_ca = re.search(
+            r'"discounted"\s*:\s*\{[^}]*"value"\s*:\s*\{[^}]*"centAmount"\s*:\s*(\d+)',
+            html
         )
-        if m_ct:
-            orig_cents = int(m_ct.group(1))
-            disc_cents = int(m_ct.group(2))
-            if orig_cents > disc_cents > 0:
-                return orig_cents / 100.0, disc_cents / 100.0
+        if m_disc_ca:
+            disc_cents = int(m_disc_ca.group(1))
+            # 找 discounted 前面的 centAmount（原价）
+            # 从 HTML 开头到 discounted 的位置，往前找最近的 centAmount
+            disc_pos = m_disc_ca.start()
+            pre_disc = html[max(0, disc_pos-800):disc_pos]  # 往前最多 800 字符
+            m_orig_ca = re.search(r'"centAmount"\s*:\s*(\d+)(?!.*"centAmount")', pre_disc)
+            if m_orig_ca:
+                orig_cents = int(m_orig_ca.group(1))
+                if orig_cents > disc_cents > 0:
+                    return orig_cents / 100.0, disc_cents / 100.0
     except Exception:
         pass
 

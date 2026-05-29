@@ -121,8 +121,8 @@ def main():
     send_ecms_notification(
         shipment_ref = SHIPMENT_REF,
         couriers     = [
-            ("GI046174904GB", "Parcelforce"),
-            # ("GI046055323GB", "Parcelforce"),
+            ("GI046341099GB", "Parcelforce"),
+            ("GI046341108GB", "Parcelforce"),
         ],
         lp_file      = r"D:\Projects\VS-TaobaoProj\TaobaoProj\ops\shipping\lp_numbers.txt",
         ship_date    = SHIP_DATE,
