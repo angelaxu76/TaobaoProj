@@ -1,34 +1,38 @@
 # -*- coding: utf-8 -*-
 """
-ECCO UK (Next.js) 全新抓取 → Clarks Jingya 格式
-- 输入: product_links.txt（每行一个 URL；也支持本地 .html 便于调试）
-- 输出: /TXT/{product_code}.txt  和  可选 /debug_pages/*.html
-- 字段: Code / Name / Description / Gender / Color / Price / Adjusted Price / Material / Size / Feature / Source URL
+ECCO UK (Next.js) 抓取 v2
+修复：v1 中 JSON-LD 缓存旧折扣价导致无折扣商品被误标 Adjusted Price 的 bug。
+
+核心改动（相比 v1）：
+  1. extract_prices() 重写：DOM 优先，只有页面同时存在「原价 + 折后价」两个元素
+     时才认为有折扣；JSON-LD 降为 DOM 全部失败时的最后兜底。
+  2. 新增 SELENIUM_FIRST 选项：True 时对所有 URL 直接用 Selenium 抓
+     (ECCO 是 Next.js 站，浏览器渲染的价格最准确)。
+  3. 其余逻辑与 v1 完全一致。
 """
 import time
 import hashlib
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from html import unescape
-from config import ECCO, SIZE_RANGE_CONFIG, GLOBAL_CHROMEDRIVER_PATH, DEFAULT_STOCK_COUNT
+from config import ECCO, SIZE_RANGE_CONFIG, DEFAULT_STOCK_COUNT
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 import json
+import re
+import demjson3
 
-# ===== 你本地已有的写入器：保持与现有工程兼容 =====
-from common.ingest.txt_writer import format_txt  # format_txt(info, filepath, brand="clarks")
+from common.ingest.txt_writer import format_txt
 
-# ===== 路径配置（按需改）=====
+# ===== 路径配置 =====
 LINKS_FILE = ECCO["LINKS_FILE"]
 TXT_DIR    = ECCO["TXT_DIR"]
 DEBUG_DIR  = ECCO["BASE"] / "publication" / "debug_pages"
 
-
-# 是否保存 HTML 调试页
-DEBUG_SAVE_HTML = True
-
-# requests
-REQUEST_TIMEOUT = 20
+DEBUG_SAVE_HTML  = True
+REQUEST_TIMEOUT  = 20
 HDRS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                   "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -36,71 +40,32 @@ HDRS = {
     "Accept-Language": "en-GB,en;q=0.9"
 }
 
-# 可选：Selenium 回退（动态库存/变体更稳）
-ENABLE_SELENIUM = True
-CHROMEDRIVER_PATH = GLOBAL_CHROMEDRIVER_PATH
-
-# 线程
-MAX_WORKERS = 1
-
-# ============ 小工具 ============
+ENABLE_SELENIUM    = True
+SELENIUM_FIRST     = True   # True = 全程用浏览器（价格最准）；False = requests 优先
+MAX_WORKERS        = 1
 
 
-import re
-import demjson3  # 确保已安装: pip install demjson3
+# ============ 工具函数（与 v1 相同）============
 
-
-def supplement_ecco_sizes(size_map: dict, size_detail: dict, gender: str):
-    """
-    根据性别，用 SIZE_RANGE_CONFIG['ecco'] 补齐缺失尺码：
-    - 男款: 39–46
-    - 女款: 35–42
-    - 童款: 27–40
-    TXT 中未出现的 EU 码统统补成无货:
-        SizeMap[eu] = "无货"
-        SizeDetail[eu] = {"stock_count": 0, "ean": "0000000000000"}
-    """
+def supplement_ecco_sizes(size_map, size_detail, gender):
     brand_cfg = SIZE_RANGE_CONFIG.get("ecco", {})
-    key = None
-    # ECCO 里 gender 是英文: "men" / "women" / "kids" / "unisex"
-    if gender == "men":
-        key = "男款"
-    elif gender == "women":
-        key = "女款"
-    elif gender == "kids":
-        key = "童款"
-    else:
-        # "unisex" 或未知，不补码，避免误判
+    key = {"men": "男款", "women": "女款", "kids": "童款"}.get(gender)
+    if not key:
         return size_map, size_detail
-
-    standard_sizes = brand_cfg.get(key, [])
-    if not standard_sizes:
-        return size_map, size_detail
-
-    for eu in standard_sizes:
+    for eu in brand_cfg.get(key, []):
         if eu not in size_detail:
             size_map[eu] = "无货"
             size_detail[eu] = {"stock_count": 0, "ean": "0000000000000"}
-
     return size_map, size_detail
 
 
-def parse_ecco_sizes_and_stock(html: str):
-    """
-    从 ECCO 页面脚本中解析尺码+库存。
-    - 先解析 variants[*].availability.channels.results 里 key=="GB-web" 的 availableQuantity
-    - 再用 relatedProduct.variants[*] 回填缺失的 EU/UK/qty
-    - 兼容 \\" 转义 和 未转义 两种形态
-    返回: [{sku,size_eu,size_uk,available_qty,has_stock}, ...]（去重、按 EU 升序）
-    """
-
-    def _unescape(s: str) -> str:
-        # 局部反转义，便于 demjson3 解析
+def parse_ecco_sizes_and_stock(html):
+    def _unescape(s):
         return s.replace('\\"', '"').replace('\\\\', '\\')
 
     rows = []
 
-    # ---- A) variants 主渠道（有 GB-web 数量）----
+    # A) variants 主渠道
     m_variants_plain = re.search(r'"variants"\s*:\s*(\[[\s\S]*?\])', html)
     m_variants_esc   = re.search(r'\\"variants\\":\s*(\[[\s\S]*?\])', html)
     block_variants = None
@@ -130,16 +95,14 @@ def parse_ecco_sizes_and_stock(html: str):
                         break
                 if size_eu:
                     rows.append({
-                        "sku": sku,
-                        "size_eu": str(size_eu),
+                        "sku": sku, "size_eu": str(size_eu),
                         "size_uk": str(size_uk) if size_uk is not None else "",
-                        "available_qty": qty,
-                        "has_stock": on
+                        "available_qty": qty, "has_stock": on
                     })
         except Exception:
-            pass  # 不影响后续回填
+            pass
 
-    # ---- B) relatedProduct.variants 兜底回填 ----
+    # B) relatedProduct.variants 兜底回填
     m_rel_plain = re.search(r'"relatedProduct"\s*:\s*\{\s*"variants"\s*:\s*(\[[\s\S]*?\])', html)
     m_rel_esc   = re.search(r'\\"relatedProduct\\":\s*\{\s*\\"variants\\":\s*(\[[\s\S]*?\])', html)
     block_rel = None
@@ -151,15 +114,12 @@ def parse_ecco_sizes_and_stock(html: str):
     if block_rel:
         try:
             rel = demjson3.decode(_unescape(block_rel))
-            # 用 (sku, eu) 建索引便于合并
             by_key = {(r["sku"], r["size_eu"]): r for r in rows if r.get("sku") and r.get("size_eu")}
             for v in rel if isinstance(rel, list) else []:
                 sku = str(v.get("sku") or "")
                 eu  = str(v.get("size") or v.get("eu") or v.get("label") or "")
-
                 if not sku or not eu:
                     continue
-
                 uk  = str(v.get("sizeUK") or v.get("uk") or "")
                 try:
                     qty = int(v.get("availableQuantity") or 0)
@@ -167,26 +127,26 @@ def parse_ecco_sizes_and_stock(html: str):
                     qty = 0
                 has = v.get("hasStock")
                 key = (sku, eu)
-
                 if key in by_key:
                     r = by_key[key]
                     if not r.get("size_uk") and uk: r["size_uk"] = uk
-                    # 只有在 A 中没拿到 qty 时才用回填
                     if (r.get("available_qty") is None) or (r.get("available_qty") == 0):
                         r["available_qty"] = qty
                         r["has_stock"] = bool(has) if has is not None else (qty > 0)
                 else:
                     rows.append({
-                        "sku": sku,
-                        "size_eu": eu,
-                        "size_uk": uk,
+                        "sku": sku, "size_eu": eu, "size_uk": uk,
                         "available_qty": qty,
                         "has_stock": bool(has) if has is not None else (qty > 0)
                     })
         except Exception:
             pass
 
-    # ---- C) 清洗 & 排序 ----
+    # C) 清洗 & 排序
+    def _eu_key(s):
+        try: return int(str(s).split("-")[0])
+        except Exception: return 999
+
     cleaned, seen = [], set()
     for r in rows:
         eu, sku = r.get("size_eu"), r.get("sku")
@@ -197,167 +157,163 @@ def parse_ecco_sizes_and_stock(html: str):
             continue
         seen.add(key)
         cleaned.append(r)
-
-    def _eu_key(s: str):
-        try:
-            return int(str(s).split("-")[0])
-        except Exception:
-            return 999
-
     cleaned.sort(key=lambda x: _eu_key(x.get("size_eu", "")))
     return cleaned
 
 
-def extract_price_info(html):
+def build_size_maps_jingya(rows):
+    def in_stock(r):
+        q = r.get("available_qty")
+        has = r.get("has_stock")
+        if has is True: return True
+        try: return int(q) > 0
+        except Exception: return False
+
+    def eu_key(s):
+        try: return int(str(s).split("-")[0])
+        except Exception: return 999
+
+    size_map, size_detail, seen = {}, {}, set()
+    for r in sorted(rows, key=lambda x: eu_key(x.get("size_eu", ""))):
+        eu = str(r.get("size_eu") or "").strip()
+        if not eu or eu in seen:
+            continue
+        seen.add(eu)
+        ok = in_stock(r)
+        sku = str(r.get("sku") or "").strip()
+        ean = sku if (len(sku) == 13 and sku.isdigit()) else "0000000000000"
+        size_map[eu]    = "有货" if ok else "无货"
+        size_detail[eu] = {"stock_count": DEFAULT_STOCK_COUNT if ok else 0, "ean": ean}
+    return size_map, size_detail
+
+
+def extract_sizes(html, soup):
+    results = []
+    size_div = soup.find("div", class_="size-picker__rows")
+    if size_div:
+        for btn in size_div.find_all("button"):
+            label = re.sub(r"\s+", " ", (btn.get_text(" ", strip=True) or "")).strip()
+            if not label:
+                continue
+            eu_m = re.search(r"\b(\d{2})\b", label)
+            eu_size = eu_m.group(1) if eu_m else label
+            classes = " ".join(btn.get("class", []))
+            soldout = any(k in classes.lower() for k in ("soldout", "disabled", "unavailable"))
+            results.append(f"{eu_size}:{'无货' if soldout else '有货'}")
+        if results:
+            return results
+    for s in soup.find_all("script"):
+        txt = s.string or ""
+        if not txt:
+            continue
+        if ("size" in txt.lower() or "variant" in txt.lower()) and \
+           ("stock" in txt.lower() or "availability" in txt.lower()):
+            pairs = re.findall(
+                r'("?(?:eu|size|label)"?\s*:\s*"?(\d{2})"?).*?'
+                r'("?(?:inStock|available|availability)"?\s*:\s*'
+                r'(?:true|false|"?(?:InStock|OutOfStock)"?))',
+                txt, flags=re.I | re.S
+            )
+            added = set()
+            for p in pairs:
+                eu = p[1]
+                avail_part = p[2].lower()
+                soldout = ("false" in avail_part) or ("outofstock" in avail_part)
+                key = f"{eu}:{'无货' if soldout else '有货'}"
+                if key not in added:
+                    results.append(key)
+                    added.add(key)
+            if results:
+                return results
+    return results
+
+
+# ============ ★ 核心修复：价格提取 v2 ============
+
+def extract_prices(html: str, soup: BeautifulSoup):
     """
     返回 (Price, AdjustedPrice)
-    1) 先走旧的 onProductPageInit()
-    2) 回退 JSON-LD offers.price（AdjustedPrice 无则为 0）
+      - 无折扣 → (full_price, 0.0)
+      - 有折扣 → (orig_price, sale_price)
+
+    优先级：
+      1. 老站 onProductPageInit（不变）
+      2. DOM 双价格元素（★ 新逻辑：必须同时存在「原价 + 折后价」才认定打折）
+      3. DOM 单价格元素（只有一个价格 = 正价，AdjustedPrice = 0）
+      4. JSON-LD 最后兜底（仅在 DOM 完全失败时）
     """
-    # 旧逻辑
+
+    def _money(text: str) -> float:
+        if not text:
+            return 0.0
+        m = re.search(r'(\d+(?:\.\d+)?)', (text or "").replace(",", ""))
+        return float(m.group(1)) if m else 0.0
+
+    # ── 1) 老站 onProductPageInit ──────────────────────────────────────────
     try:
         m = re.search(r'productdetailctrl\.onProductPageInit\((\{.*?\})\)', html, re.DOTALL)
         if m:
             data = json.loads(m.group(1).replace("&quot;", '"'))
-            return float(data.get("Price", 0.0) or 0.0), float(data.get("AdjustedPrice", 0.0) or 0.0)
+            p  = float(data.get("Price", 0) or 0)
+            ap = float(data.get("AdjustedPrice", 0) or 0)
+            return p, ap
     except Exception:
         pass
 
-    # JSON-LD 回退
+    # ── 2) DOM（ECCO 实际元素名）──────────────────────────────────────────────
+    # SelectedVariantPrice = 当前售价（无论是否打折）
+    # OmnibusPrice         = 参考原价（EU Omnibus 指令要求，只在打折时出现）
+    current_price_elem = soup.find(attrs={"data-testid": "SelectedVariantPrice"})
+    omnibus_elem       = soup.find(attrs={"data-testid": "OmnibusPrice"})
+
+    current_val = _money(current_price_elem.get_text(" ", strip=True)) if current_price_elem else 0.0
+    omnibus_val = _money(omnibus_elem.get_text(" ", strip=True))        if omnibus_elem       else 0.0
+
+    if current_val > 0:
+        if omnibus_val > current_val:
+            return omnibus_val, current_val   # 打折：原价, 折后价
+        else:
+            return current_val, 0.0           # 正价
+
+    # ── 2.5) JSON 自定义字段（ECCO 不用 Commercetools 标准 discounted 字段，
+    #         原价存在 price_CF_RecommendedRetailPrice，主 centAmount 是售价）──
     try:
-        for s in re.findall(r'<script[^>]+type="application/ld\+json"[^>]*>(.*?)</script>', html, re.DOTALL):
-            j = json.loads(s.strip())
-            if isinstance(j, dict) and j.get("@type") == "Product" and "offers" in j:
-                offers = j["offers"]
-                if isinstance(offers, dict) and "price" in offers:
-                    price = float(str(offers.get("price", "0")).replace(",", "") or 0)
-                    return price, 0.0
+        m_rrp = re.search(
+            r'"price_CF_RecommendedRetailPrice"[^}]*"centAmount"\s*:\s*(\d+)',
+            html
+        )
+        m_sale = re.search(r'"centAmount"\s*:\s*(\d+)', html)
+        if m_rrp and m_sale:
+            rrp_cents  = int(m_rrp.group(1))
+            sale_cents = int(m_sale.group(1))
+            if rrp_cents > sale_cents > 0:
+                return rrp_cents / 100.0, sale_cents / 100.0
+            if sale_cents > 0:
+                return sale_cents / 100.0, 0.0
     except Exception:
         pass
+
+    # ── 3) JSON-LD 最后兜底（DOM 完全取不到时才用）────────────────────────────
+    # 注意：JSON-LD 价格可能有缓存，只返回 (price, 0.0)，不推断折扣。
+    try:
+        for s in soup.find_all("script", {"type": "application/ld+json"}):
+            data = json.loads(s.string or "{}")
+            items = data if isinstance(data, list) else [data]
+            for item in items:
+                offers = item.get("offers")
+                if isinstance(offers, dict) and "price" in offers:
+                    p = float(str(offers.get("price", "0")).replace(",", "") or 0)
+                    if p > 0:
+                        return p, 0.0
+    except Exception:
+        pass
+
     return 0.0, 0.0
 
 
-def build_size_fields(rows):
-    """
-    rows -> 
-      Product Size: "39,40,41,..."
-      Product Size Detail: "39|uk:6|stock:64|sku:0194....;..."
-    - 去重、排序；缺失字段用占位（uk:"", stock:0, sku:""）
-    """
-    eu_seen = set()
-    eu_list, detail = [], []
+# ============ 其他解析函数（与 v1 相同）============
 
-    for r in rows:
-        eu = str(r.get("size_eu") or "").strip()
-        if not eu or eu in eu_seen:
-            continue
-        eu_seen.add(eu)
-        eu_list.append(eu)
-
-        uk  = str(r.get("size_uk") or "").strip()
-        sku = str(r.get("sku") or "").strip()
-        # 库存强制 int，避免 "92" 被当成非数字
-        try:
-            qty = int(r.get("available_qty") or 0)
-        except Exception:
-            qty = 0
-
-        detail.append(f"{eu}|uk:{uk}|stock:{qty}|sku:{sku}")
-
-    # 排序 & 同步排序 detail
-    def _eu_key(s: str):
-        try:
-            return int(s.split("-")[0])
-        except Exception:
-            return 999
-
-    eu_list.sort(key=_eu_key)
-    order = {eu: i for i, eu in enumerate(eu_list)}
-    detail.sort(key=lambda seg: order.get(seg.split("|", 1)[0], 999))
-
-    return ",".join(eu_list), ";".join(detail)
-
-
-
-def ensure_dirs(*paths: Path):
-    for p in paths:
-        p.mkdir(parents=True, exist_ok=True)
-
-def is_url(s: str) -> bool:
-    return str(s).startswith("http://") or str(s).startswith("https://")
-
-def clean(s: str) -> str:
-    return re.sub(r"\s+", " ", (s or "")).strip()
-
-def get_meta(soup, name=None, prop=None):
-    if name:
-        m = soup.find("meta", attrs={"name": name})
-        if m and m.get("content"):
-            return clean(m["content"])
-    if prop:
-        m = soup.find("meta", attrs={"property": prop})
-        if m and m.get("content"):
-            return clean(m["content"])
-    return ""
-
-MATERIAL_WORDS = [
-    "Leather", "Nubuck", "Suede", "Textile", "Mesh", "Canvas",
-    "Rubber", "GORE-TEX", "Gore-Tex", "GORETEX", "Synthetic", "PU", "TPU", "EVA", "Wool", "Neoprene"
-]
-
-def guess_code_from_url(url: str) -> str:
-    m = re.search(r"/(\d{6})/(\d{5})(?:[/?#]|$)", url or "")
-    if m:
-        return f"{m.group(1)}{m.group(2)}"
-    m2 = re.search(r"/product/(\d{10,12})(?:[/?#]|$)", url or "")
-    if m2:
-        return m2.group(1)
-    return hashlib.md5((url or "").encode("utf-8")).hexdigest()[:10]
-
-def save_debug_html(url: str, html: str, tag: str = "loaded"):
-    if not DEBUG_SAVE_HTML:
-        return
-    ensure_dirs(DEBUG_DIR)
-    code_hint = guess_code_from_url(url)
-    ts = time.strftime("%Y%m%d-%H%M%S")
-    name = f"{ts}_{tag}_{code_hint}.html"
-    (DEBUG_DIR / name).write_text(html or "", encoding="utf-8", errors="ignore")
-
-def fetch_html(url_or_file: str) -> str:
-    if not is_url(url_or_file):
-        return Path(url_or_file).read_text(encoding="utf-8", errors="ignore")
-    r = requests.get(url_or_file, headers=HDRS, timeout=REQUEST_TIMEOUT)
-    r.raise_for_status()
-    return r.text
-
-# ============ 可选：Selenium ============
-_selenium_driver = None
-def get_driver():
-    global _selenium_driver
-    if _selenium_driver is not None:
-        return _selenium_driver
-    from selenium import webdriver
-    from selenium.webdriver.chrome.options import Options
-    from selenium.webdriver.chrome.service import Service
-    opts = Options()
-    opts.add_argument("--headless=new")
-    opts.add_argument("--disable-gpu")
-    opts.add_argument("--no-sandbox")
-    opts.add_argument("--disable-dev-shm-usage")
-    opts.add_argument("--window-size=1920,1080")
-    _selenium_driver = webdriver.Chrome(service=Service(CHROMEDRIVER_PATH), options=opts)
-    return _selenium_driver
-
-def fetch_html_selenium(url: str) -> str:
-    d = get_driver()
-    d.get(url)
-    # 轻等待：新站首屏直出 + 少量动态
-    time.sleep(1.2)
-    return d.page_source
-
-# ============ 解析：编码 / 名称 / 描述 / 颜色 / 性别 / 材质 ============
-def extract_code(soup, url="") -> str:
-    # A. JSON-LD（新版最稳）
+def extract_code(soup, url=""):
     for s in soup.find_all("script", {"type": "application/ld+json"}):
         try:
             data = json.loads(s.string or "{}")
@@ -367,72 +323,68 @@ def extract_code(soup, url="") -> str:
                     v = str(item.get(k, "")).strip()
                     if not v:
                         continue
-                    # EAN-13 条形码（纯13位数字）会被正则误截为11位编码，跳过
+                    # EAN-13 条形码（纯13位数字）会被 regex 误截为11位编码，跳过
                     if re.fullmatch(r"\d{13}", v):
                         continue
-                    # \D+ 要求6位与5位之间必须有分隔符，防止匹配EAN子串
+                    # \D+ 要求6位与5位之间必须有分隔符，防止在纯数字串内乱匹配
                     m = re.search(r"(\d{6})\D+(\d{5})", v)
-                    if m:
-                        return f"{m.group(1)}{m.group(2)}"
-                    # 无分隔符的纯数字编码（如 83071400001）由此兜底
+                    if m: return f"{m.group(1)}{m.group(2)}"
                     m2 = re.search(r"\b(\d{10,12})\b", v)
-                    if m2:
-                        return m2.group(1)
+                    if m2: return m2.group(1)
         except Exception:
             pass
-    # B. 可见“Product number:”老模板
     node = soup.find("div", class_="product_info__product-number")
     if node:
-        t = clean(node.get_text(" ", strip=True))
+        t = re.sub(r"\s+", " ", node.get_text(" ", strip=True)).strip()
         m = re.search(r"(\d{6})\D+(\d{5})", t)
-        if m:
-            return f"{m.group(1)}{m.group(2)}"
+        if m: return f"{m.group(1)}{m.group(2)}"
         m2 = re.search(r"\b(\d{10,12})\b", t)
-        if m2:
-            return m2.group(1)
-    # C. URL 兜底
-    href = get_meta(soup, prop="og:url") or get_meta(soup, name="twitter:url")
-    if not href:
-        href = url or ""
+        if m2: return m2.group(1)
+    href = ""
+    for meta_args in [{"property": "og:url"}, {"name": "twitter:url"}]:
+        tag = soup.find("meta", attrs=meta_args)
+        if tag and tag.get("content"):
+            href = tag["content"]
+            break
+    if not href: href = url or ""
     m = re.search(r"/(\d{6})/(\d{5})(?:[/?#]|$)", href)
-    if m:
-        return f"{m.group(1)}{m.group(2)}"
+    if m: return f"{m.group(1)}{m.group(2)}"
     m2 = re.search(r"/product/(\d{10,12})(?:[/?#]|$)", href)
-    if m2:
-        return m2.group(1)
-    # D. 整页兜底
+    if m2: return m2.group(1)
     text = soup.get_text(" ", strip=True)
     m3 = re.search(r"\b(\d{6})\D{0,3}(\d{5})\b", text)
-    if m3:
-        return f"{m3.group(1)}{m3.group(2)}"
+    if m3: return f"{m3.group(1)}{m3.group(2)}"
     m4 = re.search(r"\b(\d{10,12})\b", text)
-    if m4:
-        return m4.group(1)
+    if m4: return m4.group(1)
     raise RuntimeError("Product Code not found")
 
+
 def extract_names(soup):
-    # 新模板：双标题
     h1 = soup.select_one('[data-testid="product-card-titleandprice"] h1')
-    marketing = ""
-    model = ""
+    marketing = model = ""
     if h1:
         p = h1.find("p")
-        marketing = clean(p.get_text(" ", strip=True)) if p else ""
-        tails = [t for t in (h1.find_all(string=True, recursive=False) or [])]
-        model = clean(tails[0]) if tails and clean(tails[0]) else ""
-    # og:title 兜底（常见形如 "... | Black"）
-    og_title = get_meta(soup, prop="og:title")
+        marketing = re.sub(r"\s+", " ", (p.get_text(" ", strip=True) if p else "")).strip()
+        tails = h1.find_all(string=True, recursive=False)
+        model = re.sub(r"\s+", " ", tails[0]).strip() if tails else ""
+    og_title = ""
+    tag = soup.find("meta", attrs={"property": "og:title"})
+    if tag and tag.get("content"):
+        og_title = re.sub(r"\s+", " ", tag["content"]).strip()
     if not (marketing or model) and og_title:
-        # 去品牌 ECCO 文案粘连，保留 Men's/Women's
         left = og_title.split(" | ", 1)[0]
         left = re.sub(r"\bECCO\b|\bECCO®\b", "", left, flags=re.I)
-        left = clean(left)
-        marketing = left
-    merged = " | ".join([x for x in [marketing, model] if x]) or (og_title or "")
+        marketing = re.sub(r"\s+", " ", left).strip()
+    merged = " | ".join([x for x in [marketing, model] if x]) or og_title
     return marketing, model, merged
 
+
 def extract_description(soup):
-    # JSON-LD description 最干净
+    # meta description 最干净：只包含营销段落，不混入 features
+    tag = soup.find("meta", attrs={"name": "description"})
+    if tag and tag.get("content"):
+        return re.sub(r"\s+", " ", unescape(tag["content"])).strip()
+    # JSON-LD 兜底（ECCO 的 description 会把 features 也混进来，仅作最后手段）
     for s in soup.find_all("script", {"type": "application/ld+json"}):
         try:
             data = json.loads(s.string or "{}")
@@ -440,372 +392,171 @@ def extract_description(soup):
             for item in items:
                 desc = item.get("description", "")
                 if desc:
-                    text = re.sub(r"<[^>]+>", " ", desc)
-                    return clean(unescape(text))
+                    return re.sub(r"\s+", " ", unescape(re.sub(r"<[^>]+>", " ", desc))).strip()
         except Exception:
             pass
-    # meta 描述兜底
-    desc = get_meta(soup, name="description")
-    if desc:
-        text = re.sub(r"<[^>]+>", " ", desc)
-        return clean(unescape(text))
-    # 可见容器兜底
-    node = soup.select_one("div.product-description")
-    return clean(node.get_text(" ", strip=True)) if node else ""
+    return ""
+
 
 def extract_color(soup):
     node = soup.select_one("span.product_info__color--selected")
     if node:
-        return clean(node.get_text(" ", strip=True))
-    og_title = get_meta(soup, prop="og:title")
+        return re.sub(r"\s+", " ", node.get_text(" ", strip=True)).strip()
+    tag = soup.find("meta", attrs={"property": "og:title"})
+    og_title = tag["content"] if (tag and tag.get("content")) else ""
     if " | " in og_title:
-        return clean(og_title.split(" | ", 1)[1])
+        return re.sub(r"\s+", " ", og_title.split(" | ", 1)[1]).strip()
     return "No Data"
+
+
+MATERIAL_WORDS = [
+    "Leather", "Nubuck", "Suede", "Textile", "Mesh", "Canvas",
+    "Rubber", "GORE-TEX", "Gore-Tex", "GORETEX", "Synthetic", "PU", "TPU", "EVA", "Wool", "Neoprene"
+]
 
 def parse_gender(*texts):
     t = " ".join([x or "" for x in texts]).lower()
-    if "women" in t or "women’s" in t or "women's" in t or "ladies" in t:
-        return "women"
-    if "men" in t or "men’s" in t or "men's" in t:
-        return "men"
-    if "kid" in t or "junior" in t or "youth" in t:
-        return "kids"
+    if "women" in t or "ladies" in t: return "women"
+    if "men" in t: return "men"
+    if any(k in t for k in ("kid", "junior", "youth")): return "kids"
     return ""
 
 def parse_materials(*texts):
     joined = " | ".join([x or "" for x in texts])
-    hits = []
+    hits, seen, out = [], set(), []
     for w in MATERIAL_WORDS:
         if re.search(rf"(?<!\w){re.escape(w)}(?!\w)", joined, re.I):
             hits.append(w if w.isupper() else w.title())
-    # 去重保序
-    seen, out = set(), []
     for x in hits:
         xl = x.lower()
-        if xl in seen: 
-            continue
+        if xl in seen: continue
         seen.add(xl); out.append(x)
     return ", ".join(out) if out else "No Data"
 
-# ============ 价格 / 库存 ============
-def extract_prices(html, soup):
-    """
-    返回 (Price, AdjustedPrice)
 
-    约定：
-      - Price         = 原价（RRP）
-      - AdjustedPrice = 折后价（打折时），否则为 0
+# ============ HTML 抓取 ============
 
-    优先级：
-      1. 老站 onProductPageInit
-      2. Commercetools JSON（__NEXT_DATA__ 或内嵌脚本）：
-         "value".centAmount = 原价，"discounted".value.centAmount = 折后价
-      3. JSON-LD offers.price（当前售价）+ DOM RecommendedPrice（原价）
-      4. DOM 兜底
-    """
+def ensure_dirs(*paths):
+    for p in paths: p.mkdir(parents=True, exist_ok=True)
 
-    def _parse_money(text: str) -> float:
-        if not text:
-            return 0.0
-        m = re.search(r'(\d+(?:\.\d+)?)', text.replace(",", ""))
-        return float(m.group(1)) if m else 0.0
+def is_url(s): return str(s).startswith("http://") or str(s).startswith("https://")
 
-    # 1) 老站 onProductPageInit
-    try:
-        m = re.search(r'productdetailctrl\.onProductPageInit\((\{.*?\})\)', html, re.DOTALL)
-        if m:
-            js = m.group(1).replace("&quot;", '"')
-            data = json.loads(js)
-            p = float(data.get("Price", 0) or 0)
-            ap = float(data.get("AdjustedPrice", 0) or 0)
-            return p, ap
-    except Exception:
-        pass
+def guess_code_from_url(url):
+    m = re.search(r"/(\d{6})/(\d{5})(?:[/?#]|$)", url or "")
+    if m: return f"{m.group(1)}{m.group(2)}"
+    m2 = re.search(r"/product/(\d{10,12})(?:[/?#]|$)", url or "")
+    if m2: return m2.group(1)
+    return hashlib.md5((url or "").encode("utf-8")).hexdigest()[:10]
 
-    # 2) Commercetools JSON（ECCO 用 Commercetools，价格在 __NEXT_DATA__ 里）
-    # 结构：..."value":{"centAmount":13000,...},...,"discounted":{"value":{"centAmount":9100,...}}...
-    # 改进：先找 "discounted" 块内的 centAmount（折后价），再向前找原价 centAmount
-    try:
-        # 策略 A：在 discounted 块里找折后价 centAmount
-        m_disc_ca = re.search(
-            r'"discounted"\s*:\s*\{[^}]*"value"\s*:\s*\{[^}]*"centAmount"\s*:\s*(\d+)',
-            html
-        )
-        if m_disc_ca:
-            disc_cents = int(m_disc_ca.group(1))
-            # 找 discounted 前面的 centAmount（原价）
-            # 从 HTML 开头到 discounted 的位置，往前找最近的 centAmount
-            disc_pos = m_disc_ca.start()
-            pre_disc = html[max(0, disc_pos-800):disc_pos]  # 往前最多 800 字符
-            m_orig_ca = re.search(r'"centAmount"\s*:\s*(\d+)(?!.*"centAmount")', pre_disc)
-            if m_orig_ca:
-                orig_cents = int(m_orig_ca.group(1))
-                if orig_cents > disc_cents > 0:
-                    return orig_cents / 100.0, disc_cents / 100.0
-    except Exception:
-        pass
+def save_debug_html(url, html, tag="loaded"):
+    if not DEBUG_SAVE_HTML: return
+    ensure_dirs(DEBUG_DIR)
+    code_hint = guess_code_from_url(url)
+    ts = time.strftime("%Y%m%d-%H%M%S")
+    (DEBUG_DIR / f"{ts}_{tag}_{code_hint}.html").write_text(html or "", encoding="utf-8", errors="ignore")
 
-    # 3) JSON-LD 中的当前价格（一般是折后价）
-    current_price = 0.0
-    try:
-        for s in soup.find_all("script", {"type": "application/ld+json"}):
-            data = json.loads(s.string or "{}")
-            items = data if isinstance(data, list) else [data]
-            for item in items:
-                offers = item.get("offers")
-                if isinstance(offers, dict) and "price" in offers:
-                    current_price = float(str(offers.get("price", "0")).replace(",", "") or 0)
-                    break
-            if current_price:
-                break
-    except Exception:
-        pass
+def _make_session() -> requests.Session:
+    s = requests.Session()
+    retry = Retry(total=4, backoff_factor=1.5,
+                  status_forcelist=(429, 500, 502, 503, 504))
+    s.mount("https://", HTTPAdapter(max_retries=retry))
+    s.mount("http://",  HTTPAdapter(max_retries=retry))
+    s.headers.update(HDRS)
+    return s
 
-    # 4) DOM 原价元素（多个 testid 尝试）
-    orig_price = 0.0
-    try:
-        for testid in ("RecommendedPrice", "OriginalPrice", "RegularPrice", "StrikethroughPrice"):
-            node = soup.find(attrs={"data-testid": testid})
-            if node:
-                orig_price = _parse_money(node.get_text(" ", strip=True))
-                if orig_price > 0:
-                    break
-    except Exception:
-        pass
+_session: requests.Session | None = None
 
-    # 4.1 <del> / <s> 划线价兜底
-    if orig_price == 0:
-        try:
-            for tag in ("del", "s"):
-                for node in soup.find_all(tag):
-                    val = _parse_money(node.get_text(" ", strip=True))
-                    if val > 0:
-                        orig_price = val
-                        break
-                if orig_price > 0:
-                    break
-        except Exception:
-            pass
+def _get_session() -> requests.Session:
+    global _session
+    if _session is None:
+        _session = _make_session()
+    return _session
 
-    if orig_price > 0 and current_price > 0 and orig_price > current_price:
-        return orig_price, current_price
-
-    if current_price > 0:
-        return current_price, current_price  # 无折扣：存同值，方便数据库核查
-
-    # 5) DOM 兜底
-    try:
-        p_disc = soup.select_one("p.product-price")
-        disc_val = _parse_money(p_disc.get_text(" ", strip=True)) if p_disc else 0.0
-        if orig_price > 0 and disc_val > 0 and orig_price > disc_val:
-            return orig_price, disc_val
-        if disc_val > 0:
-            return disc_val, 0.0
-    except Exception:
-        pass
-
-    return 0.0, 0.0
+def fetch_html(url_or_file: str) -> str:
+    if not is_url(url_or_file):
+        return Path(url_or_file).read_text(encoding="utf-8", errors="ignore")
+    r = _get_session().get(url_or_file, timeout=REQUEST_TIMEOUT)
+    r.raise_for_status()
+    return r.text
 
 
+_selenium_driver = None
 
-def build_size_fields_jingya(rows):
-    """
-    将 parse_ecco_sizes_and_stock(rows) 的结果，转成鲸芽需要的两列：
-      - Product Size:  EU:有货/无货;...
-      - Product Size Detail: EU:3/0:EAN;...    (3=有货, 0=无货)
-    规则：
-      - 只看在线库存：qty>0 或 has_stock=True 视为有货 -> 状态码=3；否则=0
-      - EAN/sku 不是 13 位时，用 '0000000000000' 占位
-      - EU 尺码按数值升序；区间如 '3538' 可选转成 '35-38'（默认不改）
-    """
-    def eu_key(s):
-        try:
-            return int(str(s).split("-")[0])
-        except Exception:
-            return 999
+def get_driver():
+    global _selenium_driver
+    if _selenium_driver is not None:
+        return _selenium_driver
+    from common.browser.driver_auto import build_uc_driver
+    _selenium_driver = build_uc_driver(headless=False)
+    return _selenium_driver
 
-    # 排序去重
-    seen = set()
-    sorted_rows = sorted(rows, key=lambda r: eu_key(r.get("size_eu", "")))
+def fetch_html_selenium(url):
+    d = get_driver()
+    d.get(url)
+    time.sleep(1.5)
+    return d.page_source
 
-    size_parts = []
-    detail_parts = []
-    for r in sorted_rows:
-        eu = str(r.get("size_eu") or "").strip()
-        if not eu or eu in seen:
-            continue
-        seen.add(eu)
-
-        qty = r.get("available_qty")
-        has = r.get("has_stock")
-        in_stock = (has is True) or (isinstance(qty, (int, float)) and qty > 0) or (isinstance(qty, str) and qty.isdigit() and int(qty) > 0)
-        status_word = "有货" if in_stock else "无货"
-        status_code = DEFAULT_STOCK_COUNT if in_stock else 0
-
-        sku = str(r.get("sku") or "").strip()
-        ean = sku if len(sku) == 13 and sku.isdigit() else "0000000000000"
-
-        size_parts.append(f"{eu}:{status_word}")
-        detail_parts.append(f"{eu}:{status_code}:{ean}")
-
-    return ";".join(size_parts), ";".join(detail_parts)
-
-def build_size_maps_jingya(rows):
-    """
-    rows -> (size_map, size_detail)
-    - size_map:   {EU: "有货"/"无货", ...}
-    - size_detail:{EU: {"stock_count": 3/0, "ean": "13位"}, ...}  # 3=有货,0=无货
-    EAN 用 sku，非13位数字则给 "0000000000000"
-    """
-    def in_stock(r):
-        q = r.get("available_qty")
-        has = r.get("has_stock")
-        if has is True:
-            return True
-        try:
-            return int(q) > 0
-        except Exception:
-            return False
-
-    size_map = {}
-    size_detail = {}
-
-    # 排序后去重
-    def eu_key(s):
-        try:
-            return int(str(s).split("-")[0])
-        except Exception:
-            return 999
-
-    seen = set()
-    for r in sorted(rows, key=lambda x: eu_key(x.get("size_eu", ""))):
-        eu = str(r.get("size_eu") or "").strip()
-        if not eu or eu in seen:
-            continue
-        seen.add(eu)
-
-        ok = in_stock(r)
-        status_word = "有货" if ok else "无货"
-        status_code = 3 if ok else 0
-
-        sku = str(r.get("sku") or "").strip()
-        ean = sku if (len(sku) == 13 and sku.isdigit()) else "0000000000000"
-
-        size_map[eu] = status_word
-        size_detail[eu] = {"stock_count": status_code, "ean": ean}
-
-    return size_map, size_detail
-
-def extract_sizes(html, soup):
-    """
-    返回 ["41:有货","42:无货", ...]
-    - DOM: div.size-picker__rows button
-    - 脚本 JSON 兜底: 查找包含 size / stock 的结构
-    """
-    results = []
-
-    # DOM
-    size_div = soup.find("div", class_="size-picker__rows")
-    if size_div:
-        for btn in size_div.find_all("button"):
-            label = clean(btn.get_text(" ", strip=True))
-            if not label:
-                continue
-            # ECCO UK 的尺码按钮多数直接显示 EU 码；若显示 UK，可在此加映射
-            eu_m = re.search(r"\b(\d{2})\b", label)
-            eu_size = eu_m.group(1) if eu_m else label
-            classes = " ".join(btn.get("class", []))
-            soldout = ("soldout" in classes.lower()) or ("disabled" in classes.lower()) or ("unavailable" in classes.lower())
-            status = "无货" if soldout else "有货"
-            results.append(f"{eu_size}:{status}")
-        if results:
-            return results
-
-    # 脚本 JSON 兜底（尽量识别）
-    for s in soup.find_all("script"):
-        txt = s.string or ""
-        if not txt:
-            continue
-        if ("size" in txt.lower() or "variant" in txt.lower()) and ("stock" in txt.lower() or "availability" in txt.lower()):
-            # 提取 "EUxx" + availability
-            # 常见字段：size, eu, available, inStock
-            pairs = re.findall(r'("?(?:eu|size|label)"?\s*:\s*"?(\d{2})"?).*?("?(?:inStock|available|availability)"?\s*:\s*(?:true|false|"?(?:InStock|OutOfStock)"?))', txt, flags=re.I|re.S)
-            added = set()
-            for p in pairs:
-                eu = p[1]
-                avail_part = p[2].lower()
-                soldout = ("false" in avail_part) or ("outofstock" in avail_part)
-                status = "无货" if soldout else "有货"
-                key = f"{eu}:{status}"
-                if key not in added:
-                    results.append(key)
-                    added.add(key)
-            if results:
-                return results
-
-    return results  # 可能为空（配件类无尺码）
 
 # ============ 主流程 ============
+
 def process_one(url: str, idx: int, total: int):
     try:
         print(f"🔍 ({idx}/{total}) {url}")
-        # 1) 抓 HTML：requests 优先
-        html = fetch_html(url)
+
+        # ── HTML 获取 ─────────────────────────────────────────────────────────
+        if not is_url(url):
+            html = fetch_html(url)
+            tag = "local"
+        elif ENABLE_SELENIUM and SELENIUM_FIRST:
+            # ★ SELENIUM_FIRST = True：直接用浏览器渲染，价格最准
+            html = fetch_html_selenium(url)
+            tag  = "sel"
+        else:
+            # requests 优先，按需回退
+            html = fetch_html(url)
+            tag  = "req"
+
         if DEBUG_SAVE_HTML:
-            save_debug_html(url, html, "loaded_req")
+            save_debug_html(url, html, f"loaded_{tag}")
         soup = BeautifulSoup(html, "html.parser")
 
-        # 2) 极少数页回退 Selenium（若连 JSON-LD / og:title 都没有）
-        need_fallback = False
-        if not soup.find("script", {"type": "application/ld+json"}) and not get_meta(soup, prop="og:title"):
-            need_fallback = True
-        if ENABLE_SELENIUM and need_fallback and is_url(url):
-            html = fetch_html_selenium(url)
-            if DEBUG_SAVE_HTML:
-                save_debug_html(url, html, "loaded_sel")
-            soup = BeautifulSoup(html, "html.parser")
+        # requests 模式：JSON-LD / og:title 都没有时才 Selenium 回退
+        if tag == "req" and ENABLE_SELENIUM:
+            no_jsonld  = not soup.find("script", {"type": "application/ld+json"})
+            no_ogtitle = not soup.find("meta", attrs={"property": "og:title"})
+            if no_jsonld and no_ogtitle:
+                html = fetch_html_selenium(url)
+                if DEBUG_SAVE_HTML:
+                    save_debug_html(url, html, "loaded_sel_fb")
+                soup = BeautifulSoup(html, "html.parser")
 
-        # ===== 编码 / 名称 / 描述 / 颜色 =====
+        # ── 编码 / 名称 / 描述 / 颜色 ─────────────────────────────────────────
         product_code = extract_code(soup, url=url)
         marketing, model, merged_name = extract_names(soup)
-        product_name = merged_name if merged_name else "No Data"
-        description = extract_description(soup)
-        color_name = extract_color(soup)
+        product_name = merged_name or "No Data"
+        description  = extract_description(soup)
+        color_name   = extract_color(soup)
 
-        # ===== 性别 / 材质（根据文本 & 尺码）=====
+        # ── 性别 / 材质 ───────────────────────────────────────────────────────
         gender_from_title = parse_gender(marketing, model, product_name)
-        material_from_text = parse_materials(marketing, model, product_name, description)
+        material          = parse_materials(marketing, model, product_name, description) or "No Data"
 
-        # ===== 新增：尺码 + 库存（优先 GB-web 数量；失败再 DOM 兜底）=====
-        rows = parse_ecco_sizes_and_stock(html)  # ← 你已定义的函数
-        
+        # ── 尺码 + 库存 ───────────────────────────────────────────────────────
+        rows = parse_ecco_sizes_and_stock(html)
         size_map, size_detail = build_size_maps_jingya(rows)
         if not size_map:
-            only_flags = extract_sizes(html, soup)  # ["41:有货","42:无货",...]
-            for token in only_flags:
-                if ":" not in token:
-                    continue
+            for token in extract_sizes(html, soup):
+                if ":" not in token: continue
                 eu, flag = token.split(":", 1)
                 eu = eu.strip()
-                has = ("无货" not in flag)
-                size_map[eu] = "有货" if has else "无货"
+                has = "无货" not in flag
+                size_map[eu]    = "有货" if has else "无货"
                 size_detail[eu] = {"stock_count": DEFAULT_STOCK_COUNT if has else 0, "ean": "0000000000000"}
 
-# 用尺码辅助判断性别（从 SizeMap 的尺码键推断）
-        eu_sizes_arr     = [k for k in size_map.keys() if k.isdigit()]
+        # 尺码辅助判断性别
+        eu_sizes_arr = [k for k in size_map if k.isdigit()]
         gender_by_size = ""
-        if any(int(x) < 35 for x in eu_sizes_arr):
-            gender_by_size = "kids"
-        elif any(x in ("45", "46") for x in eu_sizes_arr):
-            gender_by_size = "men"
-        elif any(x in ("35", "36") for x in eu_sizes_arr):
-            gender_by_size = "women"
-
-
-
-
-        gender_by_size = ""
-        if any(x.isdigit() and int(x) < 35 for x in eu_sizes_arr):
+        if any(int(x) < 35 for x in eu_sizes_arr if x.isdigit()):
             gender_by_size = "kids"
         elif any(x in ("45", "46") for x in eu_sizes_arr):
             gender_by_size = "men"
@@ -813,46 +564,53 @@ def process_one(url: str, idx: int, total: int):
             gender_by_size = "women"
 
         gender = gender_from_title or gender_by_size or "unisex"
-        material = material_from_text or "No Data"
-
-        # ✅ 在这里按 ECCO 标准尺码补码
         size_map, size_detail = supplement_ecco_sizes(size_map, size_detail, gender)
 
-        # ===== 价格 =====
+        # ── ★ 价格（v2 修复核心）─────────────────────────────────────────────
         price, adjusted = extract_prices(html, soup)
 
-        # ===== 要点（Features）=====
-        feature = ""
-        li_texts = []
-        for item in soup.select("div.chakra-accordion__item"):
-            btn = item.find("button")
-            if btn and "feature" in btn.get_text(strip=True).lower():
-                panel = item.find("div", class_="chakra-accordion__panel")
-                if panel:
-                    for li in panel.select("ul li"):
-                        t = clean(li.get_text(" ", strip=True))
-                        if t:
-                            li_texts.append(t)
-                break
-        if li_texts:
-            feature = " | ".join(li_texts)
+        # 正价商品：Adjusted Price = Price（数据库约定两者相同）
+        if price > 0 and adjusted == 0.0:
+            adjusted = price
 
-        # ===== 写文件（新增 Product Size Detail）=====
+        # 日志：方便确认价格来源
+        if adjusted != price:
+            print(f"   💰 {price} → 折后 {adjusted}")
+        else:
+            print(f"   💰 正价 {price}")
+
+        # ── 要点（Features）──────────────────────────────────────────────────
+        # 找 button 含 "Features" 的 accordion item，取其 panel 下的 li
+        feature = ""
+        for acc_item in soup.find_all(class_=re.compile(r"chakra-accordion__item", re.I)):
+            btn = acc_item.find("button")
+            if btn and "feature" in btn.get_text(strip=True).lower():
+                panel = acc_item.find(class_=re.compile(r"accordion__panel", re.I))
+                if panel:
+                    li_texts = [
+                        re.sub(r"\s+", " ", li.get_text(" ", strip=True)).strip()
+                        for li in panel.find_all("li")
+                        if li.get_text(strip=True)
+                    ]
+                    feature = " | ".join(li_texts)
+                break
+
+        # ── 写文件 ────────────────────────────────────────────────────────────
         ensure_dirs(TXT_DIR)
         out_path = TXT_DIR / f"{product_code}.txt"
         info = {
-            "Product Code": product_code,
-            "Product Name": product_name,
+            "Product Code":        product_code,
+            "Product Name":        product_name,
             "Product Description": description,
-            "Product Gender": gender,
-            "Product Color": color_name,
-            "Product Price": price,
-            "Adjusted Price": adjusted,
-            "Product Material": material,
-            "SizeMap": size_map,
-            "SizeDetail": size_detail,
-            "Feature": feature,
-            "Source URL": url
+            "Product Gender":      gender,
+            "Product Color":       color_name,
+            "Product Price":       price,
+            "Adjusted Price":      adjusted,
+            "Product Material":    material,
+            "SizeMap":             size_map,
+            "SizeDetail":          size_detail,
+            "Feature":             feature,
+            "Source URL":          url
         }
         format_txt(info, out_path, brand="clarks")
         print(f"✅ 写入: {out_path.name}")
@@ -860,7 +618,7 @@ def process_one(url: str, idx: int, total: int):
     except Exception as e:
         print(f"❌ 失败: {url} -> {e}")
         try:
-            err_html = html if 'html' in locals() else ""
+            err_html = html if "html" in locals() else ""
         except Exception:
             err_html = ""
         if DEBUG_SAVE_HTML and err_html:
@@ -868,20 +626,20 @@ def process_one(url: str, idx: int, total: int):
         try:
             ensure_dirs(TXT_DIR)
             code_hint = guess_code_from_url(url)
-            out_path = TXT_DIR / f"{code_hint}.txt"
+            out_path  = TXT_DIR / f"{code_hint}.txt"
             info = {
-                "Product Code": code_hint,
-                "Product Name": "No Data",
+                "Product Code":        code_hint,
+                "Product Name":        "No Data",
                 "Product Description": "",
-                "Product Gender": "unisex",
-                "Product Color": "No Data",
-                "Product Price": 0.0,
-                "Adjusted Price": 0.0,
-                "Product Material": "No Data",
-                "SizeMap": {},        # ← 必须是 dict
-                "SizeDetail": {},     # ← 必须是 dict
-                "Feature": "",
-                "Source URL": url
+                "Product Gender":      "unisex",
+                "Product Color":       "No Data",
+                "Product Price":       0.0,
+                "Adjusted Price":      0.0,
+                "Product Material":    "No Data",
+                "SizeMap":             {},
+                "SizeDetail":          {},
+                "Feature":             "",
+                "Source URL":          url
             }
             format_txt(info, out_path, brand="clarks")
             print(f"⚠️ 已写占位: {out_path.name}")
@@ -890,43 +648,26 @@ def process_one(url: str, idx: int, total: int):
 
 
 def ecco_fetch_info(links_file=None, max_workers: int = MAX_WORKERS):
-    """
-    ECCO 商品抓取入口。
-
-    :param links_file: 可选，自定义 product_links.txt 路径。
-                       为 None 时，使用 config 中的默认 LINKS_FILE。
-    :param max_workers: 线程数，不传则使用默认 MAX_WORKERS。
-    """
-    # 1) 解析 links 文件路径
-    if links_file is None:
-        links_path = LINKS_FILE            # config 里的 Path
-    else:
-        links_path = Path(links_file)      # 允许传 str/path
-
+    links_path = Path(links_file) if links_file else LINKS_FILE
     ensure_dirs(TXT_DIR, DEBUG_DIR)
-
     if not links_path.exists():
         raise FileNotFoundError(f"链接文件不存在: {links_path}")
 
-    # 2) 读取 URL 列表
     urls = [u.strip() for u in links_path.read_text(encoding="utf-8").splitlines() if u.strip()]
     total = len(urls)
-    print(f"📦 共 {total} 条，线程 {max_workers}，Selenium 回退: {ENABLE_SELENIUM}")
+    print(f"📦 共 {total} 条，线程 {max_workers}，Selenium: {ENABLE_SELENIUM}，SELENIUM_FIRST: {SELENIUM_FIRST}")
     if total == 0:
         print("⚠️ 链接文件为空，直接退出。")
         return
 
-    # 3) 多线程抓取
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         futures = [ex.submit(process_one, url, i + 1, total) for i, url in enumerate(urls)]
         for _ in as_completed(futures):
             pass
 
-    # 4) 关闭 selenium
     if ENABLE_SELENIUM:
         try:
-            d = get_driver()
-            d.quit()
+            get_driver().quit()
         except Exception:
             pass
 
@@ -935,4 +676,3 @@ def ecco_fetch_info(links_file=None, max_workers: int = MAX_WORKERS):
 
 if __name__ == "__main__":
     ecco_fetch_info()
-

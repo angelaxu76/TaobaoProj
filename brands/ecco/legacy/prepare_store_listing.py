@@ -5,7 +5,7 @@ from common.ingest.import_txt_to_db import import_txt_to_db
 from channels.jingya.export.prepare_utils_extended import generate_product_excels, copy_images_for_store, get_publishable_product_codes
 from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs  # ✅ 新增导入
 from brands.ecco.collect_product_links import ecco_get_links
-from brands.ecco.fetch_product_info import ecco_fetch_info
+from brands.ecco.legacy.fetch_product_info import ecco_fetch_info
 from common.publication.mark_offline_products_from_store_excels import mark_offline_products_from_store_excels
 from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk, generate_stock_excels_bulk
 from channels.jingya.pricing.export_taobao_sku_price_stock_excels import export_shop_sku_price_excels, export_shop_sku_stock_excels
