@@ -8,6 +8,7 @@ API_KEYS = {
 # 按优先级检测 driver 目录：先找共享目录（VMware Shared Folders），再用本地目录。
 # 新增虚拟机时只需把 chromedriver.exe 放到共享目录，无需每台机器单独配置。
 _DRIVER_DIR_CANDIDATES = [
+    Path(r"\\vmware-host\Shared Folders\shared\drivers"),
     Path(r"\\vmware-host\Shared Folders\shared"),
     Path(r"E:\shared\VMShared\drivers"),
     Path(r"D:\TB\drivers"),
@@ -25,9 +26,8 @@ def _pick_driver_dir() -> Path:
 
 def _resolve_chromedriver_path() -> str:
     """
-    返回可用的 chromedriver.exe 路径。
-    优先使用手动放置的 driver；若找不到或版本不匹配，
-    自动用 webdriver-manager 下载与当前 Chrome 匹配的版本。
+    返回可用的 chromedriver.exe 路径（仅做本地静态检测，不触发下载）。
+    若本地无匹配 driver，返回兜底路径；实际下载推迟到 selenium_utils.get_driver() 调用时。
     """
     import subprocess, re
 
@@ -65,7 +65,7 @@ def _resolve_chromedriver_path() -> str:
         except Exception:
             return None
 
-    # 1) 检查手动放置的 driver 是否与当前 Chrome 版本匹配
+    # 检查手动放置的 driver 是否与当前 Chrome 版本匹配
     for p in _DRIVER_DIR_CANDIDATES:
         candidate = p / "chromedriver.exe"
         try:
@@ -79,16 +79,7 @@ def _resolve_chromedriver_path() -> str:
         except OSError:
             pass
 
-    # 2) 自动下载匹配版本
-    try:
-        from webdriver_manager.chrome import ChromeDriverManager
-        path = ChromeDriverManager().install()
-        print(f"[settings] webdriver-manager downloaded ChromeDriver: {path}")
-        return path
-    except Exception as e:
-        print(f"[settings] webdriver-manager failed: {e}, falling back to default path")
-
-    # 3) 兜底
+    # 兜底路径（文件可能不存在）；webdriver-manager 下载推迟到 get_driver() 调用时
     return str(_DRIVER_DIR_CANDIDATES[-1] / "chromedriver.exe")
 
 

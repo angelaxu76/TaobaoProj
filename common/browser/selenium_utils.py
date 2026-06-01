@@ -26,19 +26,27 @@ def _resolve_driver_path() -> Optional[Path]:
     chromedriver 路径来源（稳定、可控）：
     1) settings.py 中的 GLOBAL_CHROMEDRIVER_PATH（主配置）
     2) 环境变量 CHROMEDRIVER_PATH（可选覆盖）
+    3) webdriver-manager 自动下载（兜底，仅在上述路径不存在时触发）
     """
 
-    # 1️⃣ 优先使用 settings.py（你锁死的路径）
+    # 1️⃣ 优先使用 settings.py
     if GLOBAL_CHROMEDRIVER_PATH:
         p = Path(GLOBAL_CHROMEDRIVER_PATH)
         if p.is_file():
             return p
-        else:
+        # 路径不存在时用 webdriver-manager 下载（不在 import 时触发，推迟到此处）
+        try:
+            from webdriver_manager.chrome import ChromeDriverManager
+            wdm_path = ChromeDriverManager().install()
+            print(f"[selenium_utils] webdriver-manager downloaded ChromeDriver: {wdm_path}")
+            return Path(wdm_path)
+        except Exception as e:
             raise RuntimeError(
-                f"❌ settings.py 中的 GLOBAL_CHROMEDRIVER_PATH 不存在：{p}"
+                f"❌ settings.py 中的 GLOBAL_CHROMEDRIVER_PATH 不存在：{p}，"
+                f"且 webdriver-manager 下载失败：{e}"
             )
 
-    # 2️⃣ 可选：环境变量兜底（如果你想保留）
+    # 2️⃣ 可选：环境变量兜底
     env_path = os.getenv(_ENV_DRIVER_KEY)
     if env_path:
         p = Path(env_path)
@@ -49,7 +57,7 @@ def _resolve_driver_path() -> Optional[Path]:
                 f"❌ 环境变量 {_ENV_DRIVER_KEY} 指向的 chromedriver 不存在：{env_path}"
             )
 
-    # 都没有就直接失败（不允许 Selenium Manager）
+    # 都没有就直接失败
     raise RuntimeError(
         "❌ 未配置 chromedriver，请在 cfg/settings.py 中设置 DRIVER_DIR / GLOBAL_CHROMEDRIVER_PATH"
     )
