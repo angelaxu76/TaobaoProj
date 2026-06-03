@@ -24,6 +24,7 @@ TARGET_URLS = [
     ("https://gb.ecco.com/outdoor/women", "Women Outdoor"),
     ("https://gb.ecco.com/outdoor/men", "Men Outdoor"),
     ("https://gb.ecco.com/golf", "Golf"),
+    ("https://gb.ecco.com/sale", "Sale"),
     ("https://gb.ecco.com/kids/junior", "Kids Junior"),
     ("https://gb.ecco.com/kids/boys", "Kids Boys Shoes"),
     ("https://gb.ecco.com/kids/girls", "Kids Girls Shoes"),
