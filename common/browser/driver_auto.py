@@ -12,9 +12,11 @@ import re
 import shutil
 import subprocess
 import time
+from pathlib import Path
 
 import undetected_chromedriver as uc
 from selenium.common.exceptions import SessionNotCreatedException, WebDriverException
+from cfg.settings import GLOBAL_CHROMEDRIVER_PATH
 
 
 def _detect_chrome_major_on_windows():
@@ -93,6 +95,13 @@ def build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True)
     kwargs = dict(options=options, headless=headless)
     if major:
         kwargs["version_main"] = major
+
+    # 优先使用 settings.py 解析出的本地 driver（共享目录 → D 盘，与 selenium_utils 一致）
+    _resolved = Path(GLOBAL_CHROMEDRIVER_PATH) if GLOBAL_CHROMEDRIVER_PATH else None
+    if _resolved and _resolved.is_file():
+        kwargs["driver_executable_path"] = str(_resolved)
+        if verbose:
+            print(f"🔧 Using chromedriver: {_resolved}")
 
     last_err = None
     for attempt in range(1, retries + 1):

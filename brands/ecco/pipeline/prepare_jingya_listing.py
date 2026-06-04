@@ -2,7 +2,7 @@ from config import ECCO
 from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 
 # ====== 抓取阶段（沿用 ECCO 原逻辑）======
-from brands.ecco.collect_product_links_v3 import ecco_get_links
+from brands.ecco.collect_product_links import ecco_get_links
 from brands.ecco.fetch_product_info import ecco_fetch_info
 
 # ====== 数据入库 & 绑定阶段（照 Camper 逻辑）======
