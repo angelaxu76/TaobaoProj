@@ -5,8 +5,9 @@ import re
 import time
 
 BASE_DOMAIN = "https://www.clarksoutlet.co.uk"
-# 新版官网链接为相对路径：/en-vg/<product-name>/<id>-p
-LINK_PATTERN = re.compile(r"^/en-vg/[\w\-]+/\d+-p$")
+# 商品链接格式：https://www.clarksoutlet.co.uk/<product-name>/<id>-p
+LINK_PATTERN_ABS = re.compile(r"^https://www\.clarksoutlet\.co\.uk/[\w\-]+/\d+-p$")
+LINK_PATTERN_REL = re.compile(r"^/[\w\-]+/\d+-p$")
 
 URLS = {
     "women_shoes":      f"{BASE_DOMAIN}/womens/womens-shoes/w_shoes_uko-c",
@@ -41,11 +42,13 @@ def get_outlet_product_links():
             continue
 
         soup = BeautifulSoup(response.text, "html.parser")
-        matched = {
-            BASE_DOMAIN + a["href"]
-            for a in soup.find_all("a", href=True)
-            if LINK_PATTERN.match(a["href"])
-        }
+        matched = set()
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            if LINK_PATTERN_ABS.match(href):
+                matched.add(href)
+            elif LINK_PATTERN_REL.match(href):
+                matched.add(BASE_DOMAIN + href)
         print(f"  ✅ 抓取 {len(matched)} 条链接")
         all_links.update(matched)
         time.sleep(0.5)
