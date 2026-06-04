@@ -21,7 +21,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
 # === 你的项目内配置 ===
-from config import ECCO, ensure_all_dirs, GLOBAL_CHROMEDRIVER_PATH
+from config import ECCO, ensure_all_dirs
 from selenium.webdriver.chrome.service import Service
 
 # ---------------- 基本配置 ----------------
@@ -40,7 +40,14 @@ def create_driver():
     for a in ["--headless=new", "--disable-gpu", "--no-sandbox",
               "--disable-dev-shm-usage", "--window-size=1920x1080"]:
         opts.add_argument(a)
-    return webdriver.Chrome(service=Service(GLOBAL_CHROMEDRIVER_PATH), options=opts)
+    from cfg.settings import _resolve_chromedriver_path
+    driver_path = _resolve_chromedriver_path()
+    if driver_path:
+        service = Service(driver_path)
+    else:
+        from webdriver_manager.chrome import ChromeDriverManager
+        service = Service(ChromeDriverManager().install())
+    return webdriver.Chrome(service=service, options=opts)
 
 
 # ============== 工具函数：srcset / 解析 / 过滤 ==============

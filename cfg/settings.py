@@ -79,8 +79,8 @@ def _resolve_chromedriver_path() -> str:
         except OSError:
             pass
 
-    # 兜底路径（文件可能不存在）；webdriver-manager 下载推迟到 get_driver() 调用时
-    return str(_DRIVER_DIR_CANDIDATES[-1] / "chromedriver.exe")
+    # 所有候选都找不到，返回 None；实际下载/报错推迟到 get_driver() / build_driver() 调用时
+    return None
 
 
 DRIVER_DIR = _pick_driver_dir()
