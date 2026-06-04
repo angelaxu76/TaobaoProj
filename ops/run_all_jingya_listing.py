@@ -51,6 +51,7 @@ LOOP_INTERVAL_SEC = 3600
 # ══════════════════════════════════════════════════════════════════
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
+LOG_DIR  = ROOT_DIR / "logs"
 
 BRAND_SCRIPT_MAP = {
     "clarks":          ROOT_DIR / "brands" / "clarks"          / "pipeline" / "prepare_jingya_listing.py",
@@ -60,6 +61,21 @@ BRAND_SCRIPT_MAP = {
     "geox":            ROOT_DIR / "brands" / "geox"            / "pipeline" / "prepare_jingya_listing.py",
     "marksandspencer": ROOT_DIR / "brands" / "marksandspencer" / "pipeline" / "prepare_jingya_listing.py",
 }
+
+
+class _Tee:
+    """同时写入多个流（终端 + 日志文件）。"""
+    def __init__(self, *streams):
+        self._streams = streams
+
+    def write(self, data):
+        for s in self._streams:
+            s.write(data)
+            s.flush()
+
+    def flush(self):
+        for s in self._streams:
+            s.flush()
 
 
 def _banner(text: str):
@@ -193,42 +209,54 @@ def run_one_round(round_num: int) -> bool:
 
 
 def main():
-    print(f"\n{'★' * 64}")
-    print(f"  全品牌 Jingya Listing 流水线")
-    print(f"  启动时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"  执行品牌：{', '.join(BRANDS_TO_RUN)}")
-    print(f"  静默超时：{SILENCE_TIMEOUT_SEC // 60} 分钟  |  最大重试：{MAX_RETRIES} 次")
-    loop_info = f"循环模式，间隔 {LOOP_INTERVAL_SEC // 60} 分钟" if LOOP_ENABLED else "单次执行"
-    print(f"  模式：{loop_info}")
-    print(f"{'★' * 64}", flush=True)
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log_path = LOG_DIR / f"run_all_jingya_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    log_fh = open(log_path, "w", encoding="utf-8")
+    sys.stdout = _Tee(sys.__stdout__, log_fh)
 
-    round_num = 1
-    all_ok = True
+    try:
+        print(f"\n{'★' * 64}")
+        print(f"  全品牌 Jingya Listing 流水线")
+        print(f"  启动时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"  执行品牌：{', '.join(BRANDS_TO_RUN)}")
+        print(f"  静默超时：{SILENCE_TIMEOUT_SEC // 60} 分钟  |  最大重试：{MAX_RETRIES} 次")
+        loop_info = f"循环模式，间隔 {LOOP_INTERVAL_SEC // 60} 分钟" if LOOP_ENABLED else "单次执行"
+        print(f"  模式：{loop_info}")
+        print(f"  日志文件：{log_path}")
+        print(f"{'★' * 64}", flush=True)
 
-    while True:
-        ok = run_one_round(round_num)
-        if not ok:
-            all_ok = False
+        round_num = 1
+        all_ok = True
 
-        if not LOOP_ENABLED:
-            break
+        while True:
+            ok = run_one_round(round_num)
+            if not ok:
+                all_ok = False
 
-        # 循环模式：等待后进入下一轮
-        next_time = datetime.fromtimestamp(time.time() + LOOP_INTERVAL_SEC)
-        print(
-            f"  ♻️  循环模式：等待 {LOOP_INTERVAL_SEC // 60} 分钟后开始第 {round_num + 1} 轮"
-            f"（预计 {next_time.strftime('%H:%M:%S')}）",
-            flush=True,
-        )
-        try:
-            time.sleep(LOOP_INTERVAL_SEC)
-        except KeyboardInterrupt:
-            print("\n⛔ 用户中断，退出循环。")
-            break
+            if not LOOP_ENABLED:
+                break
 
-        round_num += 1
+            # 循环模式：等待后进入下一轮
+            next_time = datetime.fromtimestamp(time.time() + LOOP_INTERVAL_SEC)
+            print(
+                f"  ♻️  循环模式：等待 {LOOP_INTERVAL_SEC // 60} 分钟后开始第 {round_num + 1} 轮"
+                f"（预计 {next_time.strftime('%H:%M:%S')}）",
+                flush=True,
+            )
+            try:
+                time.sleep(LOOP_INTERVAL_SEC)
+            except KeyboardInterrupt:
+                print("\n⛔ 用户中断，退出循环。")
+                break
 
-    return 0 if all_ok else 1
+            round_num += 1
+
+        return 0 if all_ok else 1
+
+    finally:
+        sys.stdout = sys.__stdout__
+        log_fh.close()
+        print(f"📄 日志已保存：{log_path}")
 
 
 if __name__ == "__main__":
