@@ -6,7 +6,7 @@ SMTP_PORT = 587
 
 # 发件账号
 EMAIL_SENDER = "xunianzhou7@gmail.com"
-EMAIL_PASSWORD = "ddggppssztgrdjtp"  # Gmail App Password（不是登录密码），在 Google 账户 -> 安全 -> 应用专用密码 生成
+EMAIL_PASSWORD = "gnhawcmsthxodwrn"  # Gmail App Password（不是登录密码），在 Google 账户 -> 安全 -> 应用专用密码 生成
 
 # 收件人列表
 ECMS_RECIPIENTS = [
