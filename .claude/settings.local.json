@@ -37,7 +37,8 @@
       "Bash(Select-Object -Last 10)",
       "PowerShell(Get-Content *)",
       "Bash(Get-ChildItem \"D:\\\\TB\\\\Products\\\\ecco\\\\publication\\\\TXT\")",
-      "Bash(Select-Object -First 10 -ExpandProperty Name)"
+      "Bash(Select-Object -First 10 -ExpandProperty Name)",
+      "PowerShell(pip install *)"
     ]
   }
 }

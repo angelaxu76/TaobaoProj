@@ -12,15 +12,15 @@ def main():
     #     r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\03_Purchase_Records\01_Supplier_Invoices\202503-202605\camper",
     # )
 
-    # rename_clarks_invoices(
-    #     r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\99_Backup\clarks invoice\202605",
-    #     r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\03_Purchase_Records\01_Supplier_Invoices\202503-202605\Clarks",
-    # )
-
-    rename_ecco_invoices(
-        r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\99_Backup\ecco_invoice\orig-202605",
-        r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\03_Purchase_Records\01_Supplier_Invoices\202503-202605\ECCO",
+    rename_clarks_invoices(
+        r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\99_Backup\clarks invoice\orginal-202605",
+        r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\03_Purchase_Records\01_Supplier_Invoices\202503-202605\Clarks-1",
     )
+
+    # rename_ecco_invoices(
+    #     r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\99_Backup\ecco_invoice\orig-202605",
+    #     r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\03_Purchase_Records\01_Supplier_Invoices\202503-202605\ECCO",
+    # )
 
     # rename_amazon_invoices(
     #     r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\99_Backup\amazon_invoice\202602",

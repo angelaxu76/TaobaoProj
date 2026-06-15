@@ -43,6 +43,7 @@ HDRS = {
 ENABLE_SELENIUM    = True
 SELENIUM_FIRST     = True   # True = 全程用浏览器（价格最准）；False = requests 优先
 MAX_WORKERS        = 1
+PAGE_LOAD_TIMEOUT  = 30  # seconds — prevents hanging on crashed tab
 
 
 # ============ 工具函数（与 v1 相同）============
@@ -488,13 +489,28 @@ def get_driver():
         return _selenium_driver
     from common.browser.driver_auto import build_uc_driver
     _selenium_driver = build_uc_driver(headless=False)
+    _selenium_driver.set_page_load_timeout(PAGE_LOAD_TIMEOUT)
     return _selenium_driver
 
+def _reset_driver():
+    global _selenium_driver
+    if _selenium_driver is not None:
+        try:
+            _selenium_driver.quit()
+        except Exception:
+            pass
+        _selenium_driver = None
+
 def fetch_html_selenium(url):
-    d = get_driver()
-    d.get(url)
-    time.sleep(1.5)
-    return d.page_source
+    try:
+        d = get_driver()
+        d.get(url)
+        time.sleep(1.5)
+        return d.page_source
+    except Exception as e:
+        print(f"⚠️  Selenium 异常，重置 driver: {e}")
+        _reset_driver()
+        raise
 
 
 # ============ 主流程 ============

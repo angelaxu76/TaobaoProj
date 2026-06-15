@@ -1,4 +1,4 @@
-# jingya/generate_binding_goods_excel.py
+﻿# jingya/generate_binding_goods_excel.py
 # -*- coding: utf-8 -*-
 import re
 import time
@@ -298,17 +298,12 @@ def generate_channel_binding_excel(brand: str, goods_dir: Path, debug: bool = Tr
     # B) 原始尺码（用于外部渠道商品ID，不改变大小写，仅去掉首尾空格）
     unbound_df["_size_id"] = unbound_df["_size_raw"].fillna("").astype(str).str.strip()
 
-
-
-
-
-    # B) 用于外部渠道商品ID（严格使用原始尺码，仅去首尾空格，不改写大小写）
-    unbound_df["_size_id"] = unbound_df["_size_raw"].fillna("").astype(str).str.strip()
-
-    # 生成 *外部渠道商品ID = 原始编码 + 原始尺码（示例：MWX0339NY91 + 2XL → MWX0339NY912XL）
-    unbound_df["*外部渠道商品ID"] = (unbound_df["_code"] + unbound_df["_size_id"])
+    # 生成 *外部渠道商品ID = 原始编码 + 原始尺码，整体 alnum 清洗（示例：MWX0339NY91 + 2XL → MWX0339NY912XL）
+    unbound_df["*外部渠道商品ID"] = (unbound_df["_code"] + unbound_df["_size_id"]).apply(
+        lambda x: re.sub(r"[^A-Za-z0-9]", "", str(x))
+    )
     null_rate = (unbound_df["*外部渠道商品ID"] == "").mean()
-    log(f"✓ 生成 *外部渠道商品ID 完成（按原始尺码；空值占比 {null_rate:.1%}）")
+    log(f"✓ 生成 *外部渠道商品ID 完成（alnum清洗后；空值占比 {null_rate:.1%}）")
 
 
 

@@ -151,8 +151,15 @@ def normalize_db_value(db_col: str, val: Any) -> Any:
 # Excel 处理
 # =========================
 def load_excel(path: str) -> pd.DataFrame:
-    df = pd.read_excel(path)
-    return df.where(pd.notna(df), None)
+    print(f"📂 读取 Excel：{path} ...")
+    try:
+        # calamine 比 openpyxl 快 5-10x，需 pip install python-calamine
+        df = pd.read_excel(path, engine="calamine")
+    except Exception:
+        df = pd.read_excel(path, engine="openpyxl")
+    df = df.where(pd.notna(df), None)
+    print(f"   ✅ 读取完成：{len(df):,} 行 × {len(df.columns)} 列")
+    return df
 
 
 def validate_columns(df: pd.DataFrame) -> None:
@@ -169,13 +176,19 @@ def row_to_raw_metrics(row: pd.Series) -> Dict[str, Any]:
 
 
 def build_rows(df: pd.DataFrame) -> List[Tuple]:
+    print(f"   🔄 构建行数据（{len(df):,} 行）...")
     rows: List[Tuple] = []
-    for _, r in df.iterrows():
+    n = len(df)
+    report_every = max(1000, n // 10)
+    for i, (_, r) in enumerate(df.iterrows()):
         values = []
         for excel_col, db_col in COLUMN_MAP.items():
             values.append(normalize_db_value(db_col, r.get(excel_col)))
         values.append(Json(row_to_raw_metrics(r)))
         rows.append(tuple(values))
+        if (i + 1) % report_every == 0:
+            print(f"      {i + 1:,}/{n:,} 行已处理...")
+    print(f"   ✅ 行数据构建完成：{len(rows):,} 行")
     return rows
 
 
@@ -201,11 +214,15 @@ def upsert_rows(conn, rows: List[Tuple], batch_size: int = 2000) -> int:
     """
 
     total = 0
+    n_batches = (len(rows) + batch_size - 1) // batch_size
+    print(f"   💾 写入数据库（共 {len(rows):,} 行，{n_batches} 批）...")
     with conn.cursor() as cur:
-        for i in range(0, len(rows), batch_size):
+        for batch_no, i in enumerate(range(0, len(rows), batch_size), 1):
             chunk = rows[i:i + batch_size]
             execute_values(cur, sql, chunk, page_size=1000)
+            conn.commit()
             total += len(chunk)
+            print(f"      批次 {batch_no}/{n_batches} 完成，累计 {total:,} 行")
     return total
 
 
@@ -223,9 +240,8 @@ def import_product_metrics_daily(excel_path: str) -> int:
 
     conn = psycopg2.connect(**PGSQL_CONFIG)
     try:
-        conn.autocommit = False
         count = upsert_rows(conn, rows)
-        conn.commit()
+        print(f"✅ 导入完成：{count:,} 行")
         return count
     except Exception:
         conn.rollback()

@@ -11,13 +11,14 @@ INPUT_SHEET_NAME = "file"
 
 def _extract_code(product_name: str) -> str | None:
     """
-    从以下两种格式中提取编码：
+    从以下三种格式中提取编码：
       - '颜色分类:CODE;尺码:XX'  （鞋类：ecco / clarks / camper）
       - '颜色:CODE;尺码:XX'      （服装类：barbour 衣服）
+      - '主要颜色:CODE;尺码:XX'  （barbour 另一种格式）
     不以上述前缀开头时返回 None（已处理行，归入 other）。
     """
     s = str(product_name).strip()
-    m = re.match(r"颜色(?:分类)?:([^;]+)", s)
+    m = re.match(r"(?:主要颜色|颜色分类|颜色):([^;]+)", s)
     return m.group(1).strip() if m else None
 
 
@@ -94,7 +95,7 @@ def split_excel_by_brand(input_path: str | Path, output_dir: str | Path) -> None
 
 # ======== 直接运行示例 ========
 if __name__ == "__main__":
-    input_file = Path(r"C:\Users\angel\Downloads\货品导出2026-06-01+19_14_02结果.xlsx")   # ← 修改为实际路径
+    input_file = Path(r"C:\Users\angel\Downloads\货品导出2026-06-15+06_02_26结果.xlsx")   # ← 修改为实际路径
     output_directory = Path(r"C:\Users\angel\Downloads")  # ← 修改为实际输出目录
 
     split_excel_by_brand(input_file, output_directory)
