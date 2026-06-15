@@ -1,8 +1,12 @@
 from analytics.ingest.export_brand_bad_products_report_v2 import (
     export_brand_bad_products_report, ExportConfig
 )
+from analytics.pipeline.store_config import ACTIVE_STORE, EXPORT_DIR
 
-def product_export(brand: str, output_path: str, days: int = 30):
+
+def product_export(brand: str, days: int = 30):
+    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+    output_path = str(EXPORT_DIR / f"{brand}_products_last{days}d.xlsx")
     export_brand_bad_products_report(
         ExportConfig(
             brand=brand,
@@ -13,9 +17,11 @@ def product_export(brand: str, output_path: str, days: int = 30):
         )
     )
 
+
 if __name__ == "__main__":
-    product_export("barbour",  r"D:\TB\product_analytics\export\barbour_products_last20d_2026.xlsx")
-    product_export("camper",   r"D:\TB\product_analytics\export\camper_products_last20d_2026.xlsx")
-    product_export("ecco",     r"D:\TB\product_analytics\export\ecco_products_last20d_2026.xlsx")
-    product_export("clarks",   r"D:\TB\product_analytics\export\clarks_products_last20d_2026.xlsx")
-    product_export("geox",     r"D:\TB\product_analytics\export\geox_products_last20d_2026.xlsx")
+    print(f"当前店铺：{ACTIVE_STORE}，输出目录：{EXPORT_DIR}")
+    product_export("barbour")
+    product_export("camper")
+    product_export("ecco")
+    product_export("clarks")
+    product_export("geox")
