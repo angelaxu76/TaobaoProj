@@ -28,7 +28,7 @@ DEFAULT_RETAIL_MARGIN  = 1.35   # 零售价加成（淘宝店铺价 = 未税价 
 #   ladder_wrap_discount_or_original_ratio  阶梯抬价后再走 discount_or_original 策略
 #   ladder_wrap_discount_priority           阶梯抬价后再走 discount_priority 策略
 BRAND_STRATEGY = {
-    "camper": "min_price_times_ratio",
+    "camper": "discount_or_original_ratio",
     "ecco":   "discount_priority",
     "geox":   "discount_priority",
     "clarks": "discount_priority",
