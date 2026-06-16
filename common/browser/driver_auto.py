@@ -4,7 +4,7 @@ driver_auto.py
 自动适配本机 Chrome 主版本，构建 undetected_chromedriver（uc.Chrome）。
 - 自动检测 Windows 上的 Chrome 主版本（注册表 / chrome.exe --version）
 - 把主版本传给 uc.Chrome(version_main=...) 来拉取匹配的驱动
-- 如遇到“only supports Chrome version XXX”的报错，自动清理 uc 缓存后重试
+- 如遇到"only supports Chrome version XXX"的报错，自动清理 uc 缓存后重试
 """
 
 import os
@@ -128,28 +128,28 @@ def build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True)
         for attempt in range(1, retries + 1):
             try:
                 if verbose:
-                    print(f”🚗 Creating uc.Chrome (attempt {attempt}/{retries}) with {kwargs} ...”)
+                    print(f"\U0001f697 Creating uc.Chrome (attempt {attempt}/{retries}) with {kwargs} ...")
                 driver = uc.Chrome(**kwargs)
                 if verbose:
-                    print(“✅ uc.Chrome started successfully.”)
+                    print("✅ uc.Chrome started successfully.")
                 return driver
             except SessionNotCreatedException as e:
                 last_err = e
                 if verbose:
-                    print(f”⚠️ SessionNotCreatedException: {e}\n🧹 Clearing uc cache and retrying ...”)
+                    print(f"⚠️ SessionNotCreatedException: {e}\n🧹 Clearing uc cache and retrying ...")
                 _clear_uc_cache()
                 time.sleep(1.5)
             except WebDriverException as e:
                 last_err = e
                 txt = str(e)
-                # 典型报错里会包含 “This version of ChromeDriver only supports Chrome version XXX”
-                if “only supports Chrome version” in txt or “session not created” in txt:
+                # 典型报错里会包含 "This version of ChromeDriver only supports Chrome version XXX"
+                if "only supports Chrome version" in txt or "session not created" in txt:
                     if verbose:
-                        print(f”⚠️ Driver version mismatch: {e}\n🧹 Clearing uc cache and retrying ...”)
+                        print(f"⚠️ Driver version mismatch: {e}\n🧹 Clearing uc cache and retrying ...")
                     _clear_uc_cache()
                     time.sleep(1.5)
                 else:
                     # 其他 webdriver 异常直接抛出，避免吞错
                     raise
 
-    raise last_err if last_err else RuntimeError(“Failed to start uc.Chrome with auto version match.”)
+    raise last_err if last_err else RuntimeError("Failed to start uc.Chrome with auto version match.")

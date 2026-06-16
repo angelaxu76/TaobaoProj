@@ -21,6 +21,51 @@ _DRIVERS_LOCK = threading.Lock()
 _ENV_DRIVER_KEY = "CHROMEDRIVER_PATH"
 
 
+def _get_driver_major(driver_path: Path) -> Optional[int]:
+    import re, subprocess
+    try:
+        out = subprocess.check_output([str(driver_path), "--version"], timeout=5).decode("utf-8", "ignore")
+        m = re.search(r"\b(\d+)\b", out)
+        return int(m.group(1)) if m else None
+    except Exception:
+        return None
+
+
+def _get_chrome_major() -> Optional[int]:
+    import re, subprocess, winreg
+    try:
+        for root in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+            try:
+                key = winreg.OpenKey(root, r"SOFTWARE\Google\Chrome\BLBeacon")
+                version, _ = winreg.QueryValueEx(key, "version")
+                m = re.match(r"(\d+)\.", version)
+                if m:
+                    return int(m.group(1))
+            except OSError:
+                pass
+    except Exception:
+        pass
+    for exe in (
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+    ):
+        try:
+            out = subprocess.check_output([exe, "--version"], stderr=subprocess.STDOUT, timeout=5).decode("utf-8", "ignore")
+            m = re.search(r"\b(\d+)\.", out)
+            if m:
+                return int(m.group(1))
+        except Exception:
+            pass
+    return None
+
+
+def _download_matching_driver() -> Path:
+    from webdriver_manager.chrome import ChromeDriverManager
+    wdm_path = ChromeDriverManager().install()
+    print(f"[selenium_utils] webdriver-manager downloaded ChromeDriver: {wdm_path}")
+    return Path(wdm_path)
+
+
 def _resolve_driver_path() -> Optional[Path]:
     """
     chromedriver 路径来源（稳定、可控）：
@@ -33,13 +78,18 @@ def _resolve_driver_path() -> Optional[Path]:
     if GLOBAL_CHROMEDRIVER_PATH:
         p = Path(GLOBAL_CHROMEDRIVER_PATH)
         if p.is_file():
+            chrome_v = _get_chrome_major()
+            driver_v = _get_driver_major(p)
+            if chrome_v and driver_v and chrome_v != driver_v:
+                print(f"[selenium_utils] ⚠️ chromedriver({driver_v}) 与 Chrome({chrome_v})版本不符，用 webdriver-manager 下载匹配版本")
+                try:
+                    return _download_matching_driver()
+                except Exception as e:
+                    raise RuntimeError(f"❌ webdriver-manager 下载失败：{e}")
             return p
-        # 路径不存在时用 webdriver-manager 下载（不在 import 时触发，推迟到此处）
+        # 路径不存在时用 webdriver-manager 下载
         try:
-            from webdriver_manager.chrome import ChromeDriverManager
-            wdm_path = ChromeDriverManager().install()
-            print(f"[selenium_utils] webdriver-manager downloaded ChromeDriver: {wdm_path}")
-            return Path(wdm_path)
+            return _download_matching_driver()
         except Exception as e:
             raise RuntimeError(
                 f"❌ settings.py 中的 GLOBAL_CHROMEDRIVER_PATH 不存在：{p}，"

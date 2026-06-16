@@ -89,9 +89,30 @@ def _pick_prices_from_sheet(ps: dict) -> Tuple[float, float, str]:
     return 0.0, 0.0, "sheet_no_price"
 
 
+def _pick_voucher_price(ps: dict) -> Tuple[float, float, str]:
+    """从 productSheet.voucherPrices 取最低折扣价（如 PRIVATESALESS26）。"""
+    voucher_prices = ps.get("voucherPrices") or {}
+    best_sale = float("inf")
+    best_orig = 0.0
+    best_key = ""
+    for key, vp in voucher_prices.items():
+        if not isinstance(vp, dict):
+            continue
+        curr = _num(vp.get("current"))
+        prev = _num(vp.get("previous"))
+        if curr > 0 and prev > 0 and prev > curr and curr < best_sale:
+            best_sale, best_orig, best_key = curr, prev, key
+    if best_key:
+        return best_orig, best_sale, f"voucher_{best_key}"
+    return 0.0, 0.0, ""
+
+
 def extract_prices_v4(driver, ssr_product_sheet: dict) -> Tuple[float, float, str]:
     """
-    三层价格提取，按可靠性降序：
+    四层价格提取，按可靠性降序：
+
+    0. SSR voucherPrices（最直接的折扣信号，如 PRIVATESALESS26）
+       current=96, previous=120 → orig=120, sale=96
 
     1. window.__NEXT_DATA__（JS 运行时）
        Next.js 客户端水化后 prices.previous 可能已补入折扣信息
@@ -102,6 +123,12 @@ def extract_prices_v4(driver, ssr_product_sheet: dict) -> Tuple[float, float, st
 
     3. SSR productSheet prices（HTML 里的 __NEXT_DATA__，最后兜底）
     """
+
+    # --- 0. voucherPrices（SSR 里直接有折扣数据） ---
+    orig, sale, src = _pick_voucher_price(ssr_product_sheet)
+    if orig > 0:
+        print(f"   💰 [voucher] orig={orig}, sale={sale}, key={src}")
+        return orig, sale, src
 
     # --- 1. window.__NEXT_DATA__ via JS ---
     try:
