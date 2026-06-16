@@ -12,6 +12,7 @@ _DRIVER_DIR_CANDIDATES = [
     Path(r"\\vmware-host\Shared Folders\shared"),
     Path(r"E:\shared\VMShared\drivers"),
     Path(r"D:\TB\drivers"),
+    Path(r"D:\chromedriver"),
 ]
 
 def _pick_driver_dir() -> Path:
