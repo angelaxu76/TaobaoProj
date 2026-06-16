@@ -4,7 +4,7 @@ from pathlib import Path
 from cfg.db_config import PGSQL_CONFIG
 from analytics.ingest.import_catalog_items_from_excel import import_catalog_items_from_excel
 from analytics.ingest.import_product_metrics_daily_from_excel import import_product_metrics_daily
-from analytics.pipeline.store_config import ACTIVE_STORE, CATALOG_DIR, METRICS_DIR
+from analytics.pipeline.store_config import ACTIVE_STORE, CATALOG_DIR, METRICS_DIR, BRAND_KEYWORDS
 
 
 def reset_analytics_tables() -> None:
@@ -36,6 +36,7 @@ def product_import():
                 excel_path=str(path),
                 sheet_name=None,
                 create_unique_index=True,
+                brand_keywords=BRAND_KEYWORDS,
             )
             total_ins  += result["inserted"]
             total_upd  += result["updated"]

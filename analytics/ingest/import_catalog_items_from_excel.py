@@ -23,7 +23,7 @@ COLUMN_CANDIDATES: Dict[str, List[str]] = {
     "category": ["类目", "category", "Category"],
     "list_price": ["一口价", "标价", "list_price", "价格", "List Price"],
     # ✅ 新增：把“发布时间”写入业务字段 publication_date
-    "publication_date": ["发布时间", "发布日", "上架时间", "首次发布时间", "发布时间(UTC)"],
+    "publication_date": ["发布时间", "发布日", "上架时间", "首次发布时间", "发布时间(UTC)", "宝贝创建时间"],
 }
 
 # ========= DB 字段（我们会写入/更新的列）=========
@@ -39,6 +39,18 @@ BRAND_KEY_MAP = {
     "geox": "geox",
     "barbour": "barbour",
 }
+
+def infer_brand_from_title(title: Optional[str], brand_keywords: dict) -> Optional[str]:
+    """从商品标题关键词推断品牌 key（大小写不敏感）。"""
+    if not title:
+        return None
+    t = title.lower()
+    for brand, keywords in brand_keywords.items():
+        for kw in keywords:
+            if kw.lower() in t:
+                return brand
+    return None
+
 
 def normalize_brand(raw: Any) -> Optional[str]:
     s = _to_str(raw)
@@ -232,6 +244,7 @@ def import_catalog_items_from_excel(
     excel_path: str,
     sheet_name: str | int | None = 0,
     create_unique_index: bool = True,
+    brand_keywords: Optional[dict] = None,
     **kwargs
 ):
 
@@ -251,6 +264,7 @@ def import_catalog_items_from_excel(
     df = df.where(pd.notna(df), None)
 
     col_map = _pick_excel_columns(df)
+    has_brand_col = "brand" in col_map
 
     # 提取并规范化数据
     rows: List[Dict[str, Any]] = []
@@ -259,6 +273,8 @@ def import_catalog_items_from_excel(
         nr = _normalize_row(raw)
         if nr["current_item_id"] is None:
             continue
+        if not has_brand_col and nr["brand"] is None and brand_keywords:
+            nr["brand"] = infer_brand_from_title(nr.get("item_name"), brand_keywords)
         rows.append(nr)
 
     # 去重：同一个宝贝ID只取最后一条（以 Excel 最后出现为准）
