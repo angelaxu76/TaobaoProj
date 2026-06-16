@@ -77,10 +77,12 @@ monitor_thread = threading.Thread(target=_monitor, daemon=True)
 monitor_thread.start()
 
 # ── 正式跑 fetch ──────────────────────────────────────────────────────────
+MAX_WORKERS = 2  # ← 改这里调线程数（1=单线程稳定, 2=推荐, 3=激进）
+
 from brands.camper.fetch_product_info_v4 import camper_fetch_product_info
 
 try:
-    camper_fetch_product_info(max_workers=1)
+    camper_fetch_product_info(max_workers=MAX_WORKERS)
 finally:
     _stop.set()
     tracemalloc.stop()

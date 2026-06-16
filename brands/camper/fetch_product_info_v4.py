@@ -383,7 +383,15 @@ def process_product_url(driver, url: str):
 # Worker（带 driver 重建重试）
 # ---------------------------
 
+RESTART_EVERY = 20  # 每个线程处理 N 页后重启自己的 Chrome
+
 def _worker(url: str) -> tuple[bool, str, str]:
+    # 每线程独立计数，到达阈值重启本线程的 Chrome
+    thread_local.page_count = getattr(thread_local, "page_count", 0) + 1
+    if thread_local.page_count > 1 and thread_local.page_count % RESTART_EVERY == 0:
+        print(f"🔄 [thread] 已处理 {thread_local.page_count} 页，重启 Chrome 释放内存...")
+        reset_thread_driver()
+
     for attempt in range(2):
         driver = get_thread_driver()
         try:
@@ -422,27 +430,15 @@ def camper_fetch_product_info(
             url_list = [line.strip() for line in f if line.strip()]
         source = lf
 
-    print(f"📄 使用链接来源: {source} | 共 {len(url_list)} 条 | MAX_WORKERS={max_workers}")
-
-    RESTART_EVERY = 20  # 每处理 N 个 URL 重启 Chrome，释放进程内存
+    print(f"📄 使用链接来源: {source} | 共 {len(url_list)} 条 | MAX_WORKERS={max_workers} | RESTART_EVERY={RESTART_EVERY}")
 
     failed = []
     try:
-        if max_workers == 1:
-            for i, url in enumerate(url_list):
-                if i > 0 and i % RESTART_EVERY == 0:
-                    print(f"🔄 [{i}/{len(url_list)}] 重启 Chrome 释放内存...")
-                    reset_thread_driver()
-                ok, u, err = _worker(url)
+        with ThreadPoolExecutor(max_workers=max_workers) as ex:
+            for ok, url, err in ex.map(_worker, url_list):
                 if not ok:
-                    print(f"❌ 失败: {u} | {err}")
-                    failed.append(u)
-        else:
-            with ThreadPoolExecutor(max_workers=max_workers) as ex:
-                for ok, url, err in ex.map(_worker, url_list):
-                    if not ok:
-                        print(f"❌ 失败: {url} | {err}")
-                        failed.append(url)
+                    print(f"❌ 失败: {url} | {err}")
+                    failed.append(url)
     finally:
         shutdown_all_drivers()
 
