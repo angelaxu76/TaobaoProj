@@ -248,10 +248,20 @@ drivers_lock = threading.Lock()
 _all_drivers: set = set()
 thread_local = threading.local()
 
+# 禁用 Chrome 缓存，防止访问大量页面后内存持续堆积
+_MEMORY_FLAGS = [
+    "--disable-cache",
+    "--disable-application-cache",
+    "--disable-offline-load-stale-cache",
+    "--disk-cache-size=0",
+    "--disable-gpu",
+    "--disable-dev-shm-usage",
+]
+
 
 def get_thread_driver():
     if not hasattr(thread_local, "driver") or thread_local.driver is None:
-        d = build_uc_driver(headless=True)
+        d = build_uc_driver(headless=True, extra_options=_MEMORY_FLAGS)
         thread_local.driver = d
         with drivers_lock:
             _all_drivers.add(d)
@@ -259,24 +269,26 @@ def get_thread_driver():
 
 
 def reset_thread_driver():
-    try:
-        d = getattr(thread_local, "driver", None)
-        if d:
+    d = getattr(thread_local, "driver", None)
+    thread_local.driver = None
+    if d:
+        with drivers_lock:
+            _all_drivers.discard(d)
+        try:
             d.quit()
-    except Exception:
-        pass
-    finally:
-        thread_local.driver = None
+        except Exception:
+            pass
 
 
 def shutdown_all_drivers():
     with drivers_lock:
-        for d in list(_all_drivers):
-            try:
-                d.quit()
-            except Exception:
-                pass
+        drivers = list(_all_drivers)
         _all_drivers.clear()
+    for d in drivers:
+        try:
+            d.quit()
+        except Exception:
+            pass
 
 
 # ---------------------------
@@ -406,13 +418,25 @@ def camper_fetch_product_info(
 
     print(f"📄 使用链接来源: {source} | 共 {len(url_list)} 条 | MAX_WORKERS={max_workers}")
 
+    RESTART_EVERY = 20  # 每处理 N 个 URL 重启 Chrome，释放进程内存
+
     failed = []
     try:
-        with ThreadPoolExecutor(max_workers=max_workers) as ex:
-            for ok, url, err in ex.map(_worker, url_list):
+        if max_workers == 1:
+            for i, url in enumerate(url_list):
+                if i > 0 and i % RESTART_EVERY == 0:
+                    print(f"🔄 [{i}/{len(url_list)}] 重启 Chrome 释放内存...")
+                    reset_thread_driver()
+                ok, u, err = _worker(url)
                 if not ok:
-                    print(f"❌ 失败: {url} | {err}")
-                    failed.append(url)
+                    print(f"❌ 失败: {u} | {err}")
+                    failed.append(u)
+        else:
+            with ThreadPoolExecutor(max_workers=max_workers) as ex:
+                for ok, url, err in ex.map(_worker, url_list):
+                    if not ok:
+                        print(f"❌ 失败: {url} | {err}")
+                        failed.append(url)
     finally:
         shutdown_all_drivers()
 

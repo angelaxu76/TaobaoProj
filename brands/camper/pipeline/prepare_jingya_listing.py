@@ -22,7 +22,7 @@ def main():
     camper_get_links()
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    camper_fetch_product_info(max_workers=3)
+    camper_fetch_product_info(max_workers=1)
 
 
 
