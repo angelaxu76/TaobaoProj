@@ -6,6 +6,7 @@
 # - JSON-LD offers.price 是当前实际生效价格（打折商品即折扣价），
 #   与 SSR prices.current 对比即可判断是否有折扣
 # - 基础架构与 v3 相同（thread-local Selenium，多线程并发）
+import gc
 import os
 import re
 import time
@@ -101,7 +102,7 @@ def _pick_voucher_price(ps: dict) -> Tuple[float, float, str]:
         curr = _num(vp.get("current"))
         prev = _num(vp.get("previous"))
         if curr > 0 and prev > 0 and prev > curr and curr < best_sale:
-            best_sale, best_orig, best_key = curr, prev, key
+            best_sale, best_orig, best_key = round(curr, 2), round(prev, 2), key
     if best_key:
         return best_orig, best_sale, f"voucher_{best_key}"
     return 0.0, 0.0, ""
@@ -325,6 +326,8 @@ def process_product_url(driver, url: str):
                  .get("pageProps", {})
                  .get("productSheet")
     )
+    # 释放大 JSON 和 soup（productSheet 已提取出来，原始对象不再需要）
+    del json_data, soup, script_tag
     if not ssr_product_sheet:
         raise RuntimeError("未找到 productSheet")
 
@@ -369,8 +372,11 @@ def process_product_url(driver, url: str):
 
     out_path = SAVE_PATH / f"{product_code}.txt"
     format_txt(info, out_path, brand="camper")
+    # 释放 productSheet 和 info（写完 TXT 后不再需要）
+    del ssr_product_sheet, info
+    gc.collect()
     disc_label = "no_discount" if original_price == discount_price else "DISCOUNT"
-    print(f"✅ 完成 TXT: {out_path.name}  [{disc_label}] src={price_src}  P={original_price}, D={discount_price}")
+    print(f"✅ 完成 TXT: {out_path.name}  [{disc_label}] src={price_src}  P={original_price:.2f}, D={discount_price:.2f}")
 
 
 # ---------------------------
