@@ -11,12 +11,17 @@ import os
 import re
 import shutil
 import subprocess
+import threading
 import time
 from pathlib import Path
 
 import undetected_chromedriver as uc
 from selenium.common.exceptions import SessionNotCreatedException, WebDriverException
 from cfg.settings import GLOBAL_CHROMEDRIVER_PATH
+
+# Serialize uc.Chrome creation to prevent WinError 32 when multiple threads
+# try to rename the downloaded chromedriver.exe simultaneously.
+_uc_init_lock = threading.Lock()
 
 
 def _detect_chrome_major_on_windows():
@@ -119,31 +124,32 @@ def build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True)
                 print(f"🔧 Using chromedriver: {_resolved}")
 
     last_err = None
-    for attempt in range(1, retries + 1):
-        try:
-            if verbose:
-                print(f"🚗 Creating uc.Chrome (attempt {attempt}/{retries}) with {kwargs} ...")
-            driver = uc.Chrome(**kwargs)
-            if verbose:
-                print("✅ uc.Chrome started successfully.")
-            return driver
-        except SessionNotCreatedException as e:
-            last_err = e
-            if verbose:
-                print(f"⚠️ SessionNotCreatedException: {e}\n🧹 Clearing uc cache and retrying ...")
-            _clear_uc_cache()
-            time.sleep(1.5)
-        except WebDriverException as e:
-            last_err = e
-            txt = str(e)
-            # 典型报错里会包含 “This version of ChromeDriver only supports Chrome version XXX”
-            if "only supports Chrome version" in txt or "session not created" in txt:
+    with _uc_init_lock:
+        for attempt in range(1, retries + 1):
+            try:
                 if verbose:
-                    print(f"⚠️ Driver version mismatch: {e}\n🧹 Clearing uc cache and retrying ...")
+                    print(f”🚗 Creating uc.Chrome (attempt {attempt}/{retries}) with {kwargs} ...”)
+                driver = uc.Chrome(**kwargs)
+                if verbose:
+                    print(“✅ uc.Chrome started successfully.”)
+                return driver
+            except SessionNotCreatedException as e:
+                last_err = e
+                if verbose:
+                    print(f”⚠️ SessionNotCreatedException: {e}\n🧹 Clearing uc cache and retrying ...”)
                 _clear_uc_cache()
                 time.sleep(1.5)
-            else:
-                # 其他 webdriver 异常直接抛出，避免吞错
-                raise
+            except WebDriverException as e:
+                last_err = e
+                txt = str(e)
+                # 典型报错里会包含 “This version of ChromeDriver only supports Chrome version XXX”
+                if “only supports Chrome version” in txt or “session not created” in txt:
+                    if verbose:
+                        print(f”⚠️ Driver version mismatch: {e}\n🧹 Clearing uc cache and retrying ...”)
+                    _clear_uc_cache()
+                    time.sleep(1.5)
+                else:
+                    # 其他 webdriver 异常直接抛出，避免吞错
+                    raise
 
-    raise last_err if last_err else RuntimeError("Failed to start uc.Chrome with auto version match.")
+    raise last_err if last_err else RuntimeError(“Failed to start uc.Chrome with auto version match.”)
