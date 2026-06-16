@@ -26,8 +26,9 @@ BRANDS_TO_RUN = [
     "clarks",
     "camper",
     "ecco",
-    "barbour",
-    # "geox",
+    "geox",
+    # "barbour",
+
     # "marksandspencer",
 ]
 
