@@ -237,6 +237,10 @@ def process_product_url(url: str) -> tuple[bool, str, str]:
 
         original_price, discount_price, price_src = extract_prices(product_sheet)
 
+        if original_price == 0.0:
+            print(f"⏭️ 跳过 {product_sheet.get('code', '?')}：价格为 0，商品已下架")
+            return True, url, ""
+
         color_data = product_sheet.get("color", "")
         color = color_data.get("name", "") if isinstance(color_data, dict) else str(color_data)
 
