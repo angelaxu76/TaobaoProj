@@ -9,31 +9,31 @@ from channels.jingya.maintenance.disable_low_stock_products import disable_low_s
 from channels.jingya.export.export_gender_split_excel import export_gender_split_excel
 from channels.jingya.export.generate_publication_excel_shoes import generate_publication_excels
 from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
-from brands.camper.fetch_product_info_v2 import camper_fetch_product_info
+from brands.camper.fetch_product_info_v4 import camper_fetch_product_info
 from brands.camper.collect_product_links import camper_get_links
 from channels.jingya.maintenance.export_low_stock_products import export_low_stock_for_brand
 from channels.jingya.maintenance.generate_missing_links_for_brand import generate_missing_links_for_brand
 
 def main():
-    print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    backup_and_clear_brand_dirs(CAMPER)
+    # print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
+    # backup_and_clear_brand_dirs(CAMPER)
 
-    print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    camper_get_links()
+    # print("\n🟡 Step: 2️⃣ 抓取商品链接")
+    # camper_get_links()
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息")
     camper_fetch_product_info(max_workers=3)
 
 
 
-    print("\n🟡 Step: 3️⃣ 将鲸牙存在但TXT中不存在的商品抓一遍")
-    missing_product_link = r"D:\TB\Products\camper\publication\missing_product_links.txt"
-    generate_missing_links_for_brand("camper", missing_product_link)
-    import os
-    if os.path.exists(missing_product_link):
-        camper_fetch_product_info(links_file=missing_product_link)
-    else:
-        print("  - 无缺失商品，跳过")
+    # print("\n🟡 Step: 3️⃣ 将鲸牙存在但TXT中不存在的商品抓一遍")
+    # missing_product_link = r"D:\TB\Products\camper\publication\missing_product_links.txt"
+    # generate_missing_links_for_brand("camper", missing_product_link)
+    # import os
+    # if os.path.exists(missing_product_link):
+    #     camper_fetch_product_info(links_file=missing_product_link)
+    # else:
+    #     print("  - 无缺失商品，跳过")
 
     print("\n🟡 Step: 4️⃣ TXT导入数据库 -----将各个商品的TXT中信息导入到数据库中")
     import_txt_to_db_supplier("camper")
