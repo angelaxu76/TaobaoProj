@@ -24,7 +24,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from config import CAMPER, SIZE_RANGE_CONFIG
 from common.ingest.txt_writer import format_txt
 from common.product.category_utils import infer_style_category
-from common.browser.selenium_utils import get_driver, quit_driver
+from common.browser.driver_auto import build_uc_driver
 
 PRODUCT_URLS_FILE = Path(CAMPER["LINKS_FILE"])
 SAVE_PATH = Path(CAMPER["TXT_DIR"])
@@ -224,7 +224,7 @@ thread_local = threading.local()
 
 def get_thread_driver():
     if not hasattr(thread_local, "driver") or thread_local.driver is None:
-        d = get_driver(name="camper_v4", headless=True)
+        d = build_uc_driver(headless=True)
         thread_local.driver = d
         with drivers_lock:
             _all_drivers.add(d)
@@ -233,7 +233,9 @@ def get_thread_driver():
 
 def reset_thread_driver():
     try:
-        quit_driver("camper_v4")
+        d = getattr(thread_local, "driver", None)
+        if d:
+            d.quit()
     except Exception:
         pass
     finally:

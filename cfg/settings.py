@@ -8,11 +8,8 @@ API_KEYS = {
 # 按优先级检测 driver 目录：先找共享目录（VMware Shared Folders），再用本地目录。
 # 新增虚拟机时只需把 chromedriver.exe 放到共享目录，无需每台机器单独配置。
 _DRIVER_DIR_CANDIDATES = [
-    Path(r"\\vmware-host\Shared Folders\shared\drivers"),
-    Path(r"\\vmware-host\Shared Folders\shared"),
-    Path(r"E:\shared\VMShared\drivers"),
+    Path(r"\\vmware-host\Shared Folders\VMShared\drivers"),
     Path(r"D:\TB\drivers"),
-    Path(r"D:\chromedriver"),
 ]
 
 def _pick_driver_dir() -> Path:
@@ -66,17 +63,16 @@ def _resolve_chromedriver_path() -> str:
         except Exception:
             return None
 
-    # 检查手动放置的 driver 是否与当前 Chrome 版本匹配
+    # 找到第一个存在的 chromedriver.exe 就返回；版本校验仅作提示，不阻止使用
     for p in _DRIVER_DIR_CANDIDATES:
         candidate = p / "chromedriver.exe"
         try:
             if candidate.exists():
                 chrome_v = _chrome_major()
                 driver_v = _driver_major(str(candidate))
-                if chrome_v and driver_v and chrome_v == driver_v:
-                    return str(candidate)
-                if chrome_v is None or driver_v is None:
-                    return str(candidate)  # 无法检测版本时沿用
+                if chrome_v and driver_v and chrome_v != driver_v:
+                    print(f"[settings] ⚠️ chromedriver({driver_v}) 与 Chrome({chrome_v})版本不符，仍使用: {candidate}")
+                return str(candidate)
         except OSError:
             pass
 

@@ -65,6 +65,16 @@ def _clear_uc_cache():
         shutil.rmtree(p, ignore_errors=True)
 
 
+def _get_driver_major(driver_path: str) -> int | None:
+    """读取 chromedriver.exe 的主版本号，失败返回 None。"""
+    try:
+        out = subprocess.check_output([driver_path, "--version"], timeout=5).decode("utf-8", "ignore")
+        m = re.search(r"\b(\d+)\b", out)
+        return int(m.group(1)) if m else None
+    except Exception:
+        return None
+
+
 def build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True):
     """
     自动适配本机 Chrome 主版本，构建 uc.Chrome 并返回 driver 实例。
@@ -96,12 +106,17 @@ def build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True)
     if major:
         kwargs["version_main"] = major
 
-    # 优先使用 settings.py 解析出的本地 driver（共享目录 → D 盘，与 selenium_utils 一致）
+    # 本地 driver 版本与 Chrome 一致才使用；版本不符时让 uc 自动下载匹配版本
     _resolved = Path(GLOBAL_CHROMEDRIVER_PATH) if GLOBAL_CHROMEDRIVER_PATH else None
     if _resolved and _resolved.is_file():
-        kwargs["driver_executable_path"] = str(_resolved)
-        if verbose:
-            print(f"🔧 Using chromedriver: {_resolved}")
+        driver_major = _get_driver_major(str(_resolved))
+        if major and driver_major and driver_major != major:
+            if verbose:
+                print(f"🔄 本地 chromedriver({driver_major}) 与 Chrome({major})版本不符，uc 将自动下载匹配版本")
+        else:
+            kwargs["driver_executable_path"] = str(_resolved)
+            if verbose:
+                print(f"🔧 Using chromedriver: {_resolved}")
 
     last_err = None
     for attempt in range(1, retries + 1):
