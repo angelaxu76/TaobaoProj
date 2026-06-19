@@ -22,10 +22,10 @@ def _pick_driver_dir() -> Path:
     return _DRIVER_DIR_CANDIDATES[-1]   # 找不到时返回最后一个，运行时再报错
 
 
-def _resolve_chromedriver_path() -> str:
+def _resolve_chromedriver_path() -> str | None:
     """
-    返回可用的 chromedriver.exe 路径（仅做本地静态检测，不触发下载）。
-    若本地无匹配 driver，返回兜底路径；实际下载推迟到 selenium_utils.get_driver() 调用时。
+    扫描所有候选目录，优先返回与当前 Chrome 版本精确匹配的 chromedriver.exe。
+    若无精确匹配，返回第一个找到的（带警告）；全部找不到返回 None。
     """
     import subprocess, re
 
@@ -63,20 +63,28 @@ def _resolve_chromedriver_path() -> str:
         except Exception:
             return None
 
-    # 找到第一个存在的 chromedriver.exe 就返回；版本校验仅作提示，不阻止使用
+    chrome_v = _chrome_major()
+    first_found = None  # (path_str, driver_v) — 无精确匹配时的兜底
+
     for p in _DRIVER_DIR_CANDIDATES:
         candidate = p / "chromedriver.exe"
         try:
             if candidate.exists():
-                chrome_v = _chrome_major()
                 driver_v = _driver_major(str(candidate))
-                if chrome_v and driver_v and chrome_v != driver_v:
-                    print(f"[settings] ⚠️ chromedriver({driver_v}) 与 Chrome({chrome_v})版本不符，仍使用: {candidate}")
-                return str(candidate)
+                if chrome_v and driver_v and chrome_v == driver_v:
+                    return str(candidate)   # 版本精确匹配，直接返回
+                if first_found is None:
+                    first_found = (str(candidate), driver_v)
         except OSError:
             pass
 
-    # 所有候选都找不到，返回 None；实际下载/报错推迟到 get_driver() / build_driver() 调用时
+    # 没有精确匹配，用第一个找到的（带警告）
+    if first_found:
+        path, driver_v = first_found
+        if chrome_v and driver_v and chrome_v != driver_v:
+            print(f"[settings] ⚠️ 未找到匹配 Chrome v{chrome_v} 的驱动；将使用 v{driver_v}: {path}")
+        return path
+
     return None
 
 

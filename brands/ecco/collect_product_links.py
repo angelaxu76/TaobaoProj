@@ -44,8 +44,11 @@ def build_driver() -> webdriver.Chrome:
     创建统一配置的 Chrome driver：
     - 禁用通知弹窗（不会再出现 Allow / Block）
     - 最大化窗口
-    - 版本不匹配时自动用 webdriver_manager 下载匹配驱动
+    - 版本不匹配时主动下载匹配驱动，并更新本地驱动目录供下次直接使用
     """
+    import re, shutil, subprocess
+    from pathlib import Path as _Path
+
     options = Options()
     # 如需无头模式可以打开下一行：
     # options.add_argument("--headless=new")
@@ -58,25 +61,67 @@ def build_driver() -> webdriver.Chrome:
     }
     options.add_experimental_option("prefs", prefs)
 
-    from selenium.common.exceptions import SessionNotCreatedException as _SNCE
     from cfg.settings import _resolve_chromedriver_path
-    from webdriver_manager.chrome import ChromeDriverManager
+
+    def _driver_major(path: str) -> int | None:
+        try:
+            out = subprocess.check_output([path, "--version"], timeout=5).decode("utf-8", "ignore")
+            m = re.search(r"\b(\d+)\b", out)
+            return int(m.group(1)) if m else None
+        except Exception:
+            return None
+
+    def _chrome_major() -> int | None:
+        try:
+            import winreg
+            for root in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+                try:
+                    key = winreg.OpenKey(root, r"SOFTWARE\Google\Chrome\BLBeacon")
+                    ver, _ = winreg.QueryValueEx(key, "version")
+                    m = re.match(r"(\d+)", ver)
+                    if m:
+                        return int(m.group(1))
+                except OSError:
+                    pass
+        except Exception:
+            pass
+        exe = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+        try:
+            out = subprocess.check_output([exe, "--version"], timeout=5).decode("utf-8", "ignore")
+            m = re.search(r"\b(\d+)\b", out)
+            if m:
+                return int(m.group(1))
+        except Exception:
+            pass
+        return None
 
     driver_path = _resolve_chromedriver_path()
+    chrome_v = _chrome_major()
+    driver_v = _driver_major(driver_path) if driver_path else None
 
-    def _make_service(path=None):
-        return Service(path) if path else Service(ChromeDriverManager().install())
+    # 版本匹配（或无法检测），直接使用本地 driver
+    if driver_path and (not chrome_v or not driver_v or chrome_v == driver_v):
+        return webdriver.Chrome(service=Service(driver_path), options=options)
 
-    # 先尝试本地 driver；版本不符时自动下载匹配版本
-    service = _make_service(driver_path)
-    try:
-        return webdriver.Chrome(service=service, options=options)
-    except _SNCE as e:
-        if "only supports Chrome version" in str(e) or "session not created" in str(e):
-            print(f"[ecco] ⚠️ 本地 driver 版本不符，自动下载匹配驱动…")
-            service = _make_service(None)
-            return webdriver.Chrome(service=service, options=options)
-        raise
+    # 版本不符：主动下载匹配驱动
+    from webdriver_manager.chrome import ChromeDriverManager
+    print(f"[ecco] 本地 driver(v{driver_v}) 与 Chrome(v{chrome_v})不符，获取匹配驱动…")
+    new_path = ChromeDriverManager().install()
+
+    # 按候选目录顺序尝试写入，谁先可写谁就是目标
+    # VM上：先写 VMware 共享目录（惠及所有VM）；本机：共享目录不通则写 D:\TB\drivers
+    from cfg.settings import _DRIVER_DIR_CANDIDATES
+    for _target_dir in _DRIVER_DIR_CANDIDATES:
+        _dest = _target_dir / "chromedriver.exe"
+        try:
+            _target_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(new_path, _dest)
+            print(f"[ecco] ✅ 已更新驱动 → {_dest}，下次将直接使用")
+            break
+        except Exception:
+            pass
+
+    return webdriver.Chrome(service=Service(new_path), options=options)
 
 
 def try_accept_cookies(driver: webdriver.Chrome, timeout: int = 12) -> bool:
