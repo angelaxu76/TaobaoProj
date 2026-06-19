@@ -24,8 +24,8 @@ HK_POE_BASE = Path(r"C:\Users\angel\OneDrive\CrossBorderDocs_HK\06_Shipping_And_
 
 # ── 日期范围过滤（按 poe_date）────────────────────────────────────────
 # 留空字符串 "" 表示不限制该端，格式 "YYYY-MM-DD"
-DATE_FROM = "2025-09-30"
-DATE_TO   = "2026-04-02"
+DATE_FROM = "2026-04-01"
+DATE_TO   = "2026-05-31"
 # ──────────────────────────────────────────────────────────────────────
 
 

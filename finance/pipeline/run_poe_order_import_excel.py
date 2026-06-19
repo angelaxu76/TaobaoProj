@@ -25,7 +25,7 @@ from finance.ingest.manage_export_shipments_costs import import_poe_cost_from_ex
 # ============================================================
 # CONFIG
 # ============================================================
-BASE_DIR = Path(r"G:\temp\taobao\poe")
+BASE_DIR = Path(r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\99_Backup\POE_TEMPLATES")
 # ============================================================
 
 

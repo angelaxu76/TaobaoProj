@@ -44,6 +44,7 @@ def build_driver() -> webdriver.Chrome:
     创建统一配置的 Chrome driver：
     - 禁用通知弹窗（不会再出现 Allow / Block）
     - 最大化窗口
+    - 版本不匹配时自动用 webdriver_manager 下载匹配驱动
     """
     options = Options()
     # 如需无头模式可以打开下一行：
@@ -57,16 +58,25 @@ def build_driver() -> webdriver.Chrome:
     }
     options.add_experimental_option("prefs", prefs)
 
-    # 懒解析路径：用时再查，而不是依赖 import 时算好的模块常量
+    from selenium.common.exceptions import SessionNotCreatedException as _SNCE
     from cfg.settings import _resolve_chromedriver_path
+    from webdriver_manager.chrome import ChromeDriverManager
+
     driver_path = _resolve_chromedriver_path()
-    if driver_path:
-        service = Service(driver_path)
-    else:
-        from webdriver_manager.chrome import ChromeDriverManager
-        service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
-    return driver
+
+    def _make_service(path=None):
+        return Service(path) if path else Service(ChromeDriverManager().install())
+
+    # 先尝试本地 driver；版本不符时自动下载匹配版本
+    service = _make_service(driver_path)
+    try:
+        return webdriver.Chrome(service=service, options=options)
+    except _SNCE as e:
+        if "only supports Chrome version" in str(e) or "session not created" in str(e):
+            print(f"[ecco] ⚠️ 本地 driver 版本不符，自动下载匹配驱动…")
+            service = _make_service(None)
+            return webdriver.Chrome(service=service, options=options)
+        raise
 
 
 def try_accept_cookies(driver: webdriver.Chrome, timeout: int = 12) -> bool:

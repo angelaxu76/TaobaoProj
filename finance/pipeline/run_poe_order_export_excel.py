@@ -25,8 +25,8 @@ from finance.ingest.manage_export_shipments_costs import export_cost_template_by
 POE_REFERENCES_DIR = r"C:\Users\angel\OneDrive\CrossBorderDocs_HK\06_Shipping_And_Export\POE_References"
 
 # 日期范围（含两端），格式 YYYYMMDD；None 表示不限
-DATE_FROM = "20251001"
-DATE_TO   = "20260410"
+DATE_FROM = "20260401"
+DATE_TO   = "20260531"
 
 # 模板输出目录
 OUTPUT_DIR = r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\99_Backup\POE_TEMPLATES"
