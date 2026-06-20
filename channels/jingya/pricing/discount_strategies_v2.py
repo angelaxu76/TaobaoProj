@@ -35,6 +35,7 @@ from channels.jingya.pricing.discount_ladder_config_v2 import (
     BRAND_MIN_APPLY_DISCOUNT,
     BRAND_MAX_REASONABLE_DISCOUNT,
 )
+from config import DEFAULT_DEPTH_RATIO_LADDER, BRAND_DEPTH_RATIO_LADDER
 
 
 def strategy_ladder_clawback_ratio(o: float, d: float, brand: str) -> float:
@@ -249,6 +250,32 @@ def get_ladder_discount_price(o, d, brand) -> float:
 # v2 新增：wrapper 策略（稳）
 # =========================
 
+def strategy_ladder_depth_ratio(o, d, brand):
+    """
+    变比例型阶梯策略：
+    - 无折扣 / 折扣 < 20% → d × base_ratio（等同原价处理，base_ratio = BRAND_DISCOUNT）
+    - 折扣 >= 20% → d × 阶梯比例（折扣越深，比例越高，越接近 1.0）
+    阶梯阈值在 discount_ladder_config_v2.DEFAULT_DEPTH_RATIO_LADDER 中配置。
+    """
+    o = _to_float(o)
+    d = _to_float(d)
+    brand_key = str(brand).lower()
+    base_ratio = float(BRAND_DISCOUNT.get(brand_key, 1.0))
+
+    if o <= 0:
+        return d * base_ratio if d > 0 else 0.0
+    if d <= 0 or d >= o:
+        return o * base_ratio
+
+    disc = 1.0 - d / o
+    ladder = BRAND_DEPTH_RATIO_LADDER.get(brand_key, DEFAULT_DEPTH_RATIO_LADDER)
+    for threshold, ratio in ladder:
+        if disc >= float(threshold):
+            return d * float(ratio)
+
+    return d * base_ratio
+
+
 def strategy_ladder_wrap_min_price_times_ratio(o, d, brand):
     d2 = get_ladder_discount_price(o, d, brand)
     return strategy_min_price_times_ratio(o, d2, brand)
@@ -314,10 +341,13 @@ STRATEGY_MAP = {
     "min_price_times_ratio": strategy_min_price_times_ratio,
     "discount_or_original_ratio": strategy_discount_or_original_ratio,
     "discount_priority": strategy_discount_priority,
-    "ladder_clawback_ratio": strategy_ladder_clawback_ratio,  # 👈 新增
+    "ladder_clawback_ratio": strategy_ladder_clawback_ratio,
 
     # v2 wrapper（先阶梯抬价，再走 v1）
     "ladder_wrap_min_price_times_ratio": strategy_ladder_wrap_min_price_times_ratio,
     "ladder_wrap_discount_or_original_ratio": strategy_ladder_wrap_discount_or_original_ratio,
     "ladder_wrap_discount_priority": strategy_ladder_wrap_discount_priority,
+
+    # v2 变比例型（折扣越深，品牌折扣率越宽松）
+    "ladder_depth_ratio": strategy_ladder_depth_ratio,
 }

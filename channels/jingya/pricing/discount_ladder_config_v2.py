@@ -24,3 +24,4 @@ DEFAULT_MAX_REASONABLE_DISCOUNT: float = 0.90
 BRAND_DISCOUNT_LADDER: Dict[str, List[Tuple[float, float]]] = {}
 BRAND_MIN_APPLY_DISCOUNT: Dict[str, float] = {}
 BRAND_MAX_REASONABLE_DISCOUNT: Dict[str, float] = {}
+
