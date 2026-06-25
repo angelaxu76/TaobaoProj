@@ -1,6 +1,6 @@
 import pandas as pd
 
-file_path = r"C:\Users\angel\Downloads\GEI@sales_catalogue_export@260607054211@5142.xlsx"
+file_path = r"C:\Users\angel\Downloads\GEI@sales_catalogue_export@260623181040@3633.xlsx"
 
 # 尝试读取 Excel 文件
 try:

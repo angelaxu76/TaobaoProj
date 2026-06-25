@@ -10,7 +10,7 @@ INPUT_TXT = r"C:\Users\angel\Desktop\YGLD.txt"
 OUTPUT_XLSX = r"C:\Users\angel\Desktop\abc.xlsx"
 
 # INPUT_TXT = r"C:\Users\angel\Desktop\WXJ.txt"
-# OUTPUT_XLSX = r"C:\Users\angel\Desktop\WXJ.xlsx"
+# OUTPUT_XLSX = r"C:\Users\angel\Desktop\WXJ.xlsx"6
 # =====================================
 
 HEADER_SET = {
@@ -21,7 +21,7 @@ HEADER_SET = {
 
 def is_channel_id(s: str) -> bool:
     return bool(re.fullmatch(r"\d{8,}", s))
-
+7
 
 def read_lines(txt_path: Path):
     with txt_path.open("r", encoding="utf-8") as f:
