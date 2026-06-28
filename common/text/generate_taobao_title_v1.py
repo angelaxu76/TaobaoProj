@@ -13,7 +13,8 @@ from cfg.taobao_title_keyword_config import (
     SHOE_TYPE_MAP, FEATURE_MAP,
     FEATURE_MERGE_RULES, FEATURE_FORCE_FIRST, MAX_FEATURES,
     BRAND_SHORT_CODE_RULE, SHORT_CODE_JOIN_WITH_SPACE,
-    FILLER_WORDS, MAX_SHOE_TYPES
+    FILLER_WORDS, MAX_SHOE_TYPES,
+    TITLE_WORD_BLACKLIST,
 )
 
 logger = setup_logger(
@@ -141,6 +142,14 @@ def _fix_english_spacing(s: str) -> str:
     s = re.sub(r"(\d)([A-Za-z])", r"\1 \2", s)
     s = re.sub(r"\s{2,}", " ", s).strip()
     return s
+
+# =========================
+# 黑名单过滤（整词删除，英文不区分大小写）
+# =========================
+def _apply_blacklist(title: str) -> str:
+    for word in TITLE_WORD_BLACKLIST:
+        title = re.sub(re.escape(word), "", title, flags=re.IGNORECASE)
+    return re.sub(r"\s{2,}", " ", title).strip()
 
 # =========================
 # 英文术语替换为中文（基于 TERM_REPLACE_MAP）
@@ -305,6 +314,8 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
             material_cn=material_cn,
             short_code=short_code
         )
+
+        base_title = _apply_blacklist(base_title)
 
         logger.info(f"OK | brand={brand_key} | code={product_code} | title={base_title}")
         return {"title_cn": base_title, "taobao_title": base_title}

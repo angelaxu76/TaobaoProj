@@ -166,3 +166,21 @@ FILLER_WORDS = [
 
 
 MAX_SHOE_TYPES = 2  # 同时命中多个鞋型时，最多输出2个
+
+# -------------------------
+# 标题词语黑名单（涉及知识产权/品牌名等，生成后统一删除）
+# 支持中文词和英文词（英文不区分大小写）
+# -------------------------
+TITLE_WORD_BLACKLIST = [
+    # 示例（按需填写）：
+    # "Gore-Tex",
+    # "GORE-TEX",
+    # "Vibram",
+    "Brinkley",
+    "Slide",
+    "Kitly",
+    "golf",
+    "grace",
+    "coach",
+    
+]
