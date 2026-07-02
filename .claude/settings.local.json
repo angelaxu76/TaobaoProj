@@ -40,7 +40,8 @@
       "Bash(Select-Object -First 10 -ExpandProperty Name)",
       "PowerShell(pip install *)",
       "PowerShell(Write-Output \"LOCALAPPDATA=$env:LOCALAPPDATA\"; Write-Output \"USERNAME=$env:USERNAME\"; Write-Output \"PROGRAMFILES=$env:PROGRAMFILES\"; Write-Output \"PROGRAMFILES\\(X86\\)=${env:ProgramFiles\\(x86\\)}\")",
-      "PowerShell(Get-ChildItem -Path \"$env:LOCALAPPDATA\\\\Programs\" -Directory -ErrorAction SilentlyContinue | Select-Object Name; Write-Output \"---\"; Get-ChildItem -Path \"C:\\\\Program Files\\\\UiPath\" -ErrorAction SilentlyContinue -Recurse -Filter UiRobot.exe | Select-Object FullName; Write-Output \"---searching whole C for UiRobot---\"; Get-ChildItem -Path C:\\\\ -Recurse -Filter \"UiRobot.exe\" -ErrorAction SilentlyContinue -Force -Depth 6 | Select-Object -First 10 FullName)"
+      "PowerShell(Get-ChildItem -Path \"$env:LOCALAPPDATA\\\\Programs\" -Directory -ErrorAction SilentlyContinue | Select-Object Name; Write-Output \"---\"; Get-ChildItem -Path \"C:\\\\Program Files\\\\UiPath\" -ErrorAction SilentlyContinue -Recurse -Filter UiRobot.exe | Select-Object FullName; Write-Output \"---searching whole C for UiRobot---\"; Get-ChildItem -Path C:\\\\ -Recurse -Filter \"UiRobot.exe\" -ErrorAction SilentlyContinue -Force -Depth 6 | Select-Object -First 10 FullName)",
+      "Bash(git config *)"
     ]
   }
 }
