@@ -49,20 +49,13 @@ BATCH_SETTLE_SECONDS = 10
 #  UiPath 配置（通过 UiPath Assistant 部署的流程）
 # ─────────────────────────────────────────────────────────────────
 
-# UiRobot.exe 路径解析优先级：
-#   1. 环境变量 UIPATH_ROBOT_EXE（手动指定，最高优先级）
-#   2. 自动扫描 %LOCALAPPDATA%\Programs\UiPathPlatform\Studio\*\UiRobot.exe
-#      选修改时间最新的版本目录（即最后一次升级安装的版本）
-#   3. 以上均未找到时报错
+# UiRobot.exe 路径解析：
+#   直接自动扫描 %LOCALAPPDATA%\Programs\UiPathPlatform\Studio\*\UiRobot.exe
+#   和 %PROGRAMFILES%\UiPath\Studio\*\UiRobot.exe，选修改时间最新的版本目录
+#   （即最后一次升级安装的版本）；均未找到时报错。
+#   不再读取环境变量。
 
 def _find_uirobot_exe() -> str:
-    # 优先：手动设置的环境变量
-    manual = os.environ.get("UIPATH_ROBOT_EXE", "").strip()
-    if manual:
-        print(f"[DEBUG] 使用环境变量指定的路径: {manual}")
-        return manual
-
-    # 自动：扫描标准安装目录（用户级安装和系统级安装）
     local_appdata = os.environ.get("LOCALAPPDATA", "")
     program_files = os.environ.get("PROGRAMFILES", r"C:\Program Files")
     search_roots = [
@@ -86,10 +79,7 @@ def _find_uirobot_exe() -> str:
     if not candidates:
         raise FileNotFoundError(
             "自动探测 UiRobot.exe 失败，未在标准路径下找到安装文件。\n"
-            f"搜索路径:\n  - {search_roots[0]}\n  - {search_roots[1]}\n"
-            "可手动设置环境变量来指定路径：\n"
-            "  变量名: UIPATH_ROBOT_EXE\n"
-            "  变量值: <UiRobot.exe 的完整路径>"
+            f"搜索路径:\n  - {search_roots[0]}\n  - {search_roots[1]}"
         )
 
     # 取修改时间最新的（= 最近一次升级安装的版本）
