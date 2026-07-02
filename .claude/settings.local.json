@@ -41,7 +41,10 @@
       "PowerShell(pip install *)",
       "PowerShell(Write-Output \"LOCALAPPDATA=$env:LOCALAPPDATA\"; Write-Output \"USERNAME=$env:USERNAME\"; Write-Output \"PROGRAMFILES=$env:PROGRAMFILES\"; Write-Output \"PROGRAMFILES\\(X86\\)=${env:ProgramFiles\\(x86\\)}\")",
       "PowerShell(Get-ChildItem -Path \"$env:LOCALAPPDATA\\\\Programs\" -Directory -ErrorAction SilentlyContinue | Select-Object Name; Write-Output \"---\"; Get-ChildItem -Path \"C:\\\\Program Files\\\\UiPath\" -ErrorAction SilentlyContinue -Recurse -Filter UiRobot.exe | Select-Object FullName; Write-Output \"---searching whole C for UiRobot---\"; Get-ChildItem -Path C:\\\\ -Recurse -Filter \"UiRobot.exe\" -ErrorAction SilentlyContinue -Force -Depth 6 | Select-Object -First 10 FullName)",
-      "Bash(git config *)"
+      "Bash(git config *)",
+      "Bash(powershell -NoProfile -Command \"Get-ChildItem -Path 'C:\\\\Users\\\\maddingxu\\\\AppData\\\\Local' -Filter 'UiRobot.exe' -Recurse -ErrorAction SilentlyContinue -Force | Select-Object -First 5 FullName; Get-ChildItem -Path 'C:\\\\Program Files*' -Filter 'UiRobot.exe' -Recurse -ErrorAction SilentlyContinue -Force | Select-Object -First 5 FullName\")",
+      "PowerShell(Write-Output \"LOCALAPPDATA=$env:LOCALAPPDATA\"; Write-Output \"USERNAME=$env:USERNAME\")",
+      "Bash(python -c \"import ops.upload.upload_config as c; print\\(c.UIPATH_ROBOT_EXE\\)\")"
     ]
   }
 }

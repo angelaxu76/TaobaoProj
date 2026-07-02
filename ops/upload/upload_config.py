@@ -50,15 +50,21 @@ BATCH_SETTLE_SECONDS = 10
 # ─────────────────────────────────────────────────────────────────
 
 # UiRobot.exe 路径解析：
-#   直接自动扫描 %LOCALAPPDATA%\Programs\UiPathPlatform\Studio\*\UiRobot.exe
-#   和 %PROGRAMFILES%\UiPath\Studio\*\UiRobot.exe，选修改时间最新的版本目录
-#   （即最后一次升级安装的版本）；均未找到时报错。
+#   自动扫描以下位置（新版 UiPath 直接把 UiRobot.exe 放在 Studio 根目录下，
+#   旧版则放在 Studio\<version>\ 子目录下，两种布局都要兼容）：
+#     %LOCALAPPDATA%\Programs\UiPath\Studio\UiRobot.exe
+#     %LOCALAPPDATA%\Programs\UiPath\Studio\*\UiRobot.exe
+#     %LOCALAPPDATA%\Programs\UiPathPlatform\Studio\*\UiRobot.exe（旧目录名，兼容保留）
+#     %PROGRAMFILES%\UiPath\Studio\UiRobot.exe
+#     %PROGRAMFILES%\UiPath\Studio\*\UiRobot.exe
+#   有多个候选时选修改时间最新的（即最后一次升级安装的版本）；均未找到时报错。
 #   不再读取环境变量。
 
 def _find_uirobot_exe() -> str:
     local_appdata = os.environ.get("LOCALAPPDATA", "")
     program_files = os.environ.get("PROGRAMFILES", r"C:\Program Files")
     search_roots = [
+        Path(local_appdata) / "Programs" / "UiPath" / "Studio",
         Path(local_appdata) / "Programs" / "UiPathPlatform" / "Studio",
         Path(program_files) / "UiPath" / "Studio",
     ]
@@ -68,18 +74,20 @@ def _find_uirobot_exe() -> str:
     for root in search_roots:
         print(f"  - {root}")
         if root.exists():
-            found = list(root.glob("*/UiRobot.exe"))
+            found = [root / "UiRobot.exe"] if (root / "UiRobot.exe").exists() else []
+            found.extend(root.glob("*/UiRobot.exe"))
             if found:
                 candidates.extend(found)
                 for f in found:
-                    print(f"    ✓ 找到: {f}")
+                    print(f"    [OK] 找到: {f}")
         else:
-            print(f"    ✗ 路径不存在")
+            print(f"    [X] 路径不存在")
 
     if not candidates:
+        roots_str = "\n  - ".join(str(r) for r in search_roots)
         raise FileNotFoundError(
             "自动探测 UiRobot.exe 失败，未在标准路径下找到安装文件。\n"
-            f"搜索路径:\n  - {search_roots[0]}\n  - {search_roots[1]}"
+            f"搜索路径:\n  - {roots_str}"
         )
 
     # 取修改时间最新的（= 最近一次升级安装的版本）
