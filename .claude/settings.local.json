@@ -44,7 +44,21 @@
       "Bash(git config *)",
       "Bash(powershell -NoProfile -Command \"Get-ChildItem -Path 'C:\\\\Users\\\\maddingxu\\\\AppData\\\\Local' -Filter 'UiRobot.exe' -Recurse -ErrorAction SilentlyContinue -Force | Select-Object -First 5 FullName; Get-ChildItem -Path 'C:\\\\Program Files*' -Filter 'UiRobot.exe' -Recurse -ErrorAction SilentlyContinue -Force | Select-Object -First 5 FullName\")",
       "PowerShell(Write-Output \"LOCALAPPDATA=$env:LOCALAPPDATA\"; Write-Output \"USERNAME=$env:USERNAME\")",
-      "Bash(python -c \"import ops.upload.upload_config as c; print\\(c.UIPATH_ROBOT_EXE\\)\")"
+      "Bash(python -c \"import ops.upload.upload_config as c; print\\(c.UIPATH_ROBOT_EXE\\)\")",
+      "Bash(find \"/e/shared/GEI_SHARED/clarks\" -iname \"GEI*\" 2>/dev/null | head -20)",
+      "Read(//e/shared/GEI_SHARED/clarks/**)",
+      "Bash(python3 -c ' *)",
+      "PowerShell(Get-Command python, python3, py -ErrorAction SilentlyContinue)",
+      "PowerShell(chcp 65001)",
+      "PowerShell(cd d:\\\\Projects\\\\VS-TaobaoProj\\\\TaobaoProj; $env:PYTHONUTF8=1; python -m channels.jingya.check.check_jingya_stock_mismatch --brand clarks --excel \"E:\\\\shared\\\\GEI_SHARED\\\\clarks\\\\GEI@sales_catalogue_export@260628021100@0674.xlsx\")",
+      "Read(//e/shared/GEI_SHARED//**)",
+      "Bash(ls -la \"/e/shared/\" 2>/dev/null | head -5; echo \"---check if same as vmware share---\"; ls \"//vmware-host/Shared Folders/shared\" 2>/dev/null | head -5)",
+      "Read(//e/shared//**)",
+      "Read(///vmware-host/Shared Folders//**)",
+      "PowerShell(cd d:\\\\Projects\\\\VS-TaobaoProj\\\\TaobaoProj; $env:PYTHONUTF8=1; python -m ops.stock.run_check_jingya_stock --brand clarks)",
+      "PowerShell(cd d:\\\\Projects\\\\VS-TaobaoProj\\\\TaobaoProj; $env:PYTHONUTF8=1; python ops\\\\stock\\\\run_check_jingya_stock.py)",
+      "PowerShell(cd d:\\\\Projects\\\\VS-TaobaoProj\\\\TaobaoProj; $env:PYTHONUTF8=1; python -m ops.stock.run_check_jingya_stock)",
+      "PowerShell(python -c \"x = r'C:\\\\Users\\\\Maddingzhou\\\\Desktop\\\\' + 'brand' + '_stock_diff.xlsx'\" 2>&1)"
     ]
   }
 }

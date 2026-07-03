@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 # ========== split configs (normal imports) ==========
-from cfg.paths import BASE_DIR, DISCOUNT_EXCEL_DIR, ensure_all_dirs
+from cfg.paths import BASE_DIR, DISCOUNT_EXCEL_DIR, GEI_EXPORT_BASE, ensure_all_dirs
 from cfg.settings import (
     API_KEYS,
     SETTINGS,
@@ -78,7 +78,7 @@ from cfg.ai_config import (
 )
 
 __all__ = [
-    "BASE_DIR", "DISCOUNT_EXCEL_DIR", "ensure_all_dirs",
+    "BASE_DIR", "DISCOUNT_EXCEL_DIR", "GEI_EXPORT_BASE", "ensure_all_dirs",
     "API_KEYS", "SETTINGS", "DEFAULT_STOCK_COUNT", "DRIVER_DIR",
     "GLOBAL_CHROMEDRIVER_PATH", "GLOBAL_GECKODRIVER_PATH",
     "PGSQL_CONFIG",

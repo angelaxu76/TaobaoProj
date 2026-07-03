@@ -5,6 +5,9 @@ BASE_DIR = Path("D:/TB/Products")
 DISCOUNT_EXCEL_DIR = Path("D:/TB/DiscountCandidates")
 GEI_SHARED_BASE = Path(r"\\vmware-host\Shared Folders\shared")
 
+# 鲸芽后台导出的渠道产品目录文件（GEI@sales_catalogue_export@...xlsx）存放目录，按品牌分子目录
+GEI_EXPORT_BASE = Path(r"E:\shared\GEI_SHARED")
+
 def ensure_all_dirs(*dirs):
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)
