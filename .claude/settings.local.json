@@ -58,7 +58,9 @@
       "PowerShell(cd d:\\\\Projects\\\\VS-TaobaoProj\\\\TaobaoProj; $env:PYTHONUTF8=1; python -m ops.stock.run_check_jingya_stock --brand clarks)",
       "PowerShell(cd d:\\\\Projects\\\\VS-TaobaoProj\\\\TaobaoProj; $env:PYTHONUTF8=1; python ops\\\\stock\\\\run_check_jingya_stock.py)",
       "PowerShell(cd d:\\\\Projects\\\\VS-TaobaoProj\\\\TaobaoProj; $env:PYTHONUTF8=1; python -m ops.stock.run_check_jingya_stock)",
-      "PowerShell(python -c \"x = r'C:\\\\Users\\\\Maddingzhou\\\\Desktop\\\\' + 'brand' + '_stock_diff.xlsx'\" 2>&1)"
+      "PowerShell(python -c \"x = r'C:\\\\Users\\\\Maddingzhou\\\\Desktop\\\\' + 'brand' + '_stock_diff.xlsx'\" 2>&1)",
+      "Bash(python -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)"
     ]
   }
 }

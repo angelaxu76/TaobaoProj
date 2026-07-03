@@ -87,7 +87,12 @@ def extract_field_from_content(content: str, field: str) -> str:
 # 性别
 # =========================
 def _normalize_gender(gender_raw: str, title_en: str) -> str:
-    g = (gender_raw or "").strip().lower()
+    g_raw = (gender_raw or "").strip()
+    # 抓取脚本（clarks/geox/camper 等）已直接产出中文性别，无需再走英文正则
+    if g_raw in ("男款", "女款", "童款"):
+        return g_raw
+
+    g = g_raw.lower()
     t = (title_en or "").strip().lower()
 
     def _to_std(s: str) -> str:
