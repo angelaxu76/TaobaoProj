@@ -3,6 +3,26 @@ from ..db_config import PGSQL_CONFIG
 
 # === Barbour 品牌路径配置 ===
 BARBOUR_BASE = BASE_DIR / "barbour"
+
+# 图片处理专用目录：与 publication / repulibcation 平级，独立存放。
+# backup_and_clear_brand_dirs() 只清空 publication 和 repulibcation，不会碰这里，
+# 所以下载库/换脸图/HTML产出图不会被清理流程误删。
+#
+# 流水线顺序（各阶段目录对应各脚本的输入/输出）：
+#   1. image_download_and_prepare.py
+#        下载 -> 防指纹处理 -> 按编码分组          => IMAGE_DOWNLOAD（长期库，累积所有历史图片）
+#   2. image_select_and_prepare.py
+#        按发布 Excel 从 IMAGE_DOWNLOAD 选出本批次商品的图片 => IMAGE_SELECTED
+#        （找不到图片的编码写入 IMAGE_MISSING_TXT）
+#   3. run_classify_person_images.py
+#        对 IMAGE_SELECTED 做人物/细节分类          => IMAGE_PERSON_DIR / IMAGE_DETAIL_DIR
+#   4. [外部] AI 换脸脚本（ops/ai_image/）处理 IMAGE_PERSON_DIR 中的模特图
+#        换脸完成后，将换脸图 + IMAGE_DETAIL_DIR 中的细节图手动汇总到 => IMAGE_FINAL
+#   5. image_process_and_html.py
+#        以 IMAGE_FINAL（即 IMAGE_PROCESS）为图源，合并宽图/生成HTML/渲染图片/裁边
+#        => MERGED_DIR -> HTML_DIR -> HTML_IMAGE -> HTML_CUTTER_DES / HTML_CUTTER_FIRST_PAGE（最终产出）
+IMAGES_BASE = BARBOUR_BASE / "images"
+
 BARBOUR = {
     "BRAND": "barbour",
     "BASE": BARBOUR_BASE,
@@ -15,22 +35,25 @@ BARBOUR = {
     "OUTPUT_DIR": BARBOUR_BASE / "repulibcation",
     "STORE_DIR": BARBOUR_BASE / "document" / "store",
     "PUBLICATION_DIR": BARBOUR_BASE / "document" / "publication",
-    "IMAGE_DIR": BARBOUR_BASE / "publication" / "images",
-    "IMAGE_DOWNLOAD": BARBOUR_BASE / "repulibcation" / "images_download",
-    "IMAGE_PROCESS": BARBOUR_BASE / "repulibcation" / "all",
-    "IMAGE_CUTTER": BARBOUR_BASE / "repulibcation" / "images_cutter",
-    "ORG_IMAGE_DIR": BARBOUR_BASE / "repulibcation" / "orgin_images",
-    "DEF_IMAGE_DIR": BARBOUR_BASE / "repulibcation" / "DEF_images",
-    "MERGED_DIR": BARBOUR_BASE / "repulibcation" / "image_merged",
-    "HTML_DIR": BARBOUR_BASE / "repulibcation" / "html",
-    "HTML_DIR_DES": BARBOUR_BASE / "repulibcation" / "html"/ "description",
-    "HTML_DIR_FIRST_PAGE": BARBOUR_BASE / "repulibcation" / "html"/ "first_page",
-    "HTML_IMAGE": BARBOUR_BASE / "repulibcation" / "html_image",
-    "HTML_IMAGE_DES": BARBOUR_BASE / "repulibcation" / "html_image"/ "description",
-    "HTML_IMAGE_FIRST_PAGE": BARBOUR_BASE / "repulibcation" / "html_image"/"first_page",
-    "HTML_CUTTER_DES": BARBOUR_BASE / "repulibcation" / "html_cutter"/ "description",
-    "HTML_CUTTER_FIRST_PAGE": BARBOUR_BASE / "repulibcation" / "html_cutter"/ "first_page",
-    "HTML_DEST": BARBOUR_BASE / "repulibcation" / "dest",
+    # ── 图片流水线目录（均在 IMAGES_BASE 下，不受 cleanup/backup 影响）──
+    "IMAGE_ROOT": IMAGES_BASE,
+    "IMAGE_DOWNLOAD": IMAGES_BASE / "image_download",
+    "IMAGE_SELECTED": IMAGES_BASE / "images_selected",
+    "IMAGE_MISSING_TXT": IMAGES_BASE / "missing_codes.txt",
+    "IMAGE_PERSON_DIR": IMAGES_BASE / "person",
+    "IMAGE_DETAIL_DIR": IMAGES_BASE / "detail",
+    "IMAGE_FINAL": IMAGES_BASE / "image_final",
+    "IMAGE_PROCESS": IMAGES_BASE / "image_final",  # generate_html.py 读取的图源，等同 IMAGE_FINAL
+    "MERGED_DIR": IMAGES_BASE / "image_merged",
+    "HTML_DIR": IMAGES_BASE / "html",
+    "HTML_DIR_DES": IMAGES_BASE / "html" / "description",
+    "HTML_DIR_FIRST_PAGE": IMAGES_BASE / "html" / "first_page",
+    "HTML_IMAGE": IMAGES_BASE / "html_image",
+    "HTML_IMAGE_DES": IMAGES_BASE / "html_image" / "description",
+    "HTML_IMAGE_FIRST_PAGE": IMAGES_BASE / "html_image" / "first_page",
+    "HTML_CUTTER_DES": IMAGES_BASE / "html_cutter" / "description",
+    "HTML_CUTTER_FIRST_PAGE": IMAGES_BASE / "html_cutter" / "first_page",
+    "HTML_DEST": IMAGES_BASE / "dest",
     "TABLE_NAME": "barbour_inventory",
     "TAOBAO_STORE_DISCOUNT": 1,  # 不包关税→淘宝店铺价再打9折
     "SUPPLIER_MIN_SIZES": 2,    # 供应商映射：至少要有几个有货尺码才算"可用"

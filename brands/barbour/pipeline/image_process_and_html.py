@@ -1,7 +1,12 @@
 """
 图片处理 + 产品详情 HTML/图片生成流水线。
 
-前置条件：image_select_and_prepare.py 已运行完成（图片已整理到 IMAGE_PROCESS 目录）。
+前置条件：
+  1. image_select_and_prepare.py 已运行完成（IMAGE_SELECTED 已就绪）
+  2. run_classify_person_images.py 已运行完成（IMAGE_PERSON_DIR / IMAGE_DETAIL_DIR 已就绪）
+  3. AI 换脸脚本已处理完 IMAGE_PERSON_DIR 中的模特图
+  4. 已将换脸图 + IMAGE_DETAIL_DIR 中的图手动汇总到 BARBOUR["IMAGE_FINAL"]
+     （即 BARBOUR["IMAGE_PROCESS"]，两者指向同一目录）
 
 步骤：
   1. 将 IMAGE_PROCESS 中的各款图片横向合并为一张宽图（MERGED_DIR）

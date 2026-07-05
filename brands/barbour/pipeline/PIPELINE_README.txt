@@ -124,6 +124,27 @@
     generate_price_excels_bulk(brand="barbour", input_dir=store_dir, ...)
 
 ================================================================================
+  图片流水线总览（阶段 E ~ G）
+================================================================================
+
+  所有图片相关目录都集中在 D:\TB\Products\barbour\images\ 下（BARBOUR["IMAGE_ROOT"]），
+  与 publication / repulibcation 平级。backup_and_clear_brand_dirs() 只清空
+  publication 和 repulibcation，不会碰这个目录，所以下载库/换脸图/HTML产出图
+  不会被清理流程误删。
+
+  images/
+  ├── image_download/          ← 阶段E输出：长期库，累积所有下载+处理过的图片（按编码分目录）
+  ├── images_selected/         ← 阶段F1输出：本批次要发布的商品图片（按编码分目录）
+  ├── missing_codes.txt        ← 阶段F1输出：库里找不到图片的编码
+  ├── person/                  ← 阶段F2输出：含人物的模特图 → 交给 AI 换脸脚本处理
+  ├── detail/                  ← 阶段F2输出：细节/平铺图，无需换脸
+  ├── image_final/             ← 【人工步骤】换脸图 + detail/ 手动汇总于此 = 阶段G输入
+  ├── image_merged/            ← 阶段G输出：横向合并宽图
+  ├── html/{description,first_page}/
+  ├── html_image/{description,first_page}/
+  └── html_cutter/{description,first_page}/   ← 阶段G最终产出
+
+================================================================================
   阶段 E：图片下载 & 初步处理
   脚本：image_download_and_prepare.py
 ================================================================================
@@ -138,34 +159,34 @@
        group_and_rename_images(IMAGE_DOWNLOAD, code_len=11, overwrite=True)
 
 ================================================================================
-  阶段 F1：选图 & 水印准备
+  阶段 F1：选图
   脚本：image_select_and_prepare.py
 ================================================================================
 
   前置：已有发布 Excel（含要发布的商品编码列表）
 
-  1. 按 Excel 编码从下载/处理目录复制图片到 publish_ready 目录
-  2. 重建每款商品的图片目录结构
-  3. 汇总图片到平铺目录（IMAGE_PROCESS）
-  4. 对序号 0-9 的图片添加水印
+  按 Excel 编码从 IMAGE_DOWNLOAD（长期库）复制图片到 IMAGE_SELECTED，
+  找不到图片的编码写入 IMAGE_MISSING_TXT。
 
 ================================================================================
-  阶段 F2（可选）：AI 人物图分类
+  阶段 F2：AI 人物图分类
   脚本：run_classify_person_images.py
 ================================================================================
 
-  将 need_edit 目录中的图片自动分类：
-    - classify/person：含人物（含头部）的模特图
-    - classify/detail：细节图、无人物图
+  将 IMAGE_SELECTED 目录中的图片自动分类：
+    - person/：含人物（含头部）的模特图 → 交给 AI 换脸脚本（ops/ai_image/）批量处理
+    - detail/：细节图、无人物图，无需换脸
 
   参数：CONFIDENCE=0.4, REQUIRE_HEAD=True, HEAD_CONFIDENCE=0.3
+
+  换脸完成后，需手动将换脸图 + detail/ 中的图汇总到 image_final/，再进入阶段G。
 
 ================================================================================
   阶段 G：生成 HTML 详情页 & 图片
   脚本：image_process_and_html.py
 ================================================================================
 
-  前置：image_select_and_prepare.py 已完成，IMAGE_PROCESS 目录已就绪
+  前置：image_final/（即 IMAGE_PROCESS）已汇总好换脸图 + detail 图
 
   1. 横向合并多张图片为宽图（MERGED_DIR, width=750）
   2. 生成商品详情卡 HTML（含首页 FirstPage）

@@ -60,7 +60,15 @@
       "PowerShell(cd d:\\\\Projects\\\\VS-TaobaoProj\\\\TaobaoProj; $env:PYTHONUTF8=1; python -m ops.stock.run_check_jingya_stock)",
       "PowerShell(python -c \"x = r'C:\\\\Users\\\\Maddingzhou\\\\Desktop\\\\' + 'brand' + '_stock_diff.xlsx'\" 2>&1)",
       "Bash(python -c ' *)",
-      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)"
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)",
+      "Bash(powershell -NoProfile -Command \"Get-ChildItem -Directory 'D:\\\\TB\\\\Products\\\\barbour' | Select-Object Name\")",
+      "Bash(powershell -NoProfile -Command \"Test-Path 'D:\\\\'; Test-Path 'D:\\\\TB'; Get-PSDrive -PSProvider FileSystem | Select-Object Name,Root\")",
+      "Bash(powershell -NoProfile -Command \"Get-ChildItem 'D:\\\\TB' | Select-Object Name,Mode\")",
+      "Bash(powershell -NoProfile -Command \"Get-ChildItem 'D:\\\\TB\\\\Products' | Select-Object Name\")",
+      "Bash(powershell -NoProfile -Command \"Get-ChildItem 'D:\\\\TB\\\\Products' -Force | Select-Object Name\")",
+      "Bash(cd /d/Projects/VS-TaobaoProj/TaobaoProj)",
+      "Bash(python -c \"from cfg.brands.barbour import BARBOUR; import json; print\\('\\\\n'.join\\(f'{k}: {v}' for k,v in BARBOUR.items\\(\\) if k.startswith\\('IMAGE'\\) or k in \\('OUTPUT_DIR','MERGED_DIR','HTML_DIR','HTML_DEST'\\)\\)\\)\")",
+      "Bash(python -m py_compile brands/barbour/pipeline/image_select_and_prepare.py brands/barbour/pipeline/run_classify_person_images.py brands/barbour/pipeline/image_download_and_prepare.py brands/barbour/pipeline/image_process_and_html.py cfg/brands/barbour.py)"
     ]
   }
 }

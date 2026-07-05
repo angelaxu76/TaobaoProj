@@ -1,88 +1,31 @@
 """
-从下载目录/处理目录中选图、整理、水印，准备发布用图片。
+按发布 Excel 从图片下载库中选图，集中到本批次的发布目录。
 
 步骤：
-  1. 按 Excel 中的商品编码从下载/处理目录复制图片到 publish_ready_dir
-  2. 重建每款产品的图片目录结构
-  3. 将所有图片汇总到统一的平铺目录（IMAGE_PROCESS）
-  4. 对序号 0-9 的图片添加水印
+  1. 按 Excel 中的商品编码，从 BARBOUR["IMAGE_DOWNLOAD"]（长期图片库）
+     复制对应编码的图片到 BARBOUR["IMAGE_SELECTED"]
+  2. 找不到图片的编码写入 BARBOUR["IMAGE_MISSING_TXT"]
 
-处理完成后可直接运行 image_process_and_html.py 进行后续处理。
+后续接 run_classify_person_images.py，对 IMAGE_SELECTED 做人物/细节分类。
 """
-import shutil
-from pathlib import Path
-
-from common.image.copy_images_by_excel import (
-    prepare_images_for_publication,
-    rebuild_all_products_images,
-    collect_all_images_to_flat_dir,
-    watermark_index_0_9_inplace,
-)
 from cfg.brands.barbour import BARBOUR
-
-
-def move_person_images(source_dir: str, dest_dir: str, verbose: bool = True) -> int:
-    """将 source_dir 各商品子目录中的 _1.jpg 和 _2.jpg（模特图）移动到 dest_dir。
-
-    Args:
-        source_dir: need_edit 目录，包含各商品编码子目录
-        dest_dir:   目标目录，例如 classify/person
-        verbose:    是否打印进度
-
-    Returns:
-        移动的文件总数
-    """
-    src = Path(source_dir)
-    dst = Path(dest_dir)
-    dst.mkdir(parents=True, exist_ok=True)
-
-    moved = 0
-    for img in src.glob("*/*_[12].jpg"):
-        shutil.move(str(img), dst / img.name)
-        moved += 1
-
-    if verbose:
-        print(f"[move_person_images] 共移动 {moved} 张模特图 → {dst}")
-    return moved
+from common.image.copy_images_by_excel import prepare_images_for_publication
 
 
 def main():
-    excel_path              = r"D:\TB\Products\barbour\document\publication\barbour_publication_20260425_005731.xlsx"
-    downloaded_dir          = r"D:\TB\Products\barbour\images_download"
-    processed_dir           = r"D:\TB\Products\barbour\images_dummy"
-    publish_ready_dir       = r"D:\TB\Products\barbour\repulibcation\images_selected"
-    publish_need_process_dir = r"D:\TB\Products\barbour\repulibcation\need_edit"
-    missing_txt_path        = r"D:\TB\Products\barbour\repulibcation\missing_codes.txt"
+    excel_path = r"D:\TB\Products\barbour\document\publication\barbour_publication_20260425_005731.xlsx"
 
-    ready, need_edit, missing = prepare_images_for_publication(
+    # downloaded_dir 和 processed_dir 传同一个库目录：只要编码在库里就直接算 ready，
+    # 不再区分"已处理/待处理"两级（这套区分过去从未真正生效过）。
+    ready, _, missing = prepare_images_for_publication(
         excel_path=excel_path,
-        downloaded_dir=downloaded_dir,
-        processed_dir=processed_dir,
-        publish_ready_dir=publish_ready_dir,
-        publish_need_process_dir=publish_need_process_dir,
-        missing_txt_path=missing_txt_path,
+        downloaded_dir=BARBOUR["IMAGE_DOWNLOAD"],
+        processed_dir=BARBOUR["IMAGE_DOWNLOAD"],
+        publish_ready_dir=BARBOUR["IMAGE_SELECTED"],
+        publish_need_process_dir=BARBOUR["IMAGE_SELECTED"],
+        missing_txt_path=BARBOUR["IMAGE_MISSING_TXT"],
         verbose=True,
     )
-
-    move_person_images(
-        source_dir=publish_need_process_dir,
-        dest_dir=r"D:\TB\Products\barbour\repulibcation\classify\person",
-    )
-
-    target_root = publish_ready_dir
-
-    # rebuild_all_products_images(target_root, verbose=True)
-
-    # collect_all_images_to_flat_dir(
-    #     target_root,
-    #     BARBOUR["IMAGE_PROCESS"],
-    #     verbose=True,
-    # )
-
-    # watermark_index_0_9_inplace(
-    #     BARBOUR["IMAGE_PROCESS"],
-    #     watermark_text="英国哈梅尔百货",
-    # )
 
 
 if __name__ == "__main__":

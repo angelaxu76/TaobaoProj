@@ -1,3 +1,11 @@
+"""
+图片流水线第 1 步：从 Barbour 官网下载图片，简单处理后按商品编码分组存入长期库。
+
+BARBOUR["IMAGE_DOWNLOAD"] 是长期图片库（位于 images/ 目录，不受 cleanup/backup 影响），
+按商品编码分子目录累积保存所有下载过的图片。
+
+后续接 image_select_and_prepare.py，按发布 Excel 从这里选图。
+"""
 from pathlib import Path
 from helper.image.image_antifingerprint import batch_process_images
 from helper.image.expand_square_add_code import process_images
