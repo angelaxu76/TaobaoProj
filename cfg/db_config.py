@@ -8,7 +8,7 @@
 # }
 
 PGSQL_CONFIG = {
-    "host": "192.168.1.44",
+    "host": "192.168.1.202",
     "port": 5432,
     "user": "postgres",
     "password": "516518",
