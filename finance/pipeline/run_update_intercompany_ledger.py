@@ -18,13 +18,15 @@ import openpyxl
 import pandas as pd
 from docx import Document
 
+from config import ONEDRIVE_UK_DIR
+
 sys.stdout.reconfigure(encoding="utf-8")
 
 # ============================================================
 # CONFIG
 # ============================================================
-EXPORT_PROOFS_DIR = r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\06_Export_Proofs"
-LEDGER_PATH       = r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\04_PaymentProofs\Intercompany_Ledger\Intercompany_Ledger.xlsx"
+EXPORT_PROOFS_DIR = str(ONEDRIVE_UK_DIR / "06_Export_Proofs")
+LEDGER_PATH       = str(ONEDRIVE_UK_DIR / "04_PaymentProofs" / "Intercompany_Ledger" / "Intercompany_Ledger.xlsx")
 LEDGER_SHEET      = "Ledger"
 SUMMARY_SHEET     = "Summary"
 # ============================================================

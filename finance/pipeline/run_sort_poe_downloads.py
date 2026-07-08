@@ -32,11 +32,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from config import DOWNLOADS_DIR, ONEDRIVE_HK_DIR
+
 # ============================================================
 # CONFIG（按需修改）
 # ============================================================
-INPUT_DIR  = r"C:\Users\angel\Downloads"
-OUTPUT_DIR = r"C:\Users\angel\OneDrive\CrossBorderDocs_HK\06_Shipping_And_Export\POE_References"
+INPUT_DIR  = str(DOWNLOADS_DIR)
+OUTPUT_DIR = str(ONEDRIVE_HK_DIR / "06_Shipping_And_Export" / "POE_References")
 
 # True = 仅预览，不实际移动文件；False = 正式执行
 DRY_RUN = False

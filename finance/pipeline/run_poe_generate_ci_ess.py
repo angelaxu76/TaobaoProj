@@ -4,7 +4,7 @@ from datetime import date
 import shutil  # 用于复制 HK 目录下的 POE PDF
 
 import psycopg2
-from config import PGSQL_CONFIG
+from config import PGSQL_CONFIG, ONEDRIVE_UK_DIR, ONEDRIVE_HK_DIR
 
 from finance.ingest.generate_poe_invoice_v2 import (
     generate_poe_invoice_and_report,
@@ -17,10 +17,10 @@ from finance.ingest.generate_poe_ees_pdf_v2 import (
 )
 
 # UK 这边 CI + EES 输出目录
-BASE_OUTPUT = Path(r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\06_Export_Proofs")
+BASE_OUTPUT = ONEDRIVE_UK_DIR / "06_Export_Proofs"
 
 # HK 那边原始 POE 文件根目录
-HK_POE_BASE = Path(r"C:\Users\angel\OneDrive\CrossBorderDocs_HK\06_Shipping_And_Export\POE_References")
+HK_POE_BASE = ONEDRIVE_HK_DIR / "06_Shipping_And_Export" / "POE_References"
 
 # ── 日期范围过滤（按 poe_date）────────────────────────────────────────
 # 留空字符串 "" 表示不限制该端，格式 "YYYY-MM-DD"

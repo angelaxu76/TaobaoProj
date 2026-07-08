@@ -24,12 +24,12 @@ import openpyxl
 import psycopg2
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from config import PGSQL_CONFIG
+from config import PGSQL_CONFIG, DOWNLOADS_DIR
 
 # ============================================================
 # CONFIG
 # ============================================================
-INPUT_EXCEL = r"C:\Users\angel\Downloads\returns.xlsx"
+INPUT_EXCEL = str(DOWNLOADS_DIR / "returns.xlsx")
 DRY_RUN     = True
 # ============================================================
 

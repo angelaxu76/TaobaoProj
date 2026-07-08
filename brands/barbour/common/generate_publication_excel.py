@@ -312,6 +312,7 @@ def generate_publication_excel():
 
             print(f"[{idx}/{len(code_pairs)}] {code} ← supplier={supplier or 'N/A'} | site={site_name} | £{price_gbp} | 尺码[{sizes_str}] | {title_cn}")
 
+    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     wb.save(OUTPUT_FILE)
     print(f"✅ Excel 已生成: {OUTPUT_FILE}")
 

@@ -12,10 +12,10 @@ import re
 from pathlib import Path
 from PyPDF2 import PdfReader
 import psycopg2
-from config import PGSQL_CONFIG
+from config import PGSQL_CONFIG, ONEDRIVE_HK_DIR
 
 # ── 配置 ──────────────────────────────────────────────────────────────────
-POE_REFERENCES_DIR = r"C:\Users\angel\OneDrive\CrossBorderDocs_HK\06_Shipping_And_Export\POE_References"
+POE_REFERENCES_DIR = str(ONEDRIVE_HK_DIR / "06_Shipping_And_Export" / "POE_References")
 DRY_RUN = True   # 改为 False 才会真正写数据库
 # ─────────────────────────────────────────────────────────────────────────
 

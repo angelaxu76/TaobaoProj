@@ -18,7 +18,7 @@ from datetime import date, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-from config import SMTP_HOST, SMTP_PORT, EMAIL_SENDER, EMAIL_PASSWORD, ECMS_RECIPIENTS
+from config import SMTP_HOST, SMTP_PORT, EMAIL_SENDER, EMAIL_PASSWORD, ECMS_RECIPIENTS, DESKTOP_DIR
 
 # ══════════════════════════════════════════════════════════════════
 #  本次发货参数（每次发货前修改这里）
@@ -30,7 +30,7 @@ COURIERS      = [                      # 快递信息，有几条填几条
     ("884256064655", "Fedex"),
     # ("884256064656", "Parcelforce"),
 ]
-LP_FILE       = r"C:\Users\angel\Desktop\lp_numbers.txt"   # LP 号 txt，每行一个
+LP_FILE       = str(DESKTOP_DIR / "lp_numbers.txt")   # LP 号 txt，每行一个
 DRY_RUN       = True                   # True=只预览不发送；False=真正发送
 
 # ══════════════════════════════════════════════════════════════════
@@ -121,8 +121,8 @@ def main():
     send_ecms_notification(
         shipment_ref = SHIPMENT_REF,
         couriers     = [
-            ("GI046991491GB", "Parcelforce"),
-            ("GI046991488GB", "Parcelforce"),
+            ("GI047398792GB", "Parcelforce"),
+            # ("GI046991488GB", "Parcelforce"),
         ],
         lp_file      = r"D:\Projects\VS-TaobaoProj\TaobaoProj\ops\shipping\lp_numbers.txt",
         ship_date    = SHIP_DATE,

@@ -4,13 +4,14 @@ import re
 from pathlib import Path
 from openpyxl import Workbook
 
+from config import DESKTOP_DIR
 
 # ========= 在这里直接修改路径 =========
-INPUT_TXT = r"C:\Users\angel\Desktop\YGLD.txt"
-OUTPUT_XLSX = r"C:\Users\angel\Desktop\abc.xlsx"
+INPUT_TXT = str(DESKTOP_DIR / "YGLD.txt")
+OUTPUT_XLSX = str(DESKTOP_DIR / "abc.xlsx")
 
-# INPUT_TXT = r"C:\Users\angel\Desktop\WXJ.txt"
-# OUTPUT_XLSX = r"C:\Users\angel\Desktop\WXJ.xlsx"6
+# INPUT_TXT = str(DESKTOP_DIR / "WXJ.txt")
+# OUTPUT_XLSX = str(DESKTOP_DIR / "WXJ.xlsx")
 # =====================================
 
 HEADER_SET = {

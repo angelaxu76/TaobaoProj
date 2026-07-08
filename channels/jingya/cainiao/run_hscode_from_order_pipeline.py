@@ -2,13 +2,14 @@ from pathlib import Path
 from channels.jingya.cainiao.extract_goods_brand_from_order_excels import extract_goods_brand_info
 from channels.jingya.cainiao.generate_hscode_excel_barbour import generate_barbour_hscode
 from channels.jingya.cainiao.generate_hscode_excel_shoes import generate_shoe_hscode
+from config import DOWNLOADS_DIR
 
 
  
 def pipeline_jingya():
 
     extract_goods_brand_info(
-        input_dir=r"C:\Users\angel\Downloads",
+        input_dir=str(DOWNLOADS_DIR),
         shoes_output=r"D:\TB\taofenxiao\海关备案\shoes.xlsx",
         barbour_output=r"D:\TB\taofenxiao\海关备案\barbour.xlsx"
     )

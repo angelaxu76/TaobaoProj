@@ -25,7 +25,7 @@ from openpyxl.utils import get_column_letter
 import psycopg2
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from config import PGSQL_CONFIG
+from config import PGSQL_CONFIG, ONEDRIVE_UK_DIR
 from finance.finance_config import MARGIN_RATE
 
 # ============================================================
@@ -43,7 +43,7 @@ CN_NUMBER = "CN-2026-Q1-001"
 CN_DATE = "2026-03-31"
 
 # 输出目录
-OUTPUT_DIR = r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\02_Invoices\CreditNotes"
+OUTPUT_DIR = str(ONEDRIVE_UK_DIR / "02_Invoices" / "CreditNotes")
 
 # True = 仅预览受影响行，不写库不生成文件；False = 正式执行
 DRY_RUN = True

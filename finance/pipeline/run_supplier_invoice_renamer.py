@@ -5,31 +5,32 @@ from finance.supplier.rename_clarks_invoices  import rename_clarks_invoices
 from finance.supplier.rename_ecco_invoices    import rename_ecco_invoices
 from finance.supplier.rename_amazon_invoices       import rename_amazon_invoices
 from finance.supplier.rename_parcelbroker_receipts import rename_parcelbroker_receipts
+from config import ONEDRIVE_UK_DIR
 
 def main():
     # rename_camper_invoices(
-    #     r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\99_Backup\camper_invoice\added",
-    #     r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\03_Purchase_Records\01_Supplier_Invoices\202503-202605\camper",
+    #     str(ONEDRIVE_UK_DIR / "99_Backup" / "camper_invoice" / "added"),
+    #     str(ONEDRIVE_UK_DIR / "03_Purchase_Records" / "01_Supplier_Invoices" / "202503-202605" / "camper"),
     # )
 
     rename_clarks_invoices(
-        r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\99_Backup\clarks invoice\orginal-202605",
-        r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\03_Purchase_Records\01_Supplier_Invoices\202503-202605\Clarks-1",
+        str(ONEDRIVE_UK_DIR / "99_Backup" / "clarks invoice" / "orginal-202605"),
+        str(ONEDRIVE_UK_DIR / "03_Purchase_Records" / "01_Supplier_Invoices" / "202503-202605" / "Clarks-1"),
     )
 
     # rename_ecco_invoices(
-    #     r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\99_Backup\ecco_invoice\orig-202605",
-    #     r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\03_Purchase_Records\01_Supplier_Invoices\202503-202605\ECCO",
+    #     str(ONEDRIVE_UK_DIR / "99_Backup" / "ecco_invoice" / "orig-202605"),
+    #     str(ONEDRIVE_UK_DIR / "03_Purchase_Records" / "01_Supplier_Invoices" / "202503-202605" / "ECCO"),
     # )
 
     # rename_amazon_invoices(
-    #     r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\99_Backup\amazon_invoice\202602",
-    #     r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\03_Purchase_Records\01_Supplier_Invoices\202512-202602\AMZ",
+    #     str(ONEDRIVE_UK_DIR / "99_Backup" / "amazon_invoice" / "202602"),
+    #     str(ONEDRIVE_UK_DIR / "03_Purchase_Records" / "01_Supplier_Invoices" / "202512-202602" / "AMZ"),
     # )
 
     # rename_parcelbroker_receipts(
-    #     r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\99_Backup\parcelbroker",
-    #     r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\03_Purchase_Records\01_Supplier_Invoices\202512-202602\parcelbroker",
+    #     str(ONEDRIVE_UK_DIR / "99_Backup" / "parcelbroker"),
+    #     str(ONEDRIVE_UK_DIR / "03_Purchase_Records" / "01_Supplier_Invoices" / "202512-202602" / "parcelbroker"),
     # )
 
 if __name__ == "__main__":

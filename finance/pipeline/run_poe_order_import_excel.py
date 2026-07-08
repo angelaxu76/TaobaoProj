@@ -19,13 +19,13 @@ import psycopg2
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from config import PGSQL_CONFIG
+from config import PGSQL_CONFIG, ONEDRIVE_UK_DIR
 from finance.ingest.manage_export_shipments_costs import import_poe_cost_from_excel
 
 # ============================================================
 # CONFIG
 # ============================================================
-BASE_DIR = Path(r"C:\Users\angel\OneDrive\CrossBorderDocs_UK\99_Backup\POE_TEMPLATES")
+BASE_DIR = ONEDRIVE_UK_DIR / "99_Backup" / "POE_TEMPLATES"
 # ============================================================
 
 
