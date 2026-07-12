@@ -13,7 +13,7 @@ from common.image.copy_images_by_excel import prepare_images_for_publication
 
 
 def main():
-    excel_path = r"D:\TB\Products\barbour\document\publication\barbour_publication_20260425_005731.xlsx"
+    excel_path = r"D:\TB\Products\barbour\document\publication\barbour_publication_20260709_053447.xlsx"
 
     # downloaded_dir 和 processed_dir 传同一个库目录：只要编码在库里就直接算 ready，
     # 不再区分"已处理/待处理"两级（这套区分过去从未真正生效过）。
