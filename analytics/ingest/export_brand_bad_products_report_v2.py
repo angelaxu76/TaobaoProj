@@ -9,6 +9,7 @@ import pandas as pd
 import psycopg2
 
 from cfg.db_config import PGSQL_CONFIG
+from cfg.brand_config import BRAND_CONFIG
 
 CATALOG_TABLE = "catalog_items"
 DAILY_TABLE = "product_metrics_daily"
@@ -133,6 +134,36 @@ def _compute_promo_score_100(
     return pd.Series(np.round(score, 2), index=df.index, name="promo_score_100")
 
 
+def _fetch_brand_price_info(conn, brand: str) -> pd.DataFrame:
+    """
+    从品牌自己的库存表按 product_code 聚合出：
+      taobao_store_price（AVG，跨尺码取均值）
+      original_price_gbp（AVG）
+      discount_price_gbp（AVG）
+      discount_rate = 1 - discount_price_gbp / original_price_gbp
+    """
+    table = BRAND_CONFIG[brand]["TABLE_NAME"]
+    sql = f"""
+        SELECT
+          product_code,
+          AVG(taobao_store_price)  AS taobao_store_price,
+          AVG(original_price_gbp)  AS original_price_gbp,
+          AVG(discount_price_gbp)  AS discount_price_gbp
+        FROM {table}
+        GROUP BY product_code
+    """
+    df_price = pd.read_sql(sql, conn)
+
+    df_price["discount_rate"] = np.where(
+        df_price["original_price_gbp"].fillna(0) > 0,
+        1 - df_price["discount_price_gbp"] / df_price["original_price_gbp"],
+        np.nan,
+    )
+    df_price["discount_rate"] = df_price["discount_rate"].round(4)
+
+    return df_price[["product_code", "taobao_store_price", "discount_rate"]]
+
+
 def export_brand_bad_products_report(cfg: ExportConfig) -> str:
     """
     导出该品牌商品最近 N 天表现（按日表求和）。
@@ -234,6 +265,18 @@ def export_brand_bad_products_report(cfg: ExportConfig) -> str:
         # v3：只加一个 promo_score_100
         if cfg.add_promo_score and len(df) > 0:
             df["promo_score_100"] = _compute_promo_score_100(df, cfg.days, cfg)
+
+        # v4：补充淘宝店铺价 + 当前折扣率（来自品牌自己的库存表，按 product_code 对齐）
+        if len(df) > 0 and cfg.brand in BRAND_CONFIG:
+            df_price = _fetch_brand_price_info(conn, cfg.brand)
+            df = df.merge(df_price, on="product_code", how="left")
+
+            # 把新增两列挪到 publication_date 之后
+            new_cols = ["taobao_store_price", "discount_rate"]
+            cols = [c for c in df.columns if c not in new_cols]
+            insert_at = cols.index("publication_date") + 1
+            cols = cols[:insert_at] + new_cols + cols[insert_at:]
+            df = df[cols]
 
         sheet_name = f"{cfg.brand}_last{cfg.days}d"
         with pd.ExcelWriter(cfg.output_path, engine="openpyxl") as writer:

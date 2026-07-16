@@ -75,7 +75,9 @@
       "Bash(ls \"D:\\\\TB\\\\Products\\\\barbour\\\\images\\\\images_selected\" | head -20)",
       "Read(//d/TB/Products/barbour/images/images_selected/**)",
       "Bash(ls \"D:\\\\TB\\\\Products\\\\barbour\\\\images\\\\images_selected\\\\MML0012BR17\")",
-      "Read(//d/TB/Products/barbour/images/images_selected/MML0012BR17/**)"
+      "Read(//d/TB/Products/barbour/images/images_selected/MML0012BR17/**)",
+      "Bash(mkdir -p /tmp/testexport)",
+      "Bash(mkdir -p \"D:/Projects/VS-TaobaoProj/TaobaoProj/_test_export\")"
     ]
   }
 }

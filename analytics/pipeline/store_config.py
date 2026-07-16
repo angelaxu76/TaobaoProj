@@ -2,8 +2,8 @@ from pathlib import Path
 
 # ============================================================
 # ⬇  切换淘宝店铺时只改这一行
-# ACTIVE_STORE = "五小剑"
-ACTIVE_STORE = "英国伦敦代购"
+ACTIVE_STORE = "五小剑"
+# ACTIVE_STORE = "英国伦敦代购"
 # ============================================================
 
 # 从商品标题推断品牌时使用的关键词（大小写不敏感）
@@ -16,7 +16,7 @@ BRAND_KEYWORDS: dict[str, list[str]] = {
     "barbour":  ["barbour"],
 }
 
-_BASE = Path(r"D:\TB\product_analytics")
+_BASE = Path(r"D:\TB\product_analytics\store")
 
 BASE_DIR    = _BASE / ACTIVE_STORE
 CATALOG_DIR = BASE_DIR / "input" / "product_info"
