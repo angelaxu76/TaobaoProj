@@ -15,6 +15,7 @@ import sys
 import time
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -23,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from upload_config import (
     SHARED_INPUT_DIR,
+    SHARED_BACKUP_DIR,
     LOCAL_PROCESSING_DIR,
     LOCAL_ERROR_DIR,
     LOCAL_DONE_DIR,
@@ -128,6 +130,24 @@ def copy_to_processing(src: Path) -> Path:
         dest = LOCAL_PROCESSING_DIR / f"{src.stem}_{timestamp}{src.suffix}"
     shutil.copy2(src, dest)
     return dest
+
+
+def backup_to_shared(src: Path, logger: logging.Logger) -> None:
+    """
+    将原始 Excel 备份一份到共享备份目录（按日期分子目录），不影响主流程。
+    processing/共享 input 目录最终都会被清理，备份是事后排查问题、重新执行的唯一依据。
+    备份失败只记录警告，不影响上传流程。
+    """
+    try:
+        date_dir = SHARED_BACKUP_DIR / datetime.now().strftime("%Y%m%d")
+        date_dir.mkdir(parents=True, exist_ok=True)
+        dest = date_dir / src.name
+        if dest.exists():
+            timestamp = int(time.time())
+            dest = date_dir / f"{src.stem}_{timestamp}{src.suffix}"
+        shutil.copy2(src, dest)
+    except OSError as e:
+        logger.warning(f"备份失败（不影响主流程）: {src.name} — {e}")
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -339,6 +359,7 @@ def scan_and_process(logger: logging.Logger) -> None:
             local_file = copy_to_processing(src)
             local_files.append(local_file)
             copied_srcs.append(src)
+            backup_to_shared(src, logger)
         except OSError as e:
             logger.error(f"复制失败，跳过: {src.name} — {e}")
 
@@ -380,6 +401,7 @@ def main() -> None:
     logger.info("=" * 50)
     logger.info("上传监控服务启动")
     logger.info(f"  监控目录 : {SHARED_INPUT_DIR}")
+    logger.info(f"  备份目录 : {SHARED_BACKUP_DIR}")
     logger.info(f"  处理目录 : {LOCAL_PROCESSING_DIR}")
     logger.info(f"  错误目录 : {LOCAL_ERROR_DIR}")
     logger.info(f"  UiPath   : {UIPATH_ROBOT_EXE}")

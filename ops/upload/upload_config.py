@@ -13,6 +13,10 @@ from pathlib import Path
 # 共享文件夹输入区（VMware 共享或 UNC 路径）
 SHARED_INPUT_DIR = Path(r"\\vmware-host\Shared Folders\VMShared\input")
 
+# 共享目录备份区：原始 Excel 在搬运到本地 processing 前，先在此留一份副本
+# 按日期分子目录，避免同名文件互相覆盖；用于事后核对/问题排查/重新执行
+SHARED_BACKUP_DIR = Path(r"\\vmware-host\Shared Folders\VMShared\input_backup")
+
 # 本地处理区（从共享目录搬运到此处再处理，与共享目录完全隔离）
 LOCAL_PROCESSING_DIR = Path(r"D:\RPA\processing")
 
