@@ -113,6 +113,9 @@ def extract_goods_brand_info(input_dir: str, shoes_output: str, barbour_output: 
     从 input_dir 中批量解析 Excel 文件，输出两个 Excel：
     - camper/ecco/clarks/geox --> shoes_output（按 brand 排序）
     - barbour --> barbour_output
+
+    返回 (shoes_written, barbour_written)，指示对应文件本次是否实际生成，
+    供调用方判断是否需要跳过后续步骤。
     """
 
     files = glob.glob(os.path.join(input_dir, "*.xlsx")) + \
@@ -120,7 +123,7 @@ def extract_goods_brand_info(input_dir: str, shoes_output: str, barbour_output: 
 
     if not files:
         print(f"[ERROR] 没找到 Excel 文件: {input_dir}")
-        return
+        return False, False
 
     print(f"[INFO] 在目录 {input_dir} 中找到 {len(files)} 个文件。")
 
@@ -133,7 +136,7 @@ def extract_goods_brand_info(input_dir: str, shoes_output: str, barbour_output: 
 
     if not all_results:
         print("[WARN] 没有任何数据被解析。")
-        return
+        return False, False
 
     final_df = pd.concat(all_results, ignore_index=True)
     final_df = final_df[final_df["brand"] != ""]
@@ -167,6 +170,8 @@ def extract_goods_brand_info(input_dir: str, shoes_output: str, barbour_output: 
         os.makedirs(os.path.dirname(barbour_output), exist_ok=True)
         df_barbour.to_excel(barbour_output, sheet_name="sheet1", index=False)
         print(f"[DONE] Barbour 导出 → {barbour_output}，行数: {len(df_barbour)}")
+
+    return not df_shoes.empty, not df_barbour.empty
 
 
 # -----------------------------------------------------------
