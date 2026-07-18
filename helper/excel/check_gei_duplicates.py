@@ -2,7 +2,7 @@ import pandas as pd
 
 from config import DOWNLOADS_DIR
 
-file_path = str(DOWNLOADS_DIR / "GEI@sales_catalogue_export@260623181040@3633.xlsx")
+file_path = str(DOWNLOADS_DIR / "GEI@sales_catalogue_export@260718183658@2306.xlsx")
 
 # 尝试读取 Excel 文件
 try:

@@ -3,9 +3,9 @@ import math
 from pathlib import Path
 
 # ======== 参数配置 ========
-input_file = Path(r"D:\temp\barbour.xlsx")  # 输入文件路径
-output_dir = Path(r"D:\temp\barbour")  # 输出目录
-num_parts = 11  # 分成几份（整数）
+input_file = Path(r"D:\temp\camper.xlsx")  # 输入文件路径
+output_dir = Path(r"D:\temp\camper")  # 输出目录
+num_parts = 3  # 分成几份（整数）
 
 # 创建输出目录
 output_dir.mkdir(parents=True, exist_ok=True)
