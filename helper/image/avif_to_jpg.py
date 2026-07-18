@@ -47,4 +47,5 @@ if __name__ == "__main__":
     # if len(sys.argv) < 3:
     #     print("用法：python avif_to_jpg.py <输入目录> <输出目录>")
     #     sys.exit(1)
-    avif_to_jpg(r"C:\Users\martin\Downloads", r"C:\Users\martin\Downloads")
+    from config import DOWNLOADS_DIR
+    avif_to_jpg(str(DOWNLOADS_DIR), str(DOWNLOADS_DIR))

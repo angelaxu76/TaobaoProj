@@ -10,15 +10,14 @@
 #   3. 差异报告默认输出到 D:\TB\Products\<品牌>\document\stock_check\ 下；
 #      如需指定输出路径，传入 output_report_path（需用关键字参数，见下方示例）
 
-from pathlib import Path
-
 from channels.jingya.check.check_jingya_stock_mismatch import check_jingya_stock_mismatch
+from config import DESKTOP_DIR
 
 if __name__ == "__main__":
     brand = "clarks"  # 修改为对应品牌
     check_jingya_stock_mismatch(
         brand,
         # jingya_excel_path=r"D:\Downloads\GEI@sales_catalogue_export@xxx.xlsx",  # 可选：手动指定Excel
-        output_report_path=str(Path(r"C:\Users\Maddingzhou\Desktop") / f"{brand}_stock_diff.xlsx"),  # 可选：指定输出路径
+        output_report_path=str(DESKTOP_DIR / f"{brand}_stock_diff.xlsx"),  # 可选：指定输出路径
     )
 

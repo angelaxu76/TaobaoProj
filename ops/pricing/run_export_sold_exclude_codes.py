@@ -18,9 +18,11 @@ import re
 import glob
 import pandas as pd
 
+from config import DOWNLOADS_DIR, GEI_EXPORT_BASE
+
 # ==================== 参数 ====================
-INPUT_DIR    = r"C:/Users/angel/Downloads"       # 订单 Excel 所在目录
-SHARED_ROOT  = r"E:/shared/GEI_SHARED"          # 共享目录根路径
+INPUT_DIR    = str(DOWNLOADS_DIR)       # 订单 Excel 所在目录
+SHARED_ROOT  = str(GEI_EXPORT_BASE)     # 共享目录根路径
 # ==============================================
 
 # 货品名称里"尺码"前最后一段连续 ASCII（含短横）即为商品编码

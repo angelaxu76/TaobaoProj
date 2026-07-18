@@ -2,6 +2,8 @@ import re
 import pandas as pd
 from pathlib import Path
 
+from config import DOWNLOADS_DIR
+
 # 包含 "颜色分类:CODE;尺码:XX" 格式数据的列名
 PRODUCT_NAME_COL = "货品名称"
 
@@ -95,7 +97,7 @@ def split_excel_by_brand(input_path: str | Path, output_dir: str | Path) -> None
 
 # ======== 直接运行示例 ========
 if __name__ == "__main__":
-    input_file = Path(r"C:\Users\Maddingzhou\Downloads\货品导出2026-07-09+05_51_33结果.xlsx")   # ← 修改为实际路径
-    output_directory = Path(r"C:\Users\Maddingzhou\Downloads")  # ← 修改为实际输出目录
+    input_file = DOWNLOADS_DIR / "货品导出2026-07-09+05_51_33结果.xlsx"   # ← 修改为实际文件名
+    output_directory = DOWNLOADS_DIR  # ← 修改为实际输出目录
 
     split_excel_by_brand(input_file, output_directory)
