@@ -71,7 +71,7 @@ DEFAULT_DEPTH_RATIO_LADDER = [
 # Camper 是目前唯一使用 ladder_depth_ratio 策略的品牌
 BRAND_DEPTH_RATIO_LADDER = {
     "camper": [
-        (0.48, 1.00),   # >= 48% off → 1.00（不再额外打折，直接用官网折扣价）
+        (0.48, 1.05),   # >= 48% off → 1.00（不再额外打折，直接用官网折扣价）
         (0.40, 0.80),   # >= 40% off → 0.90
         (0.35, 0.78),   # >= 35% off → 0.85
         (0.20, 0.76),   # >= 20% off → 0.80
