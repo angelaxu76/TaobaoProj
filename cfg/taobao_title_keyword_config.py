@@ -182,5 +182,8 @@ TITLE_WORD_BLACKLIST = [
     "golf",
     "grace",
     "coach",
-    
+    "Ash",
+    "Hunter",
+    "高尔夫",
+    "Belle",
 ]
