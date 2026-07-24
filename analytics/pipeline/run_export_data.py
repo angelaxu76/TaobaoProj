@@ -1,7 +1,10 @@
 from analytics.ingest.export_brand_bad_products_report_v2 import (
     export_brand_bad_products_report, ExportConfig
 )
-from analytics.pipeline.store_config import ACTIVE_STORE, EXPORT_DIR
+from analytics.pipeline.store_config import (
+    ACTIVE_STORE, EXPORT_DIR,
+    FILTER_PAY_AMOUNT_MAX, FILTER_VISITORS_MAX, FILTER_PUBLICATION_WEEKS,
+)
 
 
 def product_export(brand: str, days: int = 30):
@@ -14,6 +17,9 @@ def product_export(brand: str, days: int = 30):
             output_path=output_path,
             split_by_store=False,
             min_publication_date=None,
+            filter_pay_amount_max=FILTER_PAY_AMOUNT_MAX,
+            filter_visitors_max=FILTER_VISITORS_MAX,
+            filter_publication_weeks=FILTER_PUBLICATION_WEEKS,
         )
     )
 

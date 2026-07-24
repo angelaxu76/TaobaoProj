@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Optional, Dict, Any
 
 import numpy as np
@@ -45,6 +45,15 @@ class ExportConfig:
     # v3：是否强制最低流量门槛（可选，防“超冷门偶然单”）
     # 例如：min_visitors_for_score=10 表示 visitors<10 的都打 0 分
     min_visitors_for_score: int = 0
+
+    # v5：是否额外生成一个"冷门商品候选"筛选 sheet
+    add_filter_sheet: bool = True
+    # 保留 pay_amount_{days}d <= 此值的商品（即基本无成交）
+    filter_pay_amount_max: float = 0
+    # 保留 visitors_{days}d <= 此值的商品
+    filter_visitors_max: float = 20
+    # 保留 publication_date 早于此周数前的商品（排除新品）
+    filter_publication_weeks: int = 3
 
 
 def _safe_p95(series: pd.Series, q: float) -> float:
@@ -164,6 +173,40 @@ def _fetch_brand_price_info(conn, brand: str) -> pd.DataFrame:
     return df_price[["product_code", "taobao_store_price", "discount_rate"]]
 
 
+def _filter_cold_products(df: pd.DataFrame, cfg: ExportConfig) -> pd.DataFrame:
+    """
+    筛选出"冷门商品候选"：
+      1. pay_amount_{days}d <= filter_pay_amount_max（基本无成交）
+      2. visitors_{days}d   <= filter_visitors_max（访问量不高）
+      3. publication_date   早于 filter_publication_weeks 周前（排除新品，NULL 视为满足）
+    """
+    pay_col = f"pay_amount_{cfg.days}d"
+    visitors_col = f"visitors_{cfg.days}d"
+
+    pay_amount = pd.to_numeric(df[pay_col], errors="coerce").fillna(0)
+    visitors = pd.to_numeric(df[visitors_col], errors="coerce").fillna(0)
+
+    cutoff_date = date.today() - timedelta(weeks=cfg.filter_publication_weeks)
+    pub_date = pd.to_datetime(df["publication_date"], errors="coerce").dt.date
+    old_enough = pub_date.isna() | (pub_date < cutoff_date)
+
+    mask = (
+        (pay_amount <= cfg.filter_pay_amount_max)
+        & (visitors <= cfg.filter_visitors_max)
+        & old_enough
+    )
+    return df[mask]
+
+
+def _force_text_column(ws, df: pd.DataFrame, col_name: str) -> None:
+    """把指定列的单元格数字格式强制设为文本（'@'），防止 Excel 用科学计数法显示长数字。"""
+    if col_name not in df.columns or len(df) == 0:
+        return
+    col_idx = df.columns.get_loc(col_name) + 1  # openpyxl 列号从 1 开始
+    for row in range(2, ws.max_row + 1):  # 跳过表头
+        ws.cell(row=row, column=col_idx).number_format = "@"
+
+
 def export_brand_bad_products_report(cfg: ExportConfig) -> str:
     """
     导出该品牌商品最近 N 天表现（按日表求和）。
@@ -262,6 +305,12 @@ def export_brand_bad_products_report(cfg: ExportConfig) -> str:
     try:
         df = pd.read_sql(sql, conn, params=params)
 
+        # item_id 是长数字，写入 Excel 前转成字符串，避免被显示为科学计数法（如 1.06E+17）
+        if "item_id" in df.columns:
+            df["item_id"] = df["item_id"].apply(
+                lambda v: "" if pd.isna(v) else str(int(v))
+            )
+
         # v3：只加一个 promo_score_100
         if cfg.add_promo_score and len(df) > 0:
             df["promo_score_100"] = _compute_promo_score_100(df, cfg.days, cfg)
@@ -281,6 +330,13 @@ def export_brand_bad_products_report(cfg: ExportConfig) -> str:
         sheet_name = f"{cfg.brand}_last{cfg.days}d"
         with pd.ExcelWriter(cfg.output_path, engine="openpyxl") as writer:
             df.to_excel(writer, index=False, sheet_name=sheet_name)
+            _force_text_column(writer.sheets[sheet_name], df, "item_id")
+
+            if cfg.add_filter_sheet and len(df) > 0:
+                df_filtered = _filter_cold_products(df, cfg)
+                filter_sheet_name = f"{cfg.brand}_filtered"[:31]
+                df_filtered.to_excel(writer, index=False, sheet_name=filter_sheet_name)
+                _force_text_column(writer.sheets[filter_sheet_name], df_filtered, "item_id")
 
         print(f"✅ 已导出：{cfg.output_path}（行数={len(df)}）")
         return cfg.output_path
