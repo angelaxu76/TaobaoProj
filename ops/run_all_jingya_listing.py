@@ -42,10 +42,10 @@ SILENCE_TIMEOUT_SEC = 600
 MAX_RETRIES = 1
 
 # 是否循环执行（True=跑完一轮后等待 LOOP_INTERVAL_SEC 再重新开始，False=只跑一次）
-LOOP_ENABLED = False
+LOOP_ENABLED = True
 
 # 每轮结束后等待多少秒再开始下一轮（默认 1 小时）
-LOOP_INTERVAL_SEC = 3600
+LOOP_INTERVAL_SEC = 7200
 
 # ══════════════════════════════════════════════════════════════════
 #  内部逻辑（不需要修改）
