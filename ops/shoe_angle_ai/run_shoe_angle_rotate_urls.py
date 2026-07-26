@@ -52,9 +52,15 @@ from config import GRSAI_API_KEY, GRSAI_HOST, R2_PUBLIC_PREFIX, IMAGE_EXT
 # run_shoe_angle_rotate_custom.py，不要改这里）
 # ============================================================
 
-# 商品编码列表 Excel（第一列为编码，可有表头行）
+# 商品编码列表：Excel（第一列为编码，可有表头行）或 txt（每行一个编码，
+# 如 publication_codes.txt）。按 INPUT_FILE 扩展名自动判断，.txt 走按行读，
+# 其余按 Excel 读，此时 HEADER_ROWS / CODE_COLUMN_NAME 生效。
 INPUT_FILE  = r"D:\shoes_angle\codes.xlsx"
 HEADER_ROWS = 1
+
+# 按栏目头名称定位编码列（多栏 Excel 用，不管编码在第几列都能找到）
+# 留空字符串/None 则按原有行为，固定读第一列，不看表头文字
+CODE_COLUMN_NAME = ""
 
 # 图片所在 R2 子目录（"" 表示根目录直接拼 code，不加子目录）
 R2_SHOT_SUBDIR = "clarks"
@@ -106,25 +112,64 @@ class _RateLimiter:
             self._last_time = time.monotonic()
 
 
-def read_codes_from_excel(path: str, header_rows: int = 1) -> list[str]:
-    """从 Excel 第一列读取商品编码列表。"""
+def read_codes_from_excel(
+    path: str, header_rows: int = 1, code_column_name: str | None = None,
+) -> list[str]:
+    """从 Excel 读取商品编码列表。
+
+    code_column_name 不传（None/空字符串）时按位置读取第一列（原有行为），
+    不看表头文字。传入时按栏目头名称在表头行中查找对应列，不管这栏在
+    Excel 第几列都能定位到，适合多栏 Excel。
+    """
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     ws = wb.active
+
+    col_index = 0
+    if code_column_name:
+        target = str(code_column_name).strip()
+        header_row = next(ws.iter_rows(min_row=1, max_row=max(header_rows, 1), values_only=True), None)
+        found = None
+        if header_row:
+            for idx, cell in enumerate(header_row):
+                if cell is not None and str(cell).strip() == target:
+                    found = idx
+                    break
+        if found is None:
+            wb.close()
+            raise ValueError(f"表头行中未找到栏目 '{code_column_name}'，请检查 Excel 或 code_column_name 拼写")
+        col_index = found
+
     codes = []
     for i, row in enumerate(ws.iter_rows(values_only=True)):
         if i < header_rows:
             continue
-        val = row[0] if row else None
+        val = row[col_index] if row and len(row) > col_index else None
         if val is not None and str(val).strip():
             codes.append(str(val).strip())
     wb.close()
     return codes
 
 
+def read_codes_from_txt(path: str) -> list[str]:
+    """从 txt 文件读取商品编码列表，每行一个编码（如 publication_codes.txt）。"""
+    with open(path, "r", encoding="utf-8") as f:
+        return [line.strip() for line in f if line.strip()]
+
+
+def read_codes(
+    path: str, header_rows: int = 1, code_column_name: str | None = None,
+) -> list[str]:
+    """按文件扩展名自动选择读取方式：.txt 按行读，.xlsx/.xls 按 Excel 读。"""
+    if path.lower().endswith(".txt"):
+        return read_codes_from_txt(path)
+    return read_codes_from_excel(path, header_rows, code_column_name)
+
+
 def run_batch(
     *,
     input_file: str,
     header_rows: int = 1,
+    code_column_name: str | None = None,
     r2_shot_subdir: str,
     shot_suffixes: list[str],
     output_dir: str,
@@ -147,7 +192,7 @@ def run_batch(
                      (code, suffix, azimuth_deg, direction) -> str（含扩展名）。
                      不传时用默认命名 "{code}{suffix}_rotate{角度}{方向首字母}.png"。
     """
-    codes = read_codes_from_excel(input_file, header_rows)
+    codes = read_codes(input_file, header_rows, code_column_name)
     if not codes:
         print("未读取到任何商品编码，请检查 input_file 和 header_rows。")
         return
@@ -207,6 +252,7 @@ def main() -> None:
     run_batch(
         input_file=INPUT_FILE,
         header_rows=HEADER_ROWS,
+        code_column_name=CODE_COLUMN_NAME,
         r2_shot_subdir=R2_SHOT_SUBDIR,
         shot_suffixes=SHOT_SUFFIXES,
         output_dir=OUTPUT_DIR,

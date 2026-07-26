@@ -26,9 +26,15 @@ from run_shoe_angle_rotate_urls import run_batch
 # 本次运行参数（自由修改，不影响 run_shoe_angle_rotate_urls.py）
 # ============================================================
 
-# 商品编码列表 Excel（第一列为编码，可有表头行）
-INPUT_FILE  = r"D:\shoes_angle\codes.xlsx"
+# 商品编码列表：Excel（第一列为编码，可有表头行）或 txt（每行一个编码，
+# 如 publication_codes.txt）。按 INPUT_FILE 扩展名自动判断，.txt 走按行读，
+# 其余按 Excel 读，此时 HEADER_ROWS / CODE_COLUMN_NAME 生效。
+INPUT_FILE  = r"D:\temp\publication_codes.txt"
 HEADER_ROWS = 1
+
+# 按栏目头名称定位编码列（多栏 Excel 用，不管编码在第几列都能找到；
+# 读 txt 时此项不生效）。留空字符串则按原有行为，固定读第一列，不看表头文字
+CODE_COLUMN_NAME = "商品编码"
 
 # 图片所在 R2 子目录（"" 表示根目录直接拼 code，不加子目录）
 R2_SHOT_SUBDIR = "clarks"
@@ -74,13 +80,14 @@ def OUTPUT_NAME_FN(code: str, suffix: str, azimuth_deg: float, direction: str) -
       - 按方向单独建子文件夹风格的文件名（配合 OUTPUT_DIR 用）：
             return f"{direction.lower()}_{code}{suffix}.png"
     """
-    return f"{code}{suffix}_rotate{azimuth_deg:g}{direction.upper()[0]}.png"
+    return f"{code}_rotate{suffix}.png"
 
 
 if __name__ == "__main__":
     run_batch(
         input_file=INPUT_FILE,
         header_rows=HEADER_ROWS,
+        code_column_name=CODE_COLUMN_NAME,
         r2_shot_subdir=R2_SHOT_SUBDIR,
         shot_suffixes=SHOT_SUFFIXES,
         output_dir=OUTPUT_DIR,
