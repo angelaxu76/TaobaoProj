@@ -103,7 +103,7 @@ UIPATH_ROBOT_EXE = _find_uirobot_exe()
 
 # 已发布的流程名称（在 UiPath Assistant 里显示的名字，区分大小写）
 # 对应 Orchestrator 上的 Process Name（不是 project.json 路径）
-UIPATH_PROCESS_NAME = "update_stock_by_excel"
+UIPATH_PROCESS_NAME = "update_stock_by_excelv106"
 
 # 传给 UiPath 流程的固定 In 参数（每次调用都不变的部分）
 # key = UiPath 流程里定义的 In Argument 名称（区分大小写）
