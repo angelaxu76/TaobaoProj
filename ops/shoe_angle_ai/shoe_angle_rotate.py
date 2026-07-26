@@ -338,6 +338,7 @@ def process_one_code_rotate(
     retry_delay: float = 8.0,
     rate_limiter=None,
     output_name_fn=None,
+    prompt_hint_fn=None,
 ) -> list[str]:
     """对单个商品编码名下的多张图统一做一次视角旋转。
 
@@ -360,6 +361,12 @@ def process_one_code_rotate(
                          (code, suffix, azimuth_deg, direction) -> str（含扩展名）。
                          不传时用默认命名 "{code}{suffix}_rotate{角度}{方向首字母}.png"。
                          想改命名规则时传这个参数就行，不用改这个共享函数本身。
+        prompt_hint_fn: 可选，自定义视角描述提示词的函数，签名
+                         (direction, azimuth_deg) -> str。
+                         不传时用默认的 build_rotate_prompt_hint（5～10度轻描述）。
+                         想换成更强的 3D 透视描述（例如 v1 版，见
+                         shoe_angle_config_v1.build_rotate_prompt_hint_v1）时传这个
+                         参数就行，不用改这个共享函数本身。
 
     Returns:
         成功保存的本地文件路径列表
@@ -368,8 +375,9 @@ def process_one_code_rotate(
     aspect_ratio    = aspect_ratio    or SHOE_ANGLE_ASPECT_RATIO
     image_size      = image_size      or SHOE_ANGLE_IMAGE_SIZE
     negative_prompt = negative_prompt or SHOE_ANGLE_NEGATIVE_PROMPT
+    prompt_hint_fn  = prompt_hint_fn  or build_rotate_prompt_hint
 
-    prompt_hint = build_rotate_prompt_hint(direction, azimuth_deg)
+    prompt_hint = prompt_hint_fn(direction, azimuth_deg)
     prompt = build_shoe_angle_prompt(prompt_hint)
 
     def _default_name(code: str, suffix: str, azimuth_deg: float, direction: str) -> str:

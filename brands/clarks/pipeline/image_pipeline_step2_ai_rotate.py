@@ -25,6 +25,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from common.ai.image import GrsAIClient
 from ops.shoe_angle_ai.shoe_angle_rotate import process_one_code_rotate
 from ops.shoe_angle_ai.run_shoe_angle_rotate_urls import _RateLimiter, read_codes
+from ops.shoe_angle_ai.shoe_angle_config_v1 import (
+    SHOE_ANGLE_NEGATIVE_PROMPT_V1,
+    build_rotate_prompt_hint_v1,
+)
 from config import GRSAI_API_KEY, GRSAI_HOST, R2_PUBLIC_PREFIX, IMAGE_EXT, CLARKS
 
 CODE_FILE_PATH = r"D:\TB\Products\clarks\repulibcation\publication_codes.txt"
@@ -93,6 +97,8 @@ def main():
             retry_delay=RETRY_DELAY,
             rate_limiter=rate_lock,
             output_name_fn=_output_name,
+            negative_prompt=SHOE_ANGLE_NEGATIVE_PROMPT_V1,
+            prompt_hint_fn=build_rotate_prompt_hint_v1,
         )
         return code, saved, len(shot_suffixes)
 
