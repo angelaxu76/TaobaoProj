@@ -8,7 +8,7 @@
 用法：
   1. 修改下方"本次运行参数"。
   2. 将鞋子原图放入 INPUT_DIR/<SKU>/1.jpg（文件名可用 INPUT_FILENAME 修改）。
-  3. 运行：python ops/ai_image/run_shoe_angle_gen.py
+  3. 运行：python ops/ai_image/legacy/run_shoe_angle_gen.py
 
 输入结构：
   shoes_input/
@@ -23,8 +23,11 @@
       SKU002/...
 
 注意：
-  - 需要在 cfg/ai_config.py 中填入 R2 写入凭证（R2_ACCOUNT_ID 等）才能运行。
-  - 稳定配置（模型、提示词、角度定义）在 cfg/ai_config.py 修改。
+  - 已归档，不再维护。批量按商品编码 + R2 已上传图的用法见
+    ops/shoe_angle_ai/run_shoe_angle_rotate_urls.py。
+  - 需要在 ops/shoe_angle_ai/shoe_angle_config.py 中填入 R2 写入凭证
+    （R2_ACCOUNT_ID 等）才能运行。
+  - 稳定配置（模型、提示词、角度定义）在 ops/shoe_angle_ai/shoe_angle_config.py 修改。
 """
 import os
 import sys
@@ -34,10 +37,10 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.dirname(os.path.dirname(_HERE)))  # project root
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(_HERE))))  # project root
 
 from common.ai.image import GrsAIClient
-from common.ai.image.shoe_angle_pipeline import process_one_sku
+from ops.shoe_angle_ai.shoe_angle_rotate import process_one_sku
 from config import GRSAI_API_KEY, GRSAI_HOST
 
 # ============================================================

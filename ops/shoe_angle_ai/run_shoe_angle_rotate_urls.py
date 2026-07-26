@@ -17,7 +17,7 @@
      {R2_PUBLIC_PREFIX}/{R2_SHOT_SUBDIR}/{商品编码}{后缀}{IMAGE_EXT}
      例：.../clarks/26185512_1.jpg ~ 26185512_5.jpg
   3. 按需调整 ROTATE_DIRECTION / ROTATE_DEGREES。
-  4. 运行：python ops/ai_image/run_shoe_angle_rotate_urls.py
+  4. 运行：python ops/shoe_angle_ai/run_shoe_angle_rotate_urls.py
 
 想用一套不同的参数跑（比如不同 Excel、不同角度），不要直接改这个文件——
 复制 run_shoe_angle_rotate_custom.py 改名改参数，import 这里的 run_batch() 就行，
@@ -26,7 +26,10 @@
 输出文件命名：{商品编码}{后缀}_rotate{角度}{方向首字母}.png
   例：26185512_1_rotate10L.png
 
-稳定配置（API Key、模型、负向提示词）在 cfg/ai_config.py 修改。
+本功能专用配置（模型、负向提示词、R2写入凭证）在同文件夹的
+shoe_angle_config.py 修改；业务逻辑在同文件夹的 shoe_angle_rotate.py。
+GRSAI_API_KEY / GRSAI_HOST / R2_PUBLIC_PREFIX / IMAGE_EXT 是多条 AI 流水线
+共用的全局配置，仍在 cfg/ai_config.py，从 config.py 导入。
 """
 import os
 import sys
@@ -40,7 +43,8 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(os.path.dirname(_HERE)))  # project root
 
 import openpyxl
-from common.ai.image import GrsAIClient, process_one_code_rotate
+from common.ai.image import GrsAIClient
+from ops.shoe_angle_ai.shoe_angle_rotate import process_one_code_rotate
 from config import GRSAI_API_KEY, GRSAI_HOST, R2_PUBLIC_PREFIX, IMAGE_EXT
 
 # ============================================================
@@ -130,6 +134,7 @@ def run_batch(
     max_retries: int = 2,
     retry_delay: float = 8.0,
     rate_limit_sleep: float = 2.0,
+    output_name_fn=None,
 ) -> None:
     """批量视角旋转的完整流程：读 Excel 编码 → 拼 R2 URL → 并发生成 → 汇总。
 
@@ -137,6 +142,10 @@ def run_batch(
     用一套完全不同的参数调用这个函数，不会跟直接运行本文件的默认配置互相
     影响。想跑一套自定义参数，写一个新脚本调用这个函数就行，参考
     run_shoe_angle_rotate_custom.py。
+
+    output_name_fn: 可选，自定义输出文件名，签名
+                     (code, suffix, azimuth_deg, direction) -> str（含扩展名）。
+                     不传时用默认命名 "{code}{suffix}_rotate{角度}{方向首字母}.png"。
     """
     codes = read_codes_from_excel(input_file, header_rows)
     if not codes:
@@ -170,6 +179,7 @@ def run_batch(
             max_retries=max_retries,
             retry_delay=retry_delay,
             rate_limiter=rate_lock,
+            output_name_fn=output_name_fn,
         )
         return code, saved
 

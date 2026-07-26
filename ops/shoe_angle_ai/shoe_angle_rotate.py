@@ -1,27 +1,20 @@
+# ops/shoe_angle_ai/shoe_angle_rotate.py
 """
-鞋子产品图 — AI 视角微调流水线。
+鞋子产品图 — AI 视角微调/旋转 业务逻辑。
 
-功能：将本地鞋子产品图（白底棚拍）通过 GrsAI nano-banana-2 模型生成
-      3 个微调视角版本（左转 5°、右转 5°、轻微俯角），所有产品细节、
-      logo、材质纹理保持不变。
+不是淘宝/鲸芽渠道业务，所以整体放在 ops/shoe_angle_ai/ 下自成一体，
+不放进 common/。这个文件只放业务逻辑本身；配置在同文件夹的
+shoe_angle_config.py；实际调用入口在 run_shoe_angle_rotate_urls.py /
+run_shoe_angle_rotate_custom.py / legacy/run_shoe_angle_gen.py。
 
-输入目录结构：
-    shoes_input/
-        SKU001/
-            1.jpg
-        SKU002/
-            1.jpg
-
-输出目录结构：
-    shoes_output/
-        SKU001/
-            angle_01.png   ← 左转 5°
-            angle_02.png   ← 右转 5°
-            angle_03.png   ← 轻微俯角
+两条处理路径：
+  process_one_sku          —— 本地图 + 自动上传 R2 + 一次生成3个角度变体
+                               （legacy/run_shoe_angle_gen.py 用）
+  process_one_code_rotate  —— 图片已在 R2 + 只生成 1 个角度
+                               （run_shoe_angle_rotate_urls.py 用）
 
 API 说明：
-    - img_1 = 鞋子原图（视角 / 姿态主参考）
-    - img_2 = 鞋子原图（材质 / logo 细节副参考，与 img_1 相同）
+    - img_1 = img_2 = 同一张鞋子原图（双槽位强化细节保留）
     - 使用 nano-banana-2 通用图生图模型，prompt 中精确描述视角偏移
 """
 import os
@@ -32,19 +25,19 @@ import requests
 import boto3
 from botocore.exceptions import ClientError
 
-from cfg.ai_config import (
+from ops.shoe_angle_ai.shoe_angle_config import (
     SHOE_ANGLE_MODEL,
     SHOE_ANGLE_ASPECT_RATIO,
     SHOE_ANGLE_IMAGE_SIZE,
     SHOE_ANGLE_NEGATIVE_PROMPT,
     SHOE_ANGLE_VARIANTS,
-    R2_PUBLIC_PREFIX,
     R2_ACCOUNT_ID, R2_WRITE_KEY_ID, R2_WRITE_SECRET,
     R2_BUCKET_NAME, R2_TEMP_UPLOAD_PREFIX,
 )
+from config import R2_PUBLIC_PREFIX  # 多条 AI 流水线共用，留在 cfg/ai_config.py
 
 
-# ── R2 临时上传 ────────────────────────────────────────────────────────────────
+# ── R2 临时上传（仅 process_one_sku 这条本地图路径需要）──────────────────────────
 
 def _upload_image_to_r2(local_path: str) -> str | None:
     """将本地图片上传至 R2 临时前缀，返回公开访问 URL。
@@ -60,7 +53,7 @@ def _upload_image_to_r2(local_path: str) -> str | None:
     """
     if R2_ACCOUNT_ID.startswith("YOUR_"):
         raise RuntimeError(
-            "R2 写入凭证未配置！请在 cfg/ai_config.py 中填入 "
+            "R2 写入凭证未配置！请在 ops/shoe_angle_ai/shoe_angle_config.py 中填入 "
             "R2_ACCOUNT_ID / R2_WRITE_KEY_ID / R2_WRITE_SECRET / R2_BUCKET_NAME。"
         )
 
@@ -123,7 +116,7 @@ def build_shoe_angle_prompt(prompt_hint: str) -> str:
     """构建单角度的视角微调提示词。
 
     Args:
-        prompt_hint: 来自 SHOE_ANGLE_VARIANTS 的视角描述片段
+        prompt_hint: 来自 SHOE_ANGLE_VARIANTS 或 build_rotate_prompt_hint 的视角描述片段
 
     Returns:
         完整的英文 prompt 字符串
@@ -187,7 +180,7 @@ def build_shoe_angle_prompt(prompt_hint: str) -> str:
     )
 
 
-# ── 单 SKU 处理 ────────────────────────────────────────────────────────────────
+# ── 单 SKU 处理（本地图 + 自动上传 R2，一次生成3个角度变体）───────────────────────
 
 def process_one_sku(
     sku: str,
@@ -213,11 +206,11 @@ def process_one_sku(
         output_dir:     输出根目录（结果写入 <output_dir>/<sku>/）
         client:         GrsAIClient 实例
         input_filename: SKU 文件夹内的原图文件名，默认 "1.jpg"
-        angle_variants: 角度定义列表，None 时使用 cfg 的 SHOE_ANGLE_VARIANTS
-        model:          AI 模型，None 时使用 cfg 默认值
-        aspect_ratio:   图片比例，None 时使用 cfg 默认值
-        image_size:     分辨率，None 时使用 cfg 默认值
-        negative_prompt:负向提示词，None 时使用 cfg 默认值
+        angle_variants: 角度定义列表，None 时使用 SHOE_ANGLE_VARIANTS
+        model:          AI 模型，None 时使用默认值
+        aspect_ratio:   图片比例，None 时使用默认值
+        image_size:     分辨率，None 时使用默认值
+        negative_prompt:负向提示词，None 时使用默认值
         max_retries:    每个角度的最大重试次数（不含首次）
         retry_delay:    重试前等待秒数
         cleanup_r2:     生成完成后是否删除 R2 上的临时输入图
@@ -249,8 +242,6 @@ def process_one_sku(
         return []
 
     # 从 r2_url 提取 object_key（用于后续清理）
-    r2_object_key = "/".join(r2_url.split("/")[-2:])  # tmp_shoe_input/{uuid}_1.jpg
-    # 更精确提取：去掉 prefix
     prefix = R2_PUBLIC_PREFIX.rstrip("/") + "/"
     r2_object_key = r2_url[len(prefix):]
 
@@ -346,6 +337,7 @@ def process_one_code_rotate(
     max_retries: int = 2,
     retry_delay: float = 8.0,
     rate_limiter=None,
+    output_name_fn=None,
 ) -> list[str]:
     """对单个商品编码名下的多张图统一做一次视角旋转。
 
@@ -364,6 +356,10 @@ def process_one_code_rotate(
         max_retries:    每张图的最大重试次数（不含首次）
         retry_delay:    重试前等待秒数
         rate_limiter:   可选的限速器，需实现 .acquire()，每次提交 API 任务前调用
+        output_name_fn: 可选，自定义输出文件名的函数，签名
+                         (code, suffix, azimuth_deg, direction) -> str（含扩展名）。
+                         不传时用默认命名 "{code}{suffix}_rotate{角度}{方向首字母}.png"。
+                         想改命名规则时传这个参数就行，不用改这个共享函数本身。
 
     Returns:
         成功保存的本地文件路径列表
@@ -375,14 +371,18 @@ def process_one_code_rotate(
 
     prompt_hint = build_rotate_prompt_hint(direction, azimuth_deg)
     prompt = build_shoe_angle_prompt(prompt_hint)
-    out_suffix = f"_rotate{azimuth_deg:g}{direction.upper()[0]}"
+
+    def _default_name(code: str, suffix: str, azimuth_deg: float, direction: str) -> str:
+        return f"{code}{suffix}_rotate{azimuth_deg:g}{direction.upper()[0]}.png"
+
+    output_name_fn = output_name_fn or _default_name
 
     os.makedirs(output_dir, exist_ok=True)
     saved_paths: list[str] = []
 
     for suffix in shot_suffixes:
         url = f"{r2_prefix.rstrip('/')}/{code}{suffix}{image_ext}"
-        out_name = f"{code}{suffix}{out_suffix}.png"
+        out_name = output_name_fn(code, suffix, azimuth_deg, direction)
         out_path = os.path.join(output_dir, out_name)
 
         if os.path.isfile(out_path):

@@ -11,14 +11,14 @@ run_shoe_angle_rotate_urls.py 直接运行时的默认行为，反过来也一�
 
 用法：
   1. 改下面的参数。
-  2. 运行：python ops/ai_image/run_shoe_angle_rotate_custom.py
+  2. 运行：python ops/shoe_angle_ai/run_shoe_angle_rotate_custom.py
 """
 import os
 import sys
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(os.path.dirname(_HERE)))  # project root
-sys.path.insert(0, _HERE)                                    # ops/ai_image/
+sys.path.insert(0, _HERE)                                    # ops/shoe_angle_ai/
 
 from run_shoe_angle_rotate_urls import run_batch
 
@@ -56,6 +56,25 @@ RETRY_DELAY = 8.0
 RATE_LIMIT_SLEEP = 2.0
 
 # ============================================================
+# 输出文件名（按需修改这个函数即可，不用改 run_batch/process_one_code_rotate）
+# ============================================================
+
+
+def OUTPUT_NAME_FN(code: str, suffix: str, azimuth_deg: float, direction: str) -> str:
+    """决定每张输出图的文件名（含扩展名）。
+
+    默认跟 run_shoe_angle_rotate_urls.py 一样：{code}{suffix}_rotate{角度}{方向首字母}.png
+    例：26185512_1_rotate15L.png
+
+    常见改法（挑一种，把 return 换掉）：
+      - 跟源图同名，直接覆盖同名文件的语义（不推荐，容易和原图混淆）：
+            return f"{code}{suffix}.png"
+      - 不要角度/方向信息，只加个 _ai 标记：
+            return f"{code}{suffix}_ai.png"
+      - 按方向单独建子文件夹风格的文件名（配合 OUTPUT_DIR 用）：
+            return f"{direction.lower()}_{code}{suffix}.png"
+    """
+    return f"{code}{suffix}_rotate{azimuth_deg:g}{direction.upper()[0]}.png"
 
 
 if __name__ == "__main__":
@@ -71,4 +90,5 @@ if __name__ == "__main__":
         max_retries=MAX_RETRIES,
         retry_delay=RETRY_DELAY,
         rate_limit_sleep=RATE_LIMIT_SLEEP,
+        output_name_fn=OUTPUT_NAME_FN,
     )
