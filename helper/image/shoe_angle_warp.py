@@ -38,6 +38,15 @@ shoe_angle_warp.py
    segment_shoe_on_white 里把 mask 向内腐蚀几像素（erode_px），从源头把这些
    不可靠的过渡像素排除在计算之外，而不是等 warp 完了再去描边上打补丁。
 
+5. 角度调大（比如10°）之后锯齿更明显
+   forward_scatter_depth 是"每个源像素只投到一个四舍五入后的整数目标像素"的
+   点云散射，天生就有像素级空隙；角度越大，位移越大，空隙就越明显。修法是
+   标准的 SSAA 超采样：CameraGeom 拆成 K_src（反投影源像素用）和 K_dst（投影
+   到目标画布用）两套内参，目标画布按 WarpJob.supersample（默认2x）放大后
+   再做整个 warp 流程，最后用 cv2.INTER_AREA 缩回原尺寸——每个输出像素由
+   supersample² 个超采样像素加权平均得到，轮廓边缘从硬邦邦的锯齿变成平滑的
+   半透明过渡。supersample=1 可以关掉。
+
 依赖：
   pip install opencv-python-headless numpy torch transformers pillow
 """
@@ -168,27 +177,41 @@ def segment_shoe_on_white(img_bgr: np.ndarray, white_tolerance: int = 12,
 
 @dataclass
 class CameraGeom:
-    K: np.ndarray
-    K_inv: np.ndarray
+    K_src: np.ndarray       # 源图分辨率的内参，用于把源像素反投影成 3D 点
+    K_src_inv: np.ndarray
+    K_dst: np.ndarray       # 目标画布分辨率的内参（超采样时比源图更大）
+    K_dst_inv: np.ndarray
     R: np.ndarray
     center: np.ndarray  # 旋转支点：鞋子质心（相机坐标系，毫米）——不是相机原点
 
 
-def build_camera(w: int, h: int, azimuth_deg: float, elevation_deg: float = 0.0,
-                  focal_ratio: float = 1.4) -> CameraGeom:
+def _build_K(w: int, h: int, focal_ratio: float):
+    f = w * focal_ratio
+    K = np.array([[f, 0, w / 2.0], [0, f, h / 2.0], [0, 0, 1.0]], dtype=np.float64)
+    return K, np.linalg.inv(K)
+
+
+def build_camera(w_src: int, h_src: int, azimuth_deg: float, elevation_deg: float = 0.0,
+                  focal_ratio: float = 1.4, w_dst: int | None = None, h_dst: int | None = None) -> CameraGeom:
     """
     focal_ratio 相对图像宽度定焦距，换分辨率不用重新调参数。
     center 先占位成原点，算出鞋子质心后由 run() 回填 geom.center。
+
+    w_dst/h_dst 缺省等于源图尺寸；传入更大的值（配合 forward_scatter_depth/
+    backward_sample_rgb 的超采样）能让点云投影落在更密的目标网格上，配合最后
+    downsample 做抗锯齿，缓解角度大了之后更明显的锯齿/毛边。
     """
-    f = w * focal_ratio
-    K = np.array([[f, 0, w / 2.0], [0, f, h / 2.0], [0, 0, 1.0]], dtype=np.float64)
-    K_inv = np.linalg.inv(K)
+    w_dst = w_dst or w_src
+    h_dst = h_dst or h_src
+    K_src, K_src_inv = _build_K(w_src, h_src, focal_ratio)
+    K_dst, K_dst_inv = _build_K(w_dst, h_dst, focal_ratio)
 
     az, el = np.deg2rad(azimuth_deg), np.deg2rad(elevation_deg)
     Ry = np.array([[np.cos(az), 0, np.sin(az)], [0, 1, 0], [-np.sin(az), 0, np.cos(az)]])
     Rx = np.array([[1, 0, 0], [0, np.cos(el), -np.sin(el)], [0, np.sin(el), np.cos(el)]])
     R = Rx @ Ry
-    return CameraGeom(K=K, K_inv=K_inv, R=R, center=np.zeros(3))
+    return CameraGeom(K_src=K_src, K_src_inv=K_src_inv, K_dst=K_dst, K_dst_inv=K_dst_inv,
+                       R=R, center=np.zeros(3))
 
 
 def compute_object_center_mm(far_mm: np.ndarray, shoe_mask: np.ndarray, K_inv: np.ndarray) -> np.ndarray:
@@ -210,27 +233,35 @@ def compute_object_center_mm(far_mm: np.ndarray, shoe_mask: np.ndarray, K_inv: n
 # 4. 两遍 DIBR：forward 深度 z-buffer -> backward RGB 采样
 # --------------------------------------------------------------------------
 
-def forward_scatter_depth(far_mm: np.ndarray, shoe_mask: np.ndarray, geom: CameraGeom):
-    """Pass 1: 只把深度按旋转矩阵投过去，z-buffer 取每个目标像素最近的点。"""
-    h, w = far_mm.shape
-    ys, xs = np.meshgrid(np.arange(h), np.arange(w), indexing="ij")
+def forward_scatter_depth(far_mm: np.ndarray, shoe_mask: np.ndarray, geom: CameraGeom,
+                           dest_shape: tuple[int, int] | None = None):
+    """
+    Pass 1: 只把深度按旋转矩阵投过去，z-buffer 取每个目标像素最近的点。
+
+    dest_shape=(h_dst, w_dst) 缺省等于源图尺寸；传入更大的画布（配合 build_camera
+    的 w_dst/h_dst）能让稀疏的点云投影分布到更密的网格上，超采样抗锯齿的第一步。
+    """
+    h_src, w_src = far_mm.shape
+    h, w = dest_shape or (h_src, w_src)
+    ys, xs = np.meshgrid(np.arange(h_src), np.arange(w_src), indexing="ij")
     ys, xs = ys[shoe_mask > 0], xs[shoe_mask > 0]
     z_src = far_mm[shoe_mask > 0]
 
     pix = np.stack([xs, ys, np.ones_like(xs)], axis=-1).astype(np.float64)
-    rays = pix @ geom.K_inv.T                      # z 分量恒为 1
+    rays = pix @ geom.K_src_inv.T                   # z 分量恒为 1
     pts_src = rays * z_src[:, None]                 # 源相机坐标系下的 3D 点
 
     pts_dst = (pts_src - geom.center) @ geom.R.T + geom.center  # 绕鞋子质心转，不是绕相机原点
-    proj = pts_dst @ geom.K.T
+    proj = pts_dst @ geom.K_dst.T
     z_dst = pts_dst[:, 2]
     u = proj[:, 0] / (z_dst + 1e-6)
     v = proj[:, 1] / (z_dst + 1e-6)
 
-    # 诊断：这次旋转实际把鞋子像素挪动了多少像素——如果中位数只有个位数，
-    # 说明角度/质心设置仍然偏保守，视觉上大概率还是看不出来
-    disp = np.sqrt((u - xs) ** 2 + (v - ys) ** 2)
-    print(f"[诊断] 像素位移: 中位数={np.median(disp):.2f}px, 最大={disp.max():.2f}px, "
+    # 诊断：这次旋转实际把鞋子像素挪动了多少像素（目标画布尺度下）——如果
+    # 中位数只有个位数，说明角度/质心设置仍然偏保守，视觉上大概率还是看不出来
+    scale_x, scale_y = w / w_src, h / h_src
+    disp = np.sqrt((u - xs * scale_x) ** 2 + (v - ys * scale_y) ** 2)
+    print(f"[诊断] 像素位移(目标画布尺度): 中位数={np.median(disp):.2f}px, 最大={disp.max():.2f}px, "
           f"质心(mm)={geom.center}")
 
     dest_far = np.full((h, w), np.inf, dtype=np.float64)
@@ -270,7 +301,7 @@ def backward_sample_rgb(img_bgr: np.ndarray, dest_far: np.ndarray, dest_mask: np
     h, w = dest_far.shape
     ys, xs = np.meshgrid(np.arange(h), np.arange(w), indexing="ij")
     pix = np.stack([xs, ys, np.ones_like(xs)], axis=-1).astype(np.float64)
-    rays_dst = pix @ geom.K_inv.T
+    rays_dst = pix @ geom.K_dst_inv.T
 
     z = np.where(dest_mask > 0, dest_far, 1.0)
     pts_dst = rays_dst * z[..., None]
@@ -278,7 +309,7 @@ def backward_sample_rgb(img_bgr: np.ndarray, dest_far: np.ndarray, dest_mask: np
     # 正向是 pts_dst = (pts_src - center) @ R.T + center，
     # 反向就是 pts_src = (pts_dst - center) @ R + center（R 正交，R^-1 = R.T）
     pts_src = (pts_dst.reshape(-1, 3) - geom.center) @ geom.R + geom.center
-    proj_src = pts_src @ geom.K.T
+    proj_src = pts_src @ geom.K_src.T
     proj_src = proj_src.reshape(h, w, 3)
 
     map_x = (proj_src[..., 0] / (proj_src[..., 2] + 1e-6)).astype(np.float32)
@@ -326,29 +357,49 @@ class WarpJob:
     out_dir: str = "output"   # 输出目录，自动创建
     offline_demo: bool = False  # True = 不调用深度模型，仅用于验证warp机制本身
     save_debug: bool = False    # True = 额外保存 mask / depth 可视化图
+    supersample: int = 2        # 目标画布放大倍数，最后再缩回原尺寸做抗锯齿。1=关闭
+    erode_px: int = 3           # 轮廓腐蚀余量，要跟 azimuth_deg 一起调，见下面注释
 
 
 def run(job: WarpJob) -> Path:
+    """
+    erode_px 需要跟着 azimuth_deg 一起放大，不能所有角度都用同一个默认值：
+    角度越大，轮廓边缘（尤其鞋筒后侧这种掠射角）的位移越大，需要更大的腐蚀
+    余量才能把不可靠的抗锯齿过渡像素排除干净。但 erode_px 也不是越大越好——
+    腐蚀核是 (erode_px*2+1) 见方的正方形，鞋筒/领口这种本身较窄的部位，腐蚀
+    核一旦大到接近这个部位的宽度，就会把真实鞋面几何一起削掉，反而更花。
+    实测这张图的经验值（不同鞋型/分辨率仅供参考，实际请自己对比调）：
+      azimuth_deg=5  -> erode_px=3（默认）
+      azimuth_deg=8  -> erode_px=5
+      azimuth_deg=10 -> erode_px=6（继续调大到 9/12 会更差，撞到上面说的天花板）
+    """
     print(f"[1/4] 估计深度: {job.image_path}")
     depth01, pil_img = (estimate_depth_offline_demo(job.image_path) if job.offline_demo
                          else estimate_depth(job.image_path))
     img_bgr = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
     h, w = img_bgr.shape[:2]
+    s = max(1, job.supersample)
+    h_dst, w_dst = h * s, w * s
 
     print("[2/4] 纯白背景抠图")
-    shoe_mask = segment_shoe_on_white(img_bgr)
+    shoe_mask = segment_shoe_on_white(img_bgr, erode_px=job.erode_px)
     far_mm = depth_to_far_map(depth01, shoe_mask)
 
-    print(f"[3/4] 深度重投影旋转 {job.azimuth_deg} 度（绕鞋子质心转，forward 深度 -> backward RGB 双通）")
-    geom = build_camera(w, h, job.azimuth_deg)
-    geom.center = compute_object_center_mm(far_mm, shoe_mask, geom.K_inv)
-    dest_far, dest_mask = forward_scatter_depth(far_mm, shoe_mask, geom)
+    print(f"[3/4] 深度重投影旋转 {job.azimuth_deg} 度（绕鞋子质心转，"
+          f"forward 深度 -> backward RGB 双通，{s}x 超采样）")
+    geom = build_camera(w, h, job.azimuth_deg, w_dst=w_dst, h_dst=h_dst)
+    geom.center = compute_object_center_mm(far_mm, shoe_mask, geom.K_src_inv)
+    dest_far, dest_mask = forward_scatter_depth(far_mm, shoe_mask, geom, dest_shape=(h_dst, w_dst))
     warped = backward_sample_rgb(img_bgr, dest_far, dest_mask, geom)
 
-    print("[4/4] 合成到纯白画布 + 自遮挡空洞修补")
+    print("[4/4] 合成到纯白画布 + 自遮挡空洞修补 + 缩回原尺寸")
     composited = composite_on_white(warped, dest_mask)
     hole_mask = np.where(np.isfinite(dest_far), 0, 255).astype(np.uint8)
     result, hole_ratio = inpaint_self_occlusion_holes(composited, dest_mask, hole_mask)
+    # INTER_AREA 做超采样降采样是标准 SSAA 抗锯齿手法：每个输出像素由 s×s 个
+    # 超采样像素加权平均得到，轮廓边缘从硬邦邦的锯齿变成平滑的半透明过渡。
+    if s > 1:
+        result = cv2.resize(result, (w, h), interpolation=cv2.INTER_AREA)
 
     out_dir = Path(job.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -371,18 +422,21 @@ JOBS = [
     WarpJob(
         image_path=r"D:\temp\imageInput\原图.webp",
         azimuth_deg=5.0,
+        erode_px=3,
         out_dir=r"D:\temp\imageOutput\angle_5",
         save_debug=True
     ),
     WarpJob(
         image_path=r"D:\temp\imageInput\原图.webp",
         azimuth_deg=8.0,
+        erode_px=5,
         out_dir=r"D:\temp\imageOutput\angle_8",
         save_debug=True
     ),
     WarpJob(
         image_path=r"D:\temp\imageInput\原图.webp",
         azimuth_deg=10.0,
+        erode_px=6,
         out_dir=r"D:\temp\imageOutput\angle_10",
         save_debug=True
     ),

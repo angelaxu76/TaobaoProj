@@ -131,15 +131,32 @@ def build_shoe_angle_prompt(prompt_hint: str) -> str:
     return (
         "TASK: Product Photography Angle Adjustment for E-Commerce. "
         # 图像角色说明
-        "img_1 is the MASTER REFERENCE showing the exact shoe model, color, material, "
-        "logo placement, stitching pattern, sole design, lace color, and all product details. "
-        "img_2 is the DETAIL REFERENCE of the same shoe — use it to reinforce texture, "
-        "logo sharpness, and fine product details. "
+        # 注意：img_1/img_2 实际传的是同一张图（用来强化细节保留），之前把
+        # img_2 描述成独立的"DETAIL REFERENCE"，模型容易理解成要在画面里
+        # 同时呈现"主图 + 局部特写插图"这种电商常见排版，结果第二个元素
+        # 渲染失败变成一团模糊的悬浮碎片。现在明确说清楚这是同一张图、
+        # 只用来加强参考，不要求也不允许输出任何额外的第二个视觉元素。
+        "img_1 and img_2 are the SAME reference photo of the shoe, provided twice only "
+        "to reinforce accurate preservation of its exact model, color, material, logo "
+        "placement, stitching pattern, sole design, and lace color. "
+        "OUTPUT COMPOSITION — CRITICAL: The output must contain EXACTLY ONE (1) shoe photo "
+        "and NOTHING else. Do NOT add a second inset image, zoomed detail crop, thumbnail, "
+        "duplicate silhouette, floating fragment, or any secondary visual element anywhere "
+        "in the canvas. A single, complete, unobstructed shoe fills the frame — no collage, "
+        "no split-panel layout, no blurry ghost duplicate of any part of the shoe. "
         # 核心任务：视角偏移
+        # 注意：不要写"the shoe itself does NOT move"这种话——这跟"旋转视角"
+        # 的指令自相矛盾，模型很容易理解成"保持原样不动"，实测下来生成结果
+        # 跟原图姿态几乎一样，只是纹理噪声不同。这里改成明确要求轮廓必须
+        # 跟着变化，正面强调"这是一次真实可见的角度变化"。
         "ANGLE SHIFT INSTRUCTION: "
         f"{prompt_hint} "
-        "The overall shoe silhouette, shape, and proportions must remain consistent "
-        "with img_1. Only the camera viewpoint shifts slightly — the shoe itself does NOT move. "
+        "This must be a REAL, CLEARLY VISIBLE change in viewing angle compared to img_1 — "
+        "the shoe's silhouette outline, contour curvature, and the proportion of visible "
+        "surfaces MUST shift accordingly. Do NOT simply reproduce the same pose as img_1 "
+        "with different texture noise; the pose itself has to look different. "
+        "The shoe's overall shape and proportions stay recognizable, but the viewing angle "
+        "change described above must be obvious at a glance. "
         # 产品细节锁定（最高优先级）
         "PRODUCT FIDELITY — CRITICAL: "
         "Preserve EVERY product detail from img_1 with pixel-level accuracy: "
@@ -149,10 +166,21 @@ def build_shoe_angle_prompt(prompt_hint: str) -> str:
         "Do NOT alter, remove, add, or hallucinate any product feature. "
         "The shoe in the output must be instantly recognizable as THE SAME MODEL as img_1. "
         # 背景
+        # 注意：光靠"不要出现XX类内容"这种抽象否定描述，实测挡不住模型偶发
+        # 生成的悬浮碎片（同一张源图重跑一次可能就正常，说明是随机的生成
+        # 缺陷，不是被误导）。真正有效的是把范围锁定到具体空间区域、给出
+        # "拿不准就留白"的明确兜底规则，模型才会真的遵守。
         "BACKGROUND: Pure white (#FFFFFF) studio background with NO gradients, "
         "NO shadows on the background, NO floor texture. "
         "Include only a very subtle drop shadow directly beneath the shoe sole "
         "to prevent the shoe from appearing to float. "
+        "SPATIAL CANVAS RULE — MANDATORY, NO EXCEPTIONS: Every pixel of the canvas that is "
+        "not part of the shoe itself or its subtle contact shadow MUST be flat, pure, uniform "
+        "white (#FFFFFF). This applies to the ENTIRE canvas, including all empty space above, "
+        "beside, and around the shoe. Do not render anything else anywhere in the image: no "
+        "extra shapes, no blurred marks, no partial objects, no faint outlines, no texture, "
+        "no color variation of any kind outside the shoe itself. "
+        "If you are unsure whether to render something in the empty space, leave it pure white. "
         # 输出质量
         "Output: Ultra-realistic photorealistic e-commerce product photography, "
         "2K resolution, sharp focus on the entire shoe, professional studio lighting."
@@ -283,5 +311,115 @@ def process_one_sku(
         # 清理 R2 临时上传
         if cleanup_r2:
             _delete_r2_object(r2_object_key)
+
+    return saved_paths
+
+
+# ── 按商品编码批量旋转（图片已在 R2，不走本地上传）───────────────────────────────
+
+def build_rotate_prompt_hint(direction: str, degrees: float) -> str:
+    """构建"左转/右转 N 度"这种单角度旋转的 prompt_hint 片段。"""
+    side = {
+        "LEFT":  ("LEFT", "counter-clockwise horizontal camera shift", "inner side and left edge"),
+        "RIGHT": ("RIGHT", "clockwise horizontal camera shift", "outer side and right edge"),
+    }[direction.upper()]
+    return (
+        f"Rotate the shoe's viewpoint approximately {degrees:g} degrees to the {side[0]} "
+        f"({side[1]}). The shoe's {side[2]} should become slightly more visible."
+    )
+
+
+def process_one_code_rotate(
+    code: str,
+    client,
+    r2_prefix: str,
+    output_dir: str,
+    *,
+    shot_suffixes: list[str],
+    image_ext: str,
+    azimuth_deg: float = 10.0,
+    direction: str = "LEFT",
+    model: str | None = None,
+    aspect_ratio: str | None = None,
+    image_size: str | None = None,
+    negative_prompt: str | None = None,
+    max_retries: int = 2,
+    retry_delay: float = 8.0,
+    rate_limiter=None,
+) -> list[str]:
+    """对单个商品编码名下的多张图统一做一次视角旋转。
+
+    图片已经在 R2 上，直接按 {r2_prefix}/{code}{suffix}{image_ext} 拼 URL，
+    不做本地上传/清理（跟 process_one_sku 的本地图+上传流程是两条路）。
+
+    Args:
+        code:           商品编码
+        client:         GrsAIClient 实例
+        r2_prefix:      R2 图片前缀（例如 f"{R2_PUBLIC_PREFIX}/clarks"）
+        output_dir:     本地输出目录（不分子文件夹，直接平铺）
+        shot_suffixes:  该商品的图片后缀列表，例如 ["_1","_2","_3","_4","_5"]
+        image_ext:      图片扩展名（含点），例如 ".jpg"
+        azimuth_deg:    旋转角度
+        direction:      "LEFT" 或 "RIGHT"
+        max_retries:    每张图的最大重试次数（不含首次）
+        retry_delay:    重试前等待秒数
+        rate_limiter:   可选的限速器，需实现 .acquire()，每次提交 API 任务前调用
+
+    Returns:
+        成功保存的本地文件路径列表
+    """
+    model           = model           or SHOE_ANGLE_MODEL
+    aspect_ratio    = aspect_ratio    or SHOE_ANGLE_ASPECT_RATIO
+    image_size      = image_size      or SHOE_ANGLE_IMAGE_SIZE
+    negative_prompt = negative_prompt or SHOE_ANGLE_NEGATIVE_PROMPT
+
+    prompt_hint = build_rotate_prompt_hint(direction, azimuth_deg)
+    prompt = build_shoe_angle_prompt(prompt_hint)
+    out_suffix = f"_rotate{azimuth_deg:g}{direction.upper()[0]}"
+
+    os.makedirs(output_dir, exist_ok=True)
+    saved_paths: list[str] = []
+
+    for suffix in shot_suffixes:
+        url = f"{r2_prefix.rstrip('/')}/{code}{suffix}{image_ext}"
+        out_name = f"{code}{suffix}{out_suffix}.png"
+        out_path = os.path.join(output_dir, out_name)
+
+        if os.path.isfile(out_path):
+            print(f"[{code}{suffix}] 已存在，跳过: {out_path}")
+            saved_paths.append(out_path)
+            continue
+
+        print(f"[{code}{suffix}] 提交任务: {url}")
+        result_url = None
+        for attempt in range(max_retries + 1):
+            if attempt > 0:
+                print(f"[{code}{suffix}] 第 {attempt} 次重试（等待 {retry_delay}s）...")
+                time.sleep(retry_delay)
+            if rate_limiter is not None:
+                rate_limiter.acquire()
+            result_url = client.generate_and_wait(
+                urls=[url, url],
+                prompt=prompt,
+                model=model,
+                aspect_ratio=aspect_ratio,
+                image_size=image_size,
+                negative_prompt=negative_prompt,
+            )
+            if result_url:
+                break
+
+        if not result_url:
+            print(f"[{code}{suffix}] 生成失败（已重试 {max_retries} 次），跳过。")
+            continue
+
+        try:
+            img_data = requests.get(result_url, timeout=60).content
+            with open(out_path, "wb") as f:
+                f.write(img_data)
+            print(f"[{code}{suffix}] 已保存 → {out_path}")
+            saved_paths.append(out_path)
+        except Exception as e:
+            print(f"[{code}{suffix}] 下载结果图失败: {e}")
 
     return saved_paths

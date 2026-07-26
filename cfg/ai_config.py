@@ -257,6 +257,12 @@ SHOE_ANGLE_NEGATIVE_PROMPT = (
     "gray background, dark background, textured background, shadow on background, "
     "gradient background, off-white background, colored background, "
     "floor visible, surface visible, reflections on floor, "
+    # 多元素/重复碎片（img_1=img_2 传同一张图时，模型容易多画出一个失败的
+    # "细节特写插图"，表现为悬浮在主图上方的模糊碎片）
+    "second image, inset image, thumbnail, zoomed detail crop as separate element, "
+    "duplicate shoe fragment, floating fragment, ghost duplicate, blurry duplicate overlay, "
+    "collage, split-panel layout, multiple views in one frame, two shoes in one image, "
+    "cropped extra shoe piece, double exposure, "
     # 画质
     "lowres, blurry, watermark, text, signature, low quality, artifact, "
     "overexposed, underexposed, bad lighting, plastic look, toy shoe, cartoon shoe."

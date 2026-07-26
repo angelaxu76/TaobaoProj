@@ -23,7 +23,10 @@ from common.ai.image.linkfox_client import LinkFoxClient
 from common.ai.image.s3_utils import create_presigned_url, upload_local_file, upload_bytes_to_r2
 from common.ai.image.vton_pipeline import build_image_urls, build_prompt, process_one
 from common.ai.image.faceswap_pipeline import build_shot_urls, build_faceswap_prompt, process_one_faceswap
-from common.ai.image.shoe_angle_pipeline import build_shoe_angle_prompt, process_one_sku
+from common.ai.image.shoe_angle_pipeline import (
+    build_shoe_angle_prompt, process_one_sku,
+    build_rotate_prompt_hint, process_one_code_rotate,
+)
 from common.ai.image.linkfox_faceswap_pipeline import process_one_linkfox
 
 __all__ = [
@@ -32,5 +35,6 @@ __all__ = [
     "build_image_urls", "build_prompt", "process_one",
     "build_shot_urls", "build_faceswap_prompt", "process_one_faceswap",
     "build_shoe_angle_prompt", "process_one_sku",
+    "build_rotate_prompt_hint", "process_one_code_rotate",
     "process_one_linkfox",
 ]
