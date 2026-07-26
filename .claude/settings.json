@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(ls:*)",
-      "Read(//d/Projects/VS-TaobaoProj/TaobaoProj/**)"
+      "Read(//d/Projects/VS-TaobaoProj/TaobaoProj/**)",
+      "Bash(python -c ' *)"
     ]
   }
 }

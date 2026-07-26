@@ -243,14 +243,23 @@ def forward_scatter_depth(far_mm: np.ndarray, shoe_mask: np.ndarray, geom: Camer
     np.minimum.at(dest_far.reshape(-1), flat_idx, zd)
 
     dest_mask = np.isfinite(dest_far).astype(np.uint8) * 255
-    # forward 点云投影天然会有零星像素级空隙，闭运算+中值补一下，
-    # 这一步只作用在深度通道上，不碰 RGB，不存在“修图”风险
+    # forward 点云投影天然会有零星像素级空隙，用归一化卷积补——不能像之前那样
+    # "填0再中值滤波"：0mm 是个荒谬的极近深度，一旦某个空隙的3x3邻域里有效
+    # 像素不够多，中值可能就落在这个虚假的0附近，backward_sample_rgb 拿着这个
+    # 错误深度反推回源图时会算出一个跑偏的坐标，采到背景/别处的颜色——这正是
+    # 鞋面上那些孤立白点的成因（mask本身是实心的，不是抠图的洞，是深度错了
+    # 导致采错了源坐标）。归一化卷积只用"真正有效"的邻居像素做加权平均，
+    # 不会被虚假的0拉偏。这一步只作用在深度通道上，不碰 RGB，不存在"修图"风险。
     kernel = np.ones((3, 3), np.uint8)
     dest_mask_closed = cv2.morphologyEx(dest_mask, cv2.MORPH_CLOSE, kernel)
-    filled = dest_far.copy()
-    filled[~np.isfinite(filled)] = 0
-    filled = cv2.medianBlur(filled.astype(np.float32), 3)
-    dest_far = np.where((dest_mask_closed > 0) & ~np.isfinite(dest_far), filled, dest_far)
+    valid_f = np.isfinite(dest_far).astype(np.float32)
+    depth_vals = np.where(np.isfinite(dest_far), dest_far, 0).astype(np.float32)
+    conv_kernel = np.ones((3, 3), np.float32)
+    depth_sum = cv2.filter2D(depth_vals, -1, conv_kernel)
+    valid_sum = cv2.filter2D(valid_f, -1, conv_kernel)
+    filled = depth_sum / np.maximum(valid_sum, 1e-6)
+    need_fill = (dest_mask_closed > 0) & ~np.isfinite(dest_far) & (valid_sum > 0)
+    dest_far = np.where(need_fill, filled, dest_far)
 
     return dest_far, dest_mask_closed
 
@@ -313,7 +322,7 @@ def inpaint_self_occlusion_holes(composited: np.ndarray, dest_mask: np.ndarray,
 @dataclass
 class WarpJob:
     image_path: str          # 输入图片路径
-    azimuth_deg: float = 5.0  # 旋转角度，正负表示左右方向，自行试
+    azimuth_deg: float = 15.0  # 旋转角度，正负表示左右方向，自行试
     out_dir: str = "output"   # 输出目录，自动创建
     offline_demo: bool = False  # True = 不调用深度模型，仅用于验证warp机制本身
     save_debug: bool = False    # True = 额外保存 mask / depth 可视化图
@@ -359,10 +368,25 @@ def run(job: WarpJob) -> Path:
 # 在这里直接改参数，不用命令行传参
 # ============================================================
 JOBS = [
-    WarpJob(image_path=r"D:\temp\imageInput\原图.webp", azimuth_deg=5.0, out_dir=r"D:\temp\imageOutput", save_debug=True),
-    # WarpJob(image_path=r"D:\temp\imageInput\26185512_GW_4.webp", azimuth_deg=-5.0, out_dir=r"D:\temp\imageOutput", save_debug=True),
+    WarpJob(
+        image_path=r"D:\temp\imageInput\原图.webp",
+        azimuth_deg=5.0,
+        out_dir=r"D:\temp\imageOutput\angle_5",
+        save_debug=True
+    ),
+    WarpJob(
+        image_path=r"D:\temp\imageInput\原图.webp",
+        azimuth_deg=8.0,
+        out_dir=r"D:\temp\imageOutput\angle_8",
+        save_debug=True
+    ),
+    WarpJob(
+        image_path=r"D:\temp\imageInput\原图.webp",
+        azimuth_deg=10.0,
+        out_dir=r"D:\temp\imageOutput\angle_10",
+        save_debug=True
+    ),
 ]
-
 
 if __name__ == "__main__":
     for job in JOBS:
