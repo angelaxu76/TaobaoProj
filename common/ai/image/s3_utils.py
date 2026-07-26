@@ -7,6 +7,7 @@ R2 与标准 S3 使用相同的 boto3 API，但需要：
   - region_name: "auto"
 """
 import io
+import mimetypes
 import os
 import boto3
 from botocore.exceptions import ClientError
@@ -81,6 +82,54 @@ def upload_bytes_to_r2(
         return True
     except ClientError as e:
         print(f"[r2] 上传失败: {e}")
+        return False
+
+
+def upload_local_file_to_r2(
+    local_path: str,
+    object_key: str,
+    account_id: str,
+    access_key_id: str,
+    secret_access_key: str,
+    bucket_name: str,
+    content_type: str | None = None,
+) -> bool:
+    """将本地文件流式上传至 Cloudflare R2（不整体读入内存，适合批量/大文件）。
+
+    Args:
+        local_path:         本地文件路径
+        object_key:         R2 对象 Key，如 "clarks/26185512_GW_2.webp"
+        account_id:         Cloudflare Account ID
+        access_key_id:      R2 Access Key ID（R2 控制台创建）
+        secret_access_key:  R2 Secret Access Key
+        bucket_name:        R2 存储桶名称
+        content_type:       MIME 类型，默认根据文件扩展名自动推断
+
+    Returns:
+        成功返回 True，失败返回 False
+    """
+    if content_type is None:
+        content_type = mimetypes.guess_type(local_path)[0] or "application/octet-stream"
+
+    endpoint = f"https://{account_id}.r2.cloudflarestorage.com"
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=endpoint,
+        aws_access_key_id=access_key_id,
+        aws_secret_access_key=secret_access_key,
+        region_name="auto",
+    )
+    try:
+        with open(local_path, "rb") as f:
+            s3.upload_fileobj(
+                f,
+                bucket_name,
+                object_key,
+                ExtraArgs={"ContentType": content_type},
+            )
+        return True
+    except ClientError as e:
+        print(f"[r2] 上传失败: {local_path} -> {object_key}: {e}")
         return False
 
 
