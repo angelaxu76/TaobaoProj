@@ -16,10 +16,6 @@ image_pipeline_step3_merge_and_html.py 会把两个目录的图一起合并，
 不需要手动挪文件。
 """
 from ops.shoe_angle_ai.run_shoe_angle_rotate_urls import run_batch
-from ops.shoe_angle_ai.shoe_angle_config_v1 import (
-    SHOE_ANGLE_NEGATIVE_PROMPT_V1,
-    build_rotate_prompt_hint_v1,
-)
 from config import GEOX
 
 INPUT_FILE = r"D:\TB\Products\geox\repulibcation\publication_codes.txt"
@@ -61,6 +57,4 @@ if __name__ == "__main__":
         retry_delay=RETRY_DELAY,
         rate_limit_sleep=RATE_LIMIT_SLEEP,
         output_name_fn=_output_name,
-        negative_prompt=SHOE_ANGLE_NEGATIVE_PROMPT_V1,
-        prompt_hint_fn=build_rotate_prompt_hint_v1,
     )

@@ -180,8 +180,6 @@ def run_batch(
     retry_delay: float = 8.0,
     rate_limit_sleep: float = 2.0,
     output_name_fn=None,
-    negative_prompt: str | None = None,
-    prompt_hint_fn=None,
 ) -> None:
     """批量视角旋转的完整流程：读 Excel 编码 → 拼 R2 URL → 并发生成 → 汇总。
 
@@ -193,12 +191,6 @@ def run_batch(
     output_name_fn: 可选，自定义输出文件名，签名
                      (code, suffix, azimuth_deg, direction) -> str（含扩展名）。
                      不传时用默认命名 "{code}{suffix}_rotate{角度}{方向首字母}.png"。
-    negative_prompt: 可选，自定义负向提示词。不传时用 process_one_code_rotate
-                      的默认值（shoe_angle_config.SHOE_ANGLE_NEGATIVE_PROMPT）。
-    prompt_hint_fn:  可选，自定义视角描述提示词函数，签名
-                      (direction, azimuth_deg) -> str。不传时用默认的
-                      build_rotate_prompt_hint。想换 v1 提示词时传
-                      shoe_angle_config_v1.build_rotate_prompt_hint_v1。
     """
     codes = read_codes(input_file, header_rows, code_column_name)
     if not codes:
@@ -233,8 +225,6 @@ def run_batch(
             retry_delay=retry_delay,
             rate_limiter=rate_lock,
             output_name_fn=output_name_fn,
-            negative_prompt=negative_prompt,
-            prompt_hint_fn=prompt_hint_fn,
         )
         return code, saved
 
