@@ -18,6 +18,7 @@ GEOX = {
     "IMAGE_DOWNLOAD": GEOX_BASE / "publication" / "image_download",
     "IMAGE_PROCESS": GEOX_BASE / "publication" / "image_process",
     "IMAGE_CUTTER": GEOX_BASE / "publication" / "image_cutter",
+    "IMAGE_ROTATED": GEOX_BASE / "publication" / "image_rotated",
     "MERGED_DIR": GEOX_BASE / "publication" / "image_merged",
     "HTML_DIR": GEOX_BASE / "publication" / "html",
     "HTML_DIR_DES": GEOX_BASE / "publication" / "html"/ "description",

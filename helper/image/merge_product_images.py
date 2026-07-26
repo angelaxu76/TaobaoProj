@@ -45,24 +45,28 @@ def merge_images_grid(img_files, export_file, product_name, width=750, margin=10
     print(f"✅ 合并完成: {export_file}")
 
 
-def batch_merge_images(image_dir, merged_dir, width=750):
-    # 统一为 Path 类型
-    image_dir = Path(image_dir)
+def batch_merge_images(image_dirs, merged_dir, width=750):
+    # 支持传入单个目录，或多个目录组成的列表/元组（同一编码的图会跨目录合并到一起）
+    if isinstance(image_dirs, (str, Path)):
+        image_dirs = [image_dirs]
+
     merged_dir = Path(merged_dir)
-
-    # 如果输入目录不存在，自动创建一个空目录
-    if not image_dir.exists():
-        print(f"⚠️ 输入目录不存在，已创建空目录: {image_dir}")
-        image_dir.mkdir(parents=True, exist_ok=True)
-
-    # 输出目录也要确保存在
     merged_dir.mkdir(parents=True, exist_ok=True)
 
     groups = defaultdict(list)
-    for filename in os.listdir(image_dir):
-        if filename.lower().endswith(".jpg"):
-            code = Path(filename).stem.split('_')[0]
-            groups[code].append(str(image_dir / filename))
+    for image_dir in image_dirs:
+        image_dir = Path(image_dir)
+
+        # 如果输入目录不存在，自动创建一个空目录
+        if not image_dir.exists():
+            print(f"⚠️ 输入目录不存在，已创建空目录: {image_dir}")
+            image_dir.mkdir(parents=True, exist_ok=True)
+            continue
+
+        for filename in os.listdir(image_dir):
+            if filename.lower().endswith(".jpg"):
+                code = Path(filename).stem.split('_')[0]
+                groups[code].append(str(image_dir / filename))
 
     for code, files in groups.items():
         files.sort()

@@ -1,70 +1,21 @@
-from pathlib import Path
-from brands.clarks.download_product_images import download_all_images_from_product_links
-from config import GEOX
-from common.publication.generate_html import generate_html_from_codes_files
-from brands.camper.helpers_local.image_defender_with_flip import batch_process_images
-from common.publication.generate_html_FristPage import generate_first_page_from_codes_files
-from helper.image.merge_product_images import batch_merge_images
-from helper.html.html_to_png_multithread import convert_html_to_images
-from helper.image.trim_sides_batch import trim_sides_batch
-from helper.image.crop_to_square import run_crop_and_expand
-from helper.image.copy_images import copy_images
-from brands.geox.download_product_images import download_geox_images_by_code_file
-import helper.image.cut_square_white_watermark as _cutmod
+"""
+GEOX 商品图流水线已拆成 4 个独立脚本（同目录下），依次运行：
 
+  1. image_pipeline_step1_download_and_crop.py
+     下载图片 -> run_crop_and_expand 最大化灰度裁剪 -> 改编号后缀
+     （不再调用 image_defender_with_flip.batch_process_images 的抖动+翻转
+     防指纹步骤，改用 AI 生成新视角图代替；也不用 cut_square_white_watermark
+     的抠图加水印，太慢）
 
-def main():
-    code_file_path = r"D:\TB\Products\geox\repulibcation\publication_codes.txt"
+  2a. image_pipeline_step2_upload_to_r2.py
+      人工看一眼 step1 裁剪结果没问题后，把 IMAGE_CUTTER 传到 R2
 
+  2b. image_pipeline_step2_ai_rotate.py
+      调 AI 对 R2 上的图做视角旋转，结果存到 IMAGE_ROTATED
 
-    print("下载指定商品编码的的图片")
-    download_geox_images_by_code_file(code_file_path)
-    
+  3. image_pipeline_step3_merge_and_html.py
+     copy 图片到 document 目录 -> 合并 IMAGE_CUTTER + IMAGE_ROTATED 两个目录
+     的图 -> 生成详情页/首页 HTML 和图片
 
-    print("图抖动加上水平翻转")
-    INPUT_DIR = Path(GEOX["IMAGE_DOWNLOAD"])
-    OUTPUT_DIR = Path(GEOX["IMAGE_PROCESS"])
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    batch_process_images(INPUT_DIR,OUTPUT_DIR)
-
-    print("最大化灰度裁剪图片")
-    bg_color = (240, 240, 240)
-    tolerance = 35
-    quality = 85
-    run_crop_and_expand(GEOX["IMAGE_PROCESS"], GEOX["IMAGE_CUTTER"], bg_color, tolerance, quality)
-
-    # print("抠图并转换为白底图（加水印）")
-    # _cutmod.AUTO_CUTOUT   = True
-    # _cutmod.WHITE_BG_SKIP = False   # 灰底(240,240,240)会被误判为白底，强制抠图
-    # _cutmod.TARGET_SIZE   = 1200
-    # _cutmod.batch_process(
-    #     str(GEOX["IMAGE_CUTTER"]),
-    #     str(GEOX["IMAGE_CUTTER"]),
-    #     max_workers=4,
-    #     add_watermark=False
-    # )
-
-    print("将处理好的图片copy到document目录")
-    copy_images(GEOX["IMAGE_CUTTER"],GEOX["IMAGE_DIR"])
-
-
-    print("将图片merge到一张图片中")
-    batch_merge_images(GEOX["IMAGE_CUTTER"],GEOX["MERGED_DIR"], width=750)
-
-
-
-    print("生成产品详情卡HTML")
-    generate_html_from_codes_files("GEOX",code_file_path)
-    generate_first_page_from_codes_files("GEOX",code_file_path)
-
-    print("生成产品详情卡图片")
-    convert_html_to_images(GEOX["HTML_DIR_DES"], GEOX["HTML_IMAGE_DES"],"",6)
-    trim_sides_batch(GEOX["HTML_IMAGE_DES"],GEOX["HTML_CUTTER_DES"])
-
-    print("生成产品首页图片")
-    convert_html_to_images(GEOX["HTML_DIR_FIRST_PAGE"], GEOX["HTML_IMAGE_FIRST_PAGE"],"",6)
-    trim_sides_batch(GEOX["HTML_IMAGE_FIRST_PAGE"],GEOX["HTML_CUTTER_FIRST_PAGE"])
-
-
-if __name__ == "__main__":
-    main()
+拆开是因为 2a 之前通常需要人工检查图片，不适合跟其他步骤自动连着跑。
+"""

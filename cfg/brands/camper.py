@@ -18,6 +18,7 @@ CAMPER = {
     "IMAGE_DOWNLOAD": CAMPER_BASE / "publication" / "image_download",
     "IMAGE_PROCESS": CAMPER_BASE / "publication" / "image_process",
     "IMAGE_CUTTER": CAMPER_BASE / "publication" / "image_cutter",
+    "IMAGE_ROTATED": CAMPER_BASE / "publication" / "image_rotated",
     "MERGED_DIR": CAMPER_BASE / "publication" / "image_merged",
     "HTML_DIR": CAMPER_BASE / "publication" / "html",
     "HTML_DIR_DES": CAMPER_BASE / "publication" / "html"/ "description",

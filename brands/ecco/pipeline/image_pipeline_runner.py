@@ -1,45 +1,17 @@
-from helper.image.image_antifingerprint import batch_process_images
-from brands.ecco.helpers_local.image_max_cutter import batch_convert_webp_to_jpg,process_images_in_folder
-from helper.image.merge_product_images import batch_merge_images
-from common.publication.generate_html import generate_html_from_codes_files
-from common.publication.generate_html_FristPage import generate_first_page_from_codes_files
-from helper.html.html_to_png_multithread import convert_html_to_images
-from helper.image.trim_sides_batch import trim_sides_batch
-from brands.ecco.download_product_images_v2 import download_images_by_code_file
-from config import ECCO
+"""
+ECCO 商品图流水线已拆成 4 个独立脚本（同目录下），依次运行：
 
+  1. image_pipeline_step1_download_and_cut.py
+     下载图片 -> 最大化裁剪转 JPG -> 改编号后缀（{编码}_1.jpg / {编码}_2.jpg ...）
 
-def main():
-    code_file_path = r"D:\TB\Products\ecco\repulibcation\publication_codes.txt"
+  2a. image_pipeline_step2_upload_to_r2.py
+      人工看一眼 step1 裁剪结果没问题后，把 IMAGE_CUTTER 传到 R2
 
-    print("下载指定商品编码的的图片")
-    download_images_by_code_file(code_file_path)
+  2b. image_pipeline_step2_ai_rotate.py
+      调 AI 对 R2 上的图做视角旋转，结果存到 IMAGE_ROTATED
 
-    print("最大化裁剪，转JPG")
-    process_images_in_folder(ECCO["IMAGE_DOWNLOAD"], ECCO["IMAGE_CUTTER"])
+  3. image_pipeline_step3_merge_and_html.py
+     合并 IMAGE_PROCESS + IMAGE_ROTATED 两个目录的图 -> 生成详情页/首页 HTML 和图片
 
-    batch_convert_webp_to_jpg(ECCO["IMAGE_DOWNLOAD"], ECCO["IMAGE_PROCESS"])
-
-    print("图片抖动，水平翻转")
-    batch_process_images(ECCO["IMAGE_CUTTER"], ECCO["IMAGE_PROCESS"], flip=True)
-
-
-    print("将图片merge到一张图片中")
-    batch_merge_images(ECCO["IMAGE_PROCESS"],ECCO["MERGED_DIR"], width=750)
-
-    print("生成产品详情卡HTML")
-    generate_html_from_codes_files("ecco",code_file_path)
-    generate_first_page_from_codes_files("ecco",code_file_path)
-
-    print("生成产品详情卡图片")
-    convert_html_to_images(ECCO["HTML_DIR_DES"], ECCO["HTML_IMAGE_DES"],"",6)
-    trim_sides_batch(ECCO["HTML_IMAGE_DES"],ECCO["HTML_CUTTER_DES"])
-
-    print("生成产品首页图片")
-    convert_html_to_images(ECCO["HTML_DIR_FIRST_PAGE"], ECCO["HTML_IMAGE_FIRST_PAGE"],"",6)
-    trim_sides_batch(ECCO["HTML_IMAGE_FIRST_PAGE"],ECCO["HTML_CUTTER_FIRST_PAGE"])
-
-
-
-if __name__ == "__main__":
-    main()
+拆开是因为 2a 之前通常需要人工检查图片，不适合跟其他步骤自动连着跑。
+"""

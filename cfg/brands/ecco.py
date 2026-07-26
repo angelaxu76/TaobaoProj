@@ -16,6 +16,7 @@ ECCO = {
     "IMAGE_DOWNLOAD": ECCO_BASE / "publication" / "image_download",
     "IMAGE_PROCESS": ECCO_BASE / "publication" / "image_process",
     "IMAGE_CUTTER": ECCO_BASE / "publication" / "image_cutter",
+    "IMAGE_ROTATED": ECCO_BASE / "publication" / "image_rotated",
     "MERGED_DIR": ECCO_BASE / "publication" / "image_merged",
     "HTML_DIR": ECCO_BASE / "publication" / "html",
     "HTML_DIR_DES": ECCO_BASE / "publication" / "html"/ "description",
