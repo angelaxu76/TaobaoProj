@@ -13,6 +13,7 @@ from brands.camper.fetch_product_info import camper_fetch_product_info
 from brands.camper.collect_product_links import camper_get_links
 from channels.jingya.maintenance.export_low_stock_products import export_low_stock_for_brand
 from channels.jingya.maintenance.generate_missing_links_for_brand import generate_missing_links_for_brand
+from channels.jingya.maintenance.generate_empty_product_links_for_brand import generate_empty_product_links_for_brand
 
 def main():
     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
@@ -34,6 +35,13 @@ def main():
         camper_fetch_product_info(links_file=missing_product_link)
     else:
         print("  - 无缺失商品，跳过")
+
+    print("\n🟡 Step: 3️⃣ 找出TXT中价格/库存全空的商品（网络原因导致抓取失败），重新抓一遍")
+    empty_product_link = generate_empty_product_links_for_brand("camper")
+    if empty_product_link.exists() and empty_product_link.stat().st_size > 0:
+        camper_fetch_product_info(links_file=str(empty_product_link))
+    else:
+        print("  - 无空数据商品，跳过")
 
     print("\n🟡 Step: 4️⃣ TXT导入数据库 -----将各个商品的TXT中信息导入到数据库中")
     import_txt_to_db_supplier("camper")
