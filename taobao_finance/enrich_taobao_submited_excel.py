@@ -58,10 +58,41 @@ def chunk_list(items: List[str], size: int = 1000) -> List[List[str]]:
     return [items[i:i + size] for i in range(0, len(items), size)]
 
 
+# 价格相关栏目关键词：命中即视为金额列，导出时转为数字类型
+MONEY_COL_KEYWORDS = ["金额", "费", "价格", "佣金", "打款", "货款"]
+
+
+def parse_money(val) -> Optional[float]:
+    """金额统一转 float（支持¥、逗号、空、None/NaN）"""
+    if val is None:
+        return None
+    if isinstance(val, float) and pd.isna(val):
+        return None
+    s = str(val).strip()
+    if not s:
+        return None
+    s = s.replace("¥", "").replace(",", "").replace("，", "")
+    s = re.sub(r"[^\d\.\-]", "", s)
+    if not s or s in ("-", ".", "-."):
+        return None
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def convert_money_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """将所有名称含金额相关关键词的列转为数字类型"""
+    for col in df.columns:
+        if any(kw in col for kw in MONEY_COL_KEYWORDS):
+            df[col] = df[col].apply(parse_money)
+    return df
+
+
 def fetch_order_info(engine, order_ids: List[str]) -> Dict[str, Dict[str, Any]]:
     """
     从 taobao_order_logistics 批量取数。
-    返回 dict: {order_id: {sales_mode, jingya_profit, total_amount, tracking_no, logistics_company}}
+    返回 dict: {order_id: {sales_mode, jingya_profit, total_amount, tracking_no, logistics_company, merchant_note}}
     """
     if not order_ids:
         return {}
@@ -75,7 +106,8 @@ def fetch_order_info(engine, order_ids: List[str]) -> Dict[str, Dict[str, Any]]:
             jingya_profit,
             total_amount,
             tracking_no,
-            logistics_company
+            logistics_company,
+            merchant_note
         FROM {TABLE_NAME}
         WHERE order_id = ANY(:order_ids)
     """)
@@ -92,6 +124,7 @@ def fetch_order_info(engine, order_ids: List[str]) -> Dict[str, Dict[str, Any]]:
                     "total_amount": r.get("total_amount"),
                     "tracking_no": r.get("tracking_no"),
                     "logistics_company": r.get("logistics_company"),
+                    "merchant_note": r.get("merchant_note"),
                 }
 
     return result_map
@@ -117,11 +150,12 @@ def enrich_excel(input_path: str, output_path: Optional[str] = None) -> str:
     engine = get_engine()
     order_info_map = fetch_order_info(engine, order_ids)
 
-    # 新增四列（先空着）
+    # 新增列（先空着）
     df["经营模式"] = ""
     df["真实金额"] = ""
     df["tracking_no"] = ""
     df["logistics_company"] = ""
+    df["_merchant_note"] = ""
 
     # 回填
     not_found = 0
@@ -132,14 +166,14 @@ def enrich_excel(input_path: str, output_path: Optional[str] = None) -> str:
         info = order_info_map.get(oid)
         if not info:
             not_found += 1
-            # 找不到就默认普通（你也可以改成留空）
-            df.at[idx, "经营模式"] = "普通"
+            # 找不到就默认海外直邮（你也可以改成留空）
+            df.at[idx, "经营模式"] = "海外直邮"
             continue
 
         sales_mode_db = (info.get("sales_mode") or "").strip()
         is_distribution = (sales_mode_db == "分销")
 
-        df.at[idx, "经营模式"] = "分销" if is_distribution else "普通"
+        df.at[idx, "经营模式"] = "鲸芽分销" if is_distribution else "海外直邮"
 
         # 真实金额：分销取利润，普通取总额
         real_amount = info.get("jingya_profit") if is_distribution else info.get("total_amount")
@@ -150,6 +184,7 @@ def enrich_excel(input_path: str, output_path: Optional[str] = None) -> str:
         # tracking / company
         df.at[idx, "tracking_no"] = "" if info.get("tracking_no") is None else str(info.get("tracking_no"))
         df.at[idx, "logistics_company"] = "" if info.get("logistics_company") is None else str(info.get("logistics_company"))
+        df.at[idx, "_merchant_note"] = "" if info.get("merchant_note") is None else str(info.get("merchant_note"))
 
     # 输出路径默认：原文件名 + _enriched.xlsx
     if not output_path:
@@ -159,12 +194,36 @@ def enrich_excel(input_path: str, output_path: Optional[str] = None) -> str:
     # 清理内部列
     df.drop(columns=["_order_id_norm"], inplace=True)
 
-    df.to_excel(output_path, index=False)
+    # 按经营模式拆分为两个 sheet：鲸芽分销 / 海外直邮
+    df_jingya = df[df["经营模式"] == "鲸芽分销"].copy()
+    df_overseas = df[df["经营模式"] == "海外直邮"].copy()
+
+    # 鲸芽分销 sheet 不需要商家备注列，去掉临时列
+    df_jingya.drop(columns=["_merchant_note"], inplace=True)
+    # 分销订单的“真实金额”实为运营服务费，改名
+    df_jingya.rename(columns={"真实金额": "运营服务费"}, inplace=True)
+
+    # 海外直邮 sheet：四列人工填写列（先留空）+ 商家备注（从数据库取值）
+    df_overseas.rename(columns={"_merchant_note": "商家备注", "真实金额": "海外直邮订单毛利"}, inplace=True)
+    for col in ["海外采购供货商名称", "海外采购订单号", "海外采购金额外币", "海外采购金额换算人民币"]:
+        df_overseas[col] = ""
+    # 商家备注、海外直邮订单毛利放最后两栏
+    tail_cols = ["商家备注", "海外直邮订单毛利"]
+    df_overseas = df_overseas[[c for c in df_overseas.columns if c not in tail_cols] + tail_cols]
+
+    # 价格相关栏目统一转为数字类型，无需手动转换
+    df_jingya = convert_money_columns(df_jingya)
+    df_overseas = convert_money_columns(df_overseas)
+
+    with pd.ExcelWriter(output_path) as writer:
+        df_jingya.to_excel(writer, sheet_name="鲸芽分销", index=False)
+        df_overseas.to_excel(writer, sheet_name="海外直邮", index=False)
 
     print(f"✅ 输入文件: {input_path}")
     print(f"✅ 输出文件: {output_path}")
     print(f"ℹ️ 订单号列: {order_col}")
     print(f"ℹ️ 订单数(去重): {len(order_ids)}，未在DB匹配到的行数: {not_found}")
+    print(f"ℹ️ 鲸芽分销: {len(df_jingya)} 行，海外直邮: {len(df_overseas)} 行")
 
     return output_path
 
