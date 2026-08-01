@@ -11,6 +11,7 @@ from channels.jingya.export.export_stock_to_excel import export_stock_excel
 from channels.jingya.export.export_channel_price_excel_jingya import export_jiangya_channel_prices
 from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
 from channels.jingya.maintenance.generate_missing_links_for_brand import generate_missing_links_for_brand
+from channels.jingya.maintenance.generate_empty_product_links_for_brand import generate_empty_product_links_for_brand
 
 # def run_script(filename: str):
 #     path = os.path.join(os.path.dirname(__file__), filename)
@@ -35,6 +36,12 @@ def main():
     if os.path.exists(missing_product_link):
         clarks_fetch_info(missing_product_link)
 
+    print("\n🟡 Step: 3️⃣ 找出TXT中价格/库存全空的商品（网络原因导致抓取失败），重新抓一遍")
+    empty_product_link = generate_empty_product_links_for_brand("clarks")
+    if empty_product_link.exists() and empty_product_link.stat().st_size > 0:
+        clarks_fetch_info(str(empty_product_link))
+    else:
+        print("  - 无空数据商品，跳过")
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
     import_txt_to_db_supplier("clarks")

@@ -207,9 +207,14 @@ def enrich_excel(input_path: str, output_path: Optional[str] = None) -> str:
     df_overseas.rename(columns={"_merchant_note": "商家备注", "真实金额": "海外直邮订单毛利"}, inplace=True)
     for col in ["海外采购供货商名称", "海外采购订单号", "海外采购金额外币", "海外采购金额换算人民币"]:
         df_overseas[col] = ""
-    # 商家备注、海外直邮订单毛利放最后两栏
-    tail_cols = ["商家备注", "海外直邮订单毛利"]
-    df_overseas = df_overseas[[c for c in df_overseas.columns if c not in tail_cols] + tail_cols]
+    # 海外直邮订单毛利：人工填写，先留空
+    df_overseas["海外直邮订单毛利"] = ""
+    # 列顺序：...海外采购金额换算人民币 -> 海外直邮订单毛利 -> 商家备注（最后一栏）
+    reordered_cols = [c for c in df_overseas.columns if c not in ("海外直邮订单毛利", "商家备注")]
+    insert_at = reordered_cols.index("海外采购金额换算人民币") + 1
+    reordered_cols[insert_at:insert_at] = ["海外直邮订单毛利"]
+    reordered_cols.append("商家备注")
+    df_overseas = df_overseas[reordered_cols]
 
     # 价格相关栏目统一转为数字类型，无需手动转换
     df_jingya = convert_money_columns(df_jingya)

@@ -27,6 +27,7 @@ from channels.jingya.export.generate_publication_excel_shoes import generate_pub
 # ====== 给淘宝店铺同步价格（沿用 Camper 通用逻辑，可选保留）======
 from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
 from channels.jingya.maintenance.generate_missing_links_for_brand import generate_missing_links_for_brand
+from channels.jingya.maintenance.generate_empty_product_links_for_brand import generate_empty_product_links_for_brand
 
 def main():
     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录 (ECCO)")
@@ -42,7 +43,15 @@ def main():
     print("\n🟡 Step: 3️⃣ 将鲸牙存在但TXT中不存在的商品抓一遍")
     missing_product_link = r"D:\TB\Products\ecco\publication\missing_product_links.txt";
     generate_missing_links_for_brand("ecco",missing_product_link )
-    ecco_fetch_info(missing_product_link )
+    if os.path.exists(missing_product_link):
+        ecco_fetch_info(missing_product_link)
+
+    print("\n🟡 Step: 3️⃣ 找出TXT中价格/库存全空的商品（网络原因导致抓取失败），重新抓一遍")
+    empty_product_link = generate_empty_product_links_for_brand("ecco")
+    if empty_product_link.exists() and empty_product_link.stat().st_size > 0:
+        ecco_fetch_info(str(empty_product_link))
+    else:
+        print("  - 无空数据商品，跳过")
 
     print("\n🟡 Step: 4️⃣ TXT 导入数据库（鲸芽专用结构）")
     import_txt_to_db_supplier("ecco")
