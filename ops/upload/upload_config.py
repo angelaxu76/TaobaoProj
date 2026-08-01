@@ -4,6 +4,7 @@ upload_config.py — 上传自动化系统集中配置文件
 """
 
 import os
+import re
 from pathlib import Path
 
 # ─────────────────────────────────────────────────────────────────
@@ -55,14 +56,21 @@ BATCH_SETTLE_SECONDS = 10
 
 # UiRobot.exe 路径解析：
 #   自动扫描以下位置（新版 UiPath 直接把 UiRobot.exe 放在 Studio 根目录下，
-#   旧版则放在 Studio\<version>\ 子目录下，两种布局都要兼容）：
+#   旧版则放在 Studio\<version>\ 或 Robot\<version>\ 子目录下，多种布局都要兼容）：
 #     %LOCALAPPDATA%\Programs\UiPath\Studio\UiRobot.exe
 #     %LOCALAPPDATA%\Programs\UiPath\Studio\*\UiRobot.exe
 #     %LOCALAPPDATA%\Programs\UiPathPlatform\Studio\*\UiRobot.exe（旧目录名，兼容保留）
+#     %LOCALAPPDATA%\Programs\UiPathPlatform\Robot\*\UiRobot.exe（虚拟机上的实际安装位置）
 #     %PROGRAMFILES%\UiPath\Studio\UiRobot.exe
 #     %PROGRAMFILES%\UiPath\Studio\*\UiRobot.exe
-#   有多个候选时选修改时间最新的（即最后一次升级安装的版本）；均未找到时报错。
-#   不再读取环境变量。
+#   有多个候选时优先按版本号目录名（如 26.0.198-cloud.24232）比较大小，取最高版本；
+#   目录名不含版本号的候选用修改时间兜底。均未找到时报错。不再读取环境变量。
+
+def _version_key(path: Path) -> tuple:
+    """从父目录名中提取所有数字段用于版本比较。
+    例如 '26.0.198-cloud.24232' -> (26, 0, 198, 24232)；提取不到数字时返回空元组。"""
+    nums = re.findall(r"\d+", path.parent.name)
+    return tuple(int(n) for n in nums)
 
 def _find_uirobot_exe() -> str:
     local_appdata = os.environ.get("LOCALAPPDATA", "")
@@ -70,6 +78,7 @@ def _find_uirobot_exe() -> str:
     search_roots = [
         Path(local_appdata) / "Programs" / "UiPath" / "Studio",
         Path(local_appdata) / "Programs" / "UiPathPlatform" / "Studio",
+        Path(local_appdata) / "Programs" / "UiPathPlatform" / "Robot",
         Path(program_files) / "UiPath" / "Studio",
     ]
 
@@ -94,8 +103,8 @@ def _find_uirobot_exe() -> str:
             f"搜索路径:\n  - {roots_str}"
         )
 
-    # 取修改时间最新的（= 最近一次升级安装的版本）
-    latest = max(candidates, key=lambda p: p.stat().st_mtime)
+    # 优先按版本号目录名比较取最高版本，版本号相同或无版本号时用修改时间兜底
+    latest = max(candidates, key=lambda p: (_version_key(p), p.stat().st_mtime))
     print(f"[DEBUG] 选择最新版本: {latest}")
     return str(latest)
 
