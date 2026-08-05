@@ -13,10 +13,10 @@ def main():
     #     str(ONEDRIVE_UK_DIR / "03_Purchase_Records" / "01_Supplier_Invoices" / "202503-202605" / "camper"),
     # )
 
-    rename_clarks_invoices(
-        str(ONEDRIVE_UK_DIR / "99_Backup" / "clarks invoice" / "orginal-202605"),
-        str(ONEDRIVE_UK_DIR / "03_Purchase_Records" / "01_Supplier_Invoices" / "202503-202605" / "Clarks-1"),
-    )
+    # rename_clarks_invoices(
+    #     str(ONEDRIVE_UK_DIR / "99_Backup" / "clarks invoice" / "orginal-202605"),
+    #     str(ONEDRIVE_UK_DIR / "03_Purchase_Records" / "01_Supplier_Invoices" / "202503-202605" / "Clarks-1"),
+    # )
 
     # rename_ecco_invoices(
     #     str(ONEDRIVE_UK_DIR / "99_Backup" / "ecco_invoice" / "orig-202605"),
@@ -32,6 +32,12 @@ def main():
     #     str(ONEDRIVE_UK_DIR / "99_Backup" / "parcelbroker"),
     #     str(ONEDRIVE_UK_DIR / "03_Purchase_Records" / "01_Supplier_Invoices" / "202512-202602" / "parcelbroker"),
     # )
+
+
+        rename_camper_invoices(
+        str("D:\TB\淘宝会计统计数据\CamperInvoices2025"),
+        str("D:\TB\淘宝会计统计数据\CamperInvoices2025_renamed"),
+    )
 
 if __name__ == "__main__":
     main()
