@@ -3,8 +3,6 @@ import sys
 import time
 from pathlib import Path
 
-import requests
-
 sys.stdout.reconfigure(encoding='utf-8')
 
 # 添加项目根目录到 sys.path（假设当前文件在 brands/clarks/ 下）
@@ -15,31 +13,65 @@ from config import BRAND_CONFIG
 # _sop=15（按上架时间排序）用于固定排序顺序：eBay 默认的 Best Match 排序会掺杂个性化/推荐内容，
 # 导致同一页码在不同请求间返回的商品不一致，翻页会漏掉商品。
 STORE_URL_TEMPLATE = "https://www.ebay.co.uk/str/clarksukofficial?_ipg=72&_pgn={page}&_tab=shop&_sop=15"
-ITEM_NAME_PATTERN = re.compile(r'aria-label="([^"]+)"[^>]*class=str-item-card__link')
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                  "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
-}
+# 注意：这里匹配的是 driver.page_source（浏览器序列化后的 DOM），
+# 属性值统一带双引号，跟原始服务端 HTML（class=str-item-card__link，无引号）格式不同。
+ITEM_NAME_PATTERN = re.compile(r'aria-label="([^"]+)"[^>]*class="str-item-card__link"')
 
 MAX_PAGES = 40
 MAX_EMPTY_NEW_STREAK = 2  # 连续N页无新增商品名即停止翻页（eBay 翻页超过实际库存后会开始循环推荐相似商品）
-DELAY_PER_REQUEST = 1
+DELAY_PER_REQUEST = 2  # 真实浏览器打开每页后的等待时间（秒），给页面渲染留时间
+PAGE_LOAD_TIMEOUT = 30
 
-MIN_EXPECTED_NAMES = 500  # 店铺实际有 800+ 商品，低于此值大概率是网页异常/请求被拦截，需要重试
+MIN_EXPECTED_NAMES = 500  # 店铺实际有 800+ 商品，低于此值大概率是网页异常/被拦截，需要重试
 MAX_ATTEMPTS = 3
 RETRY_DELAY = 5
+
+# requests 直接请求会被 eBay 的反爬（Akamai）识别并跳到验证码页，
+# 改用真实浏览器（undetected_chromedriver）打开页面，用真实浏览器流量绕开拦截。
+# 这里自带一套独立的 driver 构建逻辑，不复用 common/browser 里给其他品牌共用的 driver，
+# 避免影响其他脚本正在使用的 driver 池/缓存。
+_driver = None
+
+
+def _build_driver():
+    import undetected_chromedriver as uc
+
+    options = uc.ChromeOptions()
+    options.add_argument("--start-maximized")
+    return uc.Chrome(options=options, headless=False)
+
+
+def get_driver():
+    global _driver
+    if _driver is not None:
+        return _driver
+    _driver = _build_driver()
+    _driver.set_page_load_timeout(PAGE_LOAD_TIMEOUT)
+    return _driver
+
+
+def quit_driver():
+    global _driver
+    if _driver is not None:
+        try:
+            _driver.quit()
+        except Exception:
+            pass
+        _driver = None
 
 
 def get_names_from_page(page: int) -> list[str]:
     url = STORE_URL_TEMPLATE.format(page=page)
     try:
-        response = requests.get(url, headers=HEADERS, timeout=15)
-        response.raise_for_status()
+        driver = get_driver()
+        driver.get(url)
+        time.sleep(DELAY_PER_REQUEST)
+        html = driver.page_source
     except Exception as e:
-        print(f"❌ 请求失败: {url}，错误: {e}")
+        print(f"❌ 打开页面失败: {url}，错误: {e}")
         return []
 
-    return ITEM_NAME_PATTERN.findall(response.text)
+    return ITEM_NAME_PATTERN.findall(html)
 
 
 def get_ebay_product_names() -> list[str]:
@@ -83,25 +115,28 @@ def generate_ebay_product_names(brand: str = "clarks"):
     output_file = cfg["BASE"] / "publication" / "ebay_product_names.txt"
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
-    names = get_ebay_product_names()
+    try:
+        names = get_ebay_product_names()
 
-    attempt = 1
-    while len(names) < MIN_EXPECTED_NAMES and attempt < MAX_ATTEMPTS:
-        attempt += 1
-        print(
-            f"⚠️ 仅获取到 {len(names)} 条，低于预期下限 {MIN_EXPECTED_NAMES} 条，"
-            f"疑似网页异常，{RETRY_DELAY}s 后进行第 {attempt} 次尝试..."
-        )
-        time.sleep(RETRY_DELAY)
-        retry_names = get_ebay_product_names()
-        if len(retry_names) > len(names):
-            names = retry_names
+        attempt = 1
+        while len(names) < MIN_EXPECTED_NAMES and attempt < MAX_ATTEMPTS:
+            attempt += 1
+            print(
+                f"⚠️ 仅获取到 {len(names)} 条，低于预期下限 {MIN_EXPECTED_NAMES} 条，"
+                f"疑似网页异常，{RETRY_DELAY}s 后进行第 {attempt} 次尝试..."
+            )
+            time.sleep(RETRY_DELAY)
+            retry_names = get_ebay_product_names()
+            if len(retry_names) > len(names):
+                names = retry_names
 
-    if len(names) < MIN_EXPECTED_NAMES:
-        print(
-            f"⚠️ 尝试 {attempt} 次后仍只有 {len(names)} 条，低于预期下限 {MIN_EXPECTED_NAMES} 条，"
-            f"请检查 eBay 页面是否正常"
-        )
+        if len(names) < MIN_EXPECTED_NAMES:
+            print(
+                f"⚠️ 尝试 {attempt} 次后仍只有 {len(names)} 条，低于预期下限 {MIN_EXPECTED_NAMES} 条，"
+                f"请检查 eBay 页面是否正常"
+            )
+    finally:
+        quit_driver()
 
     with open(output_file, "w", encoding="utf-8") as f:
         for name in names:
