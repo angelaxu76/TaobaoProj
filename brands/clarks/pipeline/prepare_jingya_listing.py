@@ -4,7 +4,9 @@ from config import CLARKS
 from channels.jingya.ingest.import_channel_info import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
 from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 from brands.clarks.collect_product_links import generate_product_links
+from brands.clarks.collect_ebay_product_names import generate_ebay_product_names
 from brands.clarks.fetch_product_info import clarks_fetch_info
+from brands.clarks.fetch_product_info_v2 import clarks_outlet_fetch_info_v2, write_regular_links_file
 from channels.jingya.ingest.import_txt_to_db import import_txt_to_db_supplier
 from channels.jingya.export.generate_publication_excel_shoes import generate_publication_excels
 from channels.jingya.export.export_stock_to_excel import export_stock_excel
@@ -27,19 +29,36 @@ def main():
     print("\n🟡 Step: 2️⃣ 抓取商品链接") 
     generate_product_links("clarks")
 
-    print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    clarks_fetch_info()
+    print("\n🟡 Step: 3️⃣ 抓取 eBay 商品名称列表")
+    generate_ebay_product_names("clarks")
+
+    print("\n🟡 Step: 3️⃣ 抓取商品信息（正规官网 www.clarks.com，全量不过滤）")
+    regular_links_file = write_regular_links_file()
+    clarks_fetch_info(str(regular_links_file))
+
+    print("\n🟡 Step: 3️⃣ 抓取商品信息（Outlet，按 eBay 商品名称过滤）")
+    clarks_outlet_fetch_info_v2()
 
     print("\n🟡 Step: 3️⃣ 将鲸牙存在但TXT中不存在的商品抓一遍")
     missing_product_link = r"D:\TB\Products\clarks\publication\missing_product_links.txt"
     generate_missing_links_for_brand("clarks", missing_product_link)
     if os.path.exists(missing_product_link):
-        clarks_fetch_info(missing_product_link)
+        missing_regular_file = write_regular_links_file(
+            missing_product_link,
+            CLARKS["BASE"] / "publication" / "missing_product_links_regular.txt",
+        )
+        clarks_fetch_info(str(missing_regular_file))
+        clarks_outlet_fetch_info_v2(missing_product_link)
 
     print("\n🟡 Step: 3️⃣ 找出TXT中价格/库存全空的商品（网络原因导致抓取失败），重新抓一遍")
     empty_product_link = generate_empty_product_links_for_brand("clarks")
     if empty_product_link.exists() and empty_product_link.stat().st_size > 0:
-        clarks_fetch_info(str(empty_product_link))
+        empty_regular_file = write_regular_links_file(
+            str(empty_product_link),
+            CLARKS["BASE"] / "publication" / "empty_product_links_regular.txt",
+        )
+        clarks_fetch_info(str(empty_regular_file))
+        clarks_outlet_fetch_info_v2(str(empty_product_link))
     else:
         print("  - 无空数据商品，跳过")
 
