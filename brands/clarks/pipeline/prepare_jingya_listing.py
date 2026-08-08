@@ -37,7 +37,7 @@ def main():
     clarks_fetch_info(str(regular_links_file))
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息（Outlet，按 eBay 商品名称过滤）")
-    clarks_outlet_fetch_info_v2()
+    outlet_matched_total, outlet_skipped_total = clarks_outlet_fetch_info_v2()
 
     print("\n🟡 Step: 3️⃣ 将鲸牙存在但TXT中不存在的商品抓一遍")
     missing_product_link = r"D:\TB\Products\clarks\publication\missing_product_links.txt"
@@ -48,7 +48,9 @@ def main():
             CLARKS["BASE"] / "publication" / "missing_product_links_regular.txt",
         )
         clarks_fetch_info(str(missing_regular_file))
-        clarks_outlet_fetch_info_v2(missing_product_link)
+        matched, skipped = clarks_outlet_fetch_info_v2(missing_product_link)
+        outlet_matched_total += matched
+        outlet_skipped_total += skipped
 
     print("\n🟡 Step: 3️⃣ 找出TXT中价格/库存全空的商品（网络原因导致抓取失败），重新抓一遍")
     empty_product_link = generate_empty_product_links_for_brand("clarks")
@@ -58,9 +60,16 @@ def main():
             CLARKS["BASE"] / "publication" / "empty_product_links_regular.txt",
         )
         clarks_fetch_info(str(empty_regular_file))
-        clarks_outlet_fetch_info_v2(str(empty_product_link))
+        matched, skipped = clarks_outlet_fetch_info_v2(str(empty_product_link))
+        outlet_matched_total += matched
+        outlet_skipped_total += skipped
     else:
         print("  - 无空数据商品，跳过")
+
+    print(
+        f"\n🟢 Outlet 商品汇总：eBay 匹配写入 TXT {outlet_matched_total} 条，"
+        f"eBay 未找到跳过 {outlet_skipped_total} 条"
+    )
 
     print("\n🟡 Step: 4️⃣ 导入 TXT → 数据库，如果库存低于2的直接设置成0")
     import_txt_to_db_supplier("clarks")

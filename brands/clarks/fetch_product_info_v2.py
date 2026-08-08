@@ -87,6 +87,8 @@ def clarks_outlet_fetch_info_v2(links_file=None, ebay_file=None):
     - 只处理 clarksoutlet.co.uk 的商品链接（www.clarks.com 的跳过不处理）
     - 抓取到商品信息后，先按词匹配规则去 ebay_product_names.txt 里查找
     - 命中才写 txt，未命中直接跳过不写
+
+    返回 (matched_count, skipped_count) 供调用方汇总统计。
     """
     if links_file is None:
         links_file = LINK_FILE
@@ -128,6 +130,8 @@ def clarks_outlet_fetch_info_v2(links_file=None, ebay_file=None):
         print(f"✅ 写入: {filepath.name}")
 
     print(f"\n✅ 完成：匹配写入 {matched_count} 条，跳过 {skipped_count} 条")
+
+    return matched_count, skipped_count
 
 
 if __name__ == "__main__":
