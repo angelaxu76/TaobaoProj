@@ -1,10 +1,11 @@
 import os
 import subprocess
+import sys
 from config import CLARKS
 from channels.jingya.ingest.import_channel_info import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
 from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 from brands.clarks.collect_product_links import generate_product_links
-from brands.clarks.collect_ebay_product_names import generate_ebay_product_names
+from brands.clarks.collect_ebay_product_names import generate_ebay_product_names, MIN_EXPECTED_NAMES
 from brands.clarks.fetch_product_info import clarks_fetch_info
 from brands.clarks.fetch_product_info_v2 import clarks_outlet_fetch_info_v2, write_regular_links_file
 from channels.jingya.ingest.import_txt_to_db import import_txt_to_db_supplier
@@ -30,7 +31,13 @@ def main():
     generate_product_links("clarks")
 
     print("\n🟡 Step: 3️⃣ 抓取 eBay 商品名称列表")
-    generate_ebay_product_names("clarks")
+    ebay_name_count = generate_ebay_product_names("clarks")
+    if ebay_name_count < MIN_EXPECTED_NAMES:
+        print(
+            f"\n⛔ eBay 商品名称仅 {ebay_name_count} 条，连续 3 次尝试仍低于下限 {MIN_EXPECTED_NAMES} 条，"
+            f"疑似 eBay 页面异常，本轮跳过 clarks 后续步骤，等下一轮再执行。"
+        )
+        sys.exit(1)
 
     print("\n🟡 Step: 3️⃣ 抓取商品信息（正规官网 www.clarks.com，全量不过滤）")
     regular_links_file = write_regular_links_file()

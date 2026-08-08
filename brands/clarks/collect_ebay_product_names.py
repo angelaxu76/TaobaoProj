@@ -25,6 +25,10 @@ MAX_PAGES = 40
 MAX_EMPTY_NEW_STREAK = 2  # 连续N页无新增商品名即停止翻页（eBay 翻页超过实际库存后会开始循环推荐相似商品）
 DELAY_PER_REQUEST = 1
 
+MIN_EXPECTED_NAMES = 500  # 店铺实际有 800+ 商品，低于此值大概率是网页异常/请求被拦截，需要重试
+MAX_ATTEMPTS = 3
+RETRY_DELAY = 5
+
 
 def get_names_from_page(page: int) -> list[str]:
     url = STORE_URL_TEMPLATE.format(page=page)
@@ -81,11 +85,31 @@ def generate_ebay_product_names(brand: str = "clarks"):
 
     names = get_ebay_product_names()
 
+    attempt = 1
+    while len(names) < MIN_EXPECTED_NAMES and attempt < MAX_ATTEMPTS:
+        attempt += 1
+        print(
+            f"⚠️ 仅获取到 {len(names)} 条，低于预期下限 {MIN_EXPECTED_NAMES} 条，"
+            f"疑似网页异常，{RETRY_DELAY}s 后进行第 {attempt} 次尝试..."
+        )
+        time.sleep(RETRY_DELAY)
+        retry_names = get_ebay_product_names()
+        if len(retry_names) > len(names):
+            names = retry_names
+
+    if len(names) < MIN_EXPECTED_NAMES:
+        print(
+            f"⚠️ 尝试 {attempt} 次后仍只有 {len(names)} 条，低于预期下限 {MIN_EXPECTED_NAMES} 条，"
+            f"请检查 eBay 页面是否正常"
+        )
+
     with open(output_file, "w", encoding="utf-8") as f:
         for name in names:
             f.write(name.strip() + "\n")
 
     print(f"✅ [{brand}] 共写入 eBay 商品名称 {len(names)} 条到: {output_file}")
+
+    return len(names)
 
 
 if __name__ == "__main__":
