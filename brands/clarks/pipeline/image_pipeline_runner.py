@@ -1,28 +1,62 @@
-"""
-Clarks 商品图流水线已拆成 4 个独立脚本（同目录下），依次运行：
+from pathlib import Path
+from config import CLARKS
+from common.publication.generate_html import generate_html_from_codes_files
+from common.publication.generate_html_FristPage import generate_first_page_from_codes_files
+from helper.image.merge_product_images import batch_merge_images
+from helper.html.html_to_png_multithread import convert_html_to_images
+from helper.image.trim_sides_batch import trim_sides_batch
+from helper.image.crop_to_square import run_crop_and_expand
+from helper.image.copy_images import copy_images
+from brands.clarks.download_product_images import download_images_by_code_file,download_all_images_from_product_links
+from brands.camper.helpers_local.image_defender_with_flip import batch_process_images
 
-  1. image_pipeline_step1_download.py
-     下载图片（不再调用 batch_process_images 的抖动+翻转防指纹步骤，改用
-     AI 生成新视角图代替）
+def main():
+    code_file_path = r"D:\TB\Products\clarks\repulibcation\publication_codes.txt"
 
-     -> 手动去 CLARKS["IMAGE_DOWNLOAD"] 删掉不需要的模特图/生活场景图 <-
 
-  2a. image_pipeline_step2_rename_and_upload_to_r2.py
-      按新顺序重命名（1,6,2,3,5,4,7,8,9 -> 1,2,3,4,5,6,7,8,9），再把
-      IMAGE_DOWNLOAD 传到 R2
+    print("下载指定商品编码的的图片")
+    download_images_by_code_file(code_file_path)
 
-  2b. image_pipeline_step2_ai_rotate.py
-      调 AI 对 R2 上的图做视角旋转，结果存到 IMAGE_ROTATED
+    print("下载所有商品图片")
+    # download_all_images_from_product_links()
 
-  3. image_pipeline_step3_crop_merge_and_html.py
-     裁剪 IMAGE_DOWNLOAD -> IMAGE_CUTTER，拷贝到 IMAGE_PROCESS（供 HTML 生成
-     找封面图）和 document 目录，合并 IMAGE_CUTTER + IMAGE_ROTATED 两个目录的
-     图，生成详情页/首页 HTML 和图片
+    print("图抖动加上水平翻转")
+    INPUT_DIR = Path(CLARKS["IMAGE_DOWNLOAD"])
+    OUTPUT_DIR = Path(CLARKS["IMAGE_PROCESS"])
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    batch_process_images(INPUT_DIR,OUTPUT_DIR)
 
-拆开是因为下载完之后需要人工删模特图，删完才能重命名，重命名之后才适合
-上传/旋转，不适合几步自动连着跑。
+    print("最大化灰度裁剪图片")
+    bg_color = (240, 240, 240)
+    tolerance = 35
+    quality = 85
+    run_crop_and_expand(CLARKS["IMAGE_PROCESS"], CLARKS["IMAGE_CUTTER"], bg_color, tolerance, quality)
 
-重命名会影响 cfg/brands/clarks.py 里 IMAGE_PRIORITY / IMAGE_FIRST_PRIORITY /
-IMAGE_DES_PRIORITY 这几个优先级列表指向的实际图片，已经按新编号翻译过，
-仍然对应原来同一批照片。
-"""
+
+    print("将处理好的图片copy到document目录")
+    copy_images(CLARKS["IMAGE_CUTTER"],CLARKS["IMAGE_DIR"])
+
+
+    print("将图片merge到一张图片中")
+    batch_merge_images(CLARKS["IMAGE_CUTTER"],CLARKS["MERGED_DIR"], width=750)
+
+
+
+    print("生成产品详情卡HTML")
+    generate_html_from_codes_files("clarks",code_file_path)
+    generate_first_page_from_codes_files("clarks",code_file_path)
+
+    print("生成产品详情卡图片")
+    convert_html_to_images(CLARKS["HTML_DIR_DES"], CLARKS["HTML_IMAGE_DES"],"",6)
+    trim_sides_batch(CLARKS["HTML_IMAGE_DES"],CLARKS["HTML_CUTTER_DES"])
+
+    print("生成产品首页图片")
+    convert_html_to_images(CLARKS["HTML_DIR_FIRST_PAGE"], CLARKS["HTML_IMAGE_FIRST_PAGE"],"",6)
+    trim_sides_batch(CLARKS["HTML_IMAGE_FIRST_PAGE"],CLARKS["HTML_CUTTER_FIRST_PAGE"])
+
+    # print("导出发布商品的价格")
+    # export_channel_price_excel_from_txt("clarks",code_file_path)
+
+
+if __name__ == "__main__":
+    main()

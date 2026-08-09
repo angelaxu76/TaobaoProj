@@ -35,8 +35,8 @@ def main():
 
 
         rename_camper_invoices(
-        str("D:\TB\淘宝会计统计数据\CamperInvoices2025"),
-        str("D:\TB\淘宝会计统计数据\CamperInvoices2025_renamed"),
+        str("D:\TB\淘宝会计统计数据\采购凭证\CamperInvoices2025"),
+        str("D:\TB\淘宝会计统计数据\采购凭证\CamperInvoices2025_renamed"),
     )
 
 if __name__ == "__main__":
