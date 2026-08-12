@@ -141,7 +141,7 @@ if __name__ == "__main__":
         # (60,  "ecco"),
         # (90,  "ecco"),
         # (50,  "geox"),
-        (30,  "clarks"),
+        (45,  "clarks"),
         # (200, "barbour"),
     ]
     print_table(CASES)
