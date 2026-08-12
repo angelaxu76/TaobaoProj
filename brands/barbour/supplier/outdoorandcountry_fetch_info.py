@@ -173,7 +173,10 @@ class OutdoorAndCountryFetcher(BaseFetcher):
         original_price = info.get("original_price_gbp", "No Data")
         discount_price = info.get("discount_price_gbp", "No Data")
 
-        # 10. 返回标准化字典
+        # 10. 提取尺码表 (Measurements，部分商品才有)
+        measurements = self._extract_measurements(html)
+
+        # 11. 返回标准化字典
         return {
             "Product Code": product_code or "No Data",
             "Product Name": self.clean_text(name, maxlen=200),
@@ -187,6 +190,7 @@ class OutdoorAndCountryFetcher(BaseFetcher):
             "Product Size": self.size_from_detail(product_size_detail),
             "Product Size Detail": product_size_detail,
             "Feature": features,
+            "Measurements": measurements,
         }
 
     def _normalize_color_from_url(self, url: str) -> str:
@@ -236,6 +240,34 @@ class OutdoorAndCountryFetcher(BaseFetcher):
                 return "; ".join(items)
 
         return "No Data"
+
+    def _extract_measurements(self, html: str) -> list:
+        """
+        提取 Measurements 尺码表 (仅部分商品提供，如 corbridge waxed jacket)
+
+        页面结构:
+            <table class="MeasureGrid" id="MeasurementGrid">
+                <tbody>
+                    <tr><th>Size</th><th>Back Length (CM)</th>...</tr>
+                    <tr><td>S</td><td>77</td>...</tr>
+                    ...
+                </tbody>
+            </table>
+
+        返回行列表 [[表头...], [数据行...], ...]，无表格则返回 []。
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        table = soup.find("table", id="MeasurementGrid") or soup.find("table", class_="MeasureGrid")
+        if not table:
+            return []
+
+        rows = []
+        for tr in table.find_all("tr"):
+            cells = [c.get_text(strip=True) for c in tr.find_all(["th", "td"])]
+            if any(cells):
+                rows.append(cells)
+
+        return rows
 
     def _extract_color_code_from_jsonld(self, html: str) -> str:
         """从 JSON-LD 的 MPN 字段提取 Barbour Product Code"""
@@ -309,6 +341,201 @@ class OutdoorAndCountryFetcher(BaseFetcher):
 
         _, product_size_detail = self.build_size_lines(size_detail, gender)
         return product_size_detail
+
+    def _write_output(self, info: Dict[str, Any]) -> None:
+        """写入商品 TXT，并在存在 Measurements 时额外写入 <编码>_size.html 尺码表页面"""
+        super()._write_output(info)
+
+        rows = info.get("Measurements")
+        if not rows:
+            return
+
+        from brands.barbour.core.text_utils import safe_filename
+
+        code = info.get("Product Code", "").strip()
+        if not code or code in ["Unknown", "No Data", "N/A", ""]:
+            url = info.get("Source URL", "")
+            code = f"NoCode_{abs(hash(url)) & 0xFFFFFFFF:08x}"
+
+        style_name = self._derive_style_name(info.get("Product Name", ""))
+        html_page = self._build_measurement_html(style_name, rows)
+
+        safe_code = safe_filename(code)
+        size_dir = self.output_dir.parent / "size"
+        size_dir.mkdir(parents=True, exist_ok=True)
+        size_path = size_dir / f"{safe_code}_size.html"
+
+        try:
+            size_path.write_text(html_page, encoding="utf-8")
+            self.logger.debug(f"写入尺码表页面: {size_path}")
+        except Exception as e:
+            self.logger.error(f"尺码表页面写入失败 {size_path}: {e}")
+
+    # 表头英文关键词 → 中文（按顺序匹配，先匹配先用）
+    _MEASUREMENT_HEADER_MAP = [
+        (r"\bsize\b", "尺码"),
+        (r"\bsleeve\b", "袖长"),
+        (r"\bchest\b", "胸围"),
+        (r"\bshoulder\b", "肩宽"),
+        (r"\bwaist\b", "腰围"),
+        (r"\bhip\b", "臀围"),
+        (r"\bcollar\b", "领围"),
+        (r"\bneck\b", "领围"),
+        (r"\bback length\b", "衣长"),
+        (r"\bfront length\b", "衣长"),
+        (r"\blength\b", "衣长"),  # 通用兜底，需放最后
+    ]
+
+    def _translate_measurement_header(self, header: str) -> str:
+        """将英文表头翻译为中文，保留括号内单位；未识别的表头原样返回"""
+        h = (header or "").strip()
+        unit_match = re.search(r"\(([^)]+)\)", h)
+        unit = f"({unit_match.group(1).upper()})" if unit_match else ""
+        base = re.sub(r"\([^)]*\)", "", h).strip().lower()
+
+        for pattern, zh in self._MEASUREMENT_HEADER_MAP:
+            if re.search(pattern, base):
+                return f"{zh}{unit}"
+
+        return header
+
+    def _derive_style_name(self, product_name: str) -> str:
+        """从商品名去除性别前缀和品牌名，得到款式名称，如 'Corbridge Waxed Jacket'"""
+        name = (product_name or "").strip()
+        name = re.sub(r"^(men'?s|women'?s|ladies'?|kids'?|boys'?|girls'?)\s+", "", name, flags=re.IGNORECASE)
+        name = re.sub(r"\bbarbour\b", "", name, flags=re.IGNORECASE)
+        name = re.sub(r"\s+", " ", name).strip()
+        return name or product_name or "商品"
+
+    def _build_measurement_html(self, style_name: str, rows: list) -> str:
+        """按 test/barbour男polo.html 风格生成实测尺码表页面"""
+        header, *data_rows = rows
+        header_zh = [self._translate_measurement_header(h) for h in header]
+
+        title = f"BARBOUR {style_name} 实测尺码表"
+
+        header_html = "".join(f"<th>{h}</th>" for h in header_zh)
+        body_html = "\n".join(
+            "    <tr>" + "".join(f"<td>{c}</td>" for c in row) + "</tr>"
+            for row in data_rows
+        )
+
+        return f"""<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title}</title>
+
+<style>
+    body {{
+        background-color: #f3f4f2;
+        font-family: Arial, sans-serif;
+        text-align: center;
+        margin: 0;
+        padding: 0;
+    }}
+
+    .container {{
+        max-width: 800px;
+        margin: 20px auto;
+        background-color: #ffffff;
+        padding: 30px;
+        border-radius: 14px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+        border: 1.5px solid #e2e2e2;
+        text-align: left;
+    }}
+
+    h2 {{
+        color: #ffffff;
+        background-color: #7a0f14;
+        text-align: center;
+        font-size: 48px;
+        padding: 20px;
+        border-radius: 12px 12px 0 0;
+        letter-spacing: 1px;
+    }}
+
+    h3 {{
+        font-size: 33px;
+        font-weight: bold;
+        border-left: 6px solid #7a0f14;
+        padding-left: 15px;
+        margin-top: 28px;
+        color: #2c2c2c;
+    }}
+
+    table {{
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 14px;
+        border: 1.5px solid #e5e5e5;
+        border-radius: 10px;
+        overflow: hidden;
+    }}
+
+    th {{
+        background-color: #3a3a3a;
+        color: #ffffff;
+        border: 1px solid #d9d9d9;
+        padding: 15px;
+        text-align: center;
+        font-size: 27px;
+        font-weight: bold;
+    }}
+
+    td {{
+        border: 1px solid #e6e6e6;
+        padding: 15px;
+        text-align: center;
+        font-size: 27px;
+        color: #333333;
+    }}
+
+    tr:nth-child(even) td {{
+        background-color: #f7f7f7;
+    }}
+
+    tr:nth-child(odd) td {{
+        background-color: #ffffff;
+    }}
+
+    li {{
+        color: #3a3a3a;
+        line-height: 1.7;
+    }}
+
+    strong {{
+        font-weight: bold;
+        color: #8B0000;
+    }}
+</style>
+
+</head>
+<body>
+
+<div class="container">
+
+    <h2 style="font-size:50px;">{title}</h2>
+
+    <table>
+    <tr>{header_html}</tr>
+{body_html}
+    </table>
+
+    <h3 style="font-size:36px;">选码建议</h3>
+
+    <ul>
+        <li style="font-size:30px;">衣服实测胸围比人体净胸围大 <strong>10-15cm</strong>，上身效果最佳；</li>
+        <li style="font-size:30px;">建议先测量一件自己已穿着合适、版型相近的衣服的胸围，与上表比对后再选择尺码。</li>
+    </ul>
+
+</div>
+
+</body>
+</html>
+"""
 
     def _clean_size(self, raw: str) -> str:
         """清理尺码"""
