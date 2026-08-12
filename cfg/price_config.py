@@ -84,7 +84,7 @@ BRAND_DEPTH_RATIO_LADDER = {
 # 格式：[(上限阈值, 补偿金额)]，按顺序匹配，命中即停止
 # 含义：base_price < threshold → base_price += bump
 LOW_PRICE_BUMPS = [
-    (30, 13),   # base < 30 英镑 → +7
-    (40, 10),   # base < 40 英镑 → +5
-    (50, 7),   # base < 40 英镑 → +5
+    (20, 12),   # base < 30 英镑 → +7
+    (30, 10),   # base < 30 英镑 → +7
+    (40, 7),   # base < 40 英镑 → +5
 ]
