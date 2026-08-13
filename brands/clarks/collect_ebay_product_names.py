@@ -34,11 +34,11 @@ _driver = None
 
 
 def _build_driver():
-    import undetected_chromedriver as uc
-
-    options = uc.ChromeOptions()
-    options.add_argument("--start-maximized")
-    return uc.Chrome(options=options, headless=False)
+    # 复用 common/browser/driver_auto.py 的自动版本适配逻辑（自动检测本机 Chrome 主版本、
+    # 版本不符时清缓存重试），避免 uc 缓存的 driver 版本落后于自动升级的 Chrome。
+    # 这个函数本身不带全局 driver 池，不影响其他脚本共用的 driver 池/缓存。
+    from common.browser.driver_auto import build_uc_driver
+    return build_uc_driver(headless=False)
 
 
 def get_driver():
