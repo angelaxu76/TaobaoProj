@@ -63,8 +63,10 @@ BATCH_SETTLE_SECONDS = 10
 #     %LOCALAPPDATA%\Programs\UiPathPlatform\Robot\*\UiRobot.exe（虚拟机上的实际安装位置）
 #     %PROGRAMFILES%\UiPath\Studio\UiRobot.exe
 #     %PROGRAMFILES%\UiPath\Studio\*\UiRobot.exe
+#     UIPATH_USER_SERVICE_PATH 环境变量所在目录（UiPath 安装时自动创建的机器级环境变量，
+#       指向 UiPath.Service.UserHost.exe；去掉文件名后即该版本 Robot 目录，与 UiRobot.exe 同级）
 #   有多个候选时优先按版本号目录名（如 26.0.198-cloud.24232）比较大小，取最高版本；
-#   目录名不含版本号的候选用修改时间兜底。均未找到时报错。不再读取环境变量。
+#   目录名不含版本号的候选用修改时间兜底。均未找到时报错。
 
 def _version_key(path: Path) -> tuple:
     """从父目录名中提取所有数字段用于版本比较。
@@ -81,6 +83,12 @@ def _find_uirobot_exe() -> str:
         Path(local_appdata) / "Programs" / "UiPathPlatform" / "Robot",
         Path(program_files) / "UiPath" / "Studio",
     ]
+
+    # UiPath 安装时会创建 UIPATH_USER_SERVICE_PATH 环境变量，指向
+    # .../Robot/<version>/UiPath.Service.UserHost.exe；其所在目录与 UiRobot.exe 同级
+    user_service_path = os.environ.get("UIPATH_USER_SERVICE_PATH", "")
+    if user_service_path:
+        search_roots.append(Path(user_service_path).parent)
 
     print("[DEBUG] 自动探测 UiRobot.exe，扫描路径:")
     candidates: list[Path] = []
