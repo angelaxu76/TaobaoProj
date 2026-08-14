@@ -96,6 +96,7 @@ def print_price(gbp: float, brand: str = None):
     print(f"  未税加成:   ×{r['untaxed_margin']}  → £{(r['base_bumped'] + r['delivery']) * r['untaxed_margin']:.2f}")
     print(f"  汇率:       ×{r['exchange_rate']}  → ¥{(r['base_bumped'] + r['delivery']) * r['untaxed_margin'] * r['exchange_rate']:.1f}")
     print(f"  ✅ 精雅未税价: ¥{r['untaxed']}")
+    print(f"  零售加成:   ×{r['retail_margin']}  → ¥{r['untaxed'] * r['retail_margin']:.1f}")
     print(f"  ✅ 淘宝零售价: ¥{r['retail']}")
 
 
@@ -138,10 +139,15 @@ if __name__ == "__main__":
         # (80,  "camper"),
         # (100, "camper"),
         # (150, "camper"),
-        # (60,  "ecco"),
-        # (90,  "ecco"),
+        (60,  "clarks"),
+        (40,  "clarks"),
         # (50,  "geox"),
-        (45,  "clarks"),
+        (20,  "clarks"),
         # (200, "barbour"),
     ]
     print_table(CASES)
+
+    # 逐项详细推导（每个成本项都列出来）
+    print("\n\n── 逐项详细推导 ──")
+    for gbp, brand in CASES:
+        print_price(gbp, brand=brand)
