@@ -74,6 +74,7 @@ BARBOUR = {
         "cho":               BARBOUR_BASE / "publication" / "cho" / "product_links.txt",
         "magrigg":           BARBOUR_BASE / "publication" / "magrigg" / "product_links.txt",
         "williampowell":     BARBOUR_BASE / "publication" / "williampowell" / "product_links.txt",
+        "samturner":         BARBOUR_BASE / "publication" / "samturner" / "product_links.txt",
     },
 
 
@@ -142,6 +143,11 @@ BARBOUR = {
             "extra_ratio": 1.0,
             "shipping_fee": 0.0,
         },
+        "samturner": {
+            "strategy": "all_ratio",
+            "extra_ratio": 1.0,
+            "shipping_fee": 0.0,
+        },
         # 默认兜底：任何没单独配的网站都走这里
         "__default__": {
             "strategy": "ratio_when_no_discount",
@@ -164,6 +170,7 @@ BARBOUR = {
         "cho":               BARBOUR_BASE / "publication" / "cho" / "TXT",
         "magrigg":           BARBOUR_BASE / "publication" / "magrigg" / "TXT",
         "williampowell":     BARBOUR_BASE / "publication" / "williampowell" / "TXT",
+        "samturner":         BARBOUR_BASE / "publication" / "samturner" / "TXT",
     },
 
 

@@ -64,6 +64,7 @@ A_SUPPLIERS = {
     "cho":               (  True,     True ),
     "magrigg":           (  True,     True ),
     "williampowell":     (  True,     True ),
+    "samturner":         (  True,     True ),
     # "very":            (  False,     False ),
     # houseoffraser 单次运行需 4-6 小时，太耗时，暂时屏蔽
     # "houseoffraser":   (  True,     True ),
@@ -79,6 +80,7 @@ B_SUPPLIERS = [
     "cho",
     "magrigg",
     "williampowell",
+    "samturner",
     # "very",
     # houseoffraser 已在 A 阶段屏蔽，不再重复导入
     # "houseoffraser",
@@ -224,6 +226,8 @@ def run_a_crawl():
     from brands.barbour.supplier.magrigg_fetch_info       import magrigg_fetch_info
     from brands.barbour.supplier.williampowell_get_links  import williampowell_get_links
     from brands.barbour.supplier.williampowell_fetch_info import williampowell_fetch_info
+    from brands.barbour.supplier.samturner_get_links       import samturner_get_links
+    from brands.barbour.supplier.samturner_fetch_info      import samturner_fetch_info
     # houseoffraser 单次运行需 4-6 小时，太耗时，暂时屏蔽（保留 import 供随时恢复）
     # from brands.barbour.supplier.houseoffraser_get_links  import houseoffraser_get_links
     # from brands.barbour.supplier.houseoffraser_fetch_info import houseoffraser_fetch_info
@@ -237,6 +241,7 @@ def run_a_crawl():
         "cho":               (cho_get_links,                      lambda: cho_fetch_info(max_workers=7)),
         "magrigg":           (magrigg_get_links,                  lambda: magrigg_fetch_info(max_workers=7)),
         "williampowell":     (williampowell_get_links,             lambda: williampowell_fetch_info(max_workers=7)),
+        "samturner":         (samturner_get_links,                 lambda: samturner_fetch_info(max_workers=7)),
         # "houseoffraser":   (houseoffraser_get_links,            lambda: houseoffraser_fetch_info(max_workers=7, headless=False)),
     }
 
@@ -273,9 +278,9 @@ def run_a_crawl():
         else:
             _skip(f"[{supplier}] fetch_info（保留上次 TXT）")
 
-    _step("过滤非 Barbour 编码文件（cho / philipmorris / terraces / magrigg / williampowell）")
+    _step("过滤非 Barbour 编码文件（cho / philipmorris / terraces / magrigg / williampowell / samturner）")
     from brands.barbour.tools.move_non_barbour_files import move_non_barbour_files
-    _FILTER_SUPPLIERS = ["cho", "philipmorris", "terraces", "magrigg", "williampowell"]
+    _FILTER_SUPPLIERS = ["cho", "philipmorris", "terraces", "magrigg", "williampowell", "samturner"]
     for s in _FILTER_SUPPLIERS:
         if A_SUPPLIERS.get(s, (False, False))[1]:  # 只对本次执行了 fetch_info 的过滤
             src = rf"D:\TB\Products\barbour\publication\{s}\TXT"
