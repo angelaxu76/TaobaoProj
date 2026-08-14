@@ -77,7 +77,16 @@
       "Bash(ls \"D:\\\\TB\\\\Products\\\\barbour\\\\images\\\\images_selected\\\\MML0012BR17\")",
       "Read(//d/TB/Products/barbour/images/images_selected/MML0012BR17/**)",
       "Bash(mkdir -p /tmp/testexport)",
-      "Bash(mkdir -p \"D:/Projects/VS-TaobaoProj/TaobaoProj/_test_export\")"
+      "Bash(mkdir -p \"D:/Projects/VS-TaobaoProj/TaobaoProj/_test_export\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('brands/barbour/supplier/outdoorandcountry_fetch_info.py', encoding='utf-8'\\).read\\(\\)\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('common/product/category_utils.py', encoding='utf-8'\\).read\\(\\)\\); ast.parse\\(open\\('brands/barbour/supplier/outdoorandcountry_fetch_info.py', encoding='utf-8'\\).read\\(\\)\\)\")",
+      "WebFetch(domain:www.magrigg.co.uk)",
+      "Bash(curl -s -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\" -L \"https://www.magrigg.co.uk/barbour-heritage-liddesdale-quilted-jacket-navy.html\" -o /tmp_out.html -w \"HTTP_CODE:%{http_code}\\\\n\")",
+      "Bash(ls -la /tmp_out.html)",
+      "Bash(wc -c /tmp_out.html)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('brands/barbour/supplier/magrigg_fetch_info.py', encoding='utf-8'\\).read\\(\\)\\)\")",
+      "Bash(curl -s -X POST https://eucs24v2.ksearchnet.com/cs/v2/search -H 'Content-Type: application/json' -H 'User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/131.0.0.0 Safari/537.36' -d '{ *)",
+      "Bash(curl -s -o /dev/null -w \"HTTP_CODE:%{http_code} FINAL_URL:%{url_effective}\\\\n\" -L -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/131.0.0.0 Safari/537.36\" \"https://www.magrigg.co.uk/barbour-classic-bedale-wax-jacket-olive.html.html\")"
     ]
   }
 }

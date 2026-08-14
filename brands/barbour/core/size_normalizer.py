@@ -30,13 +30,13 @@ MEN_NUM_ORDER = [str(n) for n in range(32, 50, 2)]  # 32,34,...,48
 # 极端尺码折叠到最近的有效尺码
 ALPHA_MAP = {
     "XXXS": "XS", "2XS": "XS",  # 折叠到 XS（最小有效尺码）
-    "XXS":  "XS", "XS": "XS",
+    "XXS":  "XS", "XS": "XS", "XSMALL": "XS",
     "S": "S", "SMALL": "S",
     "M": "M", "MEDIUM": "M",
     "L": "L", "LARGE": "L",
     "XL": "XL", "X-LARGE": "XL", "XLARGE": "XL",
-    "XXL": "2XL", "2XL": "2XL",
-    "XXXL": "3XL", "3XL": "3XL",  # 保留 3XL
+    "XXL": "2XL", "2XL": "2XL", "XXLARGE": "2XL", "2XLARGE": "2XL",
+    "XXXL": "3XL", "3XL": "3XL", "XXXLARGE": "3XL", "3XLARGE": "3XL",  # 保留 3XL
 }
 
 

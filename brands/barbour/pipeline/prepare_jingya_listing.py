@@ -59,11 +59,14 @@ A_SUPPLIERS = {
     "barbour":           (  True,      True  ),
     "outdoorandcountry": (  True,     True ),
     "allweathers":       (  True,     True ),
-    "houseoffraser":     (  True,     True ),
     "terraces":          (  True,     True ),
     "philipmorris":      (  True,     True ),
     "cho":               (  True,     True ),
+    "magrigg":           (  True,     True ),
+    "williampowell":     (  True,     True ),
     # "very":            (  False,     False ),
+    # houseoffraser 单次运行需 4-6 小时，太耗时，暂时屏蔽
+    # "houseoffraser":   (  True,     True ),
 }
 
 # ── B 阶段：要导入的供应商列表 ────────────────────────────────────
@@ -71,11 +74,14 @@ B_SUPPLIERS = [
     "barbour",
     "outdoorandcountry",
     "allweathers",
-    "houseoffraser",
     "terraces",
     "philipmorris",
     "cho",
+    "magrigg",
+    "williampowell",
     # "very",
+    # houseoffraser 已在 A 阶段屏蔽，不再重复导入
+    # "houseoffraser",
 ]
 
 # ══════════════════════════════════════════════════════════════════
@@ -208,23 +214,30 @@ def run_a_crawl():
     from brands.barbour.supplier.outdoorandcountry_fetch_info import outdoorandcountry_fetch_info
     from brands.barbour.supplier.allweathers_get_links    import allweathers_get_links
     from brands.barbour.supplier.allweathers_fetch_info   import allweathers_fetch_info
-    from brands.barbour.supplier.houseoffraser_get_links  import houseoffraser_get_links
-    from brands.barbour.supplier.houseoffraser_fetch_info import houseoffraser_fetch_info
     from brands.barbour.supplier.terraces_get_links       import collect_terraces_links
     from brands.barbour.supplier.terraces_fetch_info      import terraces_fetch_info
     from brands.barbour.supplier.philipmorrisdirect_get_links  import philipmorris_get_links
     from brands.barbour.supplier.philipmorrisdirect_fetch_info import philipmorris_fetch_info
     from brands.barbour.supplier.cho_get_links            import cho_get_links
     from brands.barbour.supplier.cho_fetch_info           import cho_fetch_info
+    from brands.barbour.supplier.magrigg_get_links        import magrigg_get_links
+    from brands.barbour.supplier.magrigg_fetch_info       import magrigg_fetch_info
+    from brands.barbour.supplier.williampowell_get_links  import williampowell_get_links
+    from brands.barbour.supplier.williampowell_fetch_info import williampowell_fetch_info
+    # houseoffraser 单次运行需 4-6 小时，太耗时，暂时屏蔽（保留 import 供随时恢复）
+    # from brands.barbour.supplier.houseoffraser_get_links  import houseoffraser_get_links
+    # from brands.barbour.supplier.houseoffraser_fetch_info import houseoffraser_fetch_info
 
     _FETCH_MAP = {
         "barbour":           (barbour_get_links,                  lambda: barbour_fetch_info()),
         "outdoorandcountry": (outdoorandcountry_fetch_and_save_links, lambda: outdoorandcountry_fetch_info(max_workers=1)),
         "allweathers":       (allweathers_get_links,              lambda: allweathers_fetch_info(7)),
-        "houseoffraser":     (houseoffraser_get_links,            lambda: houseoffraser_fetch_info(max_workers=7, headless=False)),
         "terraces":          (collect_terraces_links,             lambda: terraces_fetch_info(max_workers=7)),
         "philipmorris":      (philipmorris_get_links,             lambda: philipmorris_fetch_info(max_workers=7)),
         "cho":               (cho_get_links,                      lambda: cho_fetch_info(max_workers=7)),
+        "magrigg":           (magrigg_get_links,                  lambda: magrigg_fetch_info(max_workers=7)),
+        "williampowell":     (williampowell_get_links,             lambda: williampowell_fetch_info(max_workers=7)),
+        # "houseoffraser":   (houseoffraser_get_links,            lambda: houseoffraser_fetch_info(max_workers=7, headless=False)),
     }
 
     for supplier, (do_get_links, do_fetch_info) in A_SUPPLIERS.items():
@@ -260,9 +273,9 @@ def run_a_crawl():
         else:
             _skip(f"[{supplier}] fetch_info（保留上次 TXT）")
 
-    _step("过滤非 Barbour 编码文件（houseoffraser / cho / philipmorris / terraces）")
+    _step("过滤非 Barbour 编码文件（cho / philipmorris / terraces / magrigg / williampowell）")
     from brands.barbour.tools.move_non_barbour_files import move_non_barbour_files
-    _FILTER_SUPPLIERS = ["houseoffraser", "cho", "philipmorris", "terraces"]
+    _FILTER_SUPPLIERS = ["cho", "philipmorris", "terraces", "magrigg", "williampowell"]
     for s in _FILTER_SUPPLIERS:
         if A_SUPPLIERS.get(s, (False, False))[1]:  # 只对本次执行了 fetch_info 的过滤
             src = rf"D:\TB\Products\barbour\publication\{s}\TXT"

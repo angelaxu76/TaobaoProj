@@ -351,14 +351,18 @@ class OutdoorAndCountryFetcher(BaseFetcher):
             return
 
         from brands.barbour.core.text_utils import safe_filename
+        from common.product.category_utils import infer_category_from_barbour_code
 
         code = info.get("Product Code", "").strip()
         if not code or code in ["Unknown", "No Data", "N/A", ""]:
             url = info.get("Source URL", "")
             code = f"NoCode_{abs(hash(url)) & 0xFFFFFFFF:08x}"
 
+        # 仅按商品编码前三位判断类别，不依赖 TXT 描述/名称（可能不准确）
+        category = infer_category_from_barbour_code(code) or ""
+
         style_name = self._derive_style_name(info.get("Product Name", ""))
-        html_page = self._build_measurement_html(style_name, rows)
+        html_page = self._build_measurement_html(style_name, rows, category)
 
         safe_code = safe_filename(code)
         size_dir = self.output_dir.parent / "size"
@@ -386,6 +390,26 @@ class OutdoorAndCountryFetcher(BaseFetcher):
         (r"\blength\b", "衣长"),  # 通用兜底，需放最后
     ]
 
+    # 衣服类别 (infer_style_category 返回值) → (中文名称, 建议胸围加放范围)
+    _GARMENT_SIZE_ADVICE = {
+        "t-shirt": ("T恤", "5～10cm"),
+        "polo": ("Polo衫", "5～10cm"),
+        "shirt": ("衬衫", "10～15cm"),
+        "shirt/blouse": ("衬衫", "10～15cm"),
+        "knitwear": ("毛衣/针织衫", "10～15cm"),
+        "sweatshirt/hoodie": ("卫衣/针织衫", "10～15cm"),
+        "gilet/liner": ("内胆马甲/Gilet", "10～15cm"),
+        "quilted jacket": ("常规夹克", "10～15cm"),
+        "waterproof jacket": ("风衣", "15～20cm"),
+        "waxed jacket": ("油蜡夹克", "15～20cm"),
+    }
+
+    # 非服装类目（配件/鞋类），不需要衣服加放相关描述
+    _NON_CLOTHING_CATEGORIES = {
+        "bag", "scarf", "gloves", "hat", "accessory",
+        "boots", "sandal", "loafers", "slip-on", "casual shoes",
+    }
+
     def _translate_measurement_header(self, header: str) -> str:
         """将英文表头翻译为中文，保留括号内单位；未识别的表头原样返回"""
         h = (header or "").strip()
@@ -407,7 +431,7 @@ class OutdoorAndCountryFetcher(BaseFetcher):
         name = re.sub(r"\s+", " ", name).strip()
         return name or product_name or "商品"
 
-    def _build_measurement_html(self, style_name: str, rows: list) -> str:
+    def _build_measurement_html(self, style_name: str, rows: list, category: str = "") -> str:
         """按 test/barbour男polo.html 风格生成实测尺码表页面"""
         header, *data_rows = rows
         header_zh = [self._translate_measurement_header(h) for h in header]
@@ -419,6 +443,8 @@ class OutdoorAndCountryFetcher(BaseFetcher):
             "    <tr>" + "".join(f"<td>{c}</td>" for c in row) + "</tr>"
             for row in data_rows
         )
+
+        advice_html = self._build_size_advice_html(category)
 
         return f"""<!DOCTYPE html>
 <html lang="zh">
@@ -523,18 +549,36 @@ class OutdoorAndCountryFetcher(BaseFetcher):
     <tr>{header_html}</tr>
 {body_html}
     </table>
-
-    <h3 style="font-size:36px;">选码建议</h3>
-
-    <ul>
-        <li style="font-size:30px;">衣服实测胸围比人体净胸围大 <strong>10-15cm</strong>，上身效果最佳；</li>
-        <li style="font-size:30px;">建议先测量一件自己已穿着合适、版型相近的衣服的胸围，与上表比对后再选择尺码。</li>
-    </ul>
-
+{advice_html}
 </div>
 
 </body>
 </html>
+"""
+
+    def _build_size_advice_html(self, category: str) -> str:
+        """
+        根据衣服类别生成"选码建议"区块。
+        非服装类目（包、手套等）不需要衣服加放描述，返回空字符串。
+        """
+        if category in self._NON_CLOTHING_CATEGORIES:
+            return ""
+
+        advice = self._GARMENT_SIZE_ADVICE.get(category)
+        if advice:
+            garment_zh, cm_range = advice
+        else:
+            # 未识别具体品类，但仍属于服装 —— 使用通用文案
+            garment_zh, cm_range = "衣服", "10～15cm"
+
+        return f"""
+    <h3 style="font-size:36px;">选码建议</h3>
+
+    <ul>
+        <li style="font-size:30px;">此{garment_zh}实测胸围比人体净胸围大约 <strong>{cm_range}</strong>，上身效果最佳；</li>
+        <li style="font-size:30px;">建议先测量一件自己已穿着合适、版型相近的{garment_zh}的胸围，与上表比对后再选择尺码。</li>
+        <li style="font-size:30px;">【注】纯手工测量会存在2-3厘米误差，具体以实物为准。</li>
+    </ul>
 """
 
     def _clean_size(self, raw: str) -> str:

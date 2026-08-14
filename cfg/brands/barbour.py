@@ -72,6 +72,8 @@ BARBOUR = {
         "terraces":          BARBOUR_BASE / "publication" / "terraces" / "product_links.txt",
         "flannels":          BARBOUR_BASE / "publication" / "flannels" / "product_links.txt",
         "cho":               BARBOUR_BASE / "publication" / "cho" / "product_links.txt",
+        "magrigg":           BARBOUR_BASE / "publication" / "magrigg" / "product_links.txt",
+        "williampowell":     BARBOUR_BASE / "publication" / "williampowell" / "product_links.txt",
     },
 
 
@@ -130,6 +132,16 @@ BARBOUR = {
             "extra_ratio": 0.95,
             "shipping_fee": 0.0,
         },
+        "magrigg": {
+            "strategy": "all_ratio",
+            "extra_ratio": 1.0,
+            "shipping_fee": 0.0,
+        },
+        "williampowell": {
+            "strategy": "all_ratio",
+            "extra_ratio": 1.0,
+            "shipping_fee": 0.0,
+        },
         # 默认兜底：任何没单独配的网站都走这里
         "__default__": {
             "strategy": "ratio_when_no_discount",
@@ -149,7 +161,9 @@ BARBOUR = {
         "very":              BARBOUR_BASE / "publication" / "very" / "TXT",
         "terraces":          BARBOUR_BASE / "publication" / "terraces" / "TXT",
         "flannels":          BARBOUR_BASE / "publication" / "flannels" / "TXT",
-        "cho":               BARBOUR_BASE / "publication" / "cho" / "TXT", 
+        "cho":               BARBOUR_BASE / "publication" / "cho" / "TXT",
+        "magrigg":           BARBOUR_BASE / "publication" / "magrigg" / "TXT",
+        "williampowell":     BARBOUR_BASE / "publication" / "williampowell" / "TXT",
     },
 
 

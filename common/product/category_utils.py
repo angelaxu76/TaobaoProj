@@ -74,6 +74,16 @@ def _from_barbour_code(product_code: str) -> str | None:
     prefix = m.group(1)
     return BARBOUR_PREFIX_MAP.get(prefix)
 
+def infer_category_from_barbour_code(product_code: str) -> str | None:
+    """
+    仅根据 Barbour 商品编码前三位字母判断类别，不做任何文本关键词猜测。
+    TXT 中的描述/名称有时不准确，涉及尺码建议等场景应优先使用此函数，
+    而不是 infer_style_category()（其在前缀未命中时会退化为关键词匹配）。
+    命中前缀映射表则返回类别字符串，否则返回 None。
+    """
+    return _from_barbour_code(product_code)
+
+
 def infer_style_category(
     desc: str = "",
     product_name: str = "",
