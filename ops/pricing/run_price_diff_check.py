@@ -18,10 +18,12 @@
 
 from pathlib import Path
 
+from cfg.paths import DESKTOP_DIR, GEI_EXPORT_BASE
+
 # ========== 运行参数（按需修改）==========
 
 # 输出报告的根目录，每个品牌单独一个子目录
-OUTPUT_BASE = Path(r"\\vmware-host\Shared Folders\VMShared\price_diff_report")
+OUTPUT_BASE = DESKTOP_DIR / "price_diff_report"
 
 # 差异过滤阈值（百分比绝对值），低于此阈值且非倒挂的商品不输出
 # 0.0 = 输出所有有差异的商品；5.0 = 只看差异超过 5% 的（倒挂行始终输出）
@@ -40,7 +42,7 @@ TAX_FACTOR      = 0.9    # 关税/税费系数
 MIN_PROFIT      = 0.03   # 最低利润率要求（3%）
 
 # 要处理的品牌及其店铺导出目录（含多店铺 xlsx 时全部处理）
-GEI_SHARED = Path(r"\\vmware-host\Shared Folders\shared")
+GEI_SHARED = GEI_EXPORT_BASE
 
 BRAND_TASKS = [
     {"brand": "clarks",  "input_dir": GEI_SHARED / "clarks"  / "store_prices"},

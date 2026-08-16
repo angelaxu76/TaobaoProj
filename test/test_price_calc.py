@@ -139,10 +139,10 @@ if __name__ == "__main__":
         # (80,  "camper"),
         # (100, "camper"),
         # (150, "camper"),
-        (60,  "clarks"),
+        # (60,  "clarks"),
         (40,  "clarks"),
         # (50,  "geox"),
-        (20,  "clarks"),
+        # (20,  "clarks"),
         # (200, "barbour"),
     ]
     print_table(CASES)
