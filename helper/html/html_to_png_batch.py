@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Optional
 
@@ -85,21 +86,30 @@ def html_to_full_screenshot(html_path: Path, output_image: Path, geckodriver_pat
     trim_white_margins_lr(output_image)
 
 
-def process_html_folder(html_folder, output_folder, geckodriver_path: Optional[str] = None) -> None:
+def process_html_folder(html_folder, output_folder, geckodriver_path: Optional[str] = None, max_workers: int = 4) -> None:
     html_folder = Path(html_folder)
     output_folder = Path(output_folder)
 
     output_folder.mkdir(parents=True, exist_ok=True)
 
-    for name in os.listdir(html_folder):
-        if not name.lower().endswith(".html"):
-            continue
+    names = [n for n in os.listdir(html_folder) if n.lower().endswith(".html")]
+
+    def _process_one(name: str) -> None:
         html_path = html_folder / name
         out_name = f"{html_path.stem}.png"
         output_image = output_folder / out_name
 
         print(f"[proc] {html_path}")
         html_to_full_screenshot(html_path, output_image, geckodriver_path)
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(_process_one, name): name for name in names}
+        for future in as_completed(futures):
+            name = futures[future]
+            try:
+                future.result()
+            except Exception as e:
+                print(f"[error] {name}: {e}")
 
 
 
