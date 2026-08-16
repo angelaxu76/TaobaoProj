@@ -9,8 +9,11 @@ def main():
     print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
     # backup_and_clear_brand_dirs(CAMPER)
 
-    HTML_FOLDER = "D:/TB/HTMLToImage/input"  # HTML 文件夹路径
-    OUTPUT_FOLDER = "D:/TB/HTMLToImage/output"  # 输出图片文件夹
+    # HTML_FOLDER = "D:/TB/HTMLToImage/input"  # HTML 文件夹路径
+    # OUTPUT_FOLDER = "D:/TB/HTMLToImage/output"  # 输出图片文件夹
+
+    HTML_FOLDER = r"D:\TB\Products\barbour\document\barbour_size"  # HTML 文件夹路径
+    OUTPUT_FOLDER = r"D:\TB\Products\barbour\document\barbour_sizeoutput"  # 输出图片文件夹
     process_html_folder(HTML_FOLDER, OUTPUT_FOLDER, GLOBAL_GECKODRIVER_PATH)
 
     result = trim_sides_batch(
