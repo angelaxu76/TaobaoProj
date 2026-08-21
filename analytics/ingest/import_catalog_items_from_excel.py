@@ -84,6 +84,11 @@ def _to_str(v: Any) -> Optional[str]:
     if _is_empty(v):
         return None
     s = str(v).strip()
+    # 纯数字编码列会被 pandas 识别为 float64（如商家编码全是数字的 clarks/ecco），
+    # 读出来变成 26115475.0，需要还原成整数字符串，否则后续按 product_code
+    # 关联库存表时会全部对不上。
+    if re.match(r"^-?\d+\.0$", s):
+        s = s[:-2]
     return s if s else None
 
 

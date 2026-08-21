@@ -1,0 +1,8 @@
+=== D:/TB/product_analytics/store/fireman/input/product_info\242fb72462814f0da8317a6e9d540416-2026-08-16-1-itemList.xlsx rows=13354
+NO brand column, cols=['宝贝标题', '宝贝ID', '宝贝创建时间', '一口价', '商家编码', 'skuID', 'sku规格']
+=== D:/TB/product_analytics/store/fireman/input/product_info\3697c778e82740299c616f3bc767673b-2026-08-16-1-itemList.xlsx rows=11028
+NO brand column, cols=['宝贝标题', '宝贝ID', '宝贝创建时间', '一口价', '商家编码', 'skuID', 'sku规格']
+=== D:/TB/product_analytics/store/fireman/input/product_info\3af6ca9936bd44fbad19f71609e7c941-2026-08-16-1-itemList.xlsx rows=1888
+NO brand column, cols=['宝贝标题', '宝贝ID', '宝贝创建时间', '一口价', '商家编码', 'skuID', 'sku规格']
+=== D:/TB/product_analytics/store/fireman/input/product_info\c29690e76be64e4186cd1619b5724b5d-2026-08-16-1-itemList.xlsx rows=7734
+NO brand column, cols=['宝贝标题', '宝贝ID', '宝贝创建时间', '一口价', '商家编码', 'skuID', 'sku规格']
