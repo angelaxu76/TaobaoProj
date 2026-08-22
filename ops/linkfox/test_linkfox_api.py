@@ -14,17 +14,18 @@ import sys
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(os.path.dirname(_HERE)))  # project root
+sys.path.insert(0, _HERE)                                    # ops/linkfox/
 
 import requests
 from common.ai.image.linkfox_client import LinkFoxClient
-from config import LINKFOX_API_KEY, LINKFOX_HOST
+from _session_config import LINKFOX_API_KEY, LINKFOX_HOST
 
 # ============================================================
 # 测试参数（按需替换为真实图片 URL）
 # ============================================================
 
 # 原始模特拍摄图（含服装，AI 保留服装结构）
-TEST_IMAGE_URL = "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/product_front/LCA0362WH11_front_1.jpg"
+TEST_IMAGE_URL = "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/product_front/LQU0087BK91_front_1.jpg"
 
 # 目标模特头部参考图
 TEST_MODEL_IMAGE_URL = "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_1.png"

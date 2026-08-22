@@ -55,21 +55,27 @@ class LinkFoxClient:
         image_seg_url: str | None = None,
         scene_img_url: str | None = None,
         scene_strength: float | None = None,
-        gen_ori_res: bool = False,
-        real_model: bool = True,
-        output_num: int = 1,
+        gen_ori_res: bool | None = None,
+        real_model: bool | None = None,
+        output_num: int | None = None,
     ) -> str | None:
         """提交换模特任务，返回任务 ID（成功）或 None（失败）。
+
+        注：gen_ori_res / real_model / output_num 默认 None（不传），
+        与官方网页调试工具的最小请求体保持一致 —— 只传 imageUrl/modelImageUrl。
+        经测试，显式携带这些字段（哪怕值等于接口默认值）偶发导致
+        LinkFox 后端返回 data.code=500 "未知异常"（msgKey=ERR_UNKNOWN）。
+        只有需要偏离接口默认行为时才显式传值。
 
         Args:
             image_url:        原始模特图 URL（含服装，AI 保留服装结构）
             model_image_url:  目标模特头部/面部参考图 URL
             image_seg_url:    原图保留区抠图结果 URL（可选，提升换脸精度）
             scene_img_url:    场景/背景参考图 URL（可选）
-            scene_strength:   场景相似度 [0.0, 1.0]，默认 0.7（为 None 时不传）
-            gen_ori_res:      是否生成原分辨率图，默认 False
-            real_model:       是否为真人模特，默认 True
-            output_num:       输出张数 [1, 4]，默认 1
+            scene_strength:   场景相似度 [0.0, 1.0]（None 时不传，接口默认 0.7）
+            gen_ori_res:      是否生成原分辨率图（None 时不传，接口默认 False）
+            real_model:       是否为真人模特（None 时不传，接口默认 True）
+            output_num:       输出张数 [1, 4]（None 时不传，接口默认 1）
 
         Returns:
             任务 ID 字符串（成功），或 None（提交失败）
@@ -77,9 +83,6 @@ class LinkFoxClient:
         payload: dict = {
             "imageUrl":       image_url,
             "modelImageUrl":  model_image_url,
-            "genOriRes":      gen_ori_res,
-            "realModel":      real_model,
-            "outputNum":      output_num,
         }
         if image_seg_url:
             payload["imageSegUrl"] = image_seg_url
@@ -87,36 +90,65 @@ class LinkFoxClient:
             payload["sceneImgUrl"] = scene_img_url
         if scene_strength is not None:
             payload["sceneStrength"] = str(scene_strength)
+        if gen_ori_res is not None:
+            payload["genOriRes"] = gen_ori_res
+        if real_model is not None:
+            payload["realModel"] = real_model
+        if output_num is not None:
+            payload["outputNum"] = output_num
 
-        try:
-            resp = requests.post(
-                f"{self.host}{LINKFOX_SUBMIT_PATH}",
-                headers=self._headers,
-                json=payload,
-                timeout=30,
-            )
-            if not resp.ok:
-                print(f"[LinkFox] 提交失败 HTTP {resp.status_code}: {resp.text[:300]}")
+        # 重试：LinkFox 后端偶发返回网关层 code=0 但业务层 data.code=500
+        # "未知异常"（msgKey=ERR_UNKNOWN）——同样的请求原样重发通常能成功，
+        # 判断是后端瞬时抖动而非参数问题，故做几次短重试。
+        max_attempts = 5
+        retry_delay  = 5
+
+        for attempt in range(1, max_attempts + 1):
+            try:
+                resp = requests.post(
+                    f"{self.host}{LINKFOX_SUBMIT_PATH}",
+                    headers=self._headers,
+                    json=payload,
+                    timeout=30,
+                )
+                if not resp.ok:
+                    transient = resp.status_code >= 500
+                    print(f"[LinkFox] 提交失败 HTTP {resp.status_code}: {resp.text[:300]}")
+                    if transient and attempt < max_attempts:
+                        time.sleep(retry_delay)
+                        continue
+                    return None
+                body = resp.json()
+            except Exception as e:
+                print(f"[LinkFox] 提交请求异常: {e}")
+                if attempt < max_attempts:
+                    time.sleep(retry_delay)
+                    continue
                 return None
-            body = resp.json()
-        except Exception as e:
-            print(f"[LinkFox] 提交请求异常: {e}")
-            return None
 
-        code = str(body.get("code", ""))
-        if code != "0":
-            sub_msg = body.get("sub_msg") or body.get("msg") or "未知错误"
-            print(f"[LinkFox] 提交失败 (code={code}): {sub_msg}")
-            return None
+            code = str(body.get("code", ""))
+            if code != "0":
+                sub_msg = body.get("sub_msg") or body.get("msg") or "未知错误"
+                print(f"[LinkFox] 提交失败 (code={code}): {sub_msg}")
+                return None
 
-        outer_data = body.get("data") or {}
-        task_id = (outer_data.get("data") or outer_data).get("id")
-        if not task_id:
-            print(f"[LinkFox] 提交成功但未返回 task_id，完整响应: {body}")
-            return None
+            outer_data = body.get("data") or {}
+            inner_data = outer_data.get("data") or outer_data
+            task_id = inner_data.get("id")
+            if not task_id:
+                inner_code = outer_data.get("code")
+                transient  = inner_code == 500 or outer_data.get("msgKey") == "ERR_UNKNOWN"
+                print(f"[LinkFox] 提交成功但未返回 task_id，完整响应: {body}")
+                if transient and attempt < max_attempts:
+                    print(f"[LinkFox] 疑似后端瞬时异常，{retry_delay}s 后重试 ({attempt}/{max_attempts}) ...")
+                    time.sleep(retry_delay)
+                    continue
+                return None
 
-        print(f"[LinkFox] 任务已提交，ID: {task_id}")
-        return str(task_id)
+            print(f"[LinkFox] 任务已提交，ID: {task_id}")
+            return str(task_id)
+
+        return None
 
     # ------------------------------------------------------------------
     # 轮询结果
@@ -246,9 +278,9 @@ class LinkFoxClient:
         image_seg_url: str | None = None,
         scene_img_url: str | None = None,
         scene_strength: float | None = None,
-        gen_ori_res: bool = False,
-        real_model: bool = True,
-        output_num: int = 1,
+        gen_ori_res: bool | None = None,
+        real_model: bool | None = None,
+        output_num: int | None = None,
         poll_interval: int = 5,
         max_wait: int = 300,
     ) -> list[str]:

@@ -10,7 +10,7 @@
   3. 在 INPUT_FILE 指定的 Excel 第一列填入商品编码（可有表头行）。
   4. 运行：python ops/linkfox/run_linkfox_faceswap.py
 
-稳定配置（API Key、Host、默认后缀等）在 cfg/ai_config.py 修改。
+API Key、Host、场景相似度等凭证/参数在 _session_config.py 修改。
 
 输出文件命名：{code}{原图后缀}_faceswap.jpg
   例：MWX2343BL56_front_1_faceswap.jpg
@@ -27,16 +27,13 @@ sys.path.insert(0, _HERE)                                    # ops/linkfox/
 from _session_config import (
     CODES_EXCEL, LINKFOX_DIR,
     R2_SHOT_SUBDIR, SHOT_SUFFIXES, TARGET_MODEL_URLS,
+    LINKFOX_API_KEY, LINKFOX_HOST, LINKFOX_SCENE_STRENGTH,
 )
 
 import openpyxl
 from common.ai.image.linkfox_client import LinkFoxClient
 from common.ai.image.linkfox_faceswap_pipeline import process_one_linkfox
-from config import (
-    LINKFOX_API_KEY, LINKFOX_HOST,
-    R2_PUBLIC_PREFIX,
-    LINKFOX_SCENE_STRENGTH,
-)
+from config import R2_PUBLIC_PREFIX
 
 # ============================================================
 # 本次运行参数（按需修改）
@@ -59,14 +56,15 @@ SCENE_IMG_URL: str | None = None
 # 场景相似度 [0.0, 1.0]（None 表示不传，接口默认 0.7）
 SCENE_STRENGTH = LINKFOX_SCENE_STRENGTH
 
-# 是否输出原始分辨率
-GEN_ORI_RES = False
+# 是否输出原始分辨率（None = 不传该字段，用接口默认 False；
+#   经测试显式传值偶发触发 LinkFox 后端 500 "未知异常"，非必要不要改）
+GEN_ORI_RES: bool | None = None
 
-# 是否为真人模特
-REAL_MODEL = True
+# 是否为真人模特（None = 不传该字段，用接口默认 True；同上不要轻易改）
+REAL_MODEL: bool | None = None
 
-# 每张原图生成输出张数 [1, 4]
-OUTPUT_NUM = 1
+# 每张原图生成输出张数 [1, 4]（None = 不传该字段，用接口默认 1；同上）
+OUTPUT_NUM: int | None = None
 
 # 并发线程数（建议 2~5；过高可能触发 API 限流）
 MAX_WORKERS = 8
