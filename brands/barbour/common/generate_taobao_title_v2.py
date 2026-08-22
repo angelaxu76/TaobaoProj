@@ -5,6 +5,8 @@ import unicodedata
 from typing import Tuple
 
 from config import BRAND_CONFIG, BRAND_NAME_MAP, BARBOUR
+from common.text.translate import safe_translate
+from common.text.ad_sanitizer import sanitize_text
 
 # ==== 读取前缀规则（性别+类型） ====
 _cfg = BRAND_CONFIG.get("barbour") or BRAND_CONFIG.get("Barbour") or {}
@@ -337,22 +339,26 @@ def generate_barbour_taobao_title(code: str, style_name_en: str, color_en: str, 
         type_str = "油蜡夹克"
 
     series = detect_series(style_name_en)
+    if not series:
+        # 白名单未命中系列名时，用 DeepSeek 翻译英文款式名作为兜底（失败时 safe_translate 自动回退原文）
+        series = sanitize_text(safe_translate(style_name_en, target_lang="ZH")) or style_name_en
+
     color_cn = map_color(color_en)
     material_cn = detect_material_cn(style_name_en)
 
     material_cn = _dedupe_material(type_str, material_cn)
 
     # 1) 初次拼接：不再提前拼 TYPE_EXTRAS（避免把“通勤百搭春秋”挤到关键词前面）
-    base_title = f"{brand_full}{gender_str}{series or style_name_en}{type_str}{color_cn}{material_cn}".strip()
+    base_title = f"{brand_full}{gender_str}{series}{type_str}{color_cn}{material_cn}".strip()
     base_title = base_title.replace("No Data", "")
 
     # 2) >60：先去 material（保留 type）
     if get_byte_length(base_title) > 60:
-        base_title = f"{brand_full}{gender_str}{series or style_name_en}{type_str}{color_cn}".strip()
+        base_title = f"{brand_full}{gender_str}{series}{type_str}{color_cn}".strip()
 
     # 3) 仍 >60：再去 color（仍保留 type）
     if get_byte_length(base_title) > 60:
-        base_title = f"{brand_full}{gender_str}{series or style_name_en}{type_str}".strip()
+        base_title = f"{brand_full}{gender_str}{series}{type_str}".strip()
 
     # 4) <60：V2.1 补齐（关键词优先 → 类型卖点 → 通用词）
     if get_byte_length(base_title) < 60:
