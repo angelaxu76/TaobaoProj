@@ -85,8 +85,7 @@ def clarks_outlet_fetch_info_v2(links_file=None, ebay_file=None):
     """
     Clarks Outlet 商品抓取入口 v2：
     - 只处理 clarksoutlet.co.uk 的商品链接（www.clarks.com 的跳过不处理）
-    - 抓取到商品信息后，先按词匹配规则去 ebay_product_names.txt 里查找
-    - 命中才写 txt，未命中直接跳过不写
+    - eBay 过滤已屏蔽，抓取到的商品全部写入 txt（不再按 ebay_product_names.txt 过滤）
 
     返回 (matched_count, skipped_count) 供调用方汇总统计。
     """
@@ -101,8 +100,10 @@ def clarks_outlet_fetch_info_v2(links_file=None, ebay_file=None):
     regular_urls, outlet_urls = split_links_by_source(links_file)
     print(f"🔎 共 {len(regular_urls) + len(outlet_urls)} 条链接，其中 outlet 链接 {len(outlet_urls)} 条")
 
-    ebay_word_sets = load_ebay_word_sets(ebay_file)
-    print(f"🔎 已加载 eBay 商品名称 {len(ebay_word_sets)} 条")
+    # 🔒 eBay 过滤已屏蔽，如需恢复取消下面这行注释
+    # ebay_word_sets = load_ebay_word_sets(ebay_file)
+    ebay_word_sets = []
+    print(f"🔎 已加载 eBay 商品名称 {len(ebay_word_sets)} 条（eBay 过滤已屏蔽）")
 
     matched_count = 0
     skipped_count = 0
@@ -114,10 +115,11 @@ def clarks_outlet_fetch_info_v2(links_file=None, ebay_file=None):
 
         product_name = info["Product Name"]
 
-        if not match_ebay_name(product_name, ebay_word_sets):
-            print(f"⏭️ 未在 eBay 商品名称中找到匹配，跳过: {product_name}")
-            skipped_count += 1
-            continue
+        # 🔒 eBay 过滤已屏蔽，如需恢复取消下面这段注释
+        # if not match_ebay_name(product_name, ebay_word_sets):
+        #     print(f"⏭️ 未在 eBay 商品名称中找到匹配，跳过: {product_name}")
+        #     skipped_count += 1
+        #     continue
 
         matched_count += 1
         print(f"\n🔍 {url}")

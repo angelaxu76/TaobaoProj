@@ -28,7 +28,7 @@ R2_SHOT_SUBDIR = "product_front"
 # 原始拍摄图后缀列表（每个后缀对应一张原图，均会生成一张换模特图）
 #   ["_front_1"]              → 每款只处理 {code}_front_1.jpg
 #   ["_front_1", "_front_2"] → 每款处理两张
-SHOT_SUFFIXES = ["_front_1", "_front_2"]
+SHOT_SUFFIXES = ["_front_1", "_front_2", "_front_3", "_front_4"]
 # SHOT_SUFFIXES = ["_front_1"]  
 
 # 目标模特头部参考图列表（多个 URL 时按商品顺序轮流分配）
