@@ -211,11 +211,23 @@ def find_image_path(code, image_dir: Path, brand: str):
 
         return PLACEHOLDER_IMG
 
-    # ==== 其他品牌：原逻辑 ====
+    # ==== 其他品牌：原逻辑（单下划线 + 固定后缀，如 _8 / _front_1_faceswap）====
     for suffix in priority:
         candidate = image_dir / f"{code}_{suffix}.jpg"
         if candidate.exists():
             return f"file:///{candidate.as_posix()}"
+
+    # ==== 新版命名：rename_by_shot_priority 产出的 {code}__1 / __2 ...（双下划线+序号，取最小序号）====
+    pattern = re.compile(rf"^{re.escape(code)}__(\d+)\.\w+$", re.IGNORECASE)
+    best_num, best_file = None, None
+    for img_file in image_dir.glob(f"{code}__*.*"):
+        m = pattern.match(img_file.name)
+        if m:
+            num = int(m.group(1))
+            if best_num is None or num < best_num:
+                best_num, best_file = num, img_file
+    if best_file:
+        return best_file.resolve().as_uri()
 
     return PLACEHOLDER_IMG
 
