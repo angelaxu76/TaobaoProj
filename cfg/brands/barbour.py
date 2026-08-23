@@ -6,22 +6,30 @@ BARBOUR_BASE = BASE_DIR / "barbour"
 
 # 图片处理专用目录：与 publication / repulibcation 平级，独立存放。
 # backup_and_clear_brand_dirs() 只清空 publication 和 repulibcation，不会碰这里，
-# 所以下载库/换脸图/HTML产出图不会被清理流程误删。
+# 所以下载库不会被清理流程误删。
+#
+# images/ 只放长期原始素材库（下载图/待分类图），不放任何后续处理产出的临时图片，
+# 避免和 repulibcation/ 下的批次处理图混在一起导致误删。
+# 换脸/合并/HTML/裁边等后续处理产出统一放到 repulibcation/（PROCESS_BASE）下，
+# 这部分本来就跟着每批发布走，backup_and_clear_brand_dirs() 清空前会先备份，可放心清理。
 #
 # 流水线顺序（各阶段目录对应各脚本的输入/输出）：
 #   1. image_download_and_prepare.py
-#        下载 -> 防指纹处理 -> 按编码分组          => IMAGE_DOWNLOAD（长期库，累积所有历史图片）
+#        下载 -> 防指纹处理 -> 按编码分组          => IMAGE_DOWNLOAD（长期库，累积所有历史图片，唯一留在 images/ 下的目录）
 #   2. image_select_and_prepare.py
-#        按发布 Excel 从 IMAGE_DOWNLOAD 选出本批次商品的图片 => IMAGE_SELECTED
+#        按发布 Excel 从 IMAGE_DOWNLOAD 选出本批次商品的图片 => IMAGE_SELECTED（repulibcation/images_selected）
 #        （找不到图片的编码写入 IMAGE_MISSING_TXT）
 #   3. run_classify_person_images.py
 #        对 IMAGE_SELECTED 做人物/细节分类          => IMAGE_PERSON_DIR / IMAGE_DETAIL_DIR
-#   4. [外部] AI 换脸脚本（ops/ai_image/）处理 IMAGE_PERSON_DIR 中的模特图
-#        换脸完成后，将换脸图 + IMAGE_DETAIL_DIR 中的细节图手动汇总到 => IMAGE_FINAL
+#        （repulibcation/classify/person、/detail —— 与 ops/linkfox/_session_config.py 的
+#          PERSON_DIR 保持一致，供换脸质量对比脚本直接读取，无需再手动同步）
+#   4. [外部] AI 换脸脚本（ops/linkfox/）处理 IMAGE_PERSON_DIR 中的模特图，
+#        输出直接落在 repulibcation/linkfox_processed（即 IMAGE_PROCESS）—— 无需再手动汇总
 #   5. image_process_and_html.py
-#        以 IMAGE_FINAL（即 IMAGE_PROCESS）为图源，合并宽图/生成HTML/渲染图片/裁边
-#        => MERGED_DIR -> HTML_DIR -> HTML_IMAGE -> HTML_CUTTER_DES / HTML_CUTTER_FIRST_PAGE（最终产出）
+#        以 IMAGE_PROCESS（repulibcation/linkfox_processed）为图源，合并宽图/生成HTML/渲染图片/裁边
+#        => MERGED_DIR -> HTML_DIR -> HTML_IMAGE -> HTML_CUTTER_DES / HTML_CUTTER_FIRST_PAGE（最终产出，均在 repulibcation/ 下）
 IMAGES_BASE = BARBOUR_BASE / "images"
+PROCESS_BASE = BARBOUR_BASE / "repulibcation"
 
 BARBOUR = {
     "BRAND": "barbour",
@@ -35,25 +43,26 @@ BARBOUR = {
     "OUTPUT_DIR": BARBOUR_BASE / "repulibcation",
     "STORE_DIR": BARBOUR_BASE / "document" / "store",
     "PUBLICATION_DIR": BARBOUR_BASE / "document" / "publication",
-    # ── 图片流水线目录（均在 IMAGES_BASE 下，不受 cleanup/backup 影响）──
+    # ── 长期原始素材库（不受 cleanup/backup 影响）──
     "IMAGE_ROOT": IMAGES_BASE,
     "IMAGE_DOWNLOAD": IMAGES_BASE / "image_download",
-    "IMAGE_SELECTED": IMAGES_BASE / "images_selected",
-    "IMAGE_MISSING_TXT": IMAGES_BASE / "missing_codes.txt",
-    "IMAGE_PERSON_DIR": IMAGES_BASE / "person",
-    "IMAGE_DETAIL_DIR": IMAGES_BASE / "detail",
-    "IMAGE_FINAL": IMAGES_BASE / "image_final",
-    "IMAGE_PROCESS": IMAGES_BASE / "image_final",  # generate_html.py 读取的图源，等同 IMAGE_FINAL
-    "MERGED_DIR": IMAGES_BASE / "image_merged",
-    "HTML_DIR": IMAGES_BASE / "html",
-    "HTML_DIR_DES": IMAGES_BASE / "html" / "description",
-    "HTML_DIR_FIRST_PAGE": IMAGES_BASE / "html" / "first_page",
-    "HTML_IMAGE": IMAGES_BASE / "html_image",
-    "HTML_IMAGE_DES": IMAGES_BASE / "html_image" / "description",
-    "HTML_IMAGE_FIRST_PAGE": IMAGES_BASE / "html_image" / "first_page",
-    "HTML_CUTTER_DES": IMAGES_BASE / "html_cutter" / "description",
-    "HTML_CUTTER_FIRST_PAGE": IMAGES_BASE / "html_cutter" / "first_page",
-    "HTML_DEST": IMAGES_BASE / "dest",
+    # ── 以下为 repulibcation/ 下的本批次临时数据（阶段F~G），随发布批次走，非长期库 ──
+    "IMAGE_SELECTED": PROCESS_BASE / "images_selected",
+    "IMAGE_MISSING_TXT": PROCESS_BASE / "missing_codes.txt",
+    "IMAGE_PERSON_DIR": PROCESS_BASE / "classify" / "person",
+    "IMAGE_DETAIL_DIR": PROCESS_BASE / "classify" / "detail",
+    "IMAGE_FINAL": PROCESS_BASE / "linkfox_processed",
+    "IMAGE_PROCESS": PROCESS_BASE / "linkfox_processed",  # generate_html.py 读取的图源，等同 IMAGE_FINAL；即 AI 换脸脚本的输出目录
+    "MERGED_DIR": PROCESS_BASE / "image_merged",
+    "HTML_DIR": PROCESS_BASE / "html",
+    "HTML_DIR_DES": PROCESS_BASE / "html" / "description",
+    "HTML_DIR_FIRST_PAGE": PROCESS_BASE / "html" / "first_page",
+    "HTML_IMAGE": PROCESS_BASE / "html_image",
+    "HTML_IMAGE_DES": PROCESS_BASE / "html_image" / "description",
+    "HTML_IMAGE_FIRST_PAGE": PROCESS_BASE / "html_image" / "first_page",
+    "HTML_CUTTER_DES": PROCESS_BASE / "html_cutter" / "description",
+    "HTML_CUTTER_FIRST_PAGE": PROCESS_BASE / "html_cutter" / "first_page",
+    "HTML_DEST": PROCESS_BASE / "dest",
     "TABLE_NAME": "barbour_inventory",
     "TAOBAO_STORE_DISCOUNT": 1,  # 不包关税→淘宝店铺价再打9折
     "SUPPLIER_MIN_SIZES": 2,    # 供应商映射：至少要有几个有货尺码才算"可用"

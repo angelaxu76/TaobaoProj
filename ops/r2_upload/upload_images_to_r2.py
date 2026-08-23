@@ -33,7 +33,7 @@ R2_ACCESS_KEY_ID = os.environ.get("R2_ACCESS_KEY_ID", "")
 R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY", "")
 
 # 本地图片所在文件夹（单层目录，不递归子文件夹）
-LOCAL_IMAGE_DIR = Path(r"D:\TB\Products\barbour\images\person")
+LOCAL_IMAGE_DIR = Path(r"D:\TB\Products\barbour\repulibcation\classify\person")
 
 # 上传到 R2 后的对象 key 前缀，相当于"文件夹路径"
 # 例如 "clarks/" -> 最终 key 为 "clarks/文件名.webp"
