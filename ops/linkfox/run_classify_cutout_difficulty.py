@@ -19,10 +19,10 @@ from helper.image.classify_cutout_difficulty import split_hard_to_cut
 # ============================================================
 
 # 待分类图片目录（新图片放这里）
-INPUT_DIR = r"D:\TB\Products\barbour\images\detail"
+INPUT_DIR = r"D:\TB\Products\barbour\repulibcation\classify\detail"
 
 # 难抠图图片输出目录
-HARD_DIR = r"D:\TB\Products\barbour\repulibcation\1"
+HARD_DIR = r"D:\TB\Products\barbour\repulibcation\classify\detail_difficult"
 
 # 前景占比阈值，越高越严格；默认 0.65 来自已有样本统计（约 91% 准确率）
 THRESHOLD = 0.65
@@ -31,7 +31,7 @@ THRESHOLD = 0.65
 MOVE = True
 
 # True=只打印分类结果，不实际移动/复制文件，先看看效果；确认无误后再改成 False
-DRY_RUN = True
+DRY_RUN = False
 
 # ============================================================
 

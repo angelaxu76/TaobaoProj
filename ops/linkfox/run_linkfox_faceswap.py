@@ -89,6 +89,7 @@ def read_codes_from_excel(path: str, header_rows: int = 1) -> list[str]:
     return codes
 
 
+
 def main():
     codes = read_codes_from_excel(INPUT_FILE, HEADER_ROWS)
     if not codes:

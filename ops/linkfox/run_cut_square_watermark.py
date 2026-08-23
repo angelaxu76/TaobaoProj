@@ -32,7 +32,7 @@ OUTPUT_DIR = str(BRAND_ROOT / "linkfox_processed")
 
 # 并发线程数
 # birefnet 推理 CPU 密集；AUTO_CUTOUT=True 时建议 ≤ 4，关抠图可调高
-MAX_WORKERS = 4
+MAX_WORKERS = 2
 
 # 是否自动抠图（False = 只做裁正方形 + 水印，跳过 rembg，速度极快）
 AUTO_CUTOUT = True
