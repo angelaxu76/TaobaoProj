@@ -7,6 +7,9 @@ from typing import Tuple
 from config import BRAND_CONFIG, BRAND_NAME_MAP, BARBOUR
 from common.text.translate import safe_translate
 from common.text.ad_sanitizer import sanitize_text
+from common.utils.logger_utils import setup_logger
+
+logger = setup_logger("barbour_taobao_title")
 
 # ==== 读取前缀规则（性别+类型） ====
 _cfg = BRAND_CONFIG.get("barbour") or BRAND_CONFIG.get("Barbour") or {}
@@ -68,9 +71,13 @@ TYPE_EXTRAS = {
     "内胆": ["保暖", "轻便", "易搭配"],
     "抓绒夹克": ["保暖", "春秋", "舒适", "通勤"],
     "防风防小雨外套": ["通勤", "日常出行", "轻量"],
+    "防水夹克": ["防水", "户外", "通勤"],
+    "防泼水夹克": ["防泼水", "轻量", "通勤"],
     "马甲": ["叠穿", "轻便", "通勤"],
     "夹克": ["通勤", "百搭", "春秋"],
     "外套": ["通勤", "春秋", "百搭"],
+    "卫衣": ["百搭", "休闲", "日常"],
+    "风衣": ["英伦风", "通勤", "百搭"],
     "中长连衣裙": ["优雅", "通勤", "百搭", "春夏"],
     "中长裙": ["优雅", "通勤", "百搭", "春夏"],
     "翻领T恤POLO衫": ["短袖", "商务休闲", "苏格兰格纹", "Tartan", "有领"],
@@ -78,6 +85,44 @@ TYPE_EXTRAS = {
     "翻领薄衬衫": ["商务休闲","英伦风", "修身", "透气"],
     "T恤": ["百搭", "休闲", "日常"],
 }
+
+
+# ==== 核心品类关键词（比卖点词更重要，客户高频搜索的大类目词）====
+# 同一件商品，不同客户可能搜不同的近义品类词（夹克/外套、马甲/内胆），
+# 补上近义词能多接住一批搜索流量。只在真正近似的品类间关联，避免风马牛不相及
+# （比如衬衫/T恤/裙装不属于外套，卫衣也不等同于马甲/内胆，不关联）
+TYPE_CORE_KEYWORDS = {
+    "油蜡夹克": ["外套"],
+    "绗缝夹克": ["外套"],
+    "休闲夹克": ["外套"],
+    "抓绒夹克": ["外套"],
+    "防水夹克": ["外套"],
+    "防泼水夹克": ["外套"],
+    "派克大衣": ["外套"],
+    "风衣": ["外套"],
+    "夹克": ["外套"],
+    "马甲": ["内胆"],
+    "内胆": ["马甲"],
+}
+
+
+# ==== 前缀内部混品类时，用英文名关键词做二次判断 ====
+# 仅对已确认前缀内部混品类的两组前缀生效，不全局匹配——
+# "trench"/"gilet" 等词也会出现在其他前缀商品名的配色/系列名里
+# （如 MOS "Overshirt - Trench"、MML "Polo Shirt - Trench"、LKN "Merino Knit - Light Trench"），
+# 全局匹配会把这些商品误判成风衣/马甲
+_FLEECE_MIXED_PREFIXES = ("MFL", "LFL")       # 同前缀下既有 Fleece Gilet 也有 Fleece Jacket
+_SHOWERPROOF_MIXED_PREFIXES = ("MSP", "LSP")  # 同前缀下主要是 Showerproof Jacket，少量是 Trench Coat
+
+
+def refine_type_by_keywords(code: str, type_str: str, style_name_en: str) -> str:
+    c = (code or "").upper().strip()
+    text = (style_name_en or "").lower()
+    if c.startswith(_FLEECE_MIXED_PREFIXES) and re.search(r"\b(gilet|waistcoat|bodywarmer)\b", text):
+        return "马甲"
+    if c.startswith(_SHOWERPROOF_MIXED_PREFIXES) and re.search(r"\btrench\b", text):
+        return "风衣"
+    return type_str
 
 
 # ==== 重要关键词映射（优先用于补齐 60 字节）====
@@ -129,8 +174,9 @@ def pad_to_60_bytes(base_title: str, style_name_en: str, type_str: str) -> str:
     """
     V2.1：补齐到 60 字节优先级：
     1) KEYWORD_MAP 标签（国际版/防水/轻蜡…）
-    2) TYPE_EXTRAS 类型卖点（通勤/百搭/春秋…）
-    3) FILLER_WORDS 通用安全词
+    2) TYPE_CORE_KEYWORDS 核心品类词（外套…）
+    3) TYPE_EXTRAS 类型卖点（通勤/百搭/春秋…）
+    4) FILLER_WORDS 通用安全词
     """
     cur = base_title or ""
     if get_byte_length(cur) >= 60:
@@ -149,7 +195,18 @@ def pad_to_60_bytes(base_title: str, style_name_en: str, type_str: str) -> str:
             cur += tag
             available -= tlen
 
-    # 2) 再补：类型卖点
+    # 2) 再补：核心品类词（如"外套"），优先级高于卖点词
+    for tag in TYPE_CORE_KEYWORDS.get(type_str, []):
+        if available <= 0:
+            return cur
+        if tag in cur:
+            continue
+        tlen = get_byte_length(tag)
+        if tlen <= available:
+            cur += tag
+            available -= tlen
+
+    # 3) 再补：类型卖点
     for tag in TYPE_EXTRAS.get(type_str, []):
         if available <= 0:
             return cur
@@ -160,7 +217,7 @@ def pad_to_60_bytes(base_title: str, style_name_en: str, type_str: str) -> str:
             cur += tag
             available -= tlen
 
-    # 3) 最后补：通用安全词
+    # 4) 最后补：通用安全词
     if available > 0:
         words = FILLER_WORDS[:]
         random.shuffle(words)
@@ -184,8 +241,10 @@ def detect_by_code_prefix(code: str) -> Tuple[str, str]:
         if c.startswith(pref):
             return CODE_PREFIX_RULES[pref]  # (gender, type)
 
-    # 兜底：仅性别
+    # 兜底：CODE_PREFIX_RULES 里没有的新前缀，仅按性别猜品类为"夹克"，
+    # 并记录警告——避免像 LGI/LFL 那样长期被静默错标而未被发现
     if c and c[0] in ("M", "L"):
+        logger.warning(f"[Barbour] 未知前缀，品类兜底为'夹克'，请检查是否需要补充 CODE_PREFIX_RULES: code={c}")
         return ("男款" if c[0] == "M" else "女款", "夹克")
     return "", "夹克"
 
@@ -333,6 +392,9 @@ def generate_barbour_taobao_title(code: str, style_name_en: str, color_en: str, 
     brand_full = f"{brand_en}"
 
     gender_str, type_str = detect_by_code_prefix(code)
+
+    # 前缀内部混品类（MFL/LFL、MSP/LSP）时，按英文名关键词二次判断
+    type_str = refine_type_by_keywords(code, type_str, style_name_en)
 
     # V2.1：术语统一（蜡棉夹克 -> 油蜡夹克）
     if type_str == "蜡棉夹克":

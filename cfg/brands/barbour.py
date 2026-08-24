@@ -218,6 +218,26 @@ BARBOUR = {
         # Gilets
         "MGL": ("男款", "马甲"),
         "LGL": ("女款", "马甲"),
+        "MGI": ("男款", "马甲"),
+        "LGI": ("女款", "马甲"),
+
+        # Fleece（同前缀下既有 Fleece Gilet 也有 Fleece Jacket，
+        # 这里给的是兜底品类，实际写标题时会按英文名关键词二次判断为 马甲/抓绒夹克）
+        "MFL": ("男款", "抓绒夹克"),
+        "LFL": ("女款", "抓绒夹克"),
+
+        # Sweatshirts/Hoodies
+        "MOL": ("男款", "卫衣"),
+        "LOL": ("女款", "卫衣"),
+
+        # Showerproof Jackets（同前缀下少量是 Trench Coat，
+        # 写标题时会按英文名关键词二次判断为 风衣）
+        "MSP": ("男款", "防泼水夹克"),
+        "LSP": ("女款", "防泼水夹克"),
+
+        # Waterproof Jackets
+        "MWB": ("男款", "防水夹克"),
+        "LWB": ("女款", "防水夹克"),
 
         # Knitwear
         "MKN": ("男款", "针织"),

@@ -126,7 +126,7 @@ def rename_by_shot_priority(
 
 if __name__ == "__main__":
     FOLDER = r"D:\TB\Products\ecco\publication\image_process"
-    BRAND = "ecco"
+    BRAND = "barbour"
     PRIORITY_SOURCE = "FIRST"  # "FIRST" -> IMAGE_FIRST_PRIORITY，"DES" -> IMAGE_DES_PRIORITY
     DRY_RUN = True  # 先预览确认顺序无误，再改成 False 实际重命名
 
