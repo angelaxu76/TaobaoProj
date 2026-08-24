@@ -9,6 +9,7 @@ from helper.image.crop_to_square import run_crop_and_expand
 from helper.image.copy_images import copy_images
 from brands.clarks.download_product_images import download_images_by_code_file,download_all_images_from_product_links
 from brands.camper.helpers_local.image_defender_with_flip import batch_process_images
+from helper.image.rename_by_shot_priority import rename_by_shot_priority
 
 def main():
     code_file_path = r"D:\TB\Products\clarks\repulibcation\publication_codes.txt"
@@ -40,7 +41,8 @@ def main():
     print("将图片merge到一张图片中")
     batch_merge_images(CLARKS["IMAGE_CUTTER"],CLARKS["MERGED_DIR"], width=750)
 
-
+    print("按优先级把 IMAGE_PROCESS 里的图片改名为 __1/__2/...")
+    rename_by_shot_priority(CLARKS["IMAGE_PROCESS"], brand="clarks")
 
     print("生成产品详情卡HTML")
     generate_html_from_codes_files("clarks",code_file_path)

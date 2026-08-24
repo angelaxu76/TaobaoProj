@@ -1,14 +1,16 @@
 """
 把 {编码}_{F/C/L/P/T}.jpg 命名的文件改成 {编码}_{1..5}.jpg。
 
-映射固定为 F->1, C->2, L->3, P->4, T->5（按业务要求的顺序，不是字母序）。
+映射顺序读 cfg/image_priority_config.py 里 camper 的 IMAGE_RENAME_PRIORITY
+（默认 F->1, C->2, L->3, P->4, T->5，按业务要求的顺序，不是字母序）。
 只用于 IMAGE_CUTTER（供上传 R2 / AI 视角旋转用），不影响 IMAGE_PROCESS
 （HTML 生成读取封面图仍然按 F/C/L/T 字母后缀 + IMAGE_DES_PRIORITY 配置查找，
 两个目录互不影响）。
 """
 import os
+from config import CAMPER
 
-SUFFIX_ORDER = ["F", "C", "L", "P", "T"]
+SUFFIX_ORDER = CAMPER["IMAGE_RENAME_PRIORITY"]
 _SUFFIX_TO_NUMBER = {s: i for i, s in enumerate(SUFFIX_ORDER, start=1)}
 
 

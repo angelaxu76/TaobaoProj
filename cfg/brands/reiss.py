@@ -1,13 +1,13 @@
 from ..paths import BASE_DIR
 from ..db_config import PGSQL_CONFIG
+from ..image_priority_config import IMAGE_PRIORITY_CONFIG
 
 REISS_BASE = BASE_DIR / "reiss"
 REISS = {
     "BRAND": "reiss",
     "BASE": REISS_BASE,
     "FEATURE_DELIMITER": "|",
-    "IMAGE_FIRST_PRIORITY": ["s", "s3", "s4"],
-    "IMAGE_DES_PRIORITY": ["s2", "s3", "s4", "s5"],
+    **IMAGE_PRIORITY_CONFIG["reiss"],
     "TXT_DIR": REISS_BASE / "publication" / "TXT",
     "ORG_IMAGE_DIR": REISS_BASE / "document" / "orgin_images",
     "DEF_IMAGE_DIR": REISS_BASE / "document" / "DEF_images",

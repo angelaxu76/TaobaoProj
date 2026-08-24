@@ -5,6 +5,7 @@ from common.publication.generate_html import generate_html_from_codes_files
 from common.publication.generate_html_FristPage import generate_first_page_from_codes_files
 from helper.html.html_to_png_multithread import convert_html_to_images
 from helper.image.trim_sides_batch import trim_sides_batch
+from helper.image.rename_by_shot_priority import rename_by_shot_priority
 from brands.ecco.download_product_images_v2 import download_images_by_code_file
 from config import ECCO
 
@@ -26,6 +27,9 @@ def main():
 
     print("将图片merge到一张图片中")
     batch_merge_images(ECCO["IMAGE_PROCESS"],ECCO["MERGED_DIR"], width=750)
+
+    print("按优先级把 IMAGE_PROCESS 里的图片改名为 __1/__2/...")
+    rename_by_shot_priority(ECCO["IMAGE_PROCESS"], brand="ecco")
 
     print("生成产品详情卡HTML")
     generate_html_from_codes_files("ecco",code_file_path)

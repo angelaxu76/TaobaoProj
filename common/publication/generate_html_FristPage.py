@@ -235,17 +235,21 @@ def _get_image_dir(cfg: dict) -> Path:
     return cfg.get("IMAGE_PROCESS") or cfg.get("IMAGE_DIR") or Path.cwd()
 
 # === 修改：find_image_url 更鲁棒（加多后缀 & 最后兜底选任意匹配）===
-def find_image_url(code: str, image_dir: Path, priority: list[str]) -> str:
+def find_image_url(code: str, image_dir: Path, priority: list[str | int]) -> str:
     if not image_dir.exists():
         return PLACEHOLDER_IMG
 
-    # 先按优先级尝试
     exts = [".jpg", ".jpeg", ".png", ".webp"]
+
+    # 按优先级列表逐项尝试：整数 N -> 改名后的 {code}__N，字符串 -> 原始后缀
     candidates = []
-    for suf in priority:
-        candidates += [image_dir / f"{code}_{suf}{e}" for e in exts]
-        candidates += [image_dir / f"{code}-{suf}{e}" for e in exts]
-        candidates += [image_dir / f"{code}{suf}{e}" for e in exts]
+    for item in priority:
+        if isinstance(item, int):
+            candidates += [image_dir / f"{code}__{item}{e}" for e in exts]
+        else:
+            candidates += [image_dir / f"{code}_{item}{e}" for e in exts]
+            candidates += [image_dir / f"{code}-{item}{e}" for e in exts]
+            candidates += [image_dir / f"{code}{item}{e}" for e in exts]
     candidates += [image_dir / f"{code}{e}" for e in exts]
 
     for c in candidates:

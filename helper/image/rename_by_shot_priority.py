@@ -2,11 +2,14 @@
 把同一目录下、按商品编码分组的图片，按优先级重命名为 {code}__1、{code}__2 ...
 
 优先级来源二选一：
-  1. brand="barbour" 等 —— 自动从 cfg/brands/<brand>.py 读取后缀顺序，
-     具体读 IMAGE_FIRST_PRIORITY 还是 IMAGE_DES_PRIORITY 由 priority_source
-     决定（默认 "FIRST"，对应 generate_html_FristPage.py 首屏用图；
-     传 "DES" 则对应 generate_html.py 详情页正文用图）。两者都没配置时
-     退回 IMAGE_PRIORITY。
+  1. brand="barbour" 等 —— 自动从 cfg/image_priority_config.py 读取该品牌的
+     IMAGE_RENAME_PRIORITY（改名专用后缀顺序，与首页/详情页选图逻辑解耦，
+     互不影响：改名只决定 {code}__1/__2/... 的物理顺序，首页和详情页各自
+     用自己的 IMAGE_FIRST_PRIORITY / IMAGE_DES_PRIORITY 数字索引挑第几张，
+     两边可以配成不同的图，不会因为改名而被迫选中同一张）。
+     没配置 IMAGE_RENAME_PRIORITY 的品牌，退回读 IMAGE_FIRST_PRIORITY /
+     IMAGE_DES_PRIORITY（由 priority_source 决定读哪个，默认 "FIRST"），
+     两者都没配置时再退回 IMAGE_PRIORITY。
   2. priority_suffixes=(...) —— 显式传入后缀顺序，忽略 cfg 和 priority_source。
 
 排序规则：
@@ -21,7 +24,7 @@
 调用方式：
     from helper.image.rename_by_shot_priority import rename_by_shot_priority
 
-    # 方式一：按品牌自动读取 cfg 里的 IMAGE_FIRST_PRIORITY
+    # 方式一：按品牌自动读取 cfg 里的 IMAGE_RENAME_PRIORITY
     rename_by_shot_priority(r"D:\\TB\\Products\\barbour\\repulibcation\\linkfox_processed", brand="barbour")
 
     # 方式二：显式指定优先级列表，不依赖 cfg
@@ -52,13 +55,18 @@ def _resolve_priority_suffixes(brand: str, priority_source: str) -> tuple[str, .
     if cfg is None:
         raise ValueError(f"未找到品牌配置：{brand}")
 
+    rename_priority = cfg.get("IMAGE_RENAME_PRIORITY")
+    if rename_priority:
+        return tuple(rename_priority)
+
+    # 兼容未配置 IMAGE_RENAME_PRIORITY 的品牌：退回旧的 FIRST/DES 后缀列表
     key = _PRIORITY_KEYS.get(priority_source.upper())
     if key is None:
         raise ValueError(f"priority_source 只能是 {tuple(_PRIORITY_KEYS)}，收到: {priority_source!r}")
 
     priority = cfg.get(key) or cfg.get("IMAGE_PRIORITY")
     if not priority:
-        raise ValueError(f"{brand} 的 cfg 中未配置 {key} / IMAGE_PRIORITY")
+        raise ValueError(f"{brand} 的 cfg 中未配置 IMAGE_RENAME_PRIORITY / {key} / IMAGE_PRIORITY")
     return tuple(priority)
 
 
@@ -125,9 +133,9 @@ def rename_by_shot_priority(
 
 
 if __name__ == "__main__":
-    FOLDER = r"D:\TB\Products\ecco\publication\image_process"
+    FOLDER = r"D:\TB\Products\barbour\repulibcation\linkfox_processed"
     BRAND = "barbour"
-    PRIORITY_SOURCE = "FIRST"  # "FIRST" -> IMAGE_FIRST_PRIORITY，"DES" -> IMAGE_DES_PRIORITY
+    PRIORITY_SOURCE = "FIRST"  # 仅在 cfg 未配置 IMAGE_RENAME_PRIORITY 时生效："FIRST" -> IMAGE_FIRST_PRIORITY，"DES" -> IMAGE_DES_PRIORITY
     DRY_RUN = True  # 先预览确认顺序无误，再改成 False 实际重命名
 
     rename_by_shot_priority(FOLDER, brand=BRAND, priority_source=PRIORITY_SOURCE, dry_run=DRY_RUN)

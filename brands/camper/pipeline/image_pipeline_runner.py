@@ -8,6 +8,7 @@ from common.publication.generate_html_FristPage import generate_first_page_from_
 from helper.image.merge_product_images import batch_merge_images
 from helper.html.html_to_png_multithread import convert_html_to_images
 from helper.image.trim_sides_batch import trim_sides_batch
+from helper.image.rename_by_shot_priority import rename_by_shot_priority
 
 
 def main():
@@ -35,6 +36,9 @@ def main():
 
     print("将图片merge到一张图片中")
     batch_merge_images(CAMPER["IMAGE_CUTTER"],CAMPER["MERGED_DIR"], width=750)
+
+    print("按优先级把 IMAGE_PROCESS 里的图片改名为 __1/__2/...")
+    rename_by_shot_priority(CAMPER["IMAGE_PROCESS"], brand="camper")
 
     print("生成产品详情卡HTML")
     generate_html_from_codes_files("camper",code_file_path,max_workers=2)

@@ -7,6 +7,7 @@ from common.publication.generate_html_FristPage import generate_first_page_from_
 from helper.image.merge_product_images import batch_merge_images
 from helper.html.html_to_png_multithread import convert_html_to_images
 from helper.image.trim_sides_batch import trim_sides_batch
+from helper.image.rename_by_shot_priority import rename_by_shot_priority
 from brands.reiss.core.download_reiss_images import download_reiss_images_from_codes
 
 
@@ -28,6 +29,12 @@ def main():
 
     print("图片从download拷贝到document下面")
     shutil.copytree(REISS["IMAGE_DOWNLOAD"], REISS["IMAGE_DIR"], dirs_exist_ok=True)
+
+    print("原样拷贝到 IMAGE_PROCESS（供生成详情页/首页封面图使用）")
+    shutil.copytree(REISS["IMAGE_DOWNLOAD"], REISS["IMAGE_PROCESS"], dirs_exist_ok=True)
+
+    print("按优先级把 IMAGE_PROCESS 里的图片改名为 __1/__2/...")
+    rename_by_shot_priority(REISS["IMAGE_PROCESS"], brand="reiss")
 
     print("生成产品详情卡HTML")
     generate_html_from_codes_files("reiss",code_file_path)

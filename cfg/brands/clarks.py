@@ -1,5 +1,6 @@
 from ..paths import BASE_DIR, GEI_SHARED_BASE
 from ..db_config import PGSQL_CONFIG
+from ..image_priority_config import IMAGE_PRIORITY_CONFIG
 
 
 # === Clarks 鲸芽供货商模式路径配置 ===
@@ -9,12 +10,7 @@ CLARKS = {
     "BASE": CLARKS_BASE,
     "GEI_DIR": GEI_SHARED_BASE / "clarks",
     "FEATURE_DELIMITER": ";",
-    # 2026-07 图片重排（1,6,2,3,5,4,7,8,9 -> 1,2,3,4,5,6,7,8,9）之后，这几个
-    # 优先级列表已经按新编号翻译过，指向的还是原来同一批照片，不是巧合数字：
-    # 旧 1/6/4/2 依次对应新 1/2/6/3。
-    "IMAGE_PRIORITY": ["1", "2", "6", "3"],
-    "IMAGE_FIRST_PRIORITY": ["1", "2", "6", "3"],
-    "IMAGE_DES_PRIORITY": ["2", "1", "6", "3"],
+    **IMAGE_PRIORITY_CONFIG["clarks"],
     "TXT_DIR": CLARKS_BASE / "publication" / "TXT",
     "ORG_IMAGE_DIR": CLARKS_BASE / "publication" / "orgin_images",
     "DEF_IMAGE_DIR": CLARKS_BASE / "publication" / "DEF_images",

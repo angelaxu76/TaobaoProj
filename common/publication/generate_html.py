@@ -192,32 +192,22 @@ def find_image_path(code, image_dir: Path, brand: str):
     if not image_dir.exists():
         return PLACEHOLDER_IMG
 
-    # ==== Clarks-Jingya 特殊逻辑：取最大数字后缀的图片 ====
-    if brand.lower() == "clarks":
-        pattern = re.compile(rf"^{re.escape(code)}_(\d+)\.jpg$", re.IGNORECASE)
-        max_num = -1
-        best_file = None
+    # ==== 按优先级列表逐项尝试：整数 N -> 改名后的 {code}__N，字符串 -> 原始后缀 {code}_后缀 ====
+    for item in priority:
+        if isinstance(item, int):
+            # 已跑过 rename_by_shot_priority 改名的品牌，用这一项在 __N 序列里挑图
+            for ext in (".jpg", ".jpeg", ".png", ".webp"):
+                candidate = image_dir / f"{code}__{item}{ext}"
+                if candidate.exists():
+                    return candidate.resolve().as_uri()
+        else:
+            # 其他品牌：原逻辑（单下划线 + 固定后缀，如 _8 / _front_1_faceswap）
+            candidate = image_dir / f"{code}_{item}.jpg"
+            if candidate.exists():
+                return f"file:///{candidate.as_posix()}"
 
-        for img_file in image_dir.glob(f"{code}_*.jpg"):
-            m = pattern.match(img_file.name)
-            if m:
-                num = int(m.group(1))
-                if num > max_num:
-                    max_num = num
-                    best_file = img_file
-
-        if best_file:
-            return best_file.resolve().as_uri()
-
-        return PLACEHOLDER_IMG
-
-    # ==== 其他品牌：原逻辑（单下划线 + 固定后缀，如 _8 / _front_1_faceswap）====
-    for suffix in priority:
-        candidate = image_dir / f"{code}_{suffix}.jpg"
-        if candidate.exists():
-            return f"file:///{candidate.as_posix()}"
-
-    # ==== 新版命名：rename_by_shot_priority 产出的 {code}__1 / __2 ...（双下划线+序号，取最小序号）====
+    # ==== 兜底：{code}__1 / __2 ...（双下划线+序号，取最小序号）——
+    #      上面按优先级列表精确匹配失败时（如该编码图片数不够）也会落到这里 ====
     pattern = re.compile(rf"^{re.escape(code)}__(\d+)\.\w+$", re.IGNORECASE)
     best_num, best_file = None, None
     for img_file in image_dir.glob(f"{code}__*.*"):

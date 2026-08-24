@@ -1,5 +1,6 @@
 from ..paths import BASE_DIR, GEI_SHARED_BASE
 from ..db_config import PGSQL_CONFIG
+from ..image_priority_config import IMAGE_PRIORITY_CONFIG
 
 ECCO_BASE = BASE_DIR / "ecco"
 ECCO = {
@@ -7,8 +8,7 @@ ECCO = {
     "BASE": ECCO_BASE,
     "GEI_DIR": GEI_SHARED_BASE / "ecco",
     "FEATURE_DELIMITER": "|",
-    "IMAGE_FIRST_PRIORITY": ["m","top_left_pair","front_pair",   "o", "s", "b"],
-    "IMAGE_DES_PRIORITY": ["front_pair", "top_left_pair", "m", "o", "s", "b"],
+    **IMAGE_PRIORITY_CONFIG["ecco"],
     "TXT_DIR": ECCO_BASE / "publication" / "TXT",
     "ORG_IMAGE_DIR": ECCO_BASE / "publication" / "orgin_images",
     "DEF_IMAGE_DIR": ECCO_BASE / "publication" / "DEF_images",

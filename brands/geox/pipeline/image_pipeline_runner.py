@@ -9,6 +9,7 @@ from helper.html.html_to_png_multithread import convert_html_to_images
 from helper.image.trim_sides_batch import trim_sides_batch
 from helper.image.crop_to_square import run_crop_and_expand
 from helper.image.copy_images import copy_images
+from helper.image.rename_by_shot_priority import rename_by_shot_priority
 from brands.geox.download_product_images import download_geox_images_by_code_file
 import helper.image.cut_square_white_watermark as _cutmod
 
@@ -51,7 +52,8 @@ def main():
     print("将图片merge到一张图片中")
     batch_merge_images(GEOX["IMAGE_CUTTER"],GEOX["MERGED_DIR"], width=750)
 
-
+    print("按优先级把 IMAGE_PROCESS 里的图片改名为 __1/__2/...")
+    rename_by_shot_priority(GEOX["IMAGE_PROCESS"], brand="geox")
 
     print("生成产品详情卡HTML")
     generate_html_from_codes_files("GEOX",code_file_path)

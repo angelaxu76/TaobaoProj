@@ -8,6 +8,7 @@
   IMAGES_DIR（publication/image_final/）后运行本脚本。
 
 步骤（各步骤可独立开关）：
+  0. 按优先级把 IMAGES_DIR 里的图片改名为 __1/__2/...（供下面选图用）
   1. 将 IMAGES_DIR 中的各款图片横向合并为一张宽图（image_merged）
   2. 生成产品详情卡 HTML（html/description）
   3. 生成产品首页 HTML（html/first_page）
@@ -39,6 +40,7 @@ from cfg.brands.marksandspencer import MARKSANDSPENCER
 # ══════════════════════════════════════════════════════════════════
 
 # ── 步骤开关 ──────────────────────────────────────────────────────
+RUN_0_RENAME       = True   # 按优先级把图片改名为 __1/__2/...
 RUN_1_MERGE        = False   # 图片横向合并
 RUN_2_HTML_DES     = True   # 生成详情卡 HTML
 RUN_3_HTML_FIRST   = True   # 生成首页 HTML
@@ -66,12 +68,17 @@ def main():
     from helper.image.trim_sides_batch import trim_sides_batch
     from common.publication.generate_html import generate_html_from_codes_files
     from common.publication.generate_html_FristPage import generate_first_page_from_codes_files
+    from helper.image.rename_by_shot_priority import rename_by_shot_priority
 
     ms = MARKSANDSPENCER
 
     # generate_html 函数从 BRAND_CONFIG[brand]["IMAGE_PROCESS"] 读图，
     # 本流程的图源是 IMAGE_FINAL，临时覆盖以复用公共生成函数。
     BRAND_CONFIG["marksandspencer"]["IMAGE_PROCESS"] = IMAGES_DIR
+
+    if RUN_0_RENAME:
+        print("── Step 0: 按优先级把图片改名为 __1/__2/... →", IMAGES_DIR)
+        rename_by_shot_priority(IMAGES_DIR, brand="marksandspencer")
 
     if RUN_1_MERGE:
         print("── Step 1: 合并图片 →", ms["MERGED_DIR"])

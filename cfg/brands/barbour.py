@@ -1,5 +1,6 @@
 from ..paths import BASE_DIR, GEI_SHARED_BASE
 from ..db_config import PGSQL_CONFIG
+from ..image_priority_config import IMAGE_PRIORITY_CONFIG
 
 # === Barbour 品牌路径配置 ===
 BARBOUR_BASE = BASE_DIR / "barbour"
@@ -36,8 +37,7 @@ BARBOUR = {
     "BASE": BARBOUR_BASE,
     "GEI_DIR": GEI_SHARED_BASE / "barbour",
     "FEATURE_DELIMITER": ";",
-	"IMAGE_FIRST_PRIORITY": ["front_1_faceswap", "front_0_faceswap", "7", "9", "3", "6"],
-    "IMAGE_DES_PRIORITY": ["8", "7", "6", "front_1_faceswap","front_0_faceswap", "9", "3",],
+	**IMAGE_PRIORITY_CONFIG["barbour"],
     "TXT_DIR": BARBOUR_BASE / "document" /"TXT",
     "TXT_DIR_ALL": BARBOUR_BASE / "publication" /"TXT",
     "OUTPUT_DIR": BARBOUR_BASE / "repulibcation",

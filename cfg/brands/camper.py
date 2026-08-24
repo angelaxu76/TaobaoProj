@@ -1,5 +1,6 @@
 from ..paths import BASE_DIR, GEI_SHARED_BASE
 from ..db_config import PGSQL_CONFIG
+from ..image_priority_config import IMAGE_PRIORITY_CONFIG
 
 
 # === Camper 经销商路径配置 ===
@@ -9,8 +10,7 @@ CAMPER = {
     "BASE": CAMPER_BASE,
     "GEI_DIR": GEI_SHARED_BASE / "camper",
     "FEATURE_DELIMITER": "|",
-    "IMAGE_FIRST_PRIORITY": ["F", "C", "L", "T"],
-    "IMAGE_DES_PRIORITY": ["C", "F", "L", "T"],
+    **IMAGE_PRIORITY_CONFIG["camper"],
     "TXT_DIR": CAMPER_BASE / "publication" / "TXT",
     "ORG_IMAGE_DIR": CAMPER_BASE / "document" / "orgin_images",
     "DEF_IMAGE_DIR": CAMPER_BASE / "document" / "DEF_images",

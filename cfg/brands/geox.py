@@ -1,5 +1,6 @@
 from ..paths import BASE_DIR, GEI_SHARED_BASE
 from ..db_config import PGSQL_CONFIG
+from ..image_priority_config import IMAGE_PRIORITY_CONFIG
 
 # === GEOX 品牌路径配置 ===
 GEOX_BASE = BASE_DIR / "geox"
@@ -8,9 +9,7 @@ GEOX = {
     "BASE": GEOX_BASE,
     "GEI_DIR": GEI_SHARED_BASE / "geox",
     "FEATURE_DELIMITER": "|",
-    "IMAGE_PRIORITY": ["1", "6", "4", "2"],
-    "IMAGE_FIRST_PRIORITY": ["07", "00", "01", "2"],
-    "IMAGE_DES_PRIORITY": ["01", "00", "07", "2"],
+    **IMAGE_PRIORITY_CONFIG["geox"],
     "TXT_DIR": GEOX_BASE / "publication" / "TXT",
     "ORG_IMAGE_DIR": GEOX_BASE / "document" / "orgin_images",
     "DEF_IMAGE_DIR": GEOX_BASE / "document" / "DEF_images",
