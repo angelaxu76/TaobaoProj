@@ -39,7 +39,7 @@ C_REASSIGN_LOW_STOCK = True
 
 # ── 路径配置 ─────────────────────────────────────────────────────
 EXCLUDE_LIST_XLSX    = r"\\vmware-host\Shared Folders\shared\barbour\barbour_exclude_list.xlsx"
-STOCK_EXPORT_DIR     = r"\\vmware-host\Shared Folders\VMShared\barbour_input"
+STOCK_EXPORT_DIR     = r"\\vmware-host\Shared Folders\VMShared\input"
 PRICE_EXPORT_DIR     = r"\\vmware-host\Shared Folders\VMShared\barbour\publication_prices"
 
 # ── D 阶段：淘宝店铺价格导出 ──────────────────────────────────────

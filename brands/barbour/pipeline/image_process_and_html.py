@@ -14,9 +14,13 @@
 
 步骤：
   1. 将 IMAGE_PROCESS 中的各款图片横向合并为一张宽图（MERGED_DIR）
-  2. 生成产品详情卡 HTML（含首页）
-  3. 将 HTML 渲染为图片
-  4. 裁剪图片两侧留白
+  2. 按优先级把 IMAGE_PROCESS 里的图片改名为 __1/__2/...（供选图用，
+     generate_html.py / generate_html_FristPage.py 现在按 IMAGE_DES_PRIORITY /
+     IMAGE_FIRST_PRIORITY 里的数字索引在改名后的 __N 序列里选图，不再认
+     front_1_faceswap 这种原始后缀，这一步不能漏）
+  3. 生成产品详情卡 HTML（含首页）
+  4. 将 HTML 渲染为图片
+  5. 裁剪图片两侧留白
 """
 from cfg.brands.barbour import BARBOUR
 from common.publication.generate_html import generate_html_from_codes_files
@@ -24,6 +28,7 @@ from common.publication.generate_html_FristPage import generate_first_page_from_
 from helper.image.merge_product_images import batch_merge_images
 from helper.html.html_to_png_multithread import convert_html_to_images
 from helper.image.trim_sides_batch import trim_sides_batch
+from helper.image.rename_by_shot_priority import rename_by_shot_priority
 
 
 def main():
@@ -31,6 +36,9 @@ def main():
 
     print("将图片 merge 到一张图片中")
     batch_merge_images(BARBOUR["IMAGE_PROCESS"], BARBOUR["MERGED_DIR"], width=750)
+
+    print("按优先级把 IMAGE_PROCESS 里的图片改名为 __1/__2/...")
+    rename_by_shot_priority(BARBOUR["IMAGE_PROCESS"], brand="barbour")
 
     print("生成产品详情卡 HTML")
     generate_html_from_codes_files("barbour", code_file_path, max_workers=2)
