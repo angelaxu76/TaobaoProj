@@ -9,7 +9,7 @@ from helper.html.html_to_png_multithread import convert_html_to_images
 from helper.image.trim_sides_batch import trim_sides_batch
 from helper.image.crop_to_square import run_crop_and_expand
 from helper.image.copy_images import copy_images
-from helper.image.rename_by_shot_priority import rename_by_shot_priority
+from ops.image_rename.rename_by_shot_priority import rename_by_shot_priority
 from brands.geox.download_product_images import download_geox_images_by_code_file
 import helper.image.cut_square_white_watermark as _cutmod
 

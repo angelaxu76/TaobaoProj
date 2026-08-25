@@ -7,7 +7,7 @@ from common.publication.generate_html_FristPage import generate_first_page_from_
 from helper.image.merge_product_images import batch_merge_images
 from helper.html.html_to_png_multithread import convert_html_to_images
 from helper.image.trim_sides_batch import trim_sides_batch
-from helper.image.rename_by_shot_priority import rename_by_shot_priority
+from ops.image_rename.rename_by_shot_priority import rename_by_shot_priority
 from brands.reiss.core.download_reiss_images import download_reiss_images_from_codes
 
 

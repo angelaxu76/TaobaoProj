@@ -1,6 +1,11 @@
 """
 各品牌"选图 / 改名"优先级集中配置，避免每次调整要打开一大堆 cfg/brands/*.py。
 
+这个文件和 ops/image_rename/rename_by_shot_priority.py 放在一起（而不是留在 cfg/
+下面），是因为这套改名脚本会被各品牌流水线大量调用，独立成一个 ops 子目录方便找。
+cfg/brands/*.py 里通过绝对路径 `from ops.image_rename.image_priority_config import
+IMAGE_PRIORITY_CONFIG` 引用这里的值——cfg 层反过来依赖 ops 层，是这个文件唯一的例外。
+
 统一流程（所有品牌一致）：
   1. 各品牌流水线在生成 HTML 之前，对 IMAGE_PROCESS 目录跑一次
      rename_by_shot_priority(cfg["IMAGE_PROCESS"], brand="<brand>")，
@@ -19,8 +24,8 @@
   选图后缀列表，语义不变。
 - IMAGE_FIRST_PRIORITY / IMAGE_DES_PRIORITY：list[int]，rename 之后按 {code}__N 里
   第 N 张选图，N 是该项在 IMAGE_RENAME_PRIORITY 里的位置（1-indexed）。
-  具体选图逻辑见 generate_html.py 的 find_image_path 和
-  generate_html_FristPage.py 的 find_image_url。
+  具体选图逻辑见 common/publication/generate_html.py 的 find_image_path 和
+  common/publication/generate_html_FristPage.py 的 find_image_url。
 
 例外：
 - geox 除了这一套（供 rename_by_shot_priority 改 IMAGE_PROCESS 用）之外，还单独有

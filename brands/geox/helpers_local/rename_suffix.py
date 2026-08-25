@@ -3,7 +3,7 @@
 
 GEOX 下载下来的视角后缀是 2 位数字（00/10/30/40/50/60，见
 download_product_images.py 里从 URL 解析出的 "_([0-9]{2})\\.jpg"），映射顺序读
-cfg/image_priority_config.py 里 geox 的 IMAGE_CUTTER_RENAME_ORDER（默认
+ops/image_rename/image_priority_config.py 里 geox 的 IMAGE_CUTTER_RENAME_ORDER（默认
 0->1, 10->2, 30->3, 50->4, 60->5, 40->6，按业务要求的顺序，不是数值大小序）。
 
 只用于 IMAGE_CUTTER（供上传 R2 / AI 视角旋转用，这批文件要求严格是

@@ -1,6 +1,6 @@
 from ..paths import BASE_DIR, GEI_SHARED_BASE
 from ..db_config import PGSQL_CONFIG
-from ..image_priority_config import IMAGE_PRIORITY_CONFIG
+from ops.image_rename.image_priority_config import IMAGE_PRIORITY_CONFIG
 
 # === GEOX 品牌路径配置 ===
 GEOX_BASE = BASE_DIR / "geox"

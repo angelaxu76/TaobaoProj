@@ -9,7 +9,7 @@ from helper.image.crop_to_square import run_crop_and_expand
 from helper.image.copy_images import copy_images
 from brands.clarks.download_product_images import download_images_by_code_file,download_all_images_from_product_links
 from brands.camper.helpers_local.image_defender_with_flip import batch_process_images
-from helper.image.rename_by_shot_priority import rename_by_shot_priority
+from ops.image_rename.rename_by_shot_priority import rename_by_shot_priority
 
 def main():
     code_file_path = r"D:\TB\Products\clarks\repulibcation\publication_codes.txt"

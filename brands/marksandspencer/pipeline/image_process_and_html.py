@@ -68,7 +68,7 @@ def main():
     from helper.image.trim_sides_batch import trim_sides_batch
     from common.publication.generate_html import generate_html_from_codes_files
     from common.publication.generate_html_FristPage import generate_first_page_from_codes_files
-    from helper.image.rename_by_shot_priority import rename_by_shot_priority
+    from ops.image_rename.rename_by_shot_priority import rename_by_shot_priority
 
     ms = MARKSANDSPENCER
 
