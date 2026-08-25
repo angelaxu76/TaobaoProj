@@ -37,8 +37,8 @@ def main():
     print("将图片 merge 到一张图片中")
     batch_merge_images(BARBOUR["IMAGE_PROCESS"], BARBOUR["MERGED_DIR"], width=750)
 
-    print("按优先级把 IMAGE_PROCESS 里的图片改名为 __1/__2/...")
-    rename_by_shot_priority(BARBOUR["IMAGE_PROCESS"], brand="barbour")
+    # print("按优先级把 IMAGE_PROCESS 里的图片改名为 __1/__2/...")
+    # rename_by_shot_priority(BARBOUR["IMAGE_PROCESS"], brand="barbour")
 
     print("生成产品详情卡 HTML")
     generate_html_from_codes_files("barbour", code_file_path, max_workers=2)

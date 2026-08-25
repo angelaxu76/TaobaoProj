@@ -99,6 +99,7 @@ class OutdoorAndCountryFetcher(BaseFetcher):
                     ],
                     verbose=True,
                 )
+                driver.set_page_load_timeout(40)
                 _uc_drivers[key] = driver
                 self.logger.info(f"🚗 [uc] undetected_chromedriver 已启动 (key={key})")
             return _uc_drivers[key]
@@ -117,16 +118,26 @@ class OutdoorAndCountryFetcher(BaseFetcher):
         """
         导航到页面，等待 Cloudflare challenge 自动通过后 var stockInfo 出现。
         超时上限 30s：challenge 解决约需 5-10s，之后页面正常渲染。
+
+        driver.get() 设有 40s page load timeout（见 get_driver）；若浏览器进程
+        卡死（而不仅仅是页面慢），driver.get() 或 WebDriverWait 会抛异常，此时
+        必须销毁并重建 driver ——否则同一线程后续所有商品都会复用这个
+        卡死的浏览器，导致连续超时（而不是逐个恢复）。
         """
         driver = self.get_driver()
-        driver.get(url)
         try:
-            WebDriverWait(driver, 30).until(
-                lambda d: "var stockInfo" in d.page_source
-            )
-        except TimeoutException:
-            self.logger.warning(f"等待 stockInfo 超时 (30s)，继续使用当前 page_source: {url}")
-        return driver.page_source
+            driver.get(url)
+            try:
+                WebDriverWait(driver, 30).until(
+                    lambda d: "var stockInfo" in d.page_source
+                )
+            except TimeoutException:
+                self.logger.warning(f"等待 stockInfo 超时 (30s)，继续使用当前 page_source: {url}")
+            return driver.page_source
+        except Exception:
+            self.logger.warning(f"driver.get() 失败，销毁并重建浏览器: {url}")
+            self.quit_driver()
+            raise
 
     def parse_detail_page(self, html: str, url: str) -> Dict[str, Any]:
         """
