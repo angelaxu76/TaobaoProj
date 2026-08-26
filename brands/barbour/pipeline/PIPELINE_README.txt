@@ -10,59 +10,40 @@
 
 ================================================================================
   阶段 A：抓取供应商商品信息
-  脚本：crawl_supplier_info.py
+  脚本：prepare_jingya_listing.py（RUN_A_CRAWL=True 时执行，见文件顶部 A_SUPPLIERS）
 ================================================================================
 
-  步骤 0（可选）：清空 TXT + 发布目录（备份旧数据）
+  注：旧的独立脚本 crawl_supplier_info.py 已移到 brands/barbour/legacy/ ——
+  它抓的供应商列表早就跟不上了（少了 magrigg/williampowell/samturner，houseoffraser
+  也没像现在这样因为太慢而停用），不要再当作阶段 A 的入口用。
+
+  步骤 0（可选，RUN_A_BACKUP）：清空 TXT + 发布目录（备份旧数据）
     backup_and_clear_brand_dirs(BARBOUR)
 
-  步骤 1：获取各供应商商品链接（写入 links 文件）
-    barbour_get_links()                      ← Barbour 官网
-    outdoorandcountry_fetch_and_save_links() ← Outdoor & Country
-    allweathers_get_links()
-    houseoffraser_get_links()
-    collect_terraces_links()
-    philipmorris_get_links()
-    cho_get_links()
-    # very_get_links()                        ← 暂时停用
+  步骤 1+2：按 A_SUPPLIERS 逐个站点获取链接 + 抓取商品详情 → 写入 TXT 文件
+    barbour / outdoorandcountry / allweathers / terraces / philipmorris /
+    cho / magrigg / williampowell / samturner
+    （very 停用；houseoffraser 单次运行需 4-6 小时，太耗时，也停用，
+     保留 import 供随时恢复）
 
-  步骤 2：按链接抓取商品详情 → 写入 TXT 文件
-    barbour_fetch_info()
-    outdoorandcountry_fetch_info(max_workers=1)  ← 需 undetected_chromedriver（Cloudflare）
-    allweathers_fetch_info(7)
-    houseoffraser_fetch_info(max_workers=7, headless=False)
-    terraces_fetch_info(max_workers=7)
-    philipmorris_fetch_info(max_workers=7)
-    cho_fetch_info(max_workers=7)
-
-  步骤 3（可选）：移除 TXT 目录中无 Barbour 编码的文件
-    move_non_barbour_files(houseoffraser/TXT, houseoffraser/TXT.bk)
-    move_non_barbour_files(cho/TXT, cho/TXT.bk)
-    move_non_barbour_files(philipmorris/TXT, philipmorris/TXT.bk)
-    move_non_barbour_files(terraces/TXT, terraces/TXT.bk)
+  步骤 3：移除 TXT 目录中无 Barbour 编码的文件（cho/philipmorris/terraces/
+          magrigg/williampowell/samturner）
 
 ================================================================================
   阶段 B：将 TXT 导入数据库
-  脚本：db_import_txt_products_offers.py
+  脚本：prepare_jingya_listing.py（RUN_B_IMPORT=True 时执行，见文件顶部 B_SUPPLIERS）
 ================================================================================
 
-  步骤 3：TXT → barbour_products 表（商品基础信息）
-    batch_import_txt_to_barbour_product("barbour")
-    batch_import_txt_to_barbour_product("outdoorandcountry")
-    batch_import_txt_to_barbour_product("allweathers")
-    batch_import_txt_to_barbour_product("philipmorris")
-    batch_import_txt_to_barbour_product("cho")
-    # batch_import_txt_to_barbour_product("houseoffraser")  ← 暂停用
+  注：旧的独立脚本 db_import_txt_products_offers.py 已移到 brands/barbour/legacy/ ——
+  同样缺了 magrigg/williampowell/samturner，不要再当作阶段 B 的入口用。
 
-  步骤 4：TXT → barbour_offers 表（各供应商库存/价格）
-    import_txt_for_supplier("barbour", False)
-    import_txt_for_supplier("outdoorandcountry", False)
-    import_txt_for_supplier("allweathers", False)
-    import_txt_for_supplier("houseoffraser", False)
-    import_txt_for_supplier("very", False)
-    import_txt_for_supplier("terraces", False)
-    import_txt_for_supplier("philipmorris", False)
-    import_txt_for_supplier("cho", False)
+  按 B_SUPPLIERS 逐个供应商：
+    batch_import_txt_to_barbour_product(supplier)   → barbour_products
+    import_txt_for_supplier(supplier, clear_first=True)  → barbour_offers
+      （clear_first=True：先清空该供应商旧数据再从 TXT 重建，避免残留）
+
+    supplier 列表：barbour / outdoorandcountry / allweathers / terraces /
+    philipmorris / cho / magrigg / williampowell / samturner
 
 ================================================================================
   阶段 B2（可选）：处理无编码商品（houseoffraser 等来源）
@@ -82,32 +63,32 @@
        backfill_product_codes_to_txt("houseoffraser")
 
 ================================================================================
-  阶段 C：构建供应商映射 & Inventory
-  脚本：db_build_supplier_map_and_inventory.py
+  阶段 C：构建 Inventory + 供应商/价格/库存分配
+  脚本：allocate_supplier_and_price.py（单一入口，替代旧的 db_build_supplier_map_and_inventory.py）
 ================================================================================
 
-  根据需要选择对应场景（修改脚本底部的 MODE 参数）：
+  1. 清空 inventory → 插入鲸芽已发布商品（含新品，stock=0 占位）→ 写入 jingya_id
+       clear_barbour_inventory() / insert_missing_products_with_zero_stock() / insert_jingyaid_to_db()
 
-  场景 1 - full_rebuild（全新重建）
-    清空 inventory → 插入鲸芽已发布商品 → 写入 jingya_id → 计算 supplier_map
-    → 单一最佳供货商回填 inventory → 10% 价格带库存合并
+  2. 供应商组合 + 价格 + 库存一次性同步：
+       allocate_and_sync(brand="barbour", exclude_xlsx=..., dry_run=False)
 
-  场景 2 - refresh_inventory（供应商数据更新后刷新）
-    清空 inventory → 插入鲸芽已发布商品 → 写入 jingya_id
-    → 单一最佳供货商回填 → 10% 价格带合并
+     每个已发布商品：按"真实落地成本"（barbour_offers.sale_price_gbp，已含折扣策略+
+     运费）从低到高挑供应商，凑够 SUPPLIER_MIN_SIZES 个有货尺码（或最多
+     SUPPLIER_MAX_SITES 家）为止；库存取这几家的并集，定价取这几家里成本最高的
+     那个（避免低价供应商断货补货时倒贴运费亏本）。这些阈值 + 淘宝店铺折扣，
+     统一在 brands/barbour/jingya/allocate_supplier_and_price_config.py 配置。
+     每次运行都会重新计算，不再需要单独的"低库存换供应商"场景。
 
-  场景 3 - after_new_publish（鲸芽上新后）
-    清空 inventory → 插入鲸芽已发布商品（含新品）→ 写入 jingya_id
-    → 只对新商品填充 supplier_map → 回填 → 合并
+     可选人工干预（均为参数，不再是独立场景）：
+       - exclude_xlsx（barbour_exclude_list.xlsx）：跳过自动分配；若同一份 Excel
+         含 source_price_gbp/discount_price_gbp 列，会在最后覆盖为人工固定价。
+       - supplier_override_xlsx（barbour_supplier.xlsx）：强制指定供应商，仍走同一套
+         定价/库存回填逻辑。
 
-  场景 4 - reassign_low_stock_preview（预览低库存换供货商建议）
-    reassign_low_stock_suppliers(dry_run=True)  ← 不改数据库，仅打印
-
-  场景 5 - reassign_low_stock_apply（确认后执行换供货商）
-    reassign_low_stock_suppliers(dry_run=False) → 清空 inventory → 重建
-
-  场景 6 - supplier_overrides（手工 Excel 指定供货商）
-    apply_barbour_supplier_overrides(dry_run=False) → 清空 inventory → 重建
+     预览：allocate_and_sync(..., dry_run=True) 只打印将发生的变更，不写库。
+     诊断单个商品：tool_inspect_supplier.py <product_code>（会展示当前分配 +
+     自动算法会选出的组合预览）。
 
 ================================================================================
   阶段 D：导出库存 & 价格 Excel
@@ -242,10 +223,10 @@
 ================================================================================
 
   日常库存更新（供应商数据有变化）：
-    A(步骤1+2) → B → C(场景2) → D
+    A(步骤1+2) → B → C → D
 
   上新发布流程：
-    A → B → C(场景3/1) → D → E → F1 → G → H
+    A → B → C → D → E → F1 → G → H
 
   只更新价格/库存 Excel（数据库已是最新）：
     D

@@ -184,10 +184,30 @@ CREATE TABLE barbour_inventory (
 );
 
 
--- ---------- 3-6. barbour_supplier_map：供应商选源映射 ----------
+-- ---------- 3-6. barbour_supplier_map：供应商选源映射（已废弃，不再写入）----------
+-- 已被 barbour_supplier_allocation 取代：一个商品可能对应 1-3 家供应商（见下）。
+-- 保留旧表只为兼容历史数据查询，新流程（allocate_supplier_and_price.py）不再读写它。
 CREATE TABLE barbour_supplier_map (
     product_code VARCHAR(50)  PRIMARY KEY,
     site_name    VARCHAR(100) NOT NULL            -- 对齐 barbour_offers.site_name
+);
+
+
+-- ---------- 3-6b. barbour_supplier_allocation：供应商组合分配（brands/barbour/jingya/allocate_supplier_and_price.py）----------
+-- 一个 product_code 可能对应 1~SUPPLIER_MAX_SITES 行：按成本从低到高挑选、
+-- 直到覆盖尺码数达标为止。is_price_basis=TRUE 标记"这几家里成本最高的那行"，
+-- 即最终定价依据；实际建表由代码运行时 CREATE TABLE IF NOT EXISTS 自动完成，
+-- 这里只作为文档记录。
+CREATE TABLE barbour_supplier_allocation (
+    product_code   VARCHAR(50)  NOT NULL,
+    site_name      VARCHAR(100) NOT NULL,
+    rank           SMALLINT     NOT NULL,          -- 1=最便宜的主供应商，2/3=补充库存的
+    min_eff_price  NUMERIC(10,2),
+    sizes_in_stock INT,
+    is_price_basis BOOLEAN      DEFAULT FALSE,
+    source         VARCHAR(20)  DEFAULT 'auto',    -- 'auto' | 'manual'
+    updated_at     TIMESTAMP    DEFAULT NOW(),
+    PRIMARY KEY (product_code, site_name)
 );
 
 

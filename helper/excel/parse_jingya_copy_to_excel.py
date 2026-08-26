@@ -11,7 +11,7 @@ INPUT_TXT = str(DESKTOP_DIR / "YGLD.txt")
 OUTPUT_XLSX = str(DESKTOP_DIR / "abc.xlsx")
 
 # INPUT_TXT = str(DESKTOP_DIR / "WXJ.txt")
-# OUTPUT_XLSX = str(DESKTOP_DIR / "WXJ.xlsx")
+# OUTPUT_XLSX = str(DESKTOP_DIR / "WXJ.xlsx7)
 # =====================================
 
 HEADER_SET = {

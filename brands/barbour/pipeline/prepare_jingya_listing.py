@@ -6,7 +6,7 @@ Barbour 日常运营流水线（单一入口）
   1. [A] 抓取各供货商商品数据 → TXT 文件
   2. [B] TXT 导入 barbour_products + barbour_offers
   ── 此处人工操作：在鲸芽发布新商品，并更新本地鲸芽 Excel ──
-  3. [C] 重建 supplier_map + barbour_inventory（新品建档 + 低库存换供应商，一次完成）
+  3. [C] 重建 barbour_inventory + 供应商组合/价格/库存分配（allocate_and_sync，每次全量重算）
   4. [D] 导出库存/价格 Excel → 用于批量更新鲸芽
 
 使用方式：
@@ -33,9 +33,10 @@ RUN_C_INVENTORY = True   # 重建 supplier_map + inventory
 RUN_D_EXPORT    = True   # 导出库存 / 价格 Excel
 
 # ── C 阶段：供应商策略参数 ────────────────────────────────────────
-# 是否对低库存商品自动切换到更优供应商（True = 每次都执行）
-C_REASSIGN_LOW_STOCK = True
-# 有货尺码数阈值统一在 cfg/brands/barbour.py 的 SUPPLIER_MIN_SIZES 中配置
+# 每次运行都会用"当前最便宜、库存又够的供应商组合"重新计算价格+库存，
+# 不再需要单独的"低库存换供应商"开关。
+# 有货尺码数阈值 / 最多合并几家供应商 / 淘宝店铺折扣 / 人工指定供应商路径，
+# 统一在 brands/barbour/jingya/allocate_supplier_and_price_config.py 中配置。
 
 # ── 路径配置 ─────────────────────────────────────────────────────
 EXCLUDE_LIST_XLSX    = r"\\vmware-host\Shared Folders\shared\barbour\barbour_exclude_list.xlsx"
@@ -321,29 +322,21 @@ def run_b_import():
 
 
 # ══════════════════════════════════════════════════════════════════
-#  阶段 C：重建 supplier_map + inventory（一次完成，不重复）
+#  阶段 C：重建 inventory + 供应商/价格/库存分配（一次完成，不重复）
 # ══════════════════════════════════════════════════════════════════
 
 def run_c_inventory():
-    _banner("阶段 C：重建 supplier_map + barbour_inventory")
+    _banner("阶段 C：重建 inventory + 供应商/价格/库存分配")
 
     from brands.barbour.jingya.insert_jingyaid_mapping import (
         clear_barbour_inventory,
         insert_missing_products_with_zero_stock,
         insert_jingyaid_to_db,
     )
-    from brands.barbour.common.build_supplier_jingya_mapping import (
-        fill_supplier_map,
-        reassign_low_stock_suppliers,
-    )
-    from brands.barbour.jingya.merge_offer_into_inventory import (
-        backfill_barbour_inventory_single_supplier,
-        merge_band_stock_into_inventory,
-        apply_fixed_prices_from_excel,
-    )
+    from brands.barbour.jingya.allocate_supplier_and_price import allocate_and_sync
 
     # ── 步骤 C1：重建 inventory 骨架 ────────────────────────────────
-    # 必须先建骨架，fill_supplier_map 才能读到 is_published=TRUE 的商品
+    # 必须先建骨架，allocate_and_sync 才能读到 is_published=TRUE 的商品
     _step("C1：清空 barbour_inventory")
     try:
         clear_barbour_inventory()
@@ -362,60 +355,18 @@ def run_c_inventory():
     except Exception as e:
         _fail("C3-jingya_id", e)
 
-    # ── 步骤 C4：供应商映射 ─────────────────────────────────────────
-    # force_refresh=False：只为"尚无供应商"的商品（新品）填充，不覆盖已有分配
-    _step("C4：为新品填充 supplier_map（不重算已有映射）")
+    # ── 步骤 C4：供应商组合 + 价格 + 库存一次性同步 ───────────────────
+    # 每个商品：按真实落地成本从低到高挑供应商，凑够 SUPPLIER_MIN_SIZES
+    # 个有货尺码（或最多 SUPPLIER_MAX_SITES 家）为止；库存取这几家的并集，
+    # 定价取这几家里成本最高的那个。exclude_list.xlsx 里的编码跳过自动
+    # 分配，改用其中的固定价格覆盖。
+    _step("C4：供应商组合 + 价格 + 库存同步（allocate_and_sync）")
     t = time.time()
     try:
-        fill_supplier_map(force_refresh=False, exclude_xlsx=EXCLUDE_LIST_XLSX)
-        _ok("supplier_map 新品填充完成", time.time() - t)
+        allocate_and_sync(brand="barbour", exclude_xlsx=EXCLUDE_LIST_XLSX, dry_run=False)
+        _ok("供应商/价格/库存同步完成", time.time() - t)
     except Exception as e:
-        _fail("C4-fill_supplier_map", e)
-
-    # ── 步骤 C5（可选）：低库存商品换供应商 ───────────────────────────
-    if C_REASSIGN_LOW_STOCK:
-        _step("C5：低库存换供应商（阈值读自 cfg/brands/barbour.py SUPPLIER_MIN_SIZES）")
-        t = time.time()
-        try:
-            reassign_low_stock_suppliers(
-                dry_run=False,
-                exclude_xlsx=EXCLUDE_LIST_XLSX,
-            )
-            _ok("低库存换供应商完成", time.time() - t)
-        except Exception as e:
-            _fail("C5-reassign_low_stock", e)
-    else:
-        _skip("C5：低库存换供应商（C_REASSIGN_LOW_STOCK=False）")
-
-    # ── 步骤 C6：用最新 supplier_map 回填 inventory ─────────────────
-    _step("C6：按 supplier_map 回填 inventory 价格 + 主库存")
-    t = time.time()
-    try:
-        backfill_barbour_inventory_single_supplier()
-        _ok("价格 + 主库存回填完成", time.time() - t)
-    except Exception as e:
-        _fail("C6-backfill", e)
-
-    _step("C7：10% 价格带合并多站点库存")
-    t = time.time()
-    try:
-        merge_band_stock_into_inventory(band_ratio=0.10)
-        _ok("价格带合并完成", time.time() - t)
-    except Exception as e:
-        _fail("C7-merge_band", e)
-
-    _step("C8：应用固定价格覆盖（来自 exclude_list.xlsx）")
-    t = time.time()
-    try:
-        apply_fixed_prices_from_excel(
-            code_col="商品编码",
-            sheet_name=0,
-            xlsx_path=EXCLUDE_LIST_XLSX,
-            dry_run=False,
-        )
-        _ok("固定价格覆盖完成", time.time() - t)
-    except Exception as e:
-        _fail("C8-fixed_prices", e)
+        _fail("C4-allocate_and_sync", e)
 
 
 # ══════════════════════════════════════════════════════════════════

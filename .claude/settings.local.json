@@ -86,7 +86,8 @@
       "Bash(wc -c /tmp_out.html)",
       "Bash(python -c \"import ast; ast.parse\\(open\\('brands/barbour/supplier/magrigg_fetch_info.py', encoding='utf-8'\\).read\\(\\)\\)\")",
       "Bash(curl -s -X POST https://eucs24v2.ksearchnet.com/cs/v2/search -H 'Content-Type: application/json' -H 'User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/131.0.0.0 Safari/537.36' -d '{ *)",
-      "Bash(curl -s -o /dev/null -w \"HTTP_CODE:%{http_code} FINAL_URL:%{url_effective}\\\\n\" -L -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/131.0.0.0 Safari/537.36\" \"https://www.magrigg.co.uk/barbour-classic-bedale-wax-jacket-olive.html.html\")"
+      "Bash(curl -s -o /dev/null -w \"HTTP_CODE:%{http_code} FINAL_URL:%{url_effective}\\\\n\" -L -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/131.0.0.0 Safari/537.36\" \"https://www.magrigg.co.uk/barbour-classic-bedale-wax-jacket-olive.html.html\")",
+      "Bash(python -m py_compile brands/barbour/jingya/allocate_supplier_and_price.py brands/barbour/pipeline/tool_inspect_supplier.py brands/barbour/pipeline/prepare_jingya_listing.py brands/barbour/pipeline/db_import_txt_products_offers.py cfg/brands/barbour.py)"
     ]
   }
 }

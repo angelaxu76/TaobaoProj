@@ -64,8 +64,9 @@ BARBOUR = {
     "HTML_CUTTER_FIRST_PAGE": PROCESS_BASE / "html_cutter" / "first_page",
     "HTML_DEST": PROCESS_BASE / "dest",
     "TABLE_NAME": "barbour_inventory",
-    "TAOBAO_STORE_DISCOUNT": 1,  # 不包关税→淘宝店铺价再打9折
-    "SUPPLIER_MIN_SIZES": 2,    # 供应商映射：至少要有几个有货尺码才算"可用"
+    # 供应商组合策略 / 淘宝店铺折扣：已移到
+    # brands/barbour/jingya/allocate_supplier_and_price_config.py
+    # （跟着 allocate_and_sync() 一起改，不用再来这里翻）
     "PGSQL_CONFIG": PGSQL_CONFIG,
     "LINKS_FILE": BARBOUR_BASE / "publication" / "barbour" / "product_links.txt",
     # === 新增 houseoffraser 配置 ===
