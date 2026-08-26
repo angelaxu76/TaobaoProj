@@ -18,6 +18,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+import psutil
+
 # ══════════════════════════════════════════════════════════════════
 #  CONFIG — 修改这里来启用/禁用品牌，或调整执行顺序
 # ══════════════════════════════════════════════════════════════════
@@ -79,6 +81,47 @@ class _Tee:
             s.flush()
 
 
+def _kill_process_tree(pid: int, brand: str):
+    """
+    强制终止整棵进程树（含 Selenium/undetected_chromedriver 派生出的
+    chromedriver.exe / chrome.exe 孙进程）。
+
+    只调用 proc.kill()（Windows 上等价于 TerminateProcess）只会杀掉直接
+    子进程（python.exe），不会带走它再往下开的 chromedriver/chrome 进程——
+    这些孤儿进程会继续挂着（正是"卡死"的真正来源，比如 Cloudflare 验证
+    卡住的浏览器标签页），而且它们还持有子进程 stdout 管道的继承句柄，
+    导致本脚本 `for line in proc.stdout` 那行永远读不到 EOF、看起来像
+    "kill 了但还是卡住"。所以必须自底向上把整棵树都杀掉。
+    """
+    try:
+        parent = psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        return
+
+    children = parent.children(recursive=True)
+    for child in children:
+        try:
+            print(
+                f"   💀 [{brand.upper()}] 一并终止残留子进程 "
+                f"{child.name()} (pid={child.pid})",
+                flush=True,
+            )
+            child.kill()
+        except psutil.NoSuchProcess:
+            pass
+        except Exception as e:
+            print(f"   ⚠️ 终止子进程 {child.pid} 失败：{e}", flush=True)
+
+    try:
+        parent.kill()
+    except psutil.NoSuchProcess:
+        pass
+
+    _, alive = psutil.wait_procs([parent, *children], timeout=10)
+    for p in alive:
+        print(f"   ⚠️ 进程 {p.pid} 10 秒后仍未退出，可能需要手动检查任务管理器。", flush=True)
+
+
 def _banner(text: str):
     line = "═" * 64
     print(f"\n{line}")
@@ -115,14 +158,11 @@ def _run_once(brand: str, script: Path, attempt: int) -> bool:
             if silence >= SILENCE_TIMEOUT_SEC:
                 print(
                     f"\n⏰ [{brand.upper()}] 已 {silence/60:.1f} 分钟无输出，"
-                    f"判定卡死，正在 kill 进程…",
+                    f"判定卡死，正在终止整棵进程树…",
                     flush=True,
                 )
                 killed_by_watchdog[0] = True
-                try:
-                    proc.kill()
-                except Exception:
-                    pass
+                _kill_process_tree(proc.pid, brand)
                 return
             time.sleep(15)  # 每 15 秒检查一次
 
