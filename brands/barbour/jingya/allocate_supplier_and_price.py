@@ -31,6 +31,7 @@ merge_offer_into_inventory.py、db_build_supplier_map_and_inventory.py
 from __future__ import annotations
 
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
@@ -189,6 +190,82 @@ def _load_publication_mappings(pub_dir: Path) -> Dict[str, str]:
         except Exception as e:
             print(f"⚠️ 解析发布清单失败 {fp.name}: {e}")
     return mappings
+
+
+def _reconcile_shared_channel_prices(engine: Engine, dry_run: bool) -> int:
+    """
+    同一个鲸芽 channel_product_id 下可能对应多个 product_code（比如同一款式
+    的两个颜色，各自是独立编码，但共用一个鲸芽商品listing）。allocate_and_sync
+    是按 product_code 独立算价的，两个颜色可能分到不同供应商、算出不同价格；
+    但鲸芽一个 channel_product_id 只能设一个"通用渠道价格"，下游导出脚本
+    （export_channel_price_excel_jingya.py，多品牌共用，这里不动它）按
+    channel_product_id 分组时是 .agg("first")，会随手挑其中一个颜色的价格
+    上传，另一个颜色算出来的价格就被丢弃、可能让那个颜色实际卖亏。
+
+    所以在这里、写库层面统一：同一 channel_product_id 下，找出定价基准
+    （base_price_gbp）最高的那个颜色，把它的价格字段整组同步给同 listing
+    下的其它颜色，这样不管下游导出脚本挑到哪一行，价格都是一致的、且是
+    组内最高（最不容易亏本）的那个。
+
+    只对接标的价格字段做同步（不动库存），返回受影响的 product_code 数。
+    """
+    with engine.connect() as conn:
+        grp = pd.read_sql(text("""
+            SELECT DISTINCT product_code, channel_product_id, base_price_gbp,
+                   jingya_untaxed_price, taobao_store_price,
+                   source_price_gbp, original_price_gbp, discount_price_gbp
+            FROM barbour_inventory
+            WHERE channel_product_id IS NOT NULL AND TRIM(channel_product_id) <> ''
+              AND base_price_gbp IS NOT NULL
+        """), conn)
+
+    if grp.empty:
+        return 0
+
+    updates: List[dict] = []
+    for channel_id, g in grp.groupby("channel_product_id"):
+        if g["product_code"].nunique() <= 1:
+            continue  # 这个 listing 只有一个 product_code，没有分叉风险
+        if g["base_price_gbp"].nunique() <= 1:
+            continue  # 组内价格已经一致，不需要处理
+
+        winner = g.loc[g["base_price_gbp"].idxmax()]
+        for _, row in g.iterrows():
+            if row["product_code"] == winner["product_code"]:
+                continue
+            if row["base_price_gbp"] == winner["base_price_gbp"]:
+                continue
+            updates.append({
+                "product_code": row["product_code"],
+                "base_price_gbp": float(winner["base_price_gbp"]),
+                "jingya_untaxed_price": None if pd.isna(winner["jingya_untaxed_price"]) else float(winner["jingya_untaxed_price"]),
+                "taobao_store_price": None if pd.isna(winner["taobao_store_price"]) else float(winner["taobao_store_price"]),
+                "source_price_gbp": None if pd.isna(winner["source_price_gbp"]) else float(winner["source_price_gbp"]),
+                "original_price_gbp": None if pd.isna(winner["original_price_gbp"]) else float(winner["original_price_gbp"]),
+                "discount_price_gbp": None if pd.isna(winner["discount_price_gbp"]) else float(winner["discount_price_gbp"]),
+            })
+            if dry_run:
+                print(
+                    f"   [DRY-RUN] {row['product_code']} (£{row['base_price_gbp']:.2f}) 将对齐到"
+                    f" {winner['product_code']} 的价格 (£{winner['base_price_gbp']:.2f} → "
+                    f"¥{winner['jingya_untaxed_price']})  [共用渠道产品id={channel_id}]"
+                )
+
+    if updates and not dry_run:
+        with engine.begin() as conn:
+            conn.execute(text("""
+                UPDATE barbour_inventory
+                SET base_price_gbp       = :base_price_gbp,
+                    jingya_untaxed_price = :jingya_untaxed_price,
+                    taobao_store_price   = :taobao_store_price,
+                    source_price_gbp     = :source_price_gbp,
+                    original_price_gbp   = :original_price_gbp,
+                    discount_price_gbp   = :discount_price_gbp,
+                    last_checked         = NOW()
+                WHERE product_code = :product_code
+            """), updates)
+
+    return len(updates)
 
 
 def _eff_price_row(row) -> Optional[float]:
@@ -465,11 +542,16 @@ def allocate_and_sync(
         print(f"\n[DRY-RUN] 将变更 {len(dry_run_report)} 条尺码记录（未写库）。示例前 20 条：")
         for r in dry_run_report[:20]:
             print(f"   {r}")
+        print("\n[DRY-RUN] 同款多颜色共用鲸芽 channel_product_id 的价格对齐预览：")
+        reconciled_preview = _reconcile_shared_channel_prices(engine, dry_run=True)
+        if reconciled_preview == 0:
+            print("   （当前没有需要对齐的分叉价格）")
         return {
             "processed": len(diag_auto) + len(diag_manual),
             "excluded": len(diag_excluded),
             "unresolved": len(diag_unresolved),
             "would_change": len(dry_run_report),
+            "would_reconcile_channel_prices": reconciled_preview,
         }
 
     # ── 写库 ──
@@ -514,12 +596,18 @@ def allocate_and_sync(
             xlsx_path=exclude_xlsx, code_col="商品编码", sheet_name=0, dry_run=False
         )
 
+    # ── 同款多颜色共用鲸芽 channel_product_id 时，价格对齐到组内最高者 ──
+    reconciled = _reconcile_shared_channel_prices(engine, dry_run=False)
+    if reconciled:
+        print(f"✅ 同款多颜色价格分叉已对齐：{reconciled} 个 product_code 的价格已同步为组内最高价。")
+
     return {
         "processed": len(processed_codes),
         "excluded": len(diag_excluded),
         "unresolved": len(diag_unresolved),
         "inventory_rows_updated": len(inventory_updates),
         "allocation_rows": len(allocation_rows),
+        "reconciled_channel_prices": reconciled,
     }
 
 
@@ -716,11 +804,143 @@ def apply_fixed_prices_from_excel(
 
 
 # ═══════════════════════════════════════════════════════════════════
-#  CLI：默认 dry-run，加 --apply 才真正写库
+#  人可读报表：每个商品当前售价 / 折扣率 / 库存 / 供货商（只读，不写库）
+# ═══════════════════════════════════════════════════════════════════
+
+def export_price_stock_supplier_report(output_path: Optional[str] = None) -> str:
+    """
+    导出一份人可读的 Excel：每行一个已发布商品，列出：
+      - 商品名称/颜色（来自 barbour_products.style_name/color；
+        barbour_inventory.product_title 这一列对 barbour 一直是空的，
+        不能用，sku_name 也只是"编码，尺码"拼接串，不是真正的商品名）
+      - 当前用哪几家供货商（按 barbour_supplier_allocation 的 rank 拼接）
+      - 定价依据供货商（is_price_basis=TRUE 的那家，即成本最高、决定最终售价的那家）
+      - 该供货商当前的促销折扣率（来自 barbour_offers.discount_pct）
+      - 鲸芽未税价 / 淘宝零售价（barbour_inventory 当前值）
+      - 库存（有货尺码数/总尺码数 + 具体有货尺码列表）
+      - 最近更新时间
+
+    纯查询导出，不做任何计算或写库；数据就是当前数据库里的实际状态。
+    像 MWX0007OL71 这种在排除清单里没填供货商、一直没被自动分配触碰过的
+    商品，这里会显示"供货商组合"为空、价格为空——报表本身就是排查这类
+    遗漏的工具。
+    """
+    engine = _get_engine()
+    with engine.connect() as conn:
+        inv = pd.read_sql(text("""
+            SELECT product_code,
+                   COUNT(*)                                                            AS total_sizes,
+                   COUNT(*) FILTER (WHERE stock_count > 0)                             AS in_stock_sizes,
+                   STRING_AGG(size, ',' ORDER BY size) FILTER (WHERE stock_count > 0)   AS sizes_in_stock,
+                   MAX(base_price_gbp)                                                 AS base_price_gbp,
+                   MAX(jingya_untaxed_price)                                           AS jingya_untaxed_price,
+                   MAX(taobao_store_price)                                             AS taobao_store_price,
+                   MAX(last_checked)                                                   AS last_checked
+            FROM barbour_inventory
+            WHERE is_published = TRUE
+            GROUP BY product_code
+        """), conn)
+
+        alloc = pd.read_sql(text(f"""
+            SELECT product_code, site_name, rank, min_eff_price, is_price_basis, source
+            FROM {TABLE_ALLOC}
+            ORDER BY product_code, rank
+        """), conn)
+
+        offer_discount = pd.read_sql(text("""
+            SELECT product_code, site_name,
+                   MAX(discount_pct) FILTER (WHERE stock_count > 0) AS discount_pct
+            FROM barbour_offers
+            WHERE is_active = TRUE
+            GROUP BY product_code, site_name
+        """), conn)
+
+        # 同一 product_code 在 barbour_products 里每个尺码一行，但 style_name/color
+        # 是重复的，取任意一行即可（按 id 升序取第一行，结果稳定）。
+        products = pd.read_sql(text("""
+            SELECT DISTINCT ON (product_code) product_code, style_name, color
+            FROM barbour_products
+            ORDER BY product_code, id
+        """), conn)
+
+    if inv.empty:
+        print("ℹ️ barbour_inventory 里没有已发布商品，未生成报表。")
+        return ""
+
+    out = inv.merge(products, on="product_code", how="left")
+
+    if not alloc.empty:
+        combo = (
+            alloc.groupby("product_code")["site_name"]
+            .apply(lambda s: "+".join(s))
+            .rename("供货商组合")
+        )
+        out = out.merge(combo, on="product_code", how="left")
+
+        basis = alloc[alloc["is_price_basis"]][["product_code", "site_name", "min_eff_price", "source"]].rename(
+            columns={"site_name": "定价依据供货商", "min_eff_price": "供货商成本价(£)", "source": "分配来源"}
+        )
+        if not offer_discount.empty:
+            basis = basis.merge(
+                offer_discount.rename(columns={"site_name": "定价依据供货商", "discount_pct": "折扣率(%)"}),
+                on=["product_code", "定价依据供货商"], how="left",
+            )
+        else:
+            basis["折扣率(%)"] = None
+        out = out.merge(basis, on="product_code", how="left")
+    else:
+        for col in ("供货商组合", "定价依据供货商", "分配来源", "供货商成本价(£)", "折扣率(%)"):
+            out[col] = None
+
+    out["库存"] = out["in_stock_sizes"].fillna(0).astype(int).astype(str) + "/" + out["total_sizes"].astype(int).astype(str)
+
+    out = out.rename(columns={
+        "product_code": "商品编码",
+        "style_name": "商品名称",
+        "color": "颜色",
+        "sizes_in_stock": "有货尺码",
+        "base_price_gbp": "定价基准(£)",
+        "jingya_untaxed_price": "鲸芽未税价(¥)",
+        "taobao_store_price": "淘宝零售价(¥)",
+        "last_checked": "最近更新",
+    })
+
+    cols = [
+        "商品编码", "商品名称", "颜色",
+        "供货商组合", "定价依据供货商", "分配来源",
+        "供货商成本价(£)", "折扣率(%)", "定价基准(£)",
+        "鲸芽未税价(¥)", "淘宝零售价(¥)",
+        "库存", "有货尺码", "最近更新",
+    ]
+    out = out[cols].sort_values("商品编码").reset_index(drop=True)
+
+    if output_path:
+        out_file = Path(output_path)
+        out_file.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        out_dir = Path(BARBOUR["OUTPUT_DIR"])
+        out_dir.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        out_file = out_dir / f"barbour_price_stock_supplier_report_{ts}.xlsx"
+
+    out.to_excel(out_file, index=False)
+    no_supplier = int((out["供货商组合"].isna() | (out["供货商组合"] == "")).sum())
+    print(f"✅ 报表已导出：{out_file}（{len(out)} 个商品，其中 {no_supplier} 个无供货商分配记录）。")
+    return str(out_file)
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  CLI：
+#    python -m brands.barbour.jingya.allocate_supplier_and_price            → dry-run 预览
+#    python -m brands.barbour.jingya.allocate_supplier_and_price --apply    → 真正写库
+#    python -m brands.barbour.jingya.allocate_supplier_and_price --report   → 只导出报表，不分配
 # ═══════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
     import sys
 
-    apply = "--apply" in sys.argv
-    allocate_and_sync(dry_run=not apply)
+    if "--report" in sys.argv:
+        export_price_stock_supplier_report()
+    else:
+        apply = "--apply" in sys.argv
+        allocate_and_sync(dry_run=not apply)
