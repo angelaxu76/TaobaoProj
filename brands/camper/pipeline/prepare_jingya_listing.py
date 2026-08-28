@@ -84,7 +84,8 @@ def main():
         output_dir=r"\\vmware-host\Shared Folders\VMShared\camper\store_prices",
         suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
         drop_rows_without_price=False,
-        blacklist_excel_file=r"\\vmware-host\Shared Folders\shared\camper\exclude.xlsx" # 不丢行，查不到的价格留空
+        blacklist_excel_file=r"\\vmware-host\Shared Folders\shared\camper\exclude.xlsx", # 不丢行，查不到的价格留空
+        allow_blacklist_price_increase=True,  # 开关：True=黑名单商品仅涨价可调、降价不动；False=涨降价都不动
     )
 
     print("\n✅ CAMPER pipeline 完成")

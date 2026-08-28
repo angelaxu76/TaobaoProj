@@ -352,6 +352,7 @@ def generate_price_excels_bulk(
     suffix: str = "_价格",
     drop_rows_without_price: bool = True,
     blacklist_excel_file: str | None = None,
+    allow_blacklist_price_increase: bool = False,
 ):
     """
     从 input_dir 中批量读取店铺 Excel（每个代表一个店铺），
@@ -362,6 +363,13 @@ def generate_price_excels_bulk(
         blacklist_excel_file: 黑名单 Excel 的绝对路径。
                               如果提供，则会过滤掉黑名单商品编码。
                               如果为 None，则不启用黑名单。
+        allow_blacklist_price_increase:
+                              黑名单商品的处理开关（因淘宝保价政策）。
+                              - False（默认）：黑名单商品涨价、降价都不调整，整款过滤。
+                              - True：黑名单商品「只允许涨价」——新价（数据库 taobao_store_price）
+                                严格高于当前一口价的行保留并调整；降价 / 持平 / 无法判断（输入
+                                Excel 缺一口价）的行仍然过滤掉。
+                              非黑名单商品不受此开关影响。
     """
 
     input_dir = Path(input_dir)
@@ -382,6 +390,7 @@ def generate_price_excels_bulk(
     print(f"[INFO] 共发现 {len(excel_files)} 个输入文件，将生成价格表...")
     print(f"[INFO] 品牌: {brand}")
     print(f"[INFO] 黑名单文件: {blacklist_excel_file or '未启用'}")
+    print(f"[INFO] 黑名单开关: {'仅允许涨价' if allow_blacklist_price_increase else '涨降价均不调整'}")
 
     for f in excel_files:
         try:
@@ -393,6 +402,7 @@ def generate_price_excels_bulk(
                 pgsql_config=pgsql_config,
                 blacklist_excel_file=blacklist_excel_file,
                 table_name=table_name,
+                allow_blacklist_price_increase=allow_blacklist_price_increase,
             )
         except Exception as e:
             print(f"[ERROR] 处理 {f.name} 失败: {e}")
@@ -434,18 +444,20 @@ from pathlib import Path
 
 def _normalize_input_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
-    我们需要拿到三列：
+    我们需要拿到这几列：
     - item_id   (宝贝id)
     - skuid     (SKU唯一标识，渠道货品ID)
     - sku_spec  (sku规格，比如 'MWX0339OL71,M')
+    - cur_price (当前一口价，用于判断涨价/降价；缺失则为 NA)
 
-    这个函数的作用是：从各种可能的列名里抽取并标准化成这三列。
+    这个函数的作用是：从各种可能的列名里抽取并标准化成这几列。
     """
 
     # 可能的列名映射
     item_id_candidates = ["宝贝id", "宝贝ID", "item_id", "itemid", "itemId", "商品ID", "item id"]
     skuid_candidates   = ["skuid", "SKU ID", "skuID", "SKUId", "渠道货品ID", "渠道货品id", "货品id", "sku id"]
     spec_candidates    = ["sku规格", "SKU规格", "规格", "sku spec", "销售属性"]
+    price_candidates   = ["一口价", "售价", "销售价", "现价", "标价", "price"]
 
     colmap = {}
 
@@ -464,6 +476,11 @@ def _normalize_input_columns(df: pd.DataFrame) -> pd.DataFrame:
         if c in df.columns:
             colmap["sku_spec"] = c
             break
+    # 找 cur_price（可选）
+    for c in price_candidates:
+        if c in df.columns:
+            colmap["cur_price"] = c
+            break
 
     missing = [name for name in ["item_id","skuid","sku_spec"] if name not in colmap]
     if missing:
@@ -475,6 +492,7 @@ def _normalize_input_columns(df: pd.DataFrame) -> pd.DataFrame:
     out["item_id"] = df2[colmap["item_id"]] if "item_id" in colmap else pd.NA
     out["skuid"]   = df2[colmap["skuid"]]   if "skuid"   in colmap else pd.NA
     out["sku_spec"]= df2[colmap["sku_spec"]]if "sku_spec"in colmap else pd.NA
+    out["cur_price"]= df2[colmap["cur_price"]] if "cur_price" in colmap else pd.NA
 
     return out
 
@@ -558,6 +576,7 @@ def _generate_price_excel_from_file(
     pgsql_config: dict,
     blacklist_excel_file: str | None,
     table_name: str = "barbour_inventory",
+    allow_blacklist_price_increase: bool = False,
 ):
     """
     生成价格导入表：宝贝id | skuid | 调整后价格
@@ -603,6 +622,19 @@ def _generate_price_excel_from_file(
 
     df_norm["item_id"] = df_norm["item_id"].map(_item_id_to_str)
 
+    # 2.3 当前一口价 向下填充 + 转数值（淘宝导出里一口价只在每款首行出现）
+    #     仅在「黑名单只允许涨价」模式下才需要用它判断涨/降价
+    if "cur_price" not in df_norm.columns:
+        df_norm["cur_price"] = pd.NA
+    df_norm["cur_price"] = pd.to_numeric(df_norm["cur_price"].ffill(), errors="coerce")
+    if allow_blacklist_price_increase and blacklist_codes:
+        has_cur_price = df_norm["cur_price"].notna().any()
+        if not has_cur_price:
+            logger.warning(
+                "开启了『黑名单仅允许涨价』，但输入 Excel 未识别到一口价列，"
+                "无法判断涨/降价 —— 黑名单商品将全部按『不调整』过滤。"
+            )
+
     # 3) sku_spec -> code_part / size_part
     pairs = df_norm["sku_spec"].map(_split_spec_value)
     df_norm["code_part"] = [p[0] for p in pairs]
@@ -615,13 +647,16 @@ def _generate_price_excel_from_file(
     df_norm = df_norm.dropna(subset=["code_part", "size_part"])
     logger.info(f"dropna(code/size): {before} -> {len(df_norm)}")
 
-    # 4) 黑名单过滤（整款过滤）
-    if blacklist_codes:
+    # 4) 黑名单过滤
+    #    - allow_blacklist_price_increase=False：黑名单商品整款过滤（涨价降价都不调）
+    #    - allow_blacklist_price_increase=True ：此处先不过滤，等合并到新价后，
+    #      仅保留「新价 > 当前一口价」的行（见步骤 7.2）
+    if blacklist_codes and not allow_blacklist_price_increase:
         before = len(df_norm)
         blocked = df_norm[df_norm["code_part"].isin(blacklist_codes)].copy()
         _add_filtered(blocked, "blacklist_filtered")
         df_norm = df_norm[~df_norm["code_part"].isin(blacklist_codes)]
-        logger.info(f"blacklist过滤: {before} -> {len(df_norm)}")
+        logger.info(f"blacklist过滤(涨降价均不调整): {before} -> {len(df_norm)}")
 
     # 5) 展开 skuid（可能是一格多个）
     rows = []
@@ -631,6 +666,7 @@ def _generate_price_excel_from_file(
         item_id = r["item_id"]
         code = r["code_part"]
         size = r["size_part"]
+        cur_price = r.get("cur_price", None)
         skus_raw = r["skuid"]
         sku_list = _split_skuids(skus_raw)
 
@@ -655,9 +691,10 @@ def _generate_price_excel_from_file(
                     "skuid": sid,
                     "code_part": code,
                     "size_part": size,
+                    "cur_price": cur_price,
                 })
 
-    df_expanded = pd.DataFrame(rows, columns=["item_id", "skuid", "code_part", "size_part"])
+    df_expanded = pd.DataFrame(rows, columns=["item_id", "skuid", "code_part", "size_part", "cur_price"])
     logger.info(f"展开SKU后 df_expanded: {len(df_expanded)} | empty_sku_rows={empty_sku_cnt}")
 
     if df_expanded.empty:
@@ -704,6 +741,30 @@ def _generate_price_excel_from_file(
         _flush_filtered(out_dir, file_path, logger=logger)
         logger.warning("全部行都缺价，未生成价格Excel。")
         return
+
+    # 7.2 黑名单「仅允许涨价」过滤（因淘宝保价政策）
+    #     只在 allow_blacklist_price_increase=True 时生效（False 时黑名单已在步骤 4 整款过滤）。
+    #     规则：黑名单商品中，新价（taobao_store_price）必须【严格大于】当前一口价才保留；
+    #           降价 / 持平 / 当前一口价缺失（无法判断）的行一律过滤。
+    if blacklist_codes and allow_blacklist_price_increase:
+        bl_mask = df_merged["code_part"].isin(blacklist_codes)
+        new_price = pd.to_numeric(df_merged["taobao_store_price"], errors="coerce")
+        cur_price = pd.to_numeric(df_merged["cur_price"], errors="coerce")
+        is_increase = new_price > cur_price          # cur_price 为 NaN 时结果为 False
+        drop_mask = bl_mask & ~is_increase
+        keep_cnt = int((bl_mask & is_increase).sum())
+        before = len(df_merged)
+        _add_filtered(df_merged[drop_mask].copy(), "blacklist_not_price_increase")
+        df_merged = df_merged[~drop_mask]
+        logger.info(
+            f"blacklist过滤(仅允许涨价): {before} -> {len(df_merged)} "
+            f"(黑名单命中中保留涨价行 {keep_cnt} 条)"
+        )
+
+        if df_merged.empty:
+            _flush_filtered(out_dir, file_path, logger=logger)
+            logger.warning("黑名单过滤后无可调整行，未生成价格Excel。")
+            return
 
     # 8) 导出三列
     df_final = df_merged[["item_id", "skuid", "taobao_store_price"]].copy()
