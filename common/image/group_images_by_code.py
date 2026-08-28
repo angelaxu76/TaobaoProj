@@ -8,13 +8,25 @@ import shutil
 # 例：LQU1201BK11-modern-international-polarquilt-jacket_3.jpg
 PATTERN = re.compile(r'^([A-Za-z0-9]{11})-[^-].*?_(\d+)\.(jpg|jpeg|png|webp)$', re.IGNORECASE)
 
-def group_and_rename_images(images_dir: Path, code_len: int = 11, overwrite: bool = True):
+def group_and_rename_images(images_dir: Path, code_len: int = 11, overwrite: bool = True,
+                            dest_dir: Path | None = None):
+    """
+    将 images_dir 下形如 CODE-xxx_1.jpg 的散图按编码分组、重排序号后放入 <dest_dir>/<code>/。
+
+    dest_dir 为空时默认等于 images_dir（原地分组，向后兼容）；
+    传入独立目录时，images_dir 只作为散图来源、不会在其下生成编码子目录，
+    这样可以让"防指纹散图目录"和"分组长期库"彼此分开，重复执行不会互相污染。
+    """
+    images_dir = Path(images_dir)
+    dest_dir = Path(dest_dir) if dest_dir is not None else images_dir
+
     if images_dir.exists() and not images_dir.is_dir():
         print(f"❌ 路径已存在但不是文件夹：{images_dir}")
         return
     if not images_dir.exists():
         images_dir.mkdir(parents=True, exist_ok=True)
         print(f"📁 目录不存在，已自动创建：{images_dir}")
+    dest_dir.mkdir(parents=True, exist_ok=True)
 
     # 收集：code -> [(seq_num:int, file_path:Path, ext:str)]
     bucket = {}
@@ -43,13 +55,13 @@ def group_and_rename_images(images_dir: Path, code_len: int = 11, overwrite: boo
     for code, items in bucket.items():
         # 按原本编号排序，然后重排为 1..N
         items.sort(key=lambda x: x[0])
-        dest_dir = images_dir / code
-        dest_dir.mkdir(parents=True, exist_ok=True)
+        code_dir = dest_dir / code
+        code_dir.mkdir(parents=True, exist_ok=True)
 
         for new_idx, (_, src_path, ext) in enumerate(items, start=1):
             # 目标统一命名：<code>_<i>.<ext>，扩展名保留
             dest_name = f"{code}_{new_idx}.{ext}"
-            dest_path = dest_dir / dest_name
+            dest_path = code_dir / dest_name
 
             # 如果已存在且允许覆盖，先删除
             if dest_path.exists() and overwrite:

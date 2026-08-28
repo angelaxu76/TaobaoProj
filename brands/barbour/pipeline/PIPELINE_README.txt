@@ -108,9 +108,11 @@
   图片流水线总览（阶段 E ~ G）
 ================================================================================
 
-  images/ 只保留 image_download/ 这一个长期原始素材库（BARBOUR["IMAGE_DOWNLOAD"]），
-  与 publication / repulibcation 平级。backup_and_clear_brand_dirs() 只清空
-  publication 和 repulibcation，不会碰这个目录，所以下载库不会被清理流程误删。
+  images/ 下的长期原始素材库是 image_download/（BARBOUR["IMAGE_DOWNLOAD"]，按编码分子目录），
+  另有两个阶段E内部中转目录 image_download_raw/ 和 image_download_processed/（扁平散图，
+  每次跑阶段E前会被清空重建）。images/ 与 publication / repulibcation 平级，
+  backup_and_clear_brand_dirs() 只清空 publication 和 repulibcation，不会碰 images/，
+  所以下载库不会被清理流程误删。
 
   阶段F1~G（选图 ~ HTML产出）的所有批次临时数据统一放在 repulibcation/ 下
   （BARBOUR["IMAGE_SELECTED"] / IMAGE_PERSON_DIR / IMAGE_DETAIL_DIR / IMAGE_PROCESS 等，
@@ -119,7 +121,9 @@
   属于正常的批次产出，不需要长期保留。
 
   images/
-  └── image_download/          ← 阶段E输出：长期库，累积所有下载+处理过的图片（按编码分目录）
+  ├── image_download_raw/        ← 阶段E中转：官网下载的原始散图（扁平，每次跑前清空）
+  ├── image_download_processed/  ← 阶段E中转：防指纹处理后的散图（扁平，每次跑前清空）
+  └── image_download/            ← 阶段E输出：长期库，按编码分子目录累积所有历史图片
 
   repulibcation/
   ├── images_selected/         ← 阶段F1输出：本批次要发布的商品图片（按编码分目录）
@@ -139,14 +143,22 @@
   脚本：image_download_and_prepare.py
 ================================================================================
 
-  1. 从 Barbour 官网下载图片（多线程）：
+  0. 清空两个中转目录 IMAGE_DOWNLOAD_RAW / IMAGE_DOWNLOAD_PROCESSED
+
+  1. 从 Barbour 官网下载图片（多线程）-> IMAGE_DOWNLOAD_RAW：
        download_barbour_images_multi(max_workers=6)
+     会先按商品编码检查长期库 IMAGE_DOWNLOAD/<code>/，已下载过的编码直接跳过；
+     如需强制重下，传 skip_existing=False（命令行 --force）。
 
-  2. 批量防指纹处理（轻微扰动，防止电商平台查重）：
-       batch_process_images(IMAGE_DOWNLOAD, IMAGE_DOWNLOAD)
+  2. 批量防指纹处理（轻微扰动，防止电商平台查重）RAW -> PROCESSED：
+       batch_process_images(IMAGE_IN=IMAGE_DOWNLOAD_RAW, IMAGE_OUT=IMAGE_DOWNLOAD_PROCESSED)
 
-  3. 按商品编码分组并重命名：
-       group_and_rename_images(IMAGE_DOWNLOAD, code_len=11, overwrite=True)
+  3. 按商品编码分组并重命名 PROCESSED -> IMAGE_DOWNLOAD（长期库）：
+       group_and_rename_images(IMAGE_DOWNLOAD_PROCESSED, code_len=11,
+                               overwrite=True, dest_dir=IMAGE_DOWNLOAD)
+
+  说明：防指纹和分组都只认"扁平散图"。RAW / PROCESSED 每次清空重来，
+        分组结果只往 IMAGE_DOWNLOAD 累积，重复执行不会因为库里已是编码子目录而错乱。
 
 ================================================================================
   阶段 F1：选图

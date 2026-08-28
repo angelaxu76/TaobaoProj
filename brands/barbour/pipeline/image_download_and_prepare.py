@@ -1,11 +1,19 @@
 """
 图片流水线第 1 步：从 Barbour 官网下载图片，简单处理后按商品编码分组存入长期库。
 
-BARBOUR["IMAGE_DOWNLOAD"] 是长期图片库（位于 images/ 目录，不受 cleanup/backup 影响），
-按商品编码分子目录累积保存所有下载过的图片。
+三段目录（前两段是本步内部中转，每次运行前清空；只有第三段是长期库）：
+  1. IMAGE_DOWNLOAD_RAW        官网下载的原始散图（扁平）
+  2. IMAGE_DOWNLOAD_PROCESSED  防指纹处理后的散图（扁平）
+  3. IMAGE_DOWNLOAD            按编码分子目录的长期库，累积所有历史图片
+                              （位于 images/ 目录，不受 cleanup/backup 影响）
 
-后续接 image_select_and_prepare.py，按发布 Excel 从这里选图。
+之所以拆三段：防指纹和分组都只认"扁平散图"。如果直接在 IMAGE_DOWNLOAD 里原地处理，
+重复执行时该目录已经是"编码子目录"结构，会让这两步错乱。拆开后 RAW/PROCESSED
+每次清空重来，分组结果只往 IMAGE_DOWNLOAD 里累积。
+
+后续接 image_select_and_prepare.py，按发布 Excel 从 IMAGE_DOWNLOAD 选图。
 """
+import shutil
 from pathlib import Path
 from helper.image.image_antifingerprint import batch_process_images
 from helper.image.expand_square_add_code import process_images
@@ -19,17 +27,33 @@ from brands.barbour.supplier.barbour_download_images_only import download_barbou
 from common.image.group_images_by_code import group_and_rename_images
 from config import BARBOUR
 
+def _reset_dir(path):
+    """清空并重建中转目录，避免上一批的散图混进来被重复处理。"""
+    p = Path(path)
+    if p.exists():
+        shutil.rmtree(p)
+    p.mkdir(parents=True, exist_ok=True)
+
+
 def main():
 
-    print("从barbour官网下载图片")
+    raw_dir = BARBOUR['IMAGE_DOWNLOAD_RAW']
+    processed_dir = BARBOUR['IMAGE_DOWNLOAD_PROCESSED']
+    library_dir = BARBOUR['IMAGE_DOWNLOAD']
+
+    print("清空下载/防指纹中转目录")
+    _reset_dir(raw_dir)
+    _reset_dir(processed_dir)
+
+    # 下载前按编码检查长期库 IMAGE_DOWNLOAD/<code>/，已下载过的直接跳过（skip_existing 默认 True）
+    print("从barbour官网下载图片 -> IMAGE_DOWNLOAD_RAW")
     download_barbour_images_multi(max_workers=6)
 
-    print("给Barbour图片做防指纹处理")
-    batch_process_images(IMAGE_IN=BARBOUR['IMAGE_DOWNLOAD'], 
-                         IMAGE_OUT=BARBOUR['IMAGE_DOWNLOAD'])
+    print("给Barbour图片做防指纹处理 RAW -> PROCESSED")
+    batch_process_images(IMAGE_IN=raw_dir, IMAGE_OUT=processed_dir)
 
-    print("将Barbour图片按编码分组并重命名")
-    group_and_rename_images(BARBOUR['IMAGE_DOWNLOAD'], code_len=11, overwrite=True)
+    print("将Barbour图片按编码分组并重命名 PROCESSED -> IMAGE_DOWNLOAD（长期库）")
+    group_and_rename_images(processed_dir, code_len=11, overwrite=True, dest_dir=library_dir)
 
     # print("将JPG转AVIF")
     # avif_to_jpg(input_dir=r"C:\Users\martin\Downloads", output_dir=r"C:\Users\martin\Downloads")

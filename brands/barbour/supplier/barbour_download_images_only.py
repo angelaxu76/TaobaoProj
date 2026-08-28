@@ -355,6 +355,39 @@ def make_square_image(img_path: str, out_path: str, fill_color=(255, 255, 255)):
         logger.error("方形化失败: %s, 错误: %s", img_path, e)
 
 
+IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp")
+
+
+def already_in_library(code: str) -> bool:
+    """长期库 IMAGE_DOWNLOAD/<code>/ 下已有图片则视为下载过。"""
+    lib_dir = os.path.join(str(BARBOUR["IMAGE_DOWNLOAD"]), code)
+    if not os.path.isdir(lib_dir):
+        return False
+    return any(
+        f.lower().endswith(IMAGE_EXTS) and os.path.isfile(os.path.join(lib_dir, f))
+        for f in os.listdir(lib_dir)
+    )
+
+
+def _filter_new_urls(urls, skip_existing: bool = True):
+    """按商品编码过滤掉长期库里已下载过的链接，返回 (待下载列表, 跳过数)。"""
+    if not skip_existing:
+        return urls, 0
+    keep, skipped = [], 0
+    for u in urls:
+        try:
+            code, _ = extract_code_and_name(u)
+        except Exception:
+            keep.append(u)
+            continue
+        if already_in_library(code):
+            skipped += 1
+            logger.info("跳过（长期库已存在）: %s (code=%s)", u, code)
+        else:
+            keep.append(u)
+    return keep, skipped
+
+
 # ========== 多线程入口 ==========
 def worker(url, image_folder):
     """每个线程独立运行，不共享 session。"""
@@ -368,12 +401,12 @@ def worker(url, image_folder):
         return (url, 0, str(e))
 
 
-def download_barbour_images_multi(max_workers=6):
+def download_barbour_images_multi(max_workers=6, skip_existing: bool = True):
     links_file = BARBOUR["LINKS_FILE"]
-    image_folder = BARBOUR["IMAGE_DOWNLOAD"]
+    image_folder = BARBOUR["IMAGE_DOWNLOAD_RAW"]
 
     logger.info("配置: LINKS_FILE=%s", links_file)
-    logger.info("配置: IMAGE_DOWNLOAD=%s", image_folder)
+    logger.info("配置: IMAGE_DOWNLOAD_RAW=%s", image_folder)
 
     if not os.path.exists(links_file):
         logger.error("链接文件不存在: %s", links_file)
@@ -388,7 +421,13 @@ def download_barbour_images_multi(max_workers=6):
         logger.warning("链接文件为空: %s", links_file)
         return
 
-    logger.info("共 %d 个商品链接，开启 %d 线程并发下载...", len(urls), max_workers)
+    total = len(urls)
+    urls, skipped = _filter_new_urls(urls, skip_existing)
+    logger.info("共 %d 个商品链接，跳过 %d 个（长期库已存在），待下载 %d 个，开启 %d 线程并发下载...",
+                total, skipped, len(urls), max_workers)
+    if not urls:
+        logger.info("没有需要新下载的商品。")
+        return
 
     with ThreadPoolExecutor(max_workers=max_workers) as exe:
         futures = {exe.submit(worker, url, image_folder): url for url in urls}
@@ -408,12 +447,12 @@ def download_barbour_images_multi(max_workers=6):
 
 
 # ========== 单线程入口（保留兼容） ==========
-def download_barbour_images():
+def download_barbour_images(skip_existing: bool = True):
     links_file = BARBOUR["LINKS_FILE"]
-    image_folder = BARBOUR["IMAGE_DOWNLOAD"]
+    image_folder = BARBOUR["IMAGE_DOWNLOAD_RAW"]
 
     logger.info("配置: LINKS_FILE=%s", links_file)
-    logger.info("配置: IMAGE_DOWNLOAD=%s", image_folder)
+    logger.info("配置: IMAGE_DOWNLOAD_RAW=%s", image_folder)
 
     if not os.path.exists(links_file):
         logger.error("链接文件不存在: %s", links_file)
@@ -428,7 +467,13 @@ def download_barbour_images():
         logger.warning("链接文件为空: %s", links_file)
         return
 
-    logger.info("共 %d 个商品链接，开始依次下载...", len(urls))
+    total = len(urls)
+    urls, skipped = _filter_new_urls(urls, skip_existing)
+    logger.info("共 %d 个商品链接，跳过 %d 个（长期库已存在），待下载 %d 个，开始依次下载...",
+                total, skipped, len(urls))
+    if not urls:
+        logger.info("没有需要新下载的商品。")
+        return
 
     with requests.Session() as session:
         for idx, url in enumerate(urls, 1):
@@ -448,15 +493,17 @@ if __name__ == "__main__":
     parser.add_argument("--debug", action="store_true", help="开启 DEBUG 日志")
     parser.add_argument("--workers", type=int, default=6, help="并发线程数 (默认 6)")
     parser.add_argument("--single", action="store_true", help="使用单线程模式")
+    parser.add_argument("--force", action="store_true",
+                        help="不跳过长期库中已下载过的编码，强制重新下载")
     args = parser.parse_args()
 
     setup_logging(debug=args.debug)
 
     logger.info("========== Barbour 图片下载 启动 ==========")
     logger.info("LINKS_FILE = %s", BARBOUR.get("LINKS_FILE", "未配置"))
-    logger.info("IMAGE_DOWNLOAD = %s", BARBOUR.get("IMAGE_DOWNLOAD", "未配置"))
+    logger.info("IMAGE_DOWNLOAD_RAW = %s", BARBOUR.get("IMAGE_DOWNLOAD_RAW", "未配置"))
 
     if args.single:
-        download_barbour_images()
+        download_barbour_images(skip_existing=not args.force)
     else:
-        download_barbour_images_multi(max_workers=args.workers)
+        download_barbour_images_multi(max_workers=args.workers, skip_existing=not args.force)

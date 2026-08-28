@@ -16,7 +16,11 @@ BARBOUR_BASE = BASE_DIR / "barbour"
 #
 # 流水线顺序（各阶段目录对应各脚本的输入/输出）：
 #   1. image_download_and_prepare.py
-#        下载 -> 防指纹处理 -> 按编码分组          => IMAGE_DOWNLOAD（长期库，累积所有历史图片，唯一留在 images/ 下的目录）
+#        下载                => IMAGE_DOWNLOAD_RAW（images/image_download_raw，扁平散图，每次跑前清空）
+#        防指纹处理           => IMAGE_DOWNLOAD_PROCESSED（images/image_download_processed，扁平散图，每次跑前清空）
+#        按编码分组           => IMAGE_DOWNLOAD（长期库，按编码分子目录累积所有历史图片，唯一长期留在 images/ 下的目录）
+#        —— RAW / PROCESSED 是本步内部的中转目录，只放散图；分组产出只进 IMAGE_DOWNLOAD。
+#           这样重复执行时不会因为 IMAGE_DOWNLOAD 里已经是"编码子目录"而不是散图，导致防指纹/分组处理错乱。
 #   2. image_select_and_prepare.py
 #        按发布 Excel 从 IMAGE_DOWNLOAD 选出本批次商品的图片 => IMAGE_SELECTED（repulibcation/images_selected）
 #        （找不到图片的编码写入 IMAGE_MISSING_TXT）
@@ -45,6 +49,10 @@ BARBOUR = {
     "PUBLICATION_DIR": BARBOUR_BASE / "document" / "publication",
     # ── 长期原始素材库（不受 cleanup/backup 影响）──
     "IMAGE_ROOT": IMAGES_BASE,
+    # image_download_and_prepare.py 内部的两个中转目录（扁平散图，每次跑前清空）：
+    "IMAGE_DOWNLOAD_RAW": IMAGES_BASE / "image_download_raw",            # 官网下载的原始散图
+    "IMAGE_DOWNLOAD_PROCESSED": IMAGES_BASE / "image_download_processed",  # 防指纹处理后的散图
+    # 长期库：按编码分子目录，累积所有历史图片。选图（image_select_and_prepare.py）从这里取。
     "IMAGE_DOWNLOAD": IMAGES_BASE / "image_download",
     # ── 以下为 repulibcation/ 下的本批次临时数据（阶段F~G），随发布批次走，非长期库 ──
     "IMAGE_SELECTED": PROCESS_BASE / "images_selected",
