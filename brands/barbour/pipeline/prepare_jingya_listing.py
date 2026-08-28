@@ -379,11 +379,30 @@ def run_d_export():
     from channels.jingya.export.export_stock_to_excel import export_stock_excel
     from channels.jingya.export.export_channel_price_excel_jingya import export_jiangya_channel_prices
     from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
+    from brands.barbour.jingya.allocate_supplier_and_price import (
+        _load_exclude_and_forced_sites,
+        write_codes_excel,
+    )
+
+    # ── D0：排除清单里"没指定供应商"的编码，库存导出要跳过它们 ──────────
+    # 这些编码 C4 阶段完全没碰（库存还停在骨架占位值 0），如果照常导出，
+    # 会把 0 推到鲸芽，覆盖掉你可能在鲸芽端手动设置的库存。价格导出那两步
+    # 已经在用 EXCLUDE_LIST_XLSX 排除了，库存导出之前漏了这一层，这里补上。
+    # 注意：只排除"没指定供应商"的那部分——排除清单里"指定了供应商"的编码
+    # 库存是真实算出来的，仍然要正常导出。
+    bare_codes, _forced = _load_exclude_and_forced_sites(EXCLUDE_LIST_XLSX)
+    stock_exclude_file = None
+    if bare_codes:
+        stock_exclude_file = write_codes_excel(
+            bare_codes, str(Path(STOCK_EXPORT_DIR) / "_barbour_bare_exclude_for_stock.xlsx")
+        )
+        print(f"   🛡️ {len(bare_codes)} 个「排除清单中未指定供应商」的编码将跳过库存导出，"
+              f"避免覆盖鲸芽端已有/手动设置的库存。")
 
     _step("导出库存 Excel → 用于鲸芽批量更新库存")
     t = time.time()
     try:
-        export_stock_excel("barbour", STOCK_EXPORT_DIR)
+        export_stock_excel("barbour", STOCK_EXPORT_DIR, exclude_excel_file=stock_exclude_file)
         _ok(f"库存 Excel 已生成：{STOCK_EXPORT_DIR}", time.time() - t)
     except Exception as e:
         _fail("D-export_stock", e)

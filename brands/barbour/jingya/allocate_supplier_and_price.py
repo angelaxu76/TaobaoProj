@@ -268,6 +268,23 @@ def _reconcile_shared_channel_prices(engine: Engine, dry_run: bool) -> int:
     return len(updates)
 
 
+def write_codes_excel(codes, out_path: str, col_name: str = "商品编码") -> str:
+    """
+    把一批商品编码写成一个只有编码列的 Excel。
+
+    用途：channels/jingya/export/ 下几个多品牌通用脚本（export_stock_excel 等）
+    的 exclude_excel_file/白名单参数只认"列名含 code 或 编码"的 Excel，不关心
+    其它内容——这个函数就是配合它们，把 Barbour 这边算出来的编码集合（比如
+    "排除清单里没指定供应商、库存应该跳过导出"的那批）动态落成一个临时文件，
+    不需要去改那些通用脚本本身。
+    """
+    codes = sorted({str(c).strip() for c in codes if str(c).strip()})
+    out_file = Path(out_path)
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame({col_name: codes}).to_excel(out_file, index=False)
+    return str(out_file)
+
+
 def _eff_price_row(row) -> Optional[float]:
     """有效成本口径：sale_price_gbp（已含折扣策略+运费）优先，其次 price_gbp，最后 original_price_gbp。"""
     for v in (row.get("sale_price_gbp"), row.get("price_gbp"), row.get("original_price_gbp")):
