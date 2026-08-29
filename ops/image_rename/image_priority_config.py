@@ -41,7 +41,7 @@ IMAGE_PRIORITY_CONFIG` 引用这里的值——cfg 层反过来依赖 ops 层，
 IMAGE_PRIORITY_CONFIG = {
     "barbour": {
         # 改名脚本按这个顺序把换脸图排到最前面，其余图片按文件名字母顺序追加在后面
-        "IMAGE_RENAME_PRIORITY": ["front_1_faceswap", "front_2_faceswap", "front_3_faceswap", "front_4_faceswap"],
+        "IMAGE_RENAME_PRIORITY": ["front_1_faceswap", "details","front_2_faceswap", "front_3_faceswap", "front_4_faceswap"],
         # 改名后 {code}__1 是换脸效果最好的一张，首页优先用它，不存在再依次退到 __2/__3/__4
         "IMAGE_FIRST_PRIORITY": [1, 2, 3, 4],
         # 详情页优先用第二张，避免和首页撞图；__2 不存在时退到 __1/__3/__4
