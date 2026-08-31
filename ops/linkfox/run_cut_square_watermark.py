@@ -38,7 +38,7 @@ MAX_WORKERS = 2
 AUTO_CUTOUT = True
 
 # 是否跳过已是白底的图（True = 检测到白底不调用 rembg，节省时间）
-WHITE_BG_SKIP = True
+WHITE_BG_SKIP = False
 
 # 输出统一边长（px）；None = 不缩放，保持裁剪后的原始尺寸
 TARGET_SIZE = 1500

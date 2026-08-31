@@ -9,7 +9,7 @@ source_dir = r"D:\TB\Products\barbour\repulibcation\linkfox_processed"
 target_root_dir = r"D:\TB\Products\barbour\repulibcation\linkfox_processed分组图片"
 
 # 每组的图片数量
-group_size = 260
+group_size = 350
 
 # 支持的图片扩展名
 image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
