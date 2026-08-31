@@ -14,7 +14,7 @@
 EXCHANGE_RATE          = 9.4    # 英镑 → 人民币，所有品牌共用
 DEFAULT_DELIVERY       = 7      # 默认运费（英镑）
 DEFAULT_UNTAXED_MARGIN = 1.13   # 未税加成系数（精雅渠道）
-DEFAULT_RETAIL_MARGIN  = 1.35   # 零售价加成（淘宝店铺价 = 未税价 × 此系数）
+DEFAULT_RETAIL_MARGIN  = 1.37   # 零售价加成（淘宝店铺价 = 未税价 × 此系数）
 
 
 # ── 品牌定价策略 ───────────────────────────────────────────────────────────────
