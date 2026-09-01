@@ -89,7 +89,7 @@ def step_generate_store_price_excels(brand: str, input_dir: str, output_dir: str
                                       suffix: str = "_价格",
                                       drop_rows_without_price: bool = False,
                                       blacklist_excel_file: str = None,
-                                      allow_blacklist_price_increase: bool = False):
+                                      allow_blacklist_price_increase: bool = True):
     """Step 12：生成淘宝店铺价格导入文件"""
     generate_price_excels_bulk(
         brand=brand,

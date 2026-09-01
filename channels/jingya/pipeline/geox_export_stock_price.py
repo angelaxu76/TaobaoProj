@@ -34,7 +34,8 @@ def main():
         input_dir=r"D:\TB\Products\geox\document\store_prices\input",
         output_dir=r"D:\TB\Products\geox\repulibcation\store_prices\output",
         suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
-        drop_rows_without_price=False
+        drop_rows_without_price=False,
+        allow_blacklist_price_increase=True,  # 黑名单商品仅允许涨价（未传黑名单文件时此项无实际作用）
     )
 
     # generate_price_excels_bulk(

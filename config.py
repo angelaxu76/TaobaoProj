@@ -5,6 +5,7 @@ from __future__ import annotations
 from cfg.paths import (
     BASE_DIR, DISCOUNT_EXCEL_DIR, GEI_EXPORT_BASE, ensure_all_dirs,
     USER_HOME, DESKTOP_DIR, DOWNLOADS_DIR, ONEDRIVE_UK_DIR, ONEDRIVE_HK_DIR,
+    resolve_shared_path, VM_SHARED_PREFIX, LOCAL_SHARED_PREFIX,
 )
 from cfg.settings import (
     API_KEYS,

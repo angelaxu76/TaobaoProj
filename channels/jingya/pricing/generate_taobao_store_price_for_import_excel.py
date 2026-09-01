@@ -1267,7 +1267,7 @@ if __name__ == "__main__":
             suffix = "_价格"
             if len(sys.argv) >= 7 and sys.argv[5] == "--suffix":
                 suffix = sys.argv[6]
-            results = generate_price_excels_bulk(brand, input_dir, output_dir, suffix=suffix, drop_rows_without_price=True)
+            results = generate_price_excels_bulk(brand, input_dir, output_dir, suffix=suffix, drop_rows_without_price=True, allow_blacklist_price_increase=True)
             ok = [r for r in results if r[1] is not None]
             bad = [r for r in results if r[1] is None]
             print(f"📦 批量完成：成功 {len(ok)} 个，失败 {len(bad)} 个")

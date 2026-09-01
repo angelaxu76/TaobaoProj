@@ -1,6 +1,6 @@
 import os
 
-from config import ECCO
+from config import ECCO, resolve_shared_path
 from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 
 # ====== 抓取阶段（沿用 ECCO 原逻辑）======
@@ -74,11 +74,11 @@ def main():
   
 
     print("\n🟡 Step: 6️⃣ 生成鲸芽【库存更新】Excel")
-    stock_dest_excel_folder = r"\\vmware-host\Shared Folders\VMShared\input"
+    stock_dest_excel_folder = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\input")
     export_stock_excel("ecco", stock_dest_excel_folder)
 
     print("\n🟡 Step: 6️⃣ 生成鲸芽【价格更新】Excel")
-    price_dest_excel = r"\\vmware-host\Shared Folders\VMShared\ecco\publication_prices"
+    price_dest_excel = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\ecco\publication_prices")
     export_jiangya_channel_prices("ecco", price_dest_excel,chunk_size=200)
 
     print("\n🟡 Step: 7️⃣ 为新品生成【鲸芽上新模板】Excel")
@@ -87,11 +87,12 @@ def main():
     print("\n🟡 Step: 9️⃣ 生成淘宝店铺价格导入文件（可选，沿用 Camper 的店铺价逻辑）")
     generate_price_excels_bulk(
         brand="ecco",
-        input_dir=r"\\vmware-host\Shared Folders\shared\ecco\store_prices",
-        output_dir=r"\\vmware-host\Shared Folders\VMShared\ecco\store_prices",
+        input_dir=resolve_shared_path(r"\\vmware-host\Shared Folders\shared\ecco\store_prices"),
+        output_dir=resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\ecco\store_prices"),
         suffix="_价格",
         drop_rows_without_price=False,
-        blacklist_excel_file=r"\\vmware-host\Shared Folders\shared\ecco\exclude.xlsx" # 不丢行，查不到的价格留空
+        blacklist_excel_file=resolve_shared_path(r"\\vmware-host\Shared Folders\shared\ecco\exclude.xlsx"), # 不丢行，查不到的价格留空
+        allow_blacklist_price_increase=True,  # 黑名单商品仅允许涨价（降价/持平不动）
     )
 
 

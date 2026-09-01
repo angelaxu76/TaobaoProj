@@ -1,7 +1,7 @@
 import os
 import subprocess
 import sys
-from config import CLARKS
+from config import CLARKS, resolve_shared_path
 from channels.jingya.ingest.import_channel_info import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
 from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 from brands.clarks.collect_product_links import generate_product_links
@@ -93,19 +93,20 @@ def main():
     print("\n🟡 Step: 6️⃣ 获取excel文件用来更新淘宝店铺价格")
     generate_price_excels_bulk(
         brand="clarks",
-        input_dir=r"\\vmware-host\Shared Folders\shared\clarks\store_prices",
-        output_dir=r"\\vmware-host\Shared Folders\VMShared\clarks\store_prices",
+        input_dir=resolve_shared_path(r"\\vmware-host\Shared Folders\shared\clarks\store_prices"),
+        output_dir=resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\clarks\store_prices"),
         suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
         drop_rows_without_price=False,
-        blacklist_excel_file=r"\\vmware-host\Shared Folders\shared\clarks\exclude.xlsx" # 不丢行，查不到的价格留空
+        blacklist_excel_file=resolve_shared_path(r"\\vmware-host\Shared Folders\shared\clarks\exclude.xlsx"), # 不丢行，查不到的价格留空
+        allow_blacklist_price_increase=True,  # 黑名单商品仅允许涨价（降价/持平不动）
     )
 
 
     print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
-    stock_dest_excel_folder = r"\\vmware-host\Shared Folders\VMShared\input"
+    stock_dest_excel_folder = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\input")
     export_stock_excel("clarks",stock_dest_excel_folder)
 
-    price_dest_excel = r"\\vmware-host\Shared Folders\VMShared\clarks\publication_prices"
+    price_dest_excel = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\clarks\publication_prices")
     export_jiangya_channel_prices("clarks",price_dest_excel,chunk_size=200)
 
     print("\\n🟡 Step: 6️⃣生成发布产品的excel")

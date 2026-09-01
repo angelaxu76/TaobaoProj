@@ -1,5 +1,5 @@
 import os
-from config import CAMPER
+from config import CAMPER, resolve_shared_path
 from channels.jingya.ingest.import_channel_info import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
 from channels.jingya.export.export_stock_to_excel import export_stock_excel
 from channels.jingya.export.export_channel_price_excel_jingya import export_jiangya_channel_prices
@@ -61,11 +61,11 @@ def main():
 
 
     print("\\n🟡 Step: 6️⃣ 鲸芽侧更新价格和库存------")
-    stock_dest_excel_folder = r"\\vmware-host\Shared Folders\VMShared\input"
+    stock_dest_excel_folder = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\input")
     export_stock_excel("camper",stock_dest_excel_folder)
 
     print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
-    price_dest_excel = r"\\vmware-host\Shared Folders\VMShared\camper\publication_prices"
+    price_dest_excel = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\camper\publication_prices")
     export_jiangya_channel_prices("camper",price_dest_excel,chunk_size=200)
 
 
@@ -80,11 +80,11 @@ def main():
     print("\n🟡 Step: 6️⃣ 获取excel文件，用来更新各个淘宝店铺价格，输入文件夹可以是多个店铺的导出文件")
     generate_price_excels_bulk(
         brand="camper",
-        input_dir=r"\\vmware-host\Shared Folders\shared\camper\store_prices",
-        output_dir=r"\\vmware-host\Shared Folders\VMShared\camper\store_prices",
+        input_dir=resolve_shared_path(r"\\vmware-host\Shared Folders\shared\camper\store_prices"),
+        output_dir=resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\camper\store_prices"),
         suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
         drop_rows_without_price=False,
-        blacklist_excel_file=r"\\vmware-host\Shared Folders\shared\camper\exclude.xlsx", # 不丢行，查不到的价格留空
+        blacklist_excel_file=resolve_shared_path(r"\\vmware-host\Shared Folders\shared\camper\exclude.xlsx"), # 不丢行，查不到的价格留空
         allow_blacklist_price_increase=True,  # 开关：True=黑名单商品仅涨价可调、降价不动；False=涨降价都不动
     )
 

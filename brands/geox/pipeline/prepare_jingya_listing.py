@@ -1,6 +1,6 @@
 import os
 import subprocess
-from config import GEOX
+from config import GEOX, resolve_shared_path
 from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 from brands.geox.collect_product_links import collect_all_product_links
 from channels.jingya.ingest.import_txt_to_db import import_txt_to_db_supplier
@@ -66,11 +66,11 @@ def main():
     generate_publication_excels("geox")
 
     print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
-    stock_dest_excel_folder = r"\\vmware-host\Shared Folders\VMShared\input"
+    stock_dest_excel_folder = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\input")
     export_stock_excel("geox",stock_dest_excel_folder)
 
     print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
-    price_dest_excel = r"\\vmware-host\Shared Folders\VMShared\geox\publication_prices"
+    price_dest_excel = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\geox\publication_prices")
     exclude_exccel = r"D:\TB\Products\geox\document\exclude.xlsx"
     # export_jiangya_channel_prices("geox",price_dest_excel,exclude_exccel)
     export_jiangya_channel_prices("geox",price_dest_excel,chunk_size=200)
@@ -78,11 +78,12 @@ def main():
 
     generate_price_excels_bulk(
         brand="geox",
-        input_dir=r"\\vmware-host\Shared Folders\shared\geox\store_prices",
-        output_dir=r"\\vmware-host\Shared Folders\VMShared\geox\store_prices",
+        input_dir=resolve_shared_path(r"\\vmware-host\Shared Folders\shared\geox\store_prices"),
+        output_dir=resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\geox\store_prices"),
         suffix="_价格",                # 输出文件后缀，可改成 _for_import 等
         drop_rows_without_price=False,
-        blacklist_excel_file=r"\\vmware-host\Shared Folders\shared\geox\exclude.xlsx" # 不丢行，查不到的价格留空
+        blacklist_excel_file=resolve_shared_path(r"\\vmware-host\Shared Folders\shared\geox\exclude.xlsx"), # 不丢行，查不到的价格留空
+        allow_blacklist_price_increase=True,  # 黑名单商品仅允许涨价（降价/持平不动）
     )
 
 

@@ -21,6 +21,8 @@ from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
+from config import resolve_shared_path
+
 # ══════════════════════════════════════════════════════════════════
 #  CONFIG — 按需修改
 # ══════════════════════════════════════════════════════════════════
@@ -39,15 +41,17 @@ RUN_D_EXPORT    = True   # 导出库存 / 价格 Excel
 # 统一在 brands/barbour/jingya/allocate_supplier_and_price_config.py 中配置。
 
 # ── 路径配置 ─────────────────────────────────────────────────────
-EXCLUDE_LIST_XLSX    = r"\\vmware-host\Shared Folders\shared\barbour\barbour_exclude_list.xlsx"
-STOCK_EXPORT_DIR     = r"\\vmware-host\Shared Folders\VMShared\input"
-PRICE_EXPORT_DIR     = r"\\vmware-host\Shared Folders\VMShared\barbour\publication_prices"
+# 共享盘路径统一走 resolve_shared_path()：VM 内用 \\vmware-host\Shared Folders\...，
+# 本地运行访问不到时自动切到 E:\shared\...
+EXCLUDE_LIST_XLSX    = resolve_shared_path(r"\\vmware-host\Shared Folders\shared\barbour\barbour_exclude_list.xlsx")
+STOCK_EXPORT_DIR     = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\input")
+PRICE_EXPORT_DIR     = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\barbour\publication_prices")
 
 # ── D 阶段：淘宝店铺价格导出 ──────────────────────────────────────
 # 淘宝店铺导出的 Excel 所在文件夹（每个店铺一个文件）
-STORE_PRICE_INPUT_DIR  = r"\\vmware-host\Shared Folders\shared\barbour\store_prices"
+STORE_PRICE_INPUT_DIR  = resolve_shared_path(r"\\vmware-host\Shared Folders\shared\barbour\store_prices")
 # 生成的店铺价格导入表保存位置
-STORE_PRICE_OUTPUT_DIR = r"\\vmware-host\Shared Folders\VMShared\barbour\store_prices"
+STORE_PRICE_OUTPUT_DIR = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\barbour\store_prices")
 
 # ── 日志目录（留空则不写文件日志）────────────────────────────────
 LOG_DIR = r"D:\TB\Logs\barbour"
@@ -425,6 +429,7 @@ def run_d_export():
             suffix="_价格",
             drop_rows_without_price=False,
             blacklist_excel_file=EXCLUDE_LIST_XLSX,
+            allow_blacklist_price_increase=True,  # 黑名单商品仅允许涨价（降价/持平不动）
         )
         _ok(f"淘宝店铺价格 Excel 已生成：{STORE_PRICE_OUTPUT_DIR}", time.time() - t)
     except Exception as e:
