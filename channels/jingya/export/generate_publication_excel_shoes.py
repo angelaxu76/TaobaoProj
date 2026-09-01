@@ -139,6 +139,28 @@ def generate_publication_excels(brand: str):
         .values
     }
 
+    # === 新增：每个商品编码「有库存的尺码」列表 ===
+    df_sizes = pd.read_sql(
+        f"""
+        SELECT product_code, size, stock_count
+        FROM {config['TABLE_NAME']}
+        WHERE stock_count > 1 AND size IS NOT NULL AND TRIM(size::text) <> ''
+        """,
+        engine,
+    )
+
+    def _size_sort_key(s: str):
+        m = re.search(r"\d+\.?\d*", str(s))
+        return (0, float(m.group())) if m else (1, str(s))
+
+    size_stock_map = {}
+    for code_key, grp in df_sizes.groupby("product_code"):
+        sizes_sorted = sorted(
+            {str(s).strip() for s in grp["size"].tolist() if str(s).strip()},
+            key=_size_sort_key,
+        )
+        size_stock_map[str(code_key).strip().upper()] = "、".join(sizes_sorted)
+
     rows = []
     print("\n📦 正在读取 TXT 并生成商品行数据...")
     for idx, code in enumerate(product_codes, 1):
@@ -190,6 +212,7 @@ def generate_publication_excels(brand: str):
             "英文标题": title_en,
             "标题": title_cn,
             "商品编码": code,
+            "有库存尺码": size_stock_map.get(code_clean, ""),
             "价格": rmb_price,
             "内里材质": lining_material,
             "帮面材质": upper_material,
