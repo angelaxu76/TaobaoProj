@@ -48,6 +48,27 @@ def normalize_col(col: str) -> str:
     s = re.sub(r"[，,。.\s]+$", "", s)  # 去末尾逗号/句号/空白
     return s.lower()
 
+def _clean_id_str(val) -> str:
+    """
+    将 Excel 读出的 ID 值（skuID/货品id/渠道产品id 等）转成干净字符串。
+
+    pandas 读取 Excel 时，若某数字列存在空单元格，整列会被上转型为 float64，
+    导致像 6203121882253 这样的长整数 ID 变成 6203121882253.0，
+    str() 后尾部多出 ".0" 并被原样写入数据库（VARCHAR 列不会报错）。
+    这里统一收敛：float 且为整数值时按整数格式化；已经是 "123.0" 形式的
+    字符串（例如历史脏数据重新读取）也一并去掉尾缀。
+    """
+    if val is None:
+        return ""
+    if isinstance(val, float):
+        if pd.isna(val):
+            return ""
+        return str(int(val)) if val.is_integer() else str(val)
+    s = str(val).strip()
+    if re.fullmatch(r"\d+\.0", s):
+        s = s[:-2]
+    return s
+
 def split_sku_name(s: str):
     """最小分隔：支持 '，' 或 ','；返回 (product_code, size) 或 None"""
     if s is None:
@@ -121,8 +142,8 @@ def insert_missing_products_with_zero_stock(brand: str):
         code, size = parsed
         code_sizes.setdefault(code, set()).add(size)
 
-        chp = str(row.get(key_ch_prod, "")).strip() if key_ch_prod else ""
-        chi = str(row.get(key_ch_item, "")).strip() if key_ch_item else ""
+        chp = _clean_id_str(row.get(key_ch_prod, "")) if key_ch_prod else ""
+        chi = _clean_id_str(row.get(key_ch_item, "")) if key_ch_item else ""
         if chp or chi:
             code_first_channel.setdefault(code, (chp, chi))
 
@@ -188,9 +209,9 @@ def insert_jingyaid_to_db(brand: str):
     with conn:
         with conn.cursor() as cur:
             for _, row in df.iterrows():
-                skuid_val    = str(row.get(key_sku_id, "")).strip() if key_sku_id else ""
+                skuid_val    = _clean_id_str(row.get(key_sku_id, "")) if key_sku_id else ""
                 sku_name_val = str(row.get(key_sku_name, "")).strip()
-                item_id_val  = str(row.get(key_item_id, "")).strip() if key_item_id else ""
+                item_id_val  = _clean_id_str(row.get(key_item_id, "")) if key_item_id else ""
 
                 parsed = split_sku_name(sku_name_val)
                 if not parsed:
@@ -206,8 +227,8 @@ def insert_jingyaid_to_db(brand: str):
                 params = [item_id_val, skuid_val, sku_name_val]
 
                 # 读取渠道两列（如有）
-                chp = str(row.get(key_ch_prod, "")).strip() if key_ch_prod else ""
-                chi_excel = str(row.get(key_ch_item, "")).strip() if key_ch_item else ""
+                chp = _clean_id_str(row.get(key_ch_prod, "")) if key_ch_prod else ""
+                chi_excel = _clean_id_str(row.get(key_ch_item, "")) if key_ch_item else ""
 
                 # ✅ 关键：优先用 Excel 的 channel_item_id；否则回退到 “货品id”
                 chi_final = chi_excel or item_id_val

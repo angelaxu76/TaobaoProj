@@ -97,7 +97,7 @@ def split_excel_by_brand(input_path: str | Path, output_dir: str | Path) -> None
 
 # ======== 直接运行示例 ========
 if __name__ == "__main__":
-    input_file = DOWNLOADS_DIR / "货品导出2026-08-20+22_24_04结果.xlsx"   # ← 修改为实际文件名
+    input_file = DOWNLOADS_DIR / "货品导出2026-09-03+20_51_41结果.xlsx"   # ← 修改为实际文件名
     output_directory = DOWNLOADS_DIR  # ← 修改为实际输出目录
 
     split_excel_by_brand(input_file, output_directory)
