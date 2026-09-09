@@ -31,9 +31,9 @@ def get_philipmorris_driver():
 def extract_links_from_html(html: str):
     soup = BeautifulSoup(html, "html.parser")
     links = set()
-    for tag in soup.select("a.card-figure__link"):
+    for tag in soup.select("a.card-title-change"):
         href = tag.get("href", "").strip()
-        if not href:
+        if not href or "/products/" not in href:
             continue
         if href.startswith("http"):
             links.add(href)
@@ -61,7 +61,7 @@ def philipmorris_get_links():
                 try:
                     WebDriverWait(driver, 10).until(
                         EC.presence_of_element_located(
-                            (By.CSS_SELECTOR, "a.card-figure__link")
+                            (By.CSS_SELECTOR, "a.card-title-change")
                         )
                     )
                 except Exception:

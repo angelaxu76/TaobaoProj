@@ -1,42 +1,46 @@
 # -*- coding: utf-8 -*-
 """
-Philip Morris Direct 采集器 - 重构版 (使用 BaseFetcher)
+Philip Morris Direct 采集器 - Shopify JSON 版
 
-基于 philipmorrisdirect_fetch_info_v2.py 重构
-特点:
-- 数据库反查编码 (barbour_color_map + barbour_products)
-- meta[property="product:price"] 价格
-- 复杂的编码映射 (MPN 提取 + DB 兜底)
-- 多颜色页面逐色处理
+2026-09 站点从 BigCommerce Stencil 主题迁移到 Shopify，旧版依赖的
+DOM 选择器 (productView-title / price--withTax / label.form-option 等)
+全部失效，且不再需要 Selenium 逐个点击颜色按钮采集。
 
-对比:
-- 旧版 (philipmorrisdirect_fetch_info_v2.py): 912 行
-- 新版 (本文件): ~400 行
-- 代码减少: 56%
+新逻辑:
+- 直接请求 Shopify 公开的 <商品URL>.json 拿标题/描述/颜色尺码 option/
+  每个 SKU 的价格与条码
+- 结合商品页 HTML 内 <script type="application/ld+json"> 的 offers[]
+  (按 sku 给出 InStock/OutOfStock) 得到库存状态
+- 数据库反查编码 (barbour_color_map + barbour_products) 与 MPN 提取
+  逻辑保持不变 —— 这两者都是基于纯文本正则，与页面主题无关
 
 使用方式:
-    python -m brands.barbour.supplier.philipmorrisdirect_fetch_info_v3
+    python -m brands.barbour.supplier.philipmorrisdirect_fetch_info
 """
 
 from __future__ import annotations
 
+import json
 import re
 import time
-from pathlib import Path
 from typing import Dict, Any, List, Optional
+import requests
 from bs4 import BeautifulSoup
 
 # 导入基类和工具
 from brands.barbour.core.base_fetcher import BaseFetcher, setup_logging
-
-# Selenium
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from common.ingest.txt_writer import format_txt
 
 # 配置
 from config import BARBOUR
 import psycopg2
+
+REQUEST_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+    )
+}
 
 SITE_NAME = "Philip Morris"
 LINKS_FILE = BARBOUR["LINKS_FILES"]["philipmorris"]
@@ -243,6 +247,33 @@ def extract_style_code(html: str) -> Optional[str]:
     return None
 
 
+# ================== Shopify 数据获取 ==================
+
+def product_json_url(url: str) -> str:
+    """商品页 URL -> Shopify 公开 JSON 接口 URL"""
+    base = url.split("?")[0].rstrip("/")
+    return base + ".json"
+
+
+def extract_ld_json_offers(html: str) -> Dict[str, str]:
+    """从页面 JSON-LD 中提取 sku -> availability (InStock/OutOfStock)"""
+    offers_by_sku: Dict[str, str] = {}
+    for block in re.findall(
+        r'<script type="application/ld\+json">(.*?)</script>', html, flags=re.S
+    ):
+        try:
+            data = json.loads(block)
+        except Exception:
+            continue
+        if not isinstance(data, dict) or data.get("@type") != "Product":
+            continue
+        for offer in data.get("offers", []) or []:
+            sku = offer.get("sku")
+            if sku:
+                offers_by_sku[sku] = offer.get("availability", "")
+    return offers_by_sku
+
+
 # ================== 数据库匹配 ==================
 
 def find_product_code_in_db(style: str, color: str, url: str) -> Optional[str]:
@@ -355,181 +386,160 @@ def choose_mpn_for_color(style: str, color: str, all_mpns: List[str]) -> Optiona
 
 class PhilipMorrisFetcher(BaseFetcher):
     """
-    Philip Morris Direct 采集器
+    Philip Morris Direct 采集器 (Shopify JSON 版)
 
     特点:
-    - 多颜色页面逐色点击
-    - MPN 提取 + 数据库兜底
+    - 纯 HTTP 请求 (<url>.json + 页面 JSON-LD)，不再使用 Selenium
+    - MPN 提取 + 数据库兜底 (逻辑不变)
     - 每个颜色生成独立 TXT
     """
 
     def _fetch_html(self, url: str) -> str:
-        """
-        覆盖基类方法 - 不使用基类的 HTML 获取
-        Philip Morris 需要交互式处理多颜色
-        """
-        # 这个方法不会被调用，因为我们重写了 fetch_one_product
+        """覆盖基类方法 - 不使用，因为我们重写了 fetch_one_product"""
         return ""
 
     def fetch_one_product(self, url: str, idx: int, total: int):
         """
-        覆盖基类方法 - 处理多颜色页面
+        覆盖基类方法 - 按颜色分组生成多个 TXT
 
-        Philip Morris 特殊逻辑:
-        1. 点击每个颜色选项
-        2. 为每个颜色生成独立 TXT
+        流程:
+        1. 请求商品页 HTML: 用于 MPN 正则提取 + JSON-LD 库存状态
+        2. 请求 <url>.json: 拿标题/描述/options/variants (价格/sku/条码)
+        3. 按 Colour option 分组 variants，逐色写 TXT
         """
         for attempt in range(1, self.max_retries + 1):
             try:
                 self.logger.info(f"[{idx}/{total}] [{attempt}/{self.max_retries}] 抓取: {url}")
 
-                driver = self.get_driver()
+                resp = requests.get(url, headers=REQUEST_HEADERS, timeout=20)
+                resp.raise_for_status()
+                html = resp.text
 
-                try:
-                    driver.get(url)
-                    self._accept_cookies(driver)
-                    time.sleep(2)
+                resp_json = requests.get(product_json_url(url), headers=REQUEST_HEADERS, timeout=20)
+                resp_json.raise_for_status()
+                product = resp_json.json().get("product") or {}
 
-                    html = driver.page_source
-                    soup = BeautifulSoup(html, "html.parser")
+                if not product or not product.get("variants"):
+                    self.logger.warning("商品 JSON 为空或无变体 -> 跳过")
+                    return url, False
 
-                    # 基础信息
-                    style = extract_style_code(html) or ""
-                    name = soup.find("h1", class_="productView-title")
-                    product_name = name.text.strip() if name else "No Data"
+                style = extract_style_code(html) or ""
+                product_name = product.get("title") or "No Data"
 
-                    desc = soup.find("div", id="tab-description")
-                    product_desc = " ".join(desc.stripped_strings) if desc else "No Data"
+                desc_html = product.get("body_html") or ""
+                product_desc = BeautifulSoup(desc_html, "html.parser").get_text(" ", strip=True)
+                product_desc = product_desc.split("Barbour's Ref")[0].strip() or "No Data"
 
-                    base_orig, base_sale = self._extract_prices(soup)
+                all_mpns = extract_all_mpns_plus(html)
+                gender = self.infer_gender(
+                    text=f"{product_name} {product_desc}", url=url, output_format="en"
+                )
+                availability_by_sku = extract_ld_json_offers(html)
 
-                    # 整页所有 MPN
-                    all_mpns = extract_all_mpns_plus(html)
+                # 定位 Colour / Size 分别对应 option1/2/3
+                color_opt_idx = None
+                size_opt_idx = None
+                for opt in product.get("options") or []:
+                    opt_name = (opt.get("name") or "").strip().lower()
+                    if opt_name in ("colour", "color") and color_opt_idx is None:
+                        color_opt_idx = opt.get("position")
+                    elif opt_name == "size" and size_opt_idx is None:
+                        size_opt_idx = opt.get("position")
 
-                    # 一次性推断性别 (所有颜色共用同一个产品名)
-                    gender = self.infer_gender(text=product_name, url=url, output_format="en")
+                variants = product["variants"]
 
-                    # 颜色按钮
-                    color_elems = driver.find_elements(By.CSS_SELECTOR, "label.form-option.label-img")
-                    variants = []
+                by_color: Dict[str, List[dict]] = {}
+                for v in variants:
+                    color = (v.get(f"option{color_opt_idx}") if color_opt_idx else None) or "No Data"
+                    by_color.setdefault(color, []).append(v)
 
-                    if color_elems:
-                        # 多颜色: 逐个点击
-                        for idx_color in range(len(color_elems)):
-                            color_elems = driver.find_elements(
-                                By.CSS_SELECTOR, "label.form-option.label-img"
-                            )
-                            if idx_color >= len(color_elems):
-                                break
+                single_color_mode = len(by_color) <= 1
 
-                            elem = color_elems[idx_color]
-                            color = elem.text.strip() or (elem.get_attribute("title") or "No Data")
-                            self.logger.info(f"  🎨 {idx_color + 1}/{len(color_elems)}: {color}")
+                for color, color_variants in by_color.items():
+                    size_detail: Dict[str, Dict] = {}
+                    prices: List[tuple] = []  # (float_val, original_str)
+                    compare_prices: List[tuple] = []
 
-                            if color == "No Data":
-                                continue
+                    for v in color_variants:
+                        size = (v.get(f"option{size_opt_idx}") if size_opt_idx else None) or "One Size"
+                        sku = v.get("sku") or ""
+                        availability = availability_by_sku.get(sku, "https://schema.org/InStock")
+                        stock = self.default_stock if availability.endswith("InStock") else 0
+                        ean = v.get("barcode") or "0000000000000"
 
-                            driver.execute_script("arguments[0].click();", elem)
-                            time.sleep(1.3)
+                        prev = size_detail.get(size)
+                        if prev is None or stock > prev["stock_count"]:
+                            size_detail[size] = {"stock_count": stock, "ean": ean}
 
-                            html_c = driver.page_source
-                            soup_c = BeautifulSoup(html_c, "html.parser")
+                        if v.get("price"):
+                            try:
+                                prices.append((float(v["price"]), str(v["price"])))
+                            except (TypeError, ValueError):
+                                pass
+                        if v.get("compare_at_price"):
+                            try:
+                                compare_prices.append((float(v["compare_at_price"]), str(v["compare_at_price"])))
+                            except (TypeError, ValueError):
+                                pass
 
-                            orig, sale = self._extract_prices(soup_c)
-                            size_detail = self._extract_sizes(html_c)
-                            product_size, product_size_detail = self.build_size_lines(size_detail, gender)
+                    product_size, product_size_detail = self.build_size_lines(size_detail, gender)
 
-                            adjusted = sale if sale and sale != orig else ""
+                    sale_price = min(prices, default=None)
+                    orig_price = max(compare_prices, default=None) or sale_price
+                    adjusted = ""
+                    if sale_price and orig_price and sale_price[0] != orig_price[0]:
+                        adjusted = sale_price[1]
 
-                            variants.append({
-                                "_style": style,
-                                "Product Name": product_name,
-                                "Product Description": product_desc,
-                                "Product Color": color,
-                                "Product Gender": gender,
-                                "Product Price": orig or sale or "0",
-                                "Adjusted Price": adjusted,
-                                "Product Size": product_size,
-                                "Product Size Detail": product_size_detail,
-                                "Site Name": SITE_NAME,
-                                "Source URL": url,
-                            })
+                    info: Dict[str, Any] = {
+                        "Product Name": product_name,
+                        "Product Description": product_desc,
+                        "Product Color": color,
+                        "Product Gender": gender,
+                        "Product Price": orig_price[1] if orig_price else "0",
+                        "Adjusted Price": adjusted,
+                        "Product Size": product_size,
+                        "Product Size Detail": product_size_detail,
+                        "Site Name": SITE_NAME,
+                        "Source URL": url,
+                    }
+
+                    product_code: Optional[str] = None
+
+                    # A) 优先使用网页 MPN
+                    if single_color_mode and all_mpns:
+                        product_code = all_mpns[0]
+                        self.logger.info(f"  ✅ 单色页面使用完整 MPN: {product_code}")
+                    elif all_mpns:
+                        mpn_for_color = choose_mpn_for_color(style, color, all_mpns)
+                        if mpn_for_color:
+                            product_code = mpn_for_color
+                            self.logger.info(f"  ✅ 多颜色页面: 为 {color} 选择 MPN {product_code}")
+
+                    # B) MPN 失败 -> 数据库兜底
+                    if not product_code and style:
+                        product_code = find_product_code_in_db(style, color, url)
+
+                    # C) 决定输出目录
+                    if product_code:
+                        target_dir = self.output_dir
+                        info["Product Code"] = product_code
                     else:
-                        # 单色
-                        self.logger.warning("无颜色选项 -> 视为单色")
-                        color = "No Data"
-                        size_detail = self._extract_sizes(html)
-                        product_size, product_size_detail = self.build_size_lines(size_detail, gender)
-                        adjusted = base_sale if base_sale != base_orig else ""
+                        target_dir = TXT_PROBLEM_DIR
+                        info["Product Code"] = style or "UNKNOWN"
 
-                        variants.append({
-                            "_style": style,
-                            "Product Name": product_name,
-                            "Product Description": product_desc,
-                            "Product Color": color,
-                            "Product Gender": gender,
-                            "Product Price": base_orig or base_sale or "0",
-                            "Adjusted Price": adjusted,
-                            "Product Size": product_size,
-                            "Product Size Detail": product_size_detail,
-                            "Site Name": SITE_NAME,
-                            "Source URL": url,
-                        })
+                    fname = self._sanitize_filename(info["Product Code"]) + ".txt"
+                    fpath = target_dir / fname
+                    format_txt(info, fpath, brand="Barbour")
 
-                    if not variants:
-                        self.logger.warning("无变体 -> 跳过")
-                        return url, False
+                    if target_dir == self.output_dir:
+                        self.logger.info(f"  ✅ 写入 TXT: {fname}")
+                    else:
+                        self.logger.warning(f"  ⚠️ 写入 TXT.problem: {fname}")
 
-                    # 写入每个颜色的 TXT
-                    single_color_mode = (not color_elems) or (len(color_elems) <= 1)
+                with self._lock:
+                    self._success_count += 1
 
-                    for info in variants:
-                        style = info.pop("_style") or ""
-                        color = info["Product Color"]
-
-                        product_code: Optional[str] = None
-
-                        # A) 优先使用网页 MPN
-                        if single_color_mode and all_mpns:
-                            product_code = all_mpns[0]
-                            self.logger.info(f"  ✅ 单色页面使用完整 MPN: {product_code}")
-                        elif all_mpns:
-                            mpn_for_color = choose_mpn_for_color(style, color, all_mpns)
-                            if mpn_for_color:
-                                product_code = mpn_for_color
-                                self.logger.info(f"  ✅ 多颜色页面: 为 {color} 选择 MPN {product_code}")
-
-                        # B) MPN 失败 -> 数据库兜底
-                        if not product_code and style:
-                            product_code = find_product_code_in_db(style, color, url)
-
-                        # C) 决定输出目录
-                        if product_code:
-                            target_dir = self.output_dir
-                            info["Product Code"] = product_code
-                        else:
-                            target_dir = TXT_PROBLEM_DIR
-                            info["Product Code"] = style or "UNKNOWN"
-
-                        # 写入文件
-                        from common.ingest.txt_writer import format_txt
-
-                        fname = self._sanitize_filename(info["Product Code"]) + ".txt"
-                        fpath = target_dir / fname
-                        format_txt(info, fpath, brand="Barbour")
-
-                        if target_dir == self.output_dir:
-                            self.logger.info(f"  ✅ 写入 TXT: {fname}")
-                        else:
-                            self.logger.warning(f"  ⚠️ 写入 TXT.problem: {fname}")
-
-                    with self._lock:
-                        self._success_count += 1
-
-                    return url, True
-
-                finally:
-                    self.quit_driver()
+                return url, True
 
             except Exception as e:
                 self.logger.error(
@@ -548,76 +558,9 @@ class PhilipMorrisFetcher(BaseFetcher):
 
         return url, False
 
-    def _accept_cookies(self, driver):
-        """接受 Cookie"""
-        try:
-            WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable(
-                    (By.CSS_SELECTOR, "button#onetrust-accept-btn-handler")
-                )
-            ).click()
-            time.sleep(1)
-        except Exception:
-            pass
-
     def _sanitize_filename(self, name: str) -> str:
         """文件名清理"""
         return re.sub(r"[\\/:*?\"<>|\s]+", "_", (name or "")).strip("_")
-
-    def _extract_prices(self, soup: BeautifulSoup):
-        """提取价格"""
-        sale = ""
-        orig = ""
-
-        for span in soup.select("span.price.price--withTax"):
-            sale = self._clean_price(span.text)
-            break
-
-        for span in soup.select("span.price.price--rrp"):
-            orig = self._clean_price(span.text)
-            break
-
-        if not sale:
-            meta = soup.find("meta", {"property": "product:price:amount"})
-            if meta:
-                sale = meta.get("content") or ""
-
-        if not orig:
-            orig = sale
-
-        return orig, sale
-
-    def _clean_price(self, t: str) -> str:
-        """从文本提取价格"""
-        if not t:
-            return ""
-        m = re.search(r"([0-9]+(?:\.[0-9]{1,2})?)", t.replace(",", ""))
-        return m.group(1) if m else ""
-
-    def _extract_sizes(self, html: str) -> Dict[str, Dict]:
-        """提取尺码 → {raw_size: {"stock_count": N, "ean": "..."}}"""
-        soup = BeautifulSoup(html, "html.parser")
-        labels = soup.select("label.form-option")
-        result: Dict[str, Dict] = {}
-
-        for lb in labels:
-            classes = lb.get("class", [])
-            if "label-img" in classes:
-                continue
-
-            span = lb.find("span", class_="form-option-variant")
-            if not span:
-                continue
-
-            size = span.text.strip()
-            if not size:
-                continue
-
-            stock = 0 if "unavailable" in classes else self.default_stock
-            if size not in result or stock > result[size]["stock_count"]:
-                result[size] = {"stock_count": stock, "ean": "0000000000000"}
-
-        return result
 
     def parse_detail_page(self, html: str, url: str) -> Dict[str, Any]:
         """
@@ -629,16 +572,12 @@ class PhilipMorrisFetcher(BaseFetcher):
 
 # ================== 主入口 ==================
 
-def philipmorris_fetch_info(
-    max_workers: int = 3,
-    headless: bool = True,
-):
+def philipmorris_fetch_info(max_workers: int = 3):
     """
     主函数 - 兼容旧版接口
 
     Args:
         max_workers: 并发线程数
-        headless: 是否无头模式
     """
     setup_logging()
 
@@ -651,8 +590,6 @@ def philipmorris_fetch_info(
         output_dir=OUTPUT_DIR,
         max_workers=max_workers,
         max_retries=2,
-        wait_seconds=2.0,
-        headless=headless,
     )
 
     success, fail = fetcher.run_batch()
@@ -660,4 +597,4 @@ def philipmorris_fetch_info(
 
 
 if __name__ == "__main__":
-    philipmorris_fetch_info(max_workers=3, headless=True)
+    philipmorris_fetch_info(max_workers=5)
