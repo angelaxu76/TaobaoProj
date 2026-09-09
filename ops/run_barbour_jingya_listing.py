@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-鞋类品牌 prepare_jingya_listing 顺序执行总入口
+Barbour prepare_jingya_listing 独立执行入口
 
 用法：
-  python ops/run_all_jingya_listing.py
+  python ops/run_barbour_jingya_listing.py
 
-Barbour 耗时远超鞋类品牌，已分离到独立虚拟机运行，见
-ops/run_barbour_jingya_listing.py。
+Barbour 供应商多、抓取耗时远超鞋类品牌（clarks/camper/ecco/geox），
+单独拆出来跑在自己的虚拟机上，与鞋类品牌互不阻塞。鞋类品牌见
+ops/run_all_jingya_listing.py。
 
 配置：
-  修改下方 CONFIG 区域来启用/禁用品牌、调整超时时间、设置重试次数。
+  修改下方 CONFIG 区域来调整超时时间、循环间隔、重试次数。
   执行引擎（子进程管理 + 看门狗 + 日志）见 ops/_jingya_runner.py。
 """
 
@@ -18,22 +19,16 @@ import sys
 from ops._jingya_runner import run_pipeline
 
 # ══════════════════════════════════════════════════════════════════
-#  CONFIG — 修改这里来启用/禁用品牌，或调整执行顺序
+#  CONFIG
 # ══════════════════════════════════════════════════════════════════
 
-BRANDS_TO_RUN = [
-    "clarks",
-    "camper",
-    "ecco",
-    "geox",
-    # "marksandspencer",
-]
+BRANDS_TO_RUN = ["barbour"]
 
 # 某个品牌失败后是否继续跑后续品牌（True=继续，False=中止）
 CONTINUE_ON_FAILURE = True
 
-# 输出静默超过此秒数视为卡死，自动 kill（10 分钟）
-SILENCE_TIMEOUT_SEC = 600
+# 输出静默超过此秒数视为卡死，自动 kill（Barbour 供应商多、单个耗时更长，放宽到 20 分钟）
+SILENCE_TIMEOUT_SEC = 1200
 
 # 卡死后自动重试次数（0 = 不重试，直接标记失败）
 MAX_RETRIES = 1
@@ -47,9 +42,9 @@ LOOP_INTERVAL_SEC = 7200
 
 if __name__ == "__main__":
     sys.exit(run_pipeline(
-        title="鞋类品牌 Jingya Listing 流水线",
+        title="Barbour Jingya Listing 流水线",
         brands_to_run=BRANDS_TO_RUN,
-        log_name_prefix="run_all_jingya",
+        log_name_prefix="run_barbour_jingya",
         continue_on_failure=CONTINUE_ON_FAILURE,
         silence_timeout_sec=SILENCE_TIMEOUT_SEC,
         max_retries=MAX_RETRIES,

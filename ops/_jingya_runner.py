@@ -1,0 +1,306 @@
+# -*- coding: utf-8 -*-
+"""
+各品牌 prepare_jingya_listing 顺序执行 — 共享引擎
+
+被 run_all_jingya_listing.py（鞋类品牌）和 run_barbour_jingya_listing.py
+（Barbour 单独跑，因为耗时远超鞋类品牌，通常分配到独立虚拟机）共用。
+
+每个品牌在独立子进程中运行，进程退出后 Chrome 内存完全释放，避免长时间
+运行卡死。看门狗线程监控输出静默时间，超过 silence_timeout_sec 后自动
+kill 并可重试。
+"""
+
+import subprocess
+import sys
+import threading
+import time
+from datetime import datetime
+from pathlib import Path
+
+import psutil
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+LOG_DIR = ROOT_DIR / "logs"
+
+BRAND_SCRIPT_MAP = {
+    "clarks":          ROOT_DIR / "brands" / "clarks"          / "pipeline" / "prepare_jingya_listing.py",
+    "camper":          ROOT_DIR / "brands" / "camper"          / "pipeline" / "prepare_jingya_listing.py",
+    "ecco":            ROOT_DIR / "brands" / "ecco"            / "pipeline" / "prepare_jingya_listing.py",
+    "barbour":         ROOT_DIR / "brands" / "barbour"         / "pipeline" / "prepare_jingya_listing.py",
+    "geox":            ROOT_DIR / "brands" / "geox"            / "pipeline" / "prepare_jingya_listing.py",
+    "marksandspencer": ROOT_DIR / "brands" / "marksandspencer" / "pipeline" / "prepare_jingya_listing.py",
+}
+
+
+class _Tee:
+    """同时写入多个流（终端 + 日志文件）。"""
+    def __init__(self, *streams):
+        self._streams = streams
+
+    def write(self, data):
+        for s in self._streams:
+            s.write(data)
+            s.flush()
+
+    def flush(self):
+        for s in self._streams:
+            s.flush()
+
+
+def _kill_process_tree(pid: int, brand: str):
+    """
+    强制终止整棵进程树（含 Selenium/undetected_chromedriver 派生出的
+    chromedriver.exe / chrome.exe 孙进程）。
+
+    只调用 proc.kill()（Windows 上等价于 TerminateProcess）只会杀掉直接
+    子进程（python.exe），不会带走它再往下开的 chromedriver/chrome 进程——
+    这些孤儿进程会继续挂着（正是"卡死"的真正来源，比如 Cloudflare 验证
+    卡住的浏览器标签页），而且它们还持有子进程 stdout 管道的继承句柄，
+    导致本脚本 `for line in proc.stdout` 那行永远读不到 EOF、看起来像
+    "kill 了但还是卡住"。所以必须自底向上把整棵树都杀掉。
+    """
+    try:
+        parent = psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        return
+
+    children = parent.children(recursive=True)
+    for child in children:
+        try:
+            print(
+                f"   💀 [{brand.upper()}] 一并终止残留子进程 "
+                f"{child.name()} (pid={child.pid})",
+                flush=True,
+            )
+            child.kill()
+        except psutil.NoSuchProcess:
+            pass
+        except Exception as e:
+            print(f"   ⚠️ 终止子进程 {child.pid} 失败：{e}", flush=True)
+
+    try:
+        parent.kill()
+    except psutil.NoSuchProcess:
+        pass
+
+    _, alive = psutil.wait_procs([parent, *children], timeout=10)
+    for p in alive:
+        print(f"   ⚠️ 进程 {p.pid} 10 秒后仍未退出，可能需要手动检查任务管理器。", flush=True)
+
+
+def _banner(text: str):
+    line = "═" * 64
+    print(f"\n{line}")
+    print(f"  {text}")
+    print(f"{line}", flush=True)
+
+
+def _run_once(brand: str, script: Path, attempt: int, silence_timeout_sec: int) -> bool:
+    """
+    启动子进程运行品牌脚本，实时打印输出，并用看门狗监控静默超时。
+    返回 True 表示成功（exit code 0），False 表示失败或超时被 kill。
+    """
+    label = f"{brand.upper()}（第 {attempt} 次）" if attempt > 1 else brand.upper()
+    _banner(f"开始：{label}  [{datetime.now().strftime('%H:%M:%S')}]")
+
+    proc = subprocess.Popen(
+        [sys.executable, "-u", str(script)],  # -u 关闭输出缓冲，确保实时显示
+        cwd=str(ROOT_DIR),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+
+    last_output_time = [time.time()]  # 用列表使闭包可写
+    killed_by_watchdog = [False]
+    start_time = time.time()
+
+    # ── 看门狗线程：检测静默超时 ──────────────────────────────────
+    def watchdog():
+        while proc.poll() is None:
+            silence = time.time() - last_output_time[0]
+            if silence >= silence_timeout_sec:
+                print(
+                    f"\n⏰ [{brand.upper()}] 已 {silence/60:.1f} 分钟无输出，"
+                    f"判定卡死，正在终止整棵进程树…",
+                    flush=True,
+                )
+                killed_by_watchdog[0] = True
+                _kill_process_tree(proc.pid, brand)
+                return
+            time.sleep(15)  # 每 15 秒检查一次
+
+    wd_thread = threading.Thread(target=watchdog, daemon=True)
+    wd_thread.start()
+
+    # ── 实时读取并打印子进程输出 ───────────────────────────────────
+    for line in proc.stdout:
+        print(line, end="", flush=True)
+        last_output_time[0] = time.time()
+
+    proc.wait()
+    wd_thread.join(timeout=5)
+
+    elapsed = time.time() - start_time
+
+    if killed_by_watchdog[0]:
+        print(f"\n💀 {brand.upper()} 因超时被终止  ({elapsed/60:.1f} 分钟)", flush=True)
+        return False
+
+    if proc.returncode == 0:
+        print(f"\n✅ {brand.upper()} 完成  ({elapsed/60:.1f} 分钟)", flush=True)
+        return True
+
+    print(f"\n❌ {brand.upper()} 失败（exit code {proc.returncode}）  ({elapsed/60:.1f} 分钟)", flush=True)
+    return False
+
+
+def run_brand(brand: str, silence_timeout_sec: int, max_retries: int) -> bool:
+    """带重试的品牌执行入口。"""
+    script = BRAND_SCRIPT_MAP.get(brand)
+    if script is None:
+        print(f"⚠️  未知品牌，跳过：{brand}")
+        return False
+    if not script.exists():
+        print(f"⚠️  脚本不存在，跳过：{script}")
+        return False
+
+    for attempt in range(1, max_retries + 2):  # +2：1 次正常 + max_retries 次重试
+        success = _run_once(brand, script, attempt, silence_timeout_sec)
+        if success:
+            return True
+        if attempt <= max_retries:
+            print(f"\n🔄 {brand.upper()} 将在 10 秒后重试（第 {attempt}/{max_retries} 次）…", flush=True)
+            time.sleep(10)
+
+    print(f"\n⛔ {brand.upper()} 重试次数已用完，标记为失败。", flush=True)
+    return False
+
+
+def run_one_round(
+    round_num: int,
+    brands_to_run: list[str],
+    continue_on_failure: bool,
+    silence_timeout_sec: int,
+    max_retries: int,
+    loop_enabled: bool,
+) -> bool:
+    """执行一轮所有品牌，返回是否全部成功。"""
+    round_start = time.time()
+
+    if loop_enabled:
+        print(f"\n{'◆' * 64}")
+        print(f"  第 {round_num} 轮开始  [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]")
+        print(f"{'◆' * 64}", flush=True)
+
+    results: dict[str, bool] = {}
+
+    for brand in brands_to_run:
+        success = run_brand(brand, silence_timeout_sec, max_retries)
+        results[brand] = success
+
+        if not success and not continue_on_failure:
+            print(f"\n⛔ continue_on_failure=False，在 {brand} 失败后中止。")
+            break
+
+    # ── 本轮汇总 ──────────────────────────────────────────────────
+    round_elapsed = time.time() - round_start
+    round_label = f"第 {round_num} 轮完成" if loop_enabled else "全部完成"
+    _banner(f"{round_label}  总耗时 {round_elapsed/60:.1f} 分钟")
+
+    ok_brands   = [b for b, s in results.items() if s]
+    fail_brands = [b for b, s in results.items() if not s]
+
+    if ok_brands:
+        print(f"  ✅ 成功：{', '.join(ok_brands)}")
+    if fail_brands:
+        print(f"  ❌ 失败：{', '.join(fail_brands)}")
+    print()
+
+    return len(fail_brands) == 0
+
+
+def run_pipeline(
+    *,
+    title: str,
+    brands_to_run: list[str],
+    log_name_prefix: str,
+    continue_on_failure: bool = True,
+    silence_timeout_sec: int = 600,
+    max_retries: int = 1,
+    loop_enabled: bool = True,
+    loop_interval_sec: int = 7200,
+) -> int:
+    """
+    通用入口 — 由各品牌分组的薄壳脚本调用。
+
+    Args:
+        title: 启动横幅里显示的标题（如 "全品牌 Jingya Listing 流水线"）
+        brands_to_run: 本次要跑的品牌列表
+        log_name_prefix: 日志文件名前缀
+        continue_on_failure: 某个品牌失败后是否继续跑后续品牌
+        silence_timeout_sec: 输出静默超过此秒数视为卡死，自动 kill
+        max_retries: 卡死/失败后自动重试次数
+        loop_enabled: 是否循环执行
+        loop_interval_sec: 每轮结束后等待多少秒再开始下一轮
+
+    Returns:
+        进程退出码 (0=全部成功, 1=有失败)
+    """
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log_path = LOG_DIR / f"{log_name_prefix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    log_fh = open(log_path, "w", encoding="utf-8")
+    sys.stdout = _Tee(sys.__stdout__, log_fh)
+
+    try:
+        print(f"\n{'★' * 64}")
+        print(f"  {title}")
+        print(f"  启动时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"  执行品牌：{', '.join(brands_to_run)}")
+        print(f"  静默超时：{silence_timeout_sec // 60} 分钟  |  最大重试：{max_retries} 次")
+        loop_info = f"循环模式，间隔 {loop_interval_sec // 60} 分钟" if loop_enabled else "单次执行"
+        print(f"  模式：{loop_info}")
+        print(f"  日志文件：{log_path}")
+        print(f"{'★' * 64}", flush=True)
+
+        round_num = 1
+        all_ok = True
+
+        while True:
+            ok = run_one_round(
+                round_num,
+                brands_to_run,
+                continue_on_failure,
+                silence_timeout_sec,
+                max_retries,
+                loop_enabled,
+            )
+            if not ok:
+                all_ok = False
+
+            if not loop_enabled:
+                break
+
+            # 循环模式：等待后进入下一轮
+            next_time = datetime.fromtimestamp(time.time() + loop_interval_sec)
+            print(
+                f"  ♻️  循环模式：等待 {loop_interval_sec // 60} 分钟后开始第 {round_num + 1} 轮"
+                f"（预计 {next_time.strftime('%H:%M:%S')}）",
+                flush=True,
+            )
+            try:
+                time.sleep(loop_interval_sec)
+            except KeyboardInterrupt:
+                print("\n⛔ 用户中断，退出循环。")
+                break
+
+            round_num += 1
+
+        return 0 if all_ok else 1
+
+    finally:
+        sys.stdout = sys.__stdout__
+        log_fh.close()
+        print(f"📄 日志已保存：{log_path}")
