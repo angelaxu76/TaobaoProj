@@ -69,7 +69,7 @@ IMAGE_PRIORITY_CONFIG = {
     },
     "ecco": {
         # 沿用原 DES 顺序作为改名基准（"2" 最优先）
-        "IMAGE_RENAME_PRIORITY": ["2", "1", "3", "o", "s", "b"],
+        "IMAGE_RENAME_PRIORITY": ["m", "front_pair", "o","top_left_pair",  "s", "b"],
         # 原始后缀 1/2/3/o/s/b 对应改名后的 __2/__1/__3/__4/__5/__6
         "IMAGE_FIRST_PRIORITY": [2, 1, 3, 4, 5, 6],
         # 原始后缀 2/1/3/o/s/b 对应 __1/__2/__3/__4/__5/__6（就是改名顺序本身）
