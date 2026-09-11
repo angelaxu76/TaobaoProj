@@ -18,6 +18,7 @@ from config import (
 
 from common.pricing.price_utils import calculate_jingya_prices
 from common.text.generate_taobao_title import generate_taobao_title
+from common.product.category_utils import infer_shoe_publish_category
 
 
 def extract_field(name, content):
@@ -27,14 +28,7 @@ def extract_field(name, content):
 
 
 def get_category_v2(title: str, content: str, heel_height: str) -> str:
-    t = title.lower()
-    if any(k in t for k in ["boot", "ankle", "chelsea"]):
-        return "靴子"
-    if any(k in t for k in ["sandal", "slide", "slipper", "mule", "flip-flop"]):
-        return "凉鞋拖鞋"
-    if heel_height in ["高跟(5-8cm)", "中跟(3-5cm)"]:
-        return "其他休闲鞋"
-    return "其他休闲鞋"
+    return infer_shoe_publish_category(title, content)
 
 
 def generate_publication_excels(brand: str):

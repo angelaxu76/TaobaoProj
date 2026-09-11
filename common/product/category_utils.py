@@ -1,6 +1,48 @@
 # common/core/category_utils.py
 import re
 
+from cfg.taobao_title_keyword_config import SHOE_TYPE_MAP
+
+# 精雅发布 Excel 的粗分类：SHOE_TYPE_MAP 里的细分鞋型 → 靴子/凉鞋拖鞋/其他休闲鞋
+_BOOT_SHOE_TYPES = {"雪地靴", "冬靴", "徒步靴", "马丁靴", "切尔西靴", "裸靴", "系带靴", "短靴"}
+_SANDAL_SHOE_TYPES = {"穆勒鞋", "一字拖", "人字拖", "拖鞋", "凉鞋"}
+
+
+def _norm_for_shoe_match(s: str) -> str:
+    s = (s or "").lower().replace("_", " ").replace("-", " ")
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def infer_shoe_publish_category(title: str, content: str) -> str:
+    """
+    鞋类发布 Excel 用的粗分类（靴子/凉鞋拖鞋/其他休闲鞋）。
+
+    与淘宝标题生成（common/text/generate_taobao_title_v1.py 的 scan_keywords）
+    复用同一张 SHOE_TYPE_MAP，且同时扫描标题+正文描述，而不是像旧版
+    get_category_v2() 那样只看英文标题里有没有 boot/ankle/chelsea 三个词——
+    否则标题用 bootie/combat boot/hiking boot 等其他叫法，或者靴子信息只
+    出现在正文里时，会被错误兜底成"其他休闲鞋"。
+    """
+    text = _norm_for_shoe_match(f"{title or ''} {content or ''}")
+
+    hit_boot = any(
+        _norm_for_shoe_match(v) in text
+        for cn, variants in SHOE_TYPE_MAP.items() if cn in _BOOT_SHOE_TYPES
+        for v in variants
+    )
+    if hit_boot:
+        return "靴子"
+
+    hit_sandal = any(
+        _norm_for_shoe_match(v) in text
+        for cn, variants in SHOE_TYPE_MAP.items() if cn in _SANDAL_SHOE_TYPES
+        for v in variants
+    )
+    if hit_sandal:
+        return "凉鞋拖鞋"
+
+    return "其他休闲鞋"
+
 # ===== Barbour 编码前缀 → 类别（尽量用通用英文类别，便于跨品牌复用）=====
 # 说明：取前三位字母即可。若遇到新前缀，可在此处不断补充。
 BARBOUR_PREFIX_MAP = {
