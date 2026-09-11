@@ -55,6 +55,10 @@ DRIVER_NAME = "clarks_outlet"
 MAX_LOAD_MORE_CLICKS = 30
 PAGE_LOAD_WAIT = 2
 CLICK_WAIT = 1.5
+# 同一个 tab 连续点击多个分类的 Load more 后，DOM/JS 堆积会导致 renderer 卡死
+# （表现为 "Timed out receiving message from renderer"），所以定期重启 driver，
+# 并在单个分类抓取异常时重启后重试一次，避免一个卡死的分类连累后面所有分类。
+RECYCLE_DRIVER_EVERY = 5
 
 
 def _extract_links(html: str) -> set:
@@ -86,21 +90,41 @@ def _load_all_products(driver) -> int:
     return clicks
 
 
+def _restart_driver():
+    quit_driver(DRIVER_NAME)
+    return get_driver(DRIVER_NAME, headless=True)
+
+
+def _scrape_category(driver, url):
+    driver.get(url)
+    time.sleep(PAGE_LOAD_WAIT)
+    clicks = _load_all_products(driver)
+    matched = _extract_links(driver.page_source)
+    return clicks, matched
+
+
 def get_outlet_product_links():
     all_links = set()
     driver = get_driver(DRIVER_NAME, headless=True)
 
     try:
-        for category, url in URLS.items():
+        for i, (category, url) in enumerate(URLS.items(), start=1):
             print(f"📦 正在抓取 OUTLET 分类: {category}")
+
+            if i > 1 and (i - 1) % RECYCLE_DRIVER_EVERY == 0:
+                print("  ♻️ 定期重启浏览器，释放累积的内存/DOM 状态")
+                driver = _restart_driver()
+
             try:
-                driver.get(url)
-                time.sleep(PAGE_LOAD_WAIT)
-                clicks = _load_all_products(driver)
-                matched = _extract_links(driver.page_source)
+                clicks, matched = _scrape_category(driver, url)
             except Exception as e:
-                print(f"  ❌ 抓取失败：{e}")
-                continue
+                print(f"  ⚠️ 抓取异常，重启浏览器后重试一次：{e}")
+                try:
+                    driver = _restart_driver()
+                    clicks, matched = _scrape_category(driver, url)
+                except Exception as e2:
+                    print(f"  ❌ 重试仍失败，跳过该分类：{e2}")
+                    continue
 
             print(f"  ✅ 点击 Load more {clicks} 次，抓取 {len(matched)} 条链接")
             all_links.update(matched)
