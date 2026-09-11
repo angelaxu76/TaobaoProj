@@ -45,6 +45,7 @@ BASE_URLS = [
     "https://www.camper.com/en_GB/women/shoes/sneakers?&page={}",
     "https://www.camper.com/en_GB/women/shoes/heels?&page={}",
     "https://www.camper.com/en_GB/women/shoes/slippers?&page={}",
+    "https://www.camper.com/en_GB/women/shoes/boots?&page={}",
 
     # ── 男鞋：通用页优先 ──
     "https://www.camper.com/en_GB/men/shoes?sort=default&page={}",
@@ -63,6 +64,9 @@ BASE_URLS = [
     # ── LAB ──
     "https://www.camperlab.com/en_GB/women/shoes?sort=default&page={}",
     "https://www.camperlab.com/en_GB/men/shoes?sort=default&page={}",
+
+    # ── 折扣季（不分男女，男女款商品都在此页面下）──
+    "https://www.camper.com/en_GB/all/shoes/end_of_season?page={}",
 ]
 
 HEADERS = {
