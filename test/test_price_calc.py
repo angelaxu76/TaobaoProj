@@ -138,7 +138,7 @@ if __name__ == "__main__":
         # (50,  "camper"),
         # (80,  "camper"),
         # (100, "camper"),
-        # (150, "camper"),
+        (150, "ECCO"),
         # (60,  "clarks"),
         (45,  "clarks"),
         # (50,  "geox"),
