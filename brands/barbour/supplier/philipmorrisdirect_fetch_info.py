@@ -22,25 +22,19 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 import time
 from typing import Dict, Any, List, Optional
-import requests
 from bs4 import BeautifulSoup
 
 # 导入基类和工具
 from brands.barbour.core.base_fetcher import BaseFetcher, setup_logging
 from common.ingest.txt_writer import format_txt
+from common.browser.driver_auto import build_uc_driver
 
 # 配置
 from config import BARBOUR
 import psycopg2
-
-REQUEST_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-    )
-}
 
 SITE_NAME = "Philip Morris"
 LINKS_FILE = BARBOUR["LINKS_FILES"]["philipmorris"]
@@ -389,14 +383,60 @@ class PhilipMorrisFetcher(BaseFetcher):
     Philip Morris Direct 采集器 (Shopify JSON 版)
 
     特点:
-    - 纯 HTTP 请求 (<url>.json + 页面 JSON-LD)，不再使用 Selenium
+    - 2026-09 站点 Cloudflare 对纯 requests 客户端下发 JS 校验挑战
+      (即使换 UA / 复用浏览器 cookie 也无法通过，因为是基于 TLS/HTTP
+      指纹识别，而非仅靠一次性 clearance cookie)，因此改为用
+      undetected_chromedriver 实际发起页面/JSON 请求，浏览器能正常
+      通过校验
     - MPN 提取 + 数据库兜底 (逻辑不变)
     - 每个颜色生成独立 TXT
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._browser = None
+        self._browser_lock = threading.Lock()
+
     def _fetch_html(self, url: str) -> str:
         """覆盖基类方法 - 不使用，因为我们重写了 fetch_one_product"""
         return ""
+
+    def _get_browser(self):
+        if self._browser is None:
+            with self._browser_lock:
+                if self._browser is None:
+                    self.logger.info("🚗 启动 undetected_chromedriver（绕过 Cloudflare 校验）...")
+                    self._browser = build_uc_driver(headless=True, verbose=False)
+        return self._browser
+
+    def _fetch_via_browser(self, url: str) -> str:
+        """
+        用真实浏览器 (uc.Chrome) 打开 url，返回页面文本。
+        - 普通页面: 返回 page_source (HTML)
+        - .json 接口: Chrome 会用内置 JSON viewer 渲染，body.text 取到的是
+          格式化后的 JSON 文本，可直接 json.loads()
+        """
+        driver = self._get_browser()
+        driver.get(url)
+
+        for _ in range(10):
+            if "Verifying your connection" not in driver.page_source:
+                break
+            time.sleep(1)
+        else:
+            raise RuntimeError(f"Cloudflare 校验未通过 (浏览器也被拦截): {url}")
+
+        if url.endswith(".json"):
+            return driver.find_element("tag name", "body").text
+        return driver.page_source
+
+    def close(self):
+        if self._browser is not None:
+            try:
+                self._browser.quit()
+            except Exception:
+                pass
+            self._browser = None
 
     def fetch_one_product(self, url: str, idx: int, total: int):
         """
@@ -411,19 +451,18 @@ class PhilipMorrisFetcher(BaseFetcher):
             try:
                 self.logger.info(f"[{idx}/{total}] [{attempt}/{self.max_retries}] 抓取: {url}")
 
-                # 限速: Shopify/Cloudflare 对该站点并发请求会触发 429，
-                # 每次请求前节流，避免短时间内打满触发风控
+                # 节流: 即使走浏览器，短时间内狂开页面也可能触发风控
                 time.sleep(self.wait_seconds)
 
-                resp = requests.get(url, headers=REQUEST_HEADERS, timeout=20)
-                resp.raise_for_status()
-                html = resp.text
+                html = self._fetch_via_browser(url)
 
                 time.sleep(self.wait_seconds)
 
-                resp_json = requests.get(product_json_url(url), headers=REQUEST_HEADERS, timeout=20)
-                resp_json.raise_for_status()
-                product = resp_json.json().get("product") or {}
+                json_text = self._fetch_via_browser(product_json_url(url))
+                try:
+                    product = json.loads(json_text).get("product") or {}
+                except json.JSONDecodeError as e:
+                    raise RuntimeError(f"商品 JSON 解析失败: {e}") from e
 
                 if not product or not product.get("variants"):
                     self.logger.warning("商品 JSON 为空或无变体 -> 跳过")
@@ -548,24 +587,21 @@ class PhilipMorrisFetcher(BaseFetcher):
                 return url, True
 
             except Exception as e:
-                is_rate_limited = (
-                    isinstance(e, requests.exceptions.HTTPError)
-                    and e.response is not None
-                    and e.response.status_code == 429
-                )
+                is_blocked = "Cloudflare" in str(e)
 
                 self.logger.error(
                     f"❌ [{idx}/{total}] 尝试 {attempt}/{self.max_retries} 失败: {url} - {e}",
                     exc_info=(attempt == self.max_retries),
                 )
 
+                if is_blocked:
+                    # 浏览器也被拦截了，说明当前 session/驱动已被标记，
+                    # 重启一个新的浏览器实例再等一等，比原地重试更有用
+                    self.logger.warning("  ⏳ 浏览器被 Cloudflare 拦截，重启浏览器实例")
+                    self.close()
+
                 if attempt < self.max_retries:
-                    if is_rate_limited:
-                        # 429 是站点风控冷却，短退避没用，需要等更久
-                        wait_time = min(60 * attempt, 300)
-                        self.logger.warning(f"  ⏳ 触发 429 限流，等待 {wait_time}s 后重试")
-                    else:
-                        wait_time = min(2 ** attempt, 30)
+                    wait_time = min(30 * attempt, 180) if is_blocked else min(2 ** attempt, 30)
                     time.sleep(wait_time)
 
                 if attempt == self.max_retries:
@@ -594,8 +630,13 @@ def philipmorris_fetch_info(max_workers: int = 1):
     主函数 - 兼容旧版接口
 
     Args:
-        max_workers: 并发线程数 (该站点对并发请求风控严格，默认单线程 + 限速)
+        max_workers: 并发线程数。该站点现在必须走单个浏览器实例
+            (undetected_chromedriver) 抓取，不支持并发 > 1。
     """
+    if max_workers != 1:
+        print("⚠️ Philip Morris 采集现在基于单一浏览器实例，max_workers 强制为 1")
+        max_workers = 1
+
     setup_logging()
 
     # 预加载颜色映射
@@ -610,7 +651,11 @@ def philipmorris_fetch_info(max_workers: int = 1):
         wait_seconds=1.0,
     )
 
-    success, fail = fetcher.run_batch()
+    try:
+        success, fail = fetcher.run_batch()
+    finally:
+        fetcher.close()
+
     print(f"\n✅ Philip Morris 抓取完成: 成功 {success}, 失败 {fail}")
 
 
