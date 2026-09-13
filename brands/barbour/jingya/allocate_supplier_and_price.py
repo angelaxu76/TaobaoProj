@@ -435,11 +435,29 @@ def allocate_and_sync(
 
     inventory_updates: List[dict] = []
     allocation_rows: List[dict] = []
+    zero_stock_updates: List[dict] = []   # 无法分配供应商的商品：强制清零库存，防止超卖
     diag_excluded: List[str] = []
     diag_unresolved: List[Tuple[str, str, str]] = []
+    diag_unresolved_codes: List[str] = []
     diag_auto: List[str] = []
     diag_manual: List[str] = []
     dry_run_report: List[dict] = []
+    dry_run_zero_report: List[dict] = []
+
+    def _force_zero_stock(code: str) -> None:
+        """
+        没有任何达标供应商时，不能让 barbour_inventory 停在旧库存/占位库存上——
+        必须显式把这个商品的所有尺码库存清零，避免鲸芽端仍显示有货、客户下单后
+        我们却采购不到，导致淘宝售后处罚。只清库存，不动价格字段。
+        """
+        for _, inv_row in inv_by_code[code].iterrows():
+            zero_stock_updates.append({"bi_id": int(inv_row["id"])})
+            if dry_run:
+                old_stock = int(inv_row.get("stock_count") or 0)
+                if old_stock != 0:
+                    dry_run_zero_report.append({
+                        "product_code": code, "size": inv_row["size"], "旧库存": old_stock,
+                    })
 
     for code in published_codes:
         if code in exclude_codes:
@@ -465,6 +483,8 @@ def allocate_and_sync(
                     }]
             if not chosen:
                 diag_unresolved.append((code, "人工指定供应商无有效报价", forced_site))
+                diag_unresolved_codes.append(code)
+                _force_zero_stock(code)
                 continue
         else:
             chosen = _select_sites_by_price_window(
@@ -495,6 +515,8 @@ def allocate_and_sync(
 
             if not chosen:
                 diag_unresolved.append((code, "无达标供应商", ""))
+                diag_unresolved_codes.append(code)
+                _force_zero_stock(code)
                 continue
 
         price_basis = max(c["min_eff_price"] for c in chosen)
@@ -551,7 +573,7 @@ def allocate_and_sync(
         f"排除清单跳过：{len(diag_excluded)} 个；无法分配：{len(diag_unresolved)} 个。"
     )
     if diag_unresolved:
-        print(f"⚠️ 以下 {len(diag_unresolved)} 个商品本次未能分配供应商（保留原有价格/库存）：")
+        print(f"⚠️ 以下 {len(diag_unresolved)} 个商品本次未能分配供应商（库存已强制清零，避免超卖/淘宝处罚；价格字段保持不变）：")
         for code, reason, extra in diag_unresolved[:30]:
             print(f"   {code}: {reason} {extra}".rstrip())
         if len(diag_unresolved) > 30:
@@ -561,6 +583,10 @@ def allocate_and_sync(
         print(f"\n[DRY-RUN] 将变更 {len(dry_run_report)} 条尺码记录（未写库）。示例前 20 条：")
         for r in dry_run_report[:20]:
             print(f"   {r}")
+        if dry_run_zero_report:
+            print(f"\n[DRY-RUN] 无达标供应商、库存将被强制清零的尺码记录共 {len(dry_run_zero_report)} 条。示例前 20 条：")
+            for r in dry_run_zero_report[:20]:
+                print(f"   {r}")
         print("\n[DRY-RUN] 同款多颜色共用鲸芽 channel_product_id 的价格对齐预览：")
         reconciled_preview = _reconcile_shared_channel_prices(engine, dry_run=True)
         if reconciled_preview == 0:
@@ -570,6 +596,7 @@ def allocate_and_sync(
             "excluded": len(diag_excluded),
             "unresolved": len(diag_unresolved),
             "would_change": len(dry_run_report),
+            "would_force_zero_stock": len(dry_run_zero_report),
             "would_reconcile_channel_prices": reconciled_preview,
         }
 
@@ -591,6 +618,24 @@ def allocate_and_sync(
                 WHERE id = :bi_id
             """), inventory_updates)
 
+        if zero_stock_updates:
+            # 无达标供应商：只清库存，不动价格字段（价格字段此时多为占位 NULL 或
+            # 上一次的历史值，留着不影响——反正 0 库存已经杜绝了超卖风险）。
+            conn.execute(text("""
+                UPDATE barbour_inventory
+                SET stock_count = 0,
+                    last_checked = NOW()
+                WHERE id = :bi_id
+            """), zero_stock_updates)
+
+        if diag_unresolved_codes:
+            # 清掉这些编码在 barbour_supplier_allocation 里可能残留的旧分配记录，
+            # 避免报表/诊断工具显示一个早已不成立的"供应商组合"。
+            conn.execute(
+                text(f"DELETE FROM {TABLE_ALLOC} WHERE product_code = ANY(:codes)"),
+                {"codes": diag_unresolved_codes},
+            )
+
         if processed_codes:
             conn.execute(
                 text(f"DELETE FROM {TABLE_ALLOC} WHERE product_code = ANY(:codes)"),
@@ -605,7 +650,8 @@ def allocate_and_sync(
             """), allocation_rows)
 
     print(
-        f"✅ barbour_inventory 已更新 {len(inventory_updates)} 条尺码记录；"
+        f"✅ barbour_inventory 已更新 {len(inventory_updates)} 条尺码记录（另有 "
+        f"{len(zero_stock_updates)} 条因无达标供应商被强制清零）；"
         f"{TABLE_ALLOC} 已写入 {len(allocation_rows)} 条供应商分配记录。"
     )
 
@@ -625,6 +671,7 @@ def allocate_and_sync(
         "excluded": len(diag_excluded),
         "unresolved": len(diag_unresolved),
         "inventory_rows_updated": len(inventory_updates),
+        "inventory_rows_zeroed": len(zero_stock_updates),
         "allocation_rows": len(allocation_rows),
         "reconciled_channel_prices": reconciled,
     }
