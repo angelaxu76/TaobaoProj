@@ -411,9 +411,15 @@ class PhilipMorrisFetcher(BaseFetcher):
             try:
                 self.logger.info(f"[{idx}/{total}] [{attempt}/{self.max_retries}] 抓取: {url}")
 
+                # 限速: Shopify/Cloudflare 对该站点并发请求会触发 429，
+                # 每次请求前节流，避免短时间内打满触发风控
+                time.sleep(self.wait_seconds)
+
                 resp = requests.get(url, headers=REQUEST_HEADERS, timeout=20)
                 resp.raise_for_status()
                 html = resp.text
+
+                time.sleep(self.wait_seconds)
 
                 resp_json = requests.get(product_json_url(url), headers=REQUEST_HEADERS, timeout=20)
                 resp_json.raise_for_status()
@@ -542,13 +548,24 @@ class PhilipMorrisFetcher(BaseFetcher):
                 return url, True
 
             except Exception as e:
+                is_rate_limited = (
+                    isinstance(e, requests.exceptions.HTTPError)
+                    and e.response is not None
+                    and e.response.status_code == 429
+                )
+
                 self.logger.error(
                     f"❌ [{idx}/{total}] 尝试 {attempt}/{self.max_retries} 失败: {url} - {e}",
                     exc_info=(attempt == self.max_retries),
                 )
 
                 if attempt < self.max_retries:
-                    wait_time = min(2 ** attempt, 30)
+                    if is_rate_limited:
+                        # 429 是站点风控冷却，短退避没用，需要等更久
+                        wait_time = min(60 * attempt, 300)
+                        self.logger.warning(f"  ⏳ 触发 429 限流，等待 {wait_time}s 后重试")
+                    else:
+                        wait_time = min(2 ** attempt, 30)
                     time.sleep(wait_time)
 
                 if attempt == self.max_retries:
@@ -572,12 +589,12 @@ class PhilipMorrisFetcher(BaseFetcher):
 
 # ================== 主入口 ==================
 
-def philipmorris_fetch_info(max_workers: int = 3):
+def philipmorris_fetch_info(max_workers: int = 1):
     """
     主函数 - 兼容旧版接口
 
     Args:
-        max_workers: 并发线程数
+        max_workers: 并发线程数 (该站点对并发请求风控严格，默认单线程 + 限速)
     """
     setup_logging()
 
@@ -589,7 +606,8 @@ def philipmorris_fetch_info(max_workers: int = 3):
         links_file=LINKS_FILE,
         output_dir=OUTPUT_DIR,
         max_workers=max_workers,
-        max_retries=2,
+        max_retries=4,
+        wait_seconds=1.0,
     )
 
     success, fail = fetcher.run_batch()
@@ -597,4 +615,4 @@ def philipmorris_fetch_info(max_workers: int = 3):
 
 
 if __name__ == "__main__":
-    philipmorris_fetch_info(max_workers=5)
+    philipmorris_fetch_info(max_workers=1)
