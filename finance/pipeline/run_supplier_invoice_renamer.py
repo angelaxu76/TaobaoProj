@@ -8,10 +8,10 @@ from finance.supplier.rename_parcelbroker_receipts import rename_parcelbroker_re
 from config import ONEDRIVE_UK_DIR
 
 def main():
-    rename_camper_invoices(
-        str(ONEDRIVE_UK_DIR / "99_Backup" / "camper_invoice" / "added"),
-        str(ONEDRIVE_UK_DIR / "03_Purchase_Records" / "01_Supplier_Invoices" / "202606-202608" / "camper"),
-    )
+    # rename_camper_invoices(
+    #     str(ONEDRIVE_UK_DIR / "99_Backup" / "camper_invoice" / "added"),
+    #     str(ONEDRIVE_UK_DIR / "03_Purchase_Records" / "01_Supplier_Invoices" / "202606-202608" / "camper"),
+    # )
 
     # rename_clarks_invoices(
     #     str(ONEDRIVE_UK_DIR / "99_Backup" / "clarks invoice" / "original-202609"),
@@ -39,10 +39,10 @@ def main():
     #     str("D:\TB\淘宝会计统计数据\采购凭证\CamperInvoices2025_renamed"),
     # )
 
-    # rename_clarks_invoices(
-    #     str(ONEDRIVE_UK_DIR / "99_Backup" / "clarks invoice" / "original-202609"),
-    #     str(ONEDRIVE_UK_DIR / "99_Backup" / "clarks invoice" / "202609"),
-    # )
+    rename_clarks_invoices(
+        str(ONEDRIVE_UK_DIR / "99_Backup" / "clarks invoice" / "added"),
+        str(ONEDRIVE_UK_DIR / "99_Backup" / "clarks invoice" / "202609"),
+    )
 
 if __name__ == "__main__":
     main()
