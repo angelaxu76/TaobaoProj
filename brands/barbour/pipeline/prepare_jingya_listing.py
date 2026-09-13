@@ -244,7 +244,7 @@ def run_a_crawl():
     from brands.barbour.supplier.terraces_get_links       import collect_terraces_links
     from brands.barbour.supplier.terraces_fetch_info      import terraces_fetch_info
     from brands.barbour.supplier.philipmorrisdirect_get_links  import philipmorris_get_links
-    from brands.barbour.supplier.philipmorrisdirect_fetch_info import philipmorris_fetch_info
+    from brands.barbour.supplier.philipmorrisdirect_fetch_info_v2 import philipmorris_fetch_info
     from brands.barbour.supplier.cho_get_links            import cho_get_links
     from brands.barbour.supplier.cho_fetch_info           import cho_fetch_info
     from brands.barbour.supplier.magrigg_get_links        import magrigg_get_links
@@ -262,7 +262,7 @@ def run_a_crawl():
         "outdoorandcountry": (outdoorandcountry_fetch_and_save_links, lambda: outdoorandcountry_fetch_info(max_workers=1)),
         "allweathers":       (allweathers_get_links,              lambda: allweathers_fetch_info(7)),
         "terraces":          (collect_terraces_links,             lambda: terraces_fetch_info(max_workers=7)),
-        "philipmorris":      (philipmorris_get_links,             lambda: philipmorris_fetch_info(max_workers=7)),
+        "philipmorris":      (philipmorris_get_links,             lambda: philipmorris_fetch_info(max_workers=3)),
         "cho":               (cho_get_links,                      lambda: cho_fetch_info(max_workers=7)),
         "magrigg":           (magrigg_get_links,                  lambda: magrigg_fetch_info(max_workers=7)),
         "williampowell":     (williampowell_get_links,             lambda: williampowell_fetch_info(max_workers=7)),

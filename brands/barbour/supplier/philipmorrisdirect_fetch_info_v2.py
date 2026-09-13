@@ -4,10 +4,19 @@ Philip Morris Direct 采集器 - Shopify JSON 版 (v2 提速测试版)
 
 【与正式版 philipmorrisdirect_fetch_info.py 的区别】
 正式版已改为用 undetected_chromedriver 逐个真实打开页面/`.json` 接口，
-绕过 Cloudflare 对非浏览器客户端下发的 JS 验证挑战。v2 在此基础上做
-安全提速 (不改并发数，避免重新触发风控)：
+绕过 Cloudflare 对非浏览器客户端下发的 JS 验证挑战，但只支持单线程
+(一个共享浏览器实例)。v2 在此基础上：
 - CDP 屏蔽图片/字体/CSS 等静态资源，只保留 document/xhr，缩短单页加载
 - 请求间的节流 sleep 从 1.0s 降到 0.3s
+- 每个线程使用【独立】的浏览器实例 (threading.local)，支持真正的多线程
+  并发抓取 —— 之前若多线程共享同一个浏览器实例，会出现线程 A 还没读完
+  页面，线程 B 已经把页面导航走，读到张冠李戴数据的问题 (已用实验验证)
+
+多线程仍有一个未知风险：多个浏览器实例同时从同一 IP 打同一站点，
+仍可能触发 Cloudflare 的频率型风控 (跟当初 5 线程 requests 触发 429
+是类似的机制，只是这次客户端换成了真实浏览器)。上线前务必先用较小
+并发数 (2-3) 做小批量测试，观察日志里是否又出现 "Cloudflare 校验未
+通过" 的重启浏览器警告，稳定后再逐步调高。
 
 v2 是独立文件，用于单独测试提速效果，验证稳定后再决定是否合入正式版，
 不要动 philipmorrisdirect_fetch_info.py。
@@ -398,44 +407,53 @@ class PhilipMorrisFetcher(BaseFetcher):
       指纹识别，而非仅靠一次性 clearance cookie)，因此改为用
       undetected_chromedriver 实际发起页面/JSON 请求，浏览器能正常
       通过校验
+    - 多线程安全: 每个线程拥有独立的浏览器实例 (threading.local)，
+      不共享同一个 driver —— 共享会导致线程 A 还没读完页面，线程 B
+      已经把页面导航走，读到张冠李戴的数据 (已用实验验证过这个问题)
     - MPN 提取 + 数据库兜底 (逻辑不变)
     - 每个颜色生成独立 TXT
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._browser = None
-        self._browser_lock = threading.Lock()
+        self._local = threading.local()
+        self._all_browsers: List = []
+        self._browsers_lock = threading.Lock()
 
     def _fetch_html(self, url: str) -> str:
         """覆盖基类方法 - 不使用，因为我们重写了 fetch_one_product"""
         return ""
 
     def _get_browser(self):
-        if self._browser is None:
-            with self._browser_lock:
-                if self._browser is None:
-                    self.logger.info("🚗 启动 undetected_chromedriver（绕过 Cloudflare 校验，v2 提速版）...")
-                    driver = build_uc_driver(
-                        headless=True,
-                        extra_options=["--blink-settings=imagesEnabled=false"],
-                        verbose=False,
-                    )
-                    # 用 CDP 屏蔽图片/字体/样式表等静态资源，只留 document/xhr，
-                    # 大幅缩短单页加载时间（我们只需要 HTML 文本 / JSON 文本）
-                    try:
-                        driver.execute_cdp_cmd("Network.enable", {})
-                        driver.execute_cdp_cmd(
-                            "Network.setBlockedURLs",
-                            {"urls": [
-                                "*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.svg",
-                                "*.woff", "*.woff2", "*.ttf", "*.css",
-                            ]},
-                        )
-                    except Exception as e:
-                        self.logger.warning(f"  ⚠️ CDP 屏蔽静态资源失败 (不影响功能): {e}")
-                    self._browser = driver
-        return self._browser
+        """每个线程独立一个浏览器实例，避免多线程共享 driver 导致数据错乱"""
+        driver = getattr(self._local, "driver", None)
+        if driver is None:
+            self.logger.info(
+                f"🚗 [线程 {threading.get_ident()}] 启动 undetected_chromedriver"
+                "（绕过 Cloudflare 校验，v2 多线程版）..."
+            )
+            driver = build_uc_driver(
+                headless=True,
+                extra_options=["--blink-settings=imagesEnabled=false"],
+                verbose=False,
+            )
+            # 用 CDP 屏蔽图片/字体/样式表等静态资源，只留 document/xhr，
+            # 大幅缩短单页加载时间（我们只需要 HTML 文本 / JSON 文本）
+            try:
+                driver.execute_cdp_cmd("Network.enable", {})
+                driver.execute_cdp_cmd(
+                    "Network.setBlockedURLs",
+                    {"urls": [
+                        "*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.svg",
+                        "*.woff", "*.woff2", "*.ttf", "*.css",
+                    ]},
+                )
+            except Exception as e:
+                self.logger.warning(f"  ⚠️ CDP 屏蔽静态资源失败 (不影响功能): {e}")
+            self._local.driver = driver
+            with self._browsers_lock:
+                self._all_browsers.append(driver)
+        return driver
 
     def _fetch_via_browser(self, url: str) -> str:
         """
@@ -458,13 +476,29 @@ class PhilipMorrisFetcher(BaseFetcher):
             return driver.find_element("tag name", "body").text
         return driver.page_source
 
-    def close(self):
-        if self._browser is not None:
+    def _reset_browser(self):
+        """只重启【当前线程】自己的浏览器实例，不影响其他线程"""
+        driver = getattr(self._local, "driver", None)
+        if driver is not None:
+            self._local.driver = None
+            with self._browsers_lock:
+                if driver in self._all_browsers:
+                    self._all_browsers.remove(driver)
             try:
-                self._browser.quit()
+                driver.quit()
             except Exception:
                 pass
-            self._browser = None
+
+    def close(self):
+        """关闭所有线程各自创建的浏览器实例"""
+        with self._browsers_lock:
+            browsers = self._all_browsers
+            self._all_browsers = []
+        for driver in browsers:
+            try:
+                driver.quit()
+            except Exception:
+                pass
 
     def fetch_one_product(self, url: str, idx: int, total: int):
         """
@@ -623,10 +657,10 @@ class PhilipMorrisFetcher(BaseFetcher):
                 )
 
                 if is_blocked:
-                    # 浏览器也被拦截了，说明当前 session/驱动已被标记，
-                    # 重启一个新的浏览器实例再等一等，比原地重试更有用
-                    self.logger.warning("  ⏳ 浏览器被 Cloudflare 拦截，重启浏览器实例")
-                    self.close()
+                    # 浏览器也被拦截了，说明当前线程的 session/驱动已被标记，
+                    # 只重启这个线程自己的浏览器实例，不影响其他线程
+                    self.logger.warning(f"  ⏳ [线程 {threading.get_ident()}] 浏览器被 Cloudflare 拦截，重启浏览器实例")
+                    self._reset_browser()
 
                 if attempt < self.max_retries:
                     wait_time = min(30 * attempt, 180) if is_blocked else min(2 ** attempt, 30)
@@ -653,18 +687,16 @@ class PhilipMorrisFetcher(BaseFetcher):
 
 # ================== 主入口 ==================
 
-def philipmorris_fetch_info(max_workers: int = 1):
+def philipmorris_fetch_info(max_workers: int = 3):
     """
     主函数 - 兼容旧版接口
 
     Args:
-        max_workers: 并发线程数。该站点现在必须走单个浏览器实例
-            (undetected_chromedriver) 抓取，不支持并发 > 1。
+        max_workers: 并发线程数。v2 每个线程使用独立的浏览器实例，
+            互不共享，支持真正的并发抓取。但多个浏览器同时从同一 IP
+            打同一站点仍可能触发 Cloudflare 的频率风控，建议先用较小
+            的并发数 (2-3) 测试稳定后再逐步调高。
     """
-    if max_workers != 1:
-        print("⚠️ Philip Morris 采集现在基于单一浏览器实例，max_workers 强制为 1")
-        max_workers = 1
-
     setup_logging()
 
     # 预加载颜色映射
@@ -688,4 +720,4 @@ def philipmorris_fetch_info(max_workers: int = 1):
 
 
 if __name__ == "__main__":
-    philipmorris_fetch_info(max_workers=1)
+    philipmorris_fetch_info(max_workers=3)
