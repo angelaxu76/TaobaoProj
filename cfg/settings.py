@@ -92,7 +92,7 @@ DRIVER_DIR = _pick_driver_dir()
 GLOBAL_CHROMEDRIVER_PATH = _resolve_chromedriver_path()
 GLOBAL_GECKODRIVER_PATH = str(DRIVER_DIR / "geckodriver.exe")
 
-DEFAULT_STOCK_COUNT = 10
+DEFAULT_STOCK_COUNT = 3
 
 SETTINGS = {
     # EXCHANGE_RATE 已移至 cfg/price_config.py
