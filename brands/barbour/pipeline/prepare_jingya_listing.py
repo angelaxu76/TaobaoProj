@@ -16,6 +16,7 @@ Barbour 日常运营流水线（单一入口）
 
 import logging
 import sys
+import tempfile
 import time
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
@@ -394,11 +395,15 @@ def run_d_export():
     # 已经在用 EXCLUDE_LIST_XLSX 排除了，库存导出之前漏了这一层，这里补上。
     # 注意：只排除"没指定供应商"的那部分——排除清单里"指定了供应商"的编码
     # 库存是真实算出来的，仍然要正常导出。
+    # 注意：这是纯内部中间文件（供 export_stock_excel 的 exclude_excel_file
+    # 参数读取），不是鲸芽库存文件本身。绝不能写进 STOCK_EXPORT_DIR —— 那是
+    # UiPath 扫描的 input 目录，混进去会被当成待处理文件，导致后续处理异常。
+    # 因此落到系统临时目录，只在本次运行内使用。
     bare_codes, _forced = _load_exclude_and_forced_sites(EXCLUDE_LIST_XLSX)
     stock_exclude_file = None
     if bare_codes:
         stock_exclude_file = write_codes_excel(
-            bare_codes, str(Path(STOCK_EXPORT_DIR) / "_barbour_bare_exclude_for_stock.xlsx")
+            bare_codes, str(Path(tempfile.gettempdir()) / "_barbour_bare_exclude_for_stock.xlsx")
         )
         print(f"   🛡️ {len(bare_codes)} 个「排除清单中未指定供应商」的编码将跳过库存导出，"
               f"避免覆盖鲸芽端已有/手动设置的库存。")
