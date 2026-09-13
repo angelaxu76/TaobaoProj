@@ -105,6 +105,12 @@ B_SUPPLIERS = [
     # "houseoffraser",
 ]
 
+# B 阶段并发线程数：每个供应商内部会各自新建一条独立数据库连接
+# （products 按 product_code+size UPSERT，offers 按 site_name+offer_url+size
+#  UPSERT，不同供应商不会写同一行），因此可以安全并行。默认等于供应商数量，
+# 超过供应商数量没有意义；如需限制数据库并发连接数可调小。
+B_IMPORT_MAX_WORKERS = len(B_SUPPLIERS)
+
 # ══════════════════════════════════════════════════════════════════
 #  日志：同时写 console + 文件
 # ══════════════════════════════════════════════════════════════════
@@ -312,31 +318,49 @@ def run_a_crawl():
 #  阶段 B：TXT 导入数据库
 # ══════════════════════════════════════════════════════════════════
 
+def _run_b_stage_parallel(stage_name: str, label: str, fn, suppliers=B_SUPPLIERS, max_workers=B_IMPORT_MAX_WORKERS):
+    """
+    并行跑某个 B 阶段子步骤（products 导入 / offers 导入）。
+    每个 supplier 各自持有独立 DB 连接，互不干扰，因此用线程池并行即可。
+    任一 supplier 失败不会打断其它 supplier，全部跑完后统一汇报错误。
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    t0 = time.time()
+    errors: dict[str, Exception] = {}
+    with ThreadPoolExecutor(max_workers=max(1, max_workers)) as ex:
+        futures = {ex.submit(fn, supplier): supplier for supplier in suppliers}
+        for fut in as_completed(futures):
+            supplier = futures[fut]
+            try:
+                fut.result()
+                print(f"   ✅ [{supplier}] {label} 完成")
+            except Exception as e:
+                errors[supplier] = e
+                print(f"   ❌ [{supplier}] {label} 失败：{type(e).__name__}: {e}")
+
+    if errors:
+        failed = ", ".join(errors)
+        _fail(stage_name, RuntimeError(f"以下供应商失败：{failed}"))
+    _ok(f"{label}（全部 {len(suppliers)} 个供应商，{max_workers} 线程并行）", time.time() - t0)
+
+
 def run_b_import():
     _banner("阶段 B：TXT 导入 barbour_products + barbour_offers")
 
     from brands.barbour.common.import_txt_to_products_v2 import batch_import_txt_to_barbour_product
     from brands.barbour.common.import_supplier_to_db_offers import import_txt_for_supplier
 
-    _step("导入商品基础信息 → barbour_products")
-    for supplier in B_SUPPLIERS:
-        t = time.time()
-        try:
-            batch_import_txt_to_barbour_product(supplier)
-            _ok(f"{supplier} → products 完成", time.time() - t)
-        except Exception as e:
-            _fail(f"B-products-{supplier}", e)
+    _step(f"导入商品基础信息 → barbour_products（{B_IMPORT_MAX_WORKERS} 线程并行）")
+    _run_b_stage_parallel("B-products", "→ products", batch_import_txt_to_barbour_product)
 
-    _step("导入供应商库存/价格 → barbour_offers（先清空再导入，确保与 TXT 完全一致）")
-    for supplier in B_SUPPLIERS:
-        t = time.time()
-        try:
-            # clear_first=True：先删除该 supplier 的所有旧 offer 行，再从 TXT 重建，
-            # 彻底避免"TXT 无此商品但 DB 仍有旧数据"导致的库存残留问题。
-            import_txt_for_supplier(supplier, dryrun=False, full_sweep=True, clear_first=True)
-            _ok(f"{supplier} → offers 完成", time.time() - t)
-        except Exception as e:
-            _fail(f"B-offers-{supplier}", e)
+    # clear_first=True：先删除该 supplier 的所有旧 offer 行，再从 TXT 重建，
+    # 彻底避免"TXT 无此商品但 DB 仍有旧数据"导致的库存残留问题。
+    _step(f"导入供应商库存/价格 → barbour_offers（先清空再导入，确保与 TXT 完全一致；{B_IMPORT_MAX_WORKERS} 线程并行）")
+    _run_b_stage_parallel(
+        "B-offers", "→ offers",
+        lambda supplier: import_txt_for_supplier(supplier, dryrun=False, full_sweep=True, clear_first=True),
+    )
 
 
 # ══════════════════════════════════════════════════════════════════
