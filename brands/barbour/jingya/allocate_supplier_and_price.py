@@ -10,9 +10,10 @@ merge_offer_into_inventory.py、db_build_supplier_map_and_inventory.py
 - 每个已发布商品，按"真实落地成本"（barbour_offers.sale_price_gbp——
   已在导入阶段套用过 SUPPLIER_DISCOUNT_RULES 的折扣比例 + 运费，见
   import_supplier_to_db_offers.compute_supplier_sale_price；取不到则
-  COALESCE 到 price_gbp / original_price_gbp 兜底）从低到高遍历供应商，
-  依次纳入，直到覆盖的有货尺码数达到 SUPPLIER_MIN_SIZES，或凑满
-  SUPPLIER_MAX_SITES 家为止。
+  COALESCE 到 price_gbp / original_price_gbp 兜底）找出成本最低的供应商
+  作为基准，凡是成本不超过"基准 × (1 + SUPPLIER_PRICE_TOLERANCE_PCT)"
+  的供应商都一并纳入（最多凑满 SUPPLIER_MAX_SITES 家）——即使窗口内供
+  应商合计的有货尺码数不多，也不会为了凑尺码去找窗口外更贵的供应商。
 - 最终库存 = 所选各站点"有货尺码"的并集。
 - 最终定价 = 所选各站点里成本最高的那个（避免低价站点断货、临时改用
   高价站点补货时倒贴运费亏本）。
@@ -33,7 +34,7 @@ from __future__ import annotations
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 import openpyxl
 import pandas as pd
@@ -45,7 +46,7 @@ from brands.barbour.core.site_utils import canonical_site
 from common.product.size_utils import clean_size_for_barbour
 from common.pricing.price_utils import calculate_jingya_prices
 from brands.barbour.jingya.allocate_supplier_and_price_config import (
-    SUPPLIER_MIN_SIZES,
+    SUPPLIER_PRICE_TOLERANCE_PCT,
     SUPPLIER_MAX_SITES,
     TAOBAO_STORE_DISCOUNT,
     SUPPLIER_OVERRIDE_XLSX,
@@ -293,21 +294,21 @@ def _eff_price_row(row) -> Optional[float]:
     return None
 
 
-def _greedy_select_sites(
+def _select_sites_by_price_window(
     cand: Optional[pd.DataFrame],
-    stock_sizes_lookup: Callable[[str], Set[str]],
-    min_sizes: int,
+    price_tolerance_pct: float,
     max_suppliers: int,
 ) -> List[dict]:
     """
-    贪心选站点：按有效成本从低到高遍历，依次纳入，直到并集覆盖的有货尺码数
-    达到 min_sizes、或凑满 max_suppliers 家为止。
+    价格窗口选站点：按有效成本从低到高排序，取成本最低的供应商为基准，
+    凡是成本不超过"基准 × (1 + price_tolerance_pct)"的供应商都一并纳入
+    （最多凑满 max_suppliers 家）。窗口外更贵的供应商一律不看——即使窗口
+    内供应商合计的有货尺码数很少，也不会为了凑尺码去纳入窗口外的供应商。
 
     allocate_and_sync（批量）和 select_suppliers_for_code（单品预览）共用
     这一份实现，避免诊断工具和实际写库逻辑走两套算法、结果对不上。
 
     cand: 需含列 site_name / min_eff_price / sizes_in_stock / latest。
-    stock_sizes_lookup(site_name) -> 该站点有货的 size_norm 集合。
     """
     chosen: List[dict] = []
     if cand is None or cand.empty:
@@ -317,17 +318,19 @@ def _greedy_select_sites(
         ["min_eff_price", "sizes_in_stock", "latest"],
         ascending=[True, False, False],
     )
-    covered: Set[str] = set()
+    base_price = float(ranked.iloc[0]["min_eff_price"])
+    threshold = base_price * (1 + price_tolerance_pct)
+
     for _, r in ranked.iterrows():
-        site = r["site_name"]
+        if len(chosen) >= max_suppliers:
+            break
+        if float(r["min_eff_price"]) > threshold:
+            break  # 已按成本升序排列，后面只会更贵
         chosen.append({
-            "site": site,
+            "site": r["site_name"],
             "min_eff_price": float(r["min_eff_price"]),
             "sizes_in_stock": int(r["sizes_in_stock"]),
         })
-        covered |= stock_sizes_lookup(site)
-        if len(covered) >= min_sizes or len(chosen) >= max_suppliers:
-            break
     return chosen
 
 
@@ -337,7 +340,7 @@ def _greedy_select_sites(
 
 def allocate_and_sync(
     brand: str = "barbour",
-    min_sizes: Optional[int] = None,
+    price_tolerance_pct: Optional[float] = None,
     max_suppliers: Optional[int] = None,
     exclude_xlsx: Optional[str] = None,
     supplier_override_xlsx: Optional[str] = SUPPLIER_OVERRIDE_XLSX,
@@ -354,7 +357,7 @@ def allocate_and_sync(
     if brand.lower() != "barbour":
         raise ValueError("目前仅支持 barbour")
 
-    min_sizes = min_sizes if min_sizes is not None else SUPPLIER_MIN_SIZES
+    price_tolerance_pct = price_tolerance_pct if price_tolerance_pct is not None else SUPPLIER_PRICE_TOLERANCE_PCT
     max_suppliers = max_suppliers if max_suppliers is not None else SUPPLIER_MAX_SITES
 
     engine = _get_engine()
@@ -464,10 +467,9 @@ def allocate_and_sync(
                 diag_unresolved.append((code, "人工指定供应商无有效报价", forced_site))
                 continue
         else:
-            chosen = _greedy_select_sites(
+            chosen = _select_sites_by_price_window(
                 cand,
-                lambda site, _code=code: stock_sizes_map.get((_code, site), set()),
-                min_sizes,
+                price_tolerance_pct,
                 max_suppliers,
             )
 
@@ -634,15 +636,15 @@ def allocate_and_sync(
 
 def select_suppliers_for_code(
     code: str,
-    min_sizes: Optional[int] = None,
+    price_tolerance_pct: Optional[float] = None,
     max_suppliers: Optional[int] = None,
 ) -> dict:
     """
-    对单个商品跑一遍与 allocate_and_sync 相同的贪心选择算法，只返回结果、不写库。
+    对单个商品跑一遍与 allocate_and_sync 相同的价格窗口选择算法，只返回结果、不写库。
     返回 {"chosen": [{"site","min_eff_price","sizes_in_stock"}, ...],
           "covered_sizes": set(size_norm), "price_basis": float | None}
     """
-    min_sizes = min_sizes if min_sizes is not None else SUPPLIER_MIN_SIZES
+    price_tolerance_pct = price_tolerance_pct if price_tolerance_pct is not None else SUPPLIER_PRICE_TOLERANCE_PCT
     max_suppliers = max_suppliers if max_suppliers is not None else SUPPLIER_MAX_SITES
 
     engine = _get_engine()
@@ -678,10 +680,9 @@ def select_suppliers_for_code(
     )
     stock_sizes_map = in_stock_df.groupby("site_name")["size_norm"].apply(set).to_dict()
 
-    chosen = _greedy_select_sites(
+    chosen = _select_sites_by_price_window(
         site_agg,
-        lambda site: stock_sizes_map.get(site, set()),
-        min_sizes,
+        price_tolerance_pct,
         max_suppliers,
     )
     covered: Set[str] = set()

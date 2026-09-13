@@ -25,7 +25,7 @@ from brands.barbour.jingya.allocate_supplier_and_price import (
     select_suppliers_for_code,
 )
 from brands.barbour.jingya.allocate_supplier_and_price_config import (
-    SUPPLIER_MIN_SIZES,
+    SUPPLIER_PRICE_TOLERANCE_PCT,
     SUPPLIER_MAX_SITES,
 )
 from brands.barbour.core.site_utils import canonical_site
@@ -176,11 +176,11 @@ def inspect(product_code: str) -> None:
     # ════════════════════════════════════════
     #  第 3 节：allocate_and_sync 会选出的组合（预览，不写库）
     # ════════════════════════════════════════
-    min_sizes = SUPPLIER_MIN_SIZES
+    price_tolerance_pct = SUPPLIER_PRICE_TOLERANCE_PCT
     max_sites = SUPPLIER_MAX_SITES
-    print(f"\n[3] 自动分配预览（min_sizes={min_sizes}, max_suppliers={max_sites}）\n")
+    print(f"\n[3] 自动分配预览（price_tolerance_pct={price_tolerance_pct:.0%}, max_suppliers={max_sites}）\n")
 
-    preview = select_suppliers_for_code(code, min_sizes=min_sizes, max_suppliers=max_sites)
+    preview = select_suppliers_for_code(code, price_tolerance_pct=price_tolerance_pct, max_suppliers=max_sites)
     if not preview["chosen"]:
         print("  (无合适候选：没有供应商同时满足有货+有效价)")
     else:

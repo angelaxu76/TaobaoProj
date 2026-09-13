@@ -74,10 +74,12 @@
        allocate_and_sync(brand="barbour", exclude_xlsx=..., dry_run=False)
 
      每个已发布商品：按"真实落地成本"（barbour_offers.sale_price_gbp，已含折扣策略+
-     运费）从低到高挑供应商，凑够 SUPPLIER_MIN_SIZES 个有货尺码（或最多
-     SUPPLIER_MAX_SITES 家）为止；库存取这几家的并集，定价取这几家里成本最高的
-     那个（避免低价供应商断货补货时倒贴运费亏本）。这些阈值 + 淘宝店铺折扣，
-     统一在 brands/barbour/jingya/allocate_supplier_and_price_config.py 配置。
+     运费）找出成本最低的供应商作为基准，凡是成本不超过"基准 ×
+     (1 + SUPPLIER_PRICE_TOLERANCE_PCT)"的供应商都一并纳入（最多凑满
+     SUPPLIER_MAX_SITES 家）；库存取这几家的并集，定价取这几家里成本最高的
+     那个（避免低价供应商断货补货时倒贴运费亏本）。价格窗口内供应商凑不够
+     尺码时不会去找窗口外更贵的供应商。这些阈值 + 淘宝店铺折扣，统一在
+     brands/barbour/jingya/allocate_supplier_and_price_config.py 配置。
      每次运行都会重新计算，不再需要单独的"低库存换供应商"场景。
 
      可选人工干预（均为参数，不再是独立场景）：

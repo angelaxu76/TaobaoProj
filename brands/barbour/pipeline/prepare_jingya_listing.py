@@ -26,6 +26,19 @@ from config import resolve_shared_path
 
 # ══════════════════════════════════════════════════════════════════
 #  CONFIG — 按需修改
+#
+#  参数索引（想改什么参数，去哪个文件）：
+#    - 本文件下方：阶段开关 RUN_*、A/B 阶段供应商列表、各类导出路径、日志目录
+#      —— 每次跑流水线最常改的参数，都在这一个文件里。
+#    - brands/barbour/jingya/allocate_supplier_and_price_config.py
+#      —— C 阶段供应商/定价策略：价格容忍比例 SUPPLIER_PRICE_TOLERANCE_PCT、
+#         最多合并几家供应商 SUPPLIER_MAX_SITES、淘宝店铺折扣
+#         TAOBAO_STORE_DISCOUNT、人工指定供应商清单路径 SUPPLIER_OVERRIDE_XLSX。
+#    - cfg/brands/barbour.py 里的 BARBOUR["SUPPLIER_DISCOUNT_RULES"]
+#      —— 各供应商在"落地成本价"计算时的折扣策略/运费（影响 B 阶段导入
+#         offers 时算出的 sale_price_gbp，进而影响 C 阶段选供应商的排序）。
+#    - cfg/settings.py
+#      —— 汇率 EXCHANGE_RATE、API_KEYS 等全品牌共用的全局设置。
 # ══════════════════════════════════════════════════════════════════
 
 # ── 阶段开关 ──────────────────────────────────────────────────────
@@ -36,9 +49,9 @@ RUN_C_INVENTORY = True   # 重建 supplier_map + inventory
 RUN_D_EXPORT    = True   # 导出库存 / 价格 Excel
 
 # ── C 阶段：供应商策略参数 ────────────────────────────────────────
-# 每次运行都会用"当前最便宜、库存又够的供应商组合"重新计算价格+库存，
-# 不再需要单独的"低库存换供应商"开关。
-# 有货尺码数阈值 / 最多合并几家供应商 / 淘宝店铺折扣 / 人工指定供应商路径，
+# 每次运行都会用"当前最便宜的供应商 + 价格上浮一定比例内的供应商组合"
+# 重新计算价格+库存，不再需要单独的"低库存换供应商"开关。
+# 价格容忍比例 / 最多合并几家供应商 / 淘宝店铺折扣 / 人工指定供应商路径，
 # 统一在 brands/barbour/jingya/allocate_supplier_and_price_config.py 中配置。
 
 # ── 路径配置 ─────────────────────────────────────────────────────
@@ -361,10 +374,11 @@ def run_c_inventory():
         _fail("C3-jingya_id", e)
 
     # ── 步骤 C4：供应商组合 + 价格 + 库存一次性同步 ───────────────────
-    # 每个商品：按真实落地成本从低到高挑供应商，凑够 SUPPLIER_MIN_SIZES
-    # 个有货尺码（或最多 SUPPLIER_MAX_SITES 家）为止；库存取这几家的并集，
-    # 定价取这几家里成本最高的那个。exclude_list.xlsx 里的编码跳过自动
-    # 分配，改用其中的固定价格覆盖。
+    # 每个商品：按真实落地成本找出最低价供应商作为基准，成本不超过基准
+    # × (1 + SUPPLIER_PRICE_TOLERANCE_PCT) 的供应商都一并纳入（最多凑满
+    # SUPPLIER_MAX_SITES 家）；库存取这几家的并集，定价取这几家里成本
+    # 最高的那个。exclude_list.xlsx 里的编码跳过自动分配，改用其中的
+    # 固定价格覆盖。
     _step("C4：供应商组合 + 价格 + 库存同步（allocate_and_sync）")
     t = time.time()
     try:

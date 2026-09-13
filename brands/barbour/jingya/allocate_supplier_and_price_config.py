@@ -3,7 +3,7 @@
 allocate_and_sync() 专属配置——供应商组合策略 / 定价折扣 / 人工干预 Excel 路径。
 
 这几个参数原来分散在两处：
-  - SUPPLIER_MIN_SIZES / SUPPLIER_MAX_SITES / TAOBAO_STORE_DISCOUNT
+  - SUPPLIER_PRICE_TOLERANCE_PCT / SUPPLIER_MAX_SITES / TAOBAO_STORE_DISCOUNT
     混在 cfg/brands/barbour.py 里（那个文件另外还有约 300 行图片路径、
     颜色映射、编码前缀规则等和供应商/定价完全无关的配置）。
   - SUPPLIER_OVERRIDE_XLSX（人工指定供应商）此前只在已废弃的
@@ -17,9 +17,13 @@ cfg/brands/barbour.py 里翻。
 """
 
 # ── 供应商组合策略 ──────────────────────────────────────────────
-# 库存并集要覆盖到几个有货尺码才算"够用"（够用就停止追加供应商）
-SUPPLIER_MIN_SIZES = 2
-# 最多合并几家供应商来覆盖库存
+# 价格窗口：以最低有效成本的供应商为基准，成本不超过
+# 基准 × (1 + SUPPLIER_PRICE_TOLERANCE_PCT) 的供应商都一并纳入
+# （库存取并集，定价取其中成本最高者）。如果窗口内供应商凑出来的
+# 有货尺码数仍然很少，也不会为了凑尺码去找窗口外更贵的供应商——
+# 价格窗口内选完就停。
+SUPPLIER_PRICE_TOLERANCE_PCT = 0.10
+# 无论价格窗口内有多少家满足条件，最多合并几家供应商来覆盖库存
 SUPPLIER_MAX_SITES = 3
 
 # ── 定价 ────────────────────────────────────────────────────────
