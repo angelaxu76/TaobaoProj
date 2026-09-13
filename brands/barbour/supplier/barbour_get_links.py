@@ -30,14 +30,9 @@ CATEGORY_URLS = {
     "womens-international-jackets": "https://www.barbour.com/gb/barbour-international/womens",
 
     # Collaborations
-    "paul-smith": "https://www.barbour.com/gb/all-collaborations/paul-smith-loves-barbour",
-    "margaret-howell": "https://www.barbour.com/gb/all-collaborations/barbour-for-margaret-howell",
-    "farm-rio": "https://www.barbour.com/gb/womens/collaborations/barbour-farm-rio",
-    "kaptain-sunshine": "https://www.barbour.com/gb/all-collaborations/barbour-x-kaptain-sunshine-",
-    "feng-chen-wang": "https://www.barbour.com/gb/all-collaborations/barbour-x-feng-chen-wang",
-    "levis": "https://www.barbour.com/gb/all-collaborations/barbour-x-levis%C2%AE",
-    "sorel": "https://www.barbour.com/gb/mens/mens-collaborations/sorel-x-barbour",
-    "baracuta": "https://www.barbour.com/gb/mens/collaborations/baracuta",
+    # 联名款式经常下架/上新，不要逐个硬编码具体联名子页面（容易漏掉新联名）。
+    # 官网有一个汇总所有联名商品的主分类页，覆盖当前在售的全部联名（用它自动跟随官网变化）：
+    "all-collaborations": "https://www.barbour.com/gb/all-collaborations",
 
     # Clothing
     "mens-clothing": "https://www.barbour.com/gb/mens/clothing",
@@ -54,12 +49,6 @@ CATEGORY_URLS = {
     "mens-accessories": "https://www.barbour.com/gb/mens/accessories",
     "womens-accessories": "https://www.barbour.com/gb/womens/accessories",
 }
-# CATEGORY_URLS = {
-#     "paul-smith": "https://www.barbour.com/gb/all-collaborations/paul-smith-loves-barbour",
-#     "margaret": "https://www.barbour.com/gb/all-collaborations/barbour-for-margaret-howell",
-#     "barbour-farm-rio": "https://www.barbour.com/gb/womens/collaborations/barbour-farm-rio",
-#     "wsunshine": "https://www.barbour.com/gb/all-collaborations/barbour-x-kaptain-sunshine-"
-# }
 
 OUTPUT_FILE = BARBOUR["LINKS_FILE"]
 
