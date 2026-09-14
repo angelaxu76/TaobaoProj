@@ -130,6 +130,18 @@ SQL_OFFERS_ORDERABLE_BASE = """
 
 SQL_OFFERS_ORDER_BY = " ORDER BY price_gbp ASC"
 
+# 潜在货源数：不限定 supplier，统计该编码当前有货可下单的供应商数量
+SQL_SUPPLIER_COUNT = text("""
+    SELECT COUNT(DISTINCT site_name) AS cnt
+    FROM barbour_offers
+    WHERE product_code = :code
+      AND (
+        stock_count IS NULL
+        OR stock_count > 0
+      )
+      AND price_gbp IS NOT NULL
+""")
+
 
 def _in_stock_can_order(row: dict) -> bool:
     cnt = row.get("stock_count")
@@ -229,6 +241,7 @@ def generate_publication_excel():
         "Min Price (GBP)", "鲸芽价格", "淘宝价格",
         "版型", "领口设计", "衣长",
         "Sizes (In Stock)",
+        "潜在供货商数",
         "Supplier",
         "Site", "Offer URL", "Stock Count", "Last Checked"
     ]
@@ -298,6 +311,9 @@ def generate_publication_excel():
             # 版型/领口/衣长
             fit, neckline, coat_len = infer_fit_neck_length(style_name)
 
+            # 潜在供货商数（不受 supplier 过滤影响，统计该编码全部有货可下单的供应商数）
+            supplier_count = conn.execute(SQL_SUPPLIER_COUNT, {"code": code}).scalar() or 0
+
             row = [
                 code, style_name, color_cn,
                 title_cn,
@@ -305,12 +321,13 @@ def generate_publication_excel():
                 untaxed, retail,
                 fit, neckline, coat_len,
                 sizes_str,
+                supplier_count,
                 supplier or "",   # ← 新增：把输入 supplier 原样写入（作为发布清单锚点）
                 site_name, offer_url, stock_count, last_checked
             ]
             ws.append(row)
 
-            print(f"[{idx}/{len(code_pairs)}] {code} ← supplier={supplier or 'N/A'} | site={site_name} | £{price_gbp} | 尺码[{sizes_str}] | {title_cn}")
+            print(f"[{idx}/{len(code_pairs)}] {code} ← supplier={supplier or 'N/A'} | site={site_name} | £{price_gbp} | 尺码[{sizes_str}] | 潜在货源{supplier_count} | {title_cn}")
 
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     wb.save(OUTPUT_FILE)

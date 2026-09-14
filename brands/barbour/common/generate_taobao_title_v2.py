@@ -1,13 +1,19 @@
 # -*- coding: utf-8 -*-
 import re
-import random
-import unicodedata
 from typing import Tuple
 
-from config import BRAND_CONFIG, BRAND_NAME_MAP, BARBOUR
+from config import BRAND_CONFIG, BRAND_NAME_MAP
 from common.text.translate import safe_translate
 from common.text.ad_sanitizer import sanitize_text
 from common.utils.logger_utils import setup_logger
+from brands.barbour.common.title_shared import (
+    get_byte_length,
+    map_color,
+    detect_material_cn as _detect_material_cn,
+    detect_keyword_tags as _detect_keyword_tags,
+    detect_series as _detect_series,
+    pad_to_60_bytes as _pad_to_60_bytes,
+)
 
 logger = setup_logger("barbour_taobao_title")
 
@@ -16,31 +22,7 @@ _cfg = BRAND_CONFIG.get("barbour") or BRAND_CONFIG.get("Barbour") or {}
 CODE_PREFIX_RULES = _cfg.get("CODE_PREFIX_RULES", {})
 
 
-# ==== 工具 ====
-def get_byte_length(text: str) -> int:
-    return len((text or "").encode("gbk", errors="ignore"))
-
-
-def nfkc(s: str) -> str:
-    return unicodedata.normalize("NFKC", (s or "")).strip()
-
-
-# ==== 颜色映射（可扩充）====
-COLOR_MAP = BARBOUR["BARBOUR_COLOR_MAP"]
-
-
-def map_color(color_en: str) -> str:
-    c = nfkc(color_en)
-    c = re.sub(r"^[\-\:\|•\.\s]+", "", c)  # 去掉开头 "- "
-    c = c.split("/")[0].strip()  # 复合色取第一色
-    cl = c.lower()
-    if cl in COLOR_MAP:
-        return COLOR_MAP[cl]
-    cl2 = re.sub(r"^(classic|washed|burnt|dark|light)\s+", "", cl).strip()
-    return COLOR_MAP.get(cl2, c)
-
-
-# ==== 材质提示（可扩充）====
+# ==== 材质提示（可扩充，夹克/服装专用）====
 MATERIAL_HINTS = [
     (r"\bwax(ed)?\b", "蜡棉"),
     (r"\bquilt(ed|ing)?\b", "绗缝"),
@@ -54,11 +36,7 @@ MATERIAL_HINTS = [
 
 
 def detect_material_cn(style_name_en: str) -> str:
-    s = (style_name_en or "").lower()
-    for pat, zh in MATERIAL_HINTS:
-        if re.search(pat, s, flags=re.I):
-            return zh
-    return ""
+    return _detect_material_cn(style_name_en, MATERIAL_HINTS)
 
 
 # ==== 卖点按类型（可选）====
@@ -142,15 +120,7 @@ KEYWORD_MAP = {
 
 
 def detect_keyword_tags(style_name_en: str) -> list:
-    """
-    根据英文名称匹配关键词映射，返回中文标签列表（按 KEYWORD_MAP 的插入顺序，去重）
-    """
-    text = (style_name_en or "").lower()
-    tags = []
-    for kw, zh in KEYWORD_MAP.items():
-        if kw in text and zh not in tags:
-            tags.append(zh)
-    return tags
+    return _detect_keyword_tags(style_name_en, KEYWORD_MAP)
 
 
 # ==== 随机补齐用安全热词（关键词/类型卖点不够时再用）====
@@ -178,60 +148,10 @@ def pad_to_60_bytes(base_title: str, style_name_en: str, type_str: str) -> str:
     3) TYPE_EXTRAS 类型卖点（通勤/百搭/春秋…）
     4) FILLER_WORDS 通用安全词
     """
-    cur = base_title or ""
-    if get_byte_length(cur) >= 60:
-        return cur
-
-    available = 60 - get_byte_length(cur)
-
-    # 1) 优先补：关键词映射
-    for tag in detect_keyword_tags(style_name_en):
-        if available <= 0:
-            return cur
-        if tag in cur:
-            continue
-        tlen = get_byte_length(tag)
-        if tlen <= available:
-            cur += tag
-            available -= tlen
-
-    # 2) 再补：核心品类词（如"外套"），优先级高于卖点词
-    for tag in TYPE_CORE_KEYWORDS.get(type_str, []):
-        if available <= 0:
-            return cur
-        if tag in cur:
-            continue
-        tlen = get_byte_length(tag)
-        if tlen <= available:
-            cur += tag
-            available -= tlen
-
-    # 3) 再补：类型卖点
-    for tag in TYPE_EXTRAS.get(type_str, []):
-        if available <= 0:
-            return cur
-        if tag in cur:
-            continue
-        tlen = get_byte_length(tag)
-        if tlen <= available:
-            cur += tag
-            available -= tlen
-
-    # 4) 最后补：通用安全词
-    if available > 0:
-        words = FILLER_WORDS[:]
-        random.shuffle(words)
-        for w in words:
-            if available <= 0:
-                break
-            if w in cur:
-                continue
-            wlen = get_byte_length(w)
-            if wlen <= available:
-                cur += w
-                available -= wlen
-
-    return cur
+    return _pad_to_60_bytes(
+        base_title, style_name_en, type_str,
+        KEYWORD_MAP, TYPE_CORE_KEYWORDS, TYPE_EXTRAS, FILLER_WORDS,
+    )
 
 
 # ==== 前缀判定 ====
@@ -330,45 +250,8 @@ NOISE = {
 }
 
 
-def _normalize_token(t: str) -> str:
-    """
-    把 "Men's" / "Men’s" -> "mens"，并去掉末尾 's。
-    """
-    if not t:
-        return ""
-    t = t.strip().lower().replace("’", "'")
-    if t.endswith("'s"):
-        t = t[:-2]
-    return t
-
-
 def detect_series(style_name_en: str) -> str:
-    s = nfkc(style_name_en)
-    tokens_raw = re.findall(r"[A-Za-z][A-Za-z'-]+", s)
-    tokens = [_normalize_token(t) for t in tokens_raw]
-
-    # 1) 白名单优先（但黑名单覆盖）
-    for t_raw, t in zip(tokens_raw, tokens):
-        if t in SERIES_BLACKLIST:
-            continue
-        if t in SERIES_WHITELIST:
-            disp = t_raw.replace("’", "'")
-            if disp.lower().endswith("'s"):
-                disp = disp[:-2]
-            return disp.capitalize()
-
-    # 2) 兜底：挑第一个“有意义”的词（排除 NOISE + 黑名单）
-    for t_raw, t in zip(tokens_raw, tokens):
-        if t in SERIES_BLACKLIST or t in NOISE:
-            continue
-        if len(t) <= 2:
-            continue
-        disp = t_raw.replace("’", "'")
-        if disp.lower().endswith("'s"):
-            disp = disp[:-2]
-        return disp.capitalize()
-
-    return ""
+    return _detect_series(style_name_en, SERIES_WHITELIST, SERIES_BLACKLIST, NOISE)
 
 def _dedupe_material(type_str: str, material_cn: str) -> str:
     t = type_str or ""

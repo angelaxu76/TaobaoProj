@@ -274,6 +274,16 @@ BARBOUR = {
         "LSK": ("女款", "中长裙"),
     },
 
+    # 配件类前缀（包/帽子/围巾/皮带等，非服装夹克）
+    # 用于 generate_taobao_title_accessories.py，与 CODE_PREFIX_RULES（服装夹克）分开维护
+    "ACCESSORY_PREFIX_RULES": {
+        "UBA": ("", "包"),
+        "MHA": ("", "帽子"),
+        "MHO": ("", "兜帽"),
+        "MAC": ("", "皮带"),
+        "USC": ("", "围巾"),
+    },
+
     "BARBOUR_COLOR_CODE_MAP": {
         # ===== 高频主色 =====
         "BK": {"en": "black",          "zh": "黑色"},
