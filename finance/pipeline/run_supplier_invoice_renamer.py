@@ -40,7 +40,7 @@ def main():
     # )
 
     rename_clarks_invoices(
-        str(ONEDRIVE_UK_DIR / "99_Backup" / "clarks invoice" / "added"),
+        str(ONEDRIVE_UK_DIR / "99_Backup" / "clarks invoice" / "original-202609"),
         str(ONEDRIVE_UK_DIR / "99_Backup" / "clarks invoice" / "202609"),
     )
 

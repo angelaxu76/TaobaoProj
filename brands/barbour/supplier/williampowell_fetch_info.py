@@ -21,6 +21,8 @@ from __future__ import annotations
 
 import json
 import re
+import threading
+import time
 from typing import Any, Dict, Optional
 from urllib.parse import urlsplit, urlunsplit
 
@@ -95,6 +97,12 @@ class WilliamPowellFetcher(BaseFetcher):
         "Accept-Language": "en-GB,en;q=0.9",
     }
 
+    # 全局节流: 多线程共用同一个时间戳, 保证站点收到请求的最小间隔,
+    # 避免像之前 philipmorrisdirect 一样并发打爆导致 429
+    _MIN_REQUEST_INTERVAL = 1.0
+    _rate_lock = threading.Lock()
+    _last_request_at = 0.0
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._session = requests.Session()
@@ -112,9 +120,34 @@ class WilliamPowellFetcher(BaseFetcher):
         except Exception:
             return conn.connection.connection
 
+    def _throttle(self) -> None:
+        """跨线程节流, 保证相邻两次请求之间至少间隔 _MIN_REQUEST_INTERVAL 秒"""
+        cls = WilliamPowellFetcher
+        with cls._rate_lock:
+            now = time.monotonic()
+            wait = cls._last_request_at + cls._MIN_REQUEST_INTERVAL - now
+            if wait > 0:
+                time.sleep(wait)
+                now = time.monotonic()
+            cls._last_request_at = now
+
     def _fetch_html(self, url: str) -> str:
         """实际抓取的是 Shopify 商品 JSON 接口, 不是渲染后的 HTML"""
+        self._throttle()
         resp = self._session.get(_product_js_url(url), timeout=20)
+
+        if resp.status_code == 429:
+            retry_after = resp.headers.get("Retry-After")
+            try:
+                wait = float(retry_after) if retry_after else 10.0
+            except ValueError:
+                wait = 10.0
+            self.logger.warning(f"  ⏳ 429 限流, 等待 {wait:.0f}s 后重试: {url}")
+            time.sleep(wait)
+            # 拉长下一次全局节流的起点, 让其它线程也一起放慢
+            with WilliamPowellFetcher._rate_lock:
+                WilliamPowellFetcher._last_request_at = time.monotonic()
+
         resp.raise_for_status()
         return resp.text
 
@@ -211,7 +244,7 @@ class WilliamPowellFetcher(BaseFetcher):
                 raise ValueError(f"缺失必填字段: {field} (URL: {url})")
 
 
-def williampowell_fetch_info(max_workers: int = 4):
+def williampowell_fetch_info(max_workers: int = 2):
     """主函数"""
     setup_logging()
 
@@ -220,7 +253,7 @@ def williampowell_fetch_info(max_workers: int = 4):
         links_file=LINKS_FILE,
         output_dir=OUTPUT_DIR,
         max_workers=max_workers,
-        max_retries=3,
+        max_retries=4,
         wait_seconds=0,
     )
 
@@ -229,4 +262,4 @@ def williampowell_fetch_info(max_workers: int = 4):
 
 
 if __name__ == "__main__":
-    williampowell_fetch_info(max_workers=4)
+    williampowell_fetch_info(max_workers=2)

@@ -135,7 +135,7 @@ if __name__ == "__main__":
     # 对比表（适合批量检查价格合理性）
     print()
     CASES = [
-        # (50,  "camper"),
+        (20,  "camper"),
         # (80,  "camper"),
         # (100, "camper"),
         (150, "ECCO"),
