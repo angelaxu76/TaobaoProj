@@ -35,7 +35,7 @@
 
 ================================================================================
   Step 2：给文件名加入镜头关键字
-  脚本：ops/run_rename_images.py
+  脚本：ops/image_rename/run_rename_images_front.py
 ================================================================================
 
   目的：将 MWX2343BL56_1.jpg → MWX2343BL56_front_1.jpg
@@ -48,11 +48,11 @@
     DRY_RUN    = True                                         ← 先设 True 预览
 
   先预览运行（DRY_RUN = True）：
-    python ops/run_rename_images.py
+    python ops/image_rename/run_rename_images_front.py
     → 确认控制台输出的重命名预览正确
 
   确认无误后改为实际执行（DRY_RUN = False）：
-    python ops/run_rename_images.py
+    python ops/image_rename/run_rename_images_front.py
     → 文件就地重命名完成
 
 ================================================================================
@@ -201,6 +201,6 @@
 
 ================================================================================
 
-run_rename_and_cutout_details
+ops/image_rename/run_rename_flat_and_cutout_details.py
 run_cut_square_watermark
 rename_by_shot_priority

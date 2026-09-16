@@ -1,10 +1,10 @@
 """
-图片批量重命名脚本。
+图片批量重命名脚本（Barbour，正面图 front）。
 
 重命名规则：{code}_{keyword}_{n}.jpg
 详细逻辑见 helper/image/rename_images.py
 
-运行：python ops/run_rename_images.py
+运行：python ops/image_rename/run_rename_images_front.py
 """
 import os
 import sys

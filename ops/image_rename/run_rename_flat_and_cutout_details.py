@@ -1,9 +1,9 @@
 """
-Barbour 细节图流水线：改名 -> 抠图（不加水印）-> 最大化裁剪为正方形。
+Barbour 平铺图流水线：改名为 details 后缀 -> 抠图（不加水印）-> 最大化裁剪为正方形。
 
 步骤：
-  1) 调用 run_rename_barbour_details.rename_details
-     LCA0416BK11_6.jpg -> LCA0416BK11_details.jpg（同编码只改第一张）
+  1) rename_details()
+     LCA0416BK11_6.jpg -> LCA0416BK11_details.jpg（同编码只改第一张，按文件名排序）
   2) 对改名后的 *_details 图抠图（rembg birefnet-general），去掉商品周围背景
      - 不加任何水印
   3) 最大化裁剪：先按 alpha、再按近白阈值，把商品四周可删除的白色/透明区域
@@ -12,21 +12,19 @@ Barbour 细节图流水线：改名 -> 抠图（不加水印）-> 最大化裁�
   4) 输出 JPG 到 OUTPUT_DIR
 
 用法：
-  python ops/linkfox/run_rename_and_cutout_details.py
+  python ops/image_rename/run_rename_flat_and_cutout_details.py
 """
 import os
+import re
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(os.path.dirname(_HERE)))
-sys.path.insert(0, _HERE)
 
 import numpy as np
 from PIL import Image
-
-from run_rename_barbour_details import rename_details
 
 # ============================================================
 # 运行参数（按需修改）
@@ -73,6 +71,64 @@ _mod.DIAGONAL_TEXT_ENABLE = False
 _mod.LOCAL_LOGO_ENABLE    = False
 
 _EXTS = {".png", ".jpg", ".jpeg", ".webp"}
+
+# 改名目标后缀（不含下划线）
+_DETAILS_SUFFIX = "details"
+
+# 文件名结尾形如 "_6" / "_12"，前面部分作为编码
+_SUFFIX_RE = re.compile(r"_\d+$")
+
+
+def extract_code(filename: str) -> str | None:
+    """从文件名（不含扩展名）提取商品编码；不符合 {code}_{数字} 格式则返回 None。"""
+    stem = Path(filename).stem
+    m = _SUFFIX_RE.search(stem)
+    if m:
+        return stem[: m.start()]
+    return None
+
+
+def rename_details(source_dir: Path, dry_run: bool = True) -> None:
+    """把目录下 {code}_{数字}.ext 形式的图片，每个编码仅重命名第一张为 {code}_details.ext。"""
+    if not source_dir.exists():
+        print(f"[ERROR] source dir not found: {source_dir}")
+        return
+
+    files = sorted(
+        f for f in source_dir.iterdir()
+        if f.is_file() and f.suffix.lower() in _EXTS
+    )
+
+    done_codes: set[str] = set()
+    renamed = skipped = 0
+
+    for f in files:
+        code = extract_code(f.name)
+        if not code:
+            continue
+
+        if code in done_codes:
+            print(f"  SKIP (已处理过该编码): {f.name}")
+            skipped += 1
+            continue
+
+        target = f.with_name(f"{code}_{_DETAILS_SUFFIX}{f.suffix.lower()}")
+        done_codes.add(code)
+
+        if target.exists():
+            print(f"  SKIP (目标已存在): {f.name} -> {target.name}")
+            skipped += 1
+            continue
+
+        if dry_run:
+            print(f"  DRY  {f.name} -> {target.name}")
+        else:
+            f.rename(target)
+            print(f"  OK   {f.name} -> {target.name}")
+        renamed += 1
+
+    mode = "预览" if dry_run else "执行"
+    print(f"\n[{mode}] 完成：重命名 {renamed} 张，跳过 {skipped} 张。")
 
 
 def _flatten_to_white(img: Image.Image) -> Image.Image:

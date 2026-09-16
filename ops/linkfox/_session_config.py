@@ -42,29 +42,29 @@ SHOT_SUFFIXES = ["_front_1", "_front_2"]
 # SHOT_SUFFIXES = ["_front_1"]  
 
 # 目标模特头部参考图列表（多个 URL 时按商品顺序轮流分配）
-TARGET_MODEL_URLS = [
-    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_1.png",
-    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_2.png",
-    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_3.png",
-    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_4.png",
-    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_5.png",
-    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_6.png",
-    "https://file-ai.linkfox.com/UPLOAD/MANAGE/8f941970caa04ccc8fde3eca9a9fe2cc.jpg?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3138373130383439343336353336303132383029",
-    # 可添加更多目标模特图：
-    # "https://...",
-]
+# TARGET_MODEL_URLS = [
+#     "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_1.png",
+#     "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_2.png",
+#     "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_3.png",
+#     "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_4.png",
+#     "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_5.png",
+#     "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_6.png",
+#     "https://file-ai.linkfox.com/UPLOAD/MANAGE/8f941970caa04ccc8fde3eca9a9fe2cc.jpg?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3138373130383439343336353336303132383029",
+#     # 可添加更多目标模特图：
+#     # "https://...",
+# ]
 
 
 # 男性模特
-# TARGET_MODEL_URLS = [
-#     "https://file-ai.linkfox.com/UPLOAD/MANAGE/3e5b7430dd824ac79b9d398fc6ad699b.jpg?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3138373130373539393838303935383737313229",
-#     "https://file-ai.linkfox.com/UPLOAD/MANAGE/2d1b8b9e425e4a94a8c5217af9fcfa4d.png?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3139393832393437383839373437303636383829",
-#     "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/men_mode_1.png",
-#     "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/men_mode_2.png",
-#     "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/men_mode_3.png",
-#         # 可添加更多目标模特图：
-#     # "https://...",
-# ]
+TARGET_MODEL_URLS = [
+    "https://file-ai.linkfox.com/UPLOAD/MANAGE/3e5b7430dd824ac79b9d398fc6ad699b.jpg?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3138373130373539393838303935383737313229",
+    "https://file-ai.linkfox.com/UPLOAD/MANAGE/2d1b8b9e425e4a94a8c5217af9fcfa4d.png?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3139393832393437383839373437303636383829",
+    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/men_mode_1.png",
+    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/men_mode_2.png",
+    "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/men_mode_3.png",
+        # 可添加更多目标模特图：
+    # "https://...",
+]
 
 
 #  男士长头发
