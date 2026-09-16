@@ -200,3 +200,7 @@
     python ops/linkfox/run_faceswap_retry_loop.py
 
 ================================================================================
+
+run_rename_and_cutout_details
+run_cut_square_watermark
+rename_by_shot_priority
