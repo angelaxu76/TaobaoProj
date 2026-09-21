@@ -48,6 +48,7 @@ from common.pricing.price_utils import calculate_jingya_prices
 from brands.barbour.jingya.allocate_supplier_and_price_config import (
     SUPPLIER_PRICE_TOLERANCE_PCT,
     SUPPLIER_MAX_SITES,
+    SUPPLIER_MIN_SIZES_IN_STOCK,
     TAOBAO_STORE_DISCOUNT,
     SUPPLIER_OVERRIDE_XLSX,
 )
@@ -298,12 +299,19 @@ def _select_sites_by_price_window(
     cand: Optional[pd.DataFrame],
     price_tolerance_pct: float,
     max_suppliers: int,
+    min_sizes_in_stock: int = 1,
 ) -> List[dict]:
     """
     价格窗口选站点：按有效成本从低到高排序，取成本最低的供应商为基准，
     凡是成本不超过"基准 × (1 + price_tolerance_pct)"的供应商都一并纳入
     （最多凑满 max_suppliers 家）。窗口外更贵的供应商一律不看——即使窗口
     内供应商合计的有货尺码数很少，也不会为了凑尺码去纳入窗口外的供应商。
+
+    min_sizes_in_stock：初选门槛，有货尺码数低于此值的供应商直接从候选池
+    剔除（包括不能作为最低价基准），避免"价格最低但几乎断货"的供应商
+    单独垄断分配。若门槛把候选池筛空（没有任何供应商达标），回退为不设
+    门槛，按原候选池继续选——避免商品因此被强制清零库存；调用方可通过
+    返回值判断是否发生了回退（见 allocate_and_sync 里的诊断计数）。
 
     allocate_and_sync（批量）和 select_suppliers_for_code（单品预览）共用
     这一份实现，避免诊断工具和实际写库逻辑走两套算法、结果对不上。
@@ -314,7 +322,14 @@ def _select_sites_by_price_window(
     if cand is None or cand.empty:
         return chosen
 
-    ranked = cand.sort_values(
+    pool = cand
+    if min_sizes_in_stock > 1:
+        filtered = cand[cand["sizes_in_stock"] >= min_sizes_in_stock]
+        if not filtered.empty:
+            pool = filtered
+        # 否则：没有供应商达标，回退用未过滤的候选池（宁可库存浅，也不强制清零）。
+
+    ranked = pool.sort_values(
         ["min_eff_price", "sizes_in_stock", "latest"],
         ascending=[True, False, False],
     )
@@ -342,6 +357,7 @@ def allocate_and_sync(
     brand: str = "barbour",
     price_tolerance_pct: Optional[float] = None,
     max_suppliers: Optional[int] = None,
+    min_sizes_in_stock: Optional[int] = None,
     exclude_xlsx: Optional[str] = None,
     supplier_override_xlsx: Optional[str] = SUPPLIER_OVERRIDE_XLSX,
     dry_run: bool = False,
@@ -353,12 +369,16 @@ def allocate_and_sync(
     dry_run=True 时只打印将要发生的变更，不写库。
     supplier_override_xlsx 默认指向配置里的固定路径，文件不存在时自动忽略；
     传 None 可显式关闭人工指定供应商这一层。
+    min_sizes_in_stock：初选供应商的最低有货尺码数门槛，默认取配置文件里
+    的 SUPPLIER_MIN_SIZES_IN_STOCK；传参可临时覆盖（单次运行生效，不改
+    配置文件）。
     """
     if brand.lower() != "barbour":
         raise ValueError("目前仅支持 barbour")
 
     price_tolerance_pct = price_tolerance_pct if price_tolerance_pct is not None else SUPPLIER_PRICE_TOLERANCE_PCT
     max_suppliers = max_suppliers if max_suppliers is not None else SUPPLIER_MAX_SITES
+    min_sizes_in_stock = min_sizes_in_stock if min_sizes_in_stock is not None else SUPPLIER_MIN_SIZES_IN_STOCK
 
     engine = _get_engine()
     exclude_codes, exclude_forced_sites = _load_exclude_and_forced_sites(exclude_xlsx)
@@ -491,6 +511,7 @@ def allocate_and_sync(
                 cand,
                 price_tolerance_pct,
                 max_suppliers,
+                min_sizes_in_stock,
             )
 
             if not chosen:
@@ -685,6 +706,7 @@ def select_suppliers_for_code(
     code: str,
     price_tolerance_pct: Optional[float] = None,
     max_suppliers: Optional[int] = None,
+    min_sizes_in_stock: Optional[int] = None,
 ) -> dict:
     """
     对单个商品跑一遍与 allocate_and_sync 相同的价格窗口选择算法，只返回结果、不写库。
@@ -693,6 +715,7 @@ def select_suppliers_for_code(
     """
     price_tolerance_pct = price_tolerance_pct if price_tolerance_pct is not None else SUPPLIER_PRICE_TOLERANCE_PCT
     max_suppliers = max_suppliers if max_suppliers is not None else SUPPLIER_MAX_SITES
+    min_sizes_in_stock = min_sizes_in_stock if min_sizes_in_stock is not None else SUPPLIER_MIN_SIZES_IN_STOCK
 
     engine = _get_engine()
     with engine.connect() as conn:
@@ -731,6 +754,7 @@ def select_suppliers_for_code(
         site_agg,
         price_tolerance_pct,
         max_suppliers,
+        min_sizes_in_stock,
     )
     covered: Set[str] = set()
     for c in chosen:

@@ -51,8 +51,13 @@ RUN_D_EXPORT    = True   # 导出库存 / 价格 Excel
 # ── C 阶段：供应商策略参数 ────────────────────────────────────────
 # 每次运行都会用"当前最便宜的供应商 + 价格上浮一定比例内的供应商组合"
 # 重新计算价格+库存，不再需要单独的"低库存换供应商"开关。
-# 价格容忍比例 / 最多合并几家供应商 / 淘宝店铺折扣 / 人工指定供应商路径，
-# 统一在 brands/barbour/jingya/allocate_supplier_and_price_config.py 中配置。
+# 价格容忍比例 / 最多合并几家供应商 / 初选最低有货尺码数门槛 / 淘宝店铺
+# 折扣 / 人工指定供应商路径，统一在
+# brands/barbour/jingya/allocate_supplier_and_price_config.py 中配置
+# （全局默认）。如果只想本次运行临时改一下"最低有货尺码数门槛"（不改
+# 配置文件），在下面填非 None 的整数即可；留 None 则使用配置文件里的
+# SUPPLIER_MIN_SIZES_IN_STOCK。
+C_MIN_SIZES_IN_STOCK: int | None = None
 
 # ── 路径配置 ─────────────────────────────────────────────────────
 # 共享盘路径统一走 resolve_shared_path()：VM 内用 \\vmware-host\Shared Folders\...，
@@ -406,7 +411,12 @@ def run_c_inventory():
     _step("C4：供应商组合 + 价格 + 库存同步（allocate_and_sync）")
     t = time.time()
     try:
-        allocate_and_sync(brand="barbour", exclude_xlsx=EXCLUDE_LIST_XLSX, dry_run=False)
+        allocate_and_sync(
+            brand="barbour",
+            exclude_xlsx=EXCLUDE_LIST_XLSX,
+            min_sizes_in_stock=C_MIN_SIZES_IN_STOCK,
+            dry_run=False,
+        )
         _ok("供应商/价格/库存同步完成", time.time() - t)
     except Exception as e:
         _fail("C4-allocate_and_sync", e)

@@ -7,7 +7,7 @@ from config import GLOBAL_GECKODRIVER_PATH
 
 # ========== 目录参数集中配置 ==========
 BASE_DIR = r"D:\TB\Products\barbour\document"
-HTML_FOLDER = fr"{BASE_DIR}\barbour_size_avg"                   # HTML 文件夹路径
+HTML_FOLDER = fr"{BASE_DIR}\barbour_202609_avg"                   # HTML 文件夹路径
 OUTPUT_FOLDER = fr"{BASE_DIR}\barbour_size_avg_output"           # 输出图片文件夹
 CUTTER_OUTPUT_FOLDER = fr"{BASE_DIR}\barbour_size_avg_cutter"  # 裁边后输出文件夹
 
