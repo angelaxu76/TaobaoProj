@@ -1,0 +1,63 @@
+[settings] ⚠️ 未找到匹配 Chrome v153 的驱动；将使用 v152: D:\TB\drivers\chromedriver.exe
+ℹ️ 供应商指定清单文件不存在，已跳过：D:\TB\Products\barbour\document\barbour_supplier.xlsx
+✅ 自动分配：1145 个；人工指定：0 个；排除清单跳过：0 个；无法分配：94 个。
+⚠️ 以下 94 个商品本次未能分配供应商（库存已强制清零，避免超卖/淘宝处罚；价格字段保持不变）：
+   LCA0376KH11: 无达标供应商
+   LCA0376OL52: 无达标供应商
+   LCA0380BR31: 无达标供应商
+   LCA0383NY71: 无达标供应商
+   LCA0390RE52: 无达标供应商
+   LCA0393IN71: 无达标供应商
+   LCA0397BE11: 无达标供应商
+   LCA0397NY71: 无达标供应商
+   LCA0398RE51: 无达标供应商
+   LCA0399BE53: 无达标供应商
+   LGI0003PI54: 无达标供应商
+   LGI0215NY91: 无达标供应商
+   LOL0648WH12: 无达标供应商
+   LOL0671SG15: 无达标供应商
+   LQU1012BL23: 无达标供应商
+   LQU1851BE91: 无达标供应商
+   LQU1852BE91: 无达标供应商
+   LQU1883CR31: 无达标供应商
+   LQU1884OL51: 无达标供应商
+   LQU1897BK11: 无达标供应商
+   LSP0220BK11: 无达标供应商
+   LSP0297BK11: 无达标供应商
+   LSP0297ST31: 无达标供应商
+   LSP0298BK12: 无达标供应商
+   LSP0301BK11: 无达标供应商
+   LSP0301CR11: 无达标供应商
+   LSP0303PI11: 无达标供应商
+   LSP0305CR31: 无达标供应商
+   LSP0309GN51: 无达标供应商
+   LSP0310CR31: 无达标供应商
+   ...共 94 个，已省略 64 个
+
+[DRY-RUN] 将变更 1011 条尺码记录（未写库）。示例前 20 条：
+   {'product_code': 'LFL0055CR11', 'size': '4', '旧库存': 0, '新库存': 0, '旧未税价': 740.0, '新未税价': 950.0, '供应商组合': 'williampowell'}
+   {'product_code': 'LFL0055CR11', 'size': '6', '旧库存': 0, '新库存': 0, '旧未税价': 740.0, '新未税价': 950.0, '供应商组合': 'williampowell'}
+   {'product_code': 'LFL0055CR11', 'size': '8', '旧库存': 0, '新库存': 0, '旧未税价': 740.0, '新未税价': 950.0, '供应商组合': 'williampowell'}
+   {'product_code': 'LFL0055CR11', 'size': '10', '旧库存': 0, '新库存': 0, '旧未税价': 740.0, '新未税价': 950.0, '供应商组合': 'williampowell'}
+   {'product_code': 'LFL0055CR11', 'size': '12', '旧库存': 0, '新库存': 3, '旧未税价': 740.0, '新未税价': 950.0, '供应商组合': 'williampowell'}
+   {'product_code': 'LFL0055CR11', 'size': '14', '旧库存': 0, '新库存': 3, '旧未税价': 740.0, '新未税价': 950.0, '供应商组合': 'williampowell'}
+   {'product_code': 'LFL0055CR11', 'size': '16', '旧库存': 0, '新库存': 3, '旧未税价': 740.0, '新未税价': 950.0, '供应商组合': 'williampowell'}
+   {'product_code': 'LFL0055CR11', 'size': '18', '旧库存': 3, '新库存': 3, '旧未税价': 740.0, '新未税价': 950.0, '供应商组合': 'williampowell'}
+   {'product_code': 'LFL0055CR11', 'size': '20', '旧库存': 0, '新库存': 0, '旧未税价': 740.0, '新未税价': 950.0, '供应商组合': 'williampowell'}
+   {'product_code': 'LFL0055PI11', 'size': '4', '旧库存': 0, '新库存': 0, '旧未税价': 740.0, '新未税价': 1060.0, '供应商组合': 'williampowell'}
+   {'product_code': 'LFL0055PI11', 'size': '6', '旧库存': 0, '新库存': 0, '旧未税价': 740.0, '新未税价': 1060.0, '供应商组合': 'williampowell'}
+   {'product_code': 'LFL0055PI11', 'size': '8', '旧库存': 0, '新库存': 3, '旧未税价': 740.0, '新未税价': 1060.0, '供应商组合': 'williampowell'}
+   {'product_code': 'LFL0055PI11', 'size': '10', '旧库存': 0, '新库存': 0, '旧未税价': 740.0, '新未税价': 1060.0, '供应商组合': 'williampowell'}
+   {'product_code': 'LFL0055PI11', 'size': '12', '旧库存': 0, '新库存': 0, '旧未税价': 740.0, '新未税价': 1060.0, '供应商组合': 'williampowell'}
+   {'product_code': 'LFL0055PI11', 'size': '14', '旧库存': 3, '新库存': 3, '旧未税价': 740.0, '新未税价': 1060.0, '供应商组合': 'williampowell'}
+   {'product_code': 'LFL0055PI11', 'size': '16', '旧库存': 0, '新库存': 3, '旧未税价': 740.0, '新未税价': 1060.0, '供应商组合': 'williampowell'}
+   {'product_code': 'LFL0055PI11', 'size': '18', '旧库存': 0, '新库存': 3, '旧未税价': 740.0, '新未税价': 1060.0, '供应商组合': 'williampowell'}
+   {'product_code': 'LFL0055PI11', 'size': '20', '旧库存': 0, '新库存': 0, '旧未税价': 740.0, '新未税价': 1060.0, '供应商组合': 'williampowell'}
+   {'product_code': 'LFL0056SG71', 'size': '4', '旧库存': 0, '新库存': 0, '旧未税价': 980.0, '新未税价': 1250.0, '供应商组合': 'williampowell+cho+outdoorandcountry'}
+   {'product_code': 'LFL0056SG71', 'size': '6', '旧库存': 0, '新库存': 0, '旧未税价': 980.0, '新未税价': 1250.0, '供应商组合': 'williampowell+cho+outdoorandcountry'}
+
+[DRY-RUN] 同款多颜色共用鲸芽 channel_product_id 的价格对齐预览：
+   （当前没有需要对齐的分叉价格）
+
+=== RESULT SUMMARY ===
+{'processed': 1145, 'excluded': 0, 'unresolved': 94, 'would_change': 1011, 'would_force_zero_stock': 0, 'would_reconcile_channel_prices': 0}
