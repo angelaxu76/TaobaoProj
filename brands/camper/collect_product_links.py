@@ -70,6 +70,8 @@ BASE_URLS = [
 
     # ── 配件（包袋/箱包等，不分男女）──
     "https://www.camper.com/en_GB/all/bags-accessories?page={}",
+    # 鞋头（Junction Toe Caps，配件子类目）
+    "https://www.camper.com/en_GB/all/bags-accessories/junction_toe_caps_all?page={}",
 ]
 
 HEADERS = {
