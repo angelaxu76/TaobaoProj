@@ -1,53 +1,25 @@
 # -*- coding: utf-8 -*-
 """
-allocate_and_sync() 专属配置——供应商组合策略 / 定价折扣 / 人工干预 Excel 路径。
+allocate_and_sync() 专属配置——已迁移至
+brands/barbour/pipeline/session_config.py 统一维护（跟 prepare_jingya_listing.py
+的阶段开关、路径、供应商列表放在一起改）。
 
-这几个参数原来分散在两处：
-  - SUPPLIER_PRICE_TOLERANCE_PCT / SUPPLIER_MAX_SITES / TAOBAO_STORE_DISCOUNT
-    混在 cfg/brands/barbour.py 里（那个文件另外还有约 300 行图片路径、
-    颜色映射、编码前缀规则等和供应商/定价完全无关的配置）。
-  - SUPPLIER_OVERRIDE_XLSX（人工指定供应商）此前只在已废弃的
-    db_build_supplier_map_and_inventory.py 里硬编码，没有任何地方在用。
-现在集中到这里，跟着 allocate_supplier_and_price.py 一起改，不用再去
-cfg/brands/barbour.py 里翻。
-
-注意：EXCLUDE_LIST_XLSX（排除清单）不在这里——它同时被 D 阶段的价格/
-库存导出复用，属于整条流水线共用的路径，仍在 prepare_jingya_listing.py
-的 CONFIG 区域维护。
+这里只保留同名转发导入，兼容 allocate_supplier_and_price.py /
+tool_inspect_supplier.py 已有的 import 路径；不要在这个文件里改值。
 """
 
-# ── 供应商组合策略 ──────────────────────────────────────────────
-# 价格窗口：以最低有效成本的供应商为基准，成本不超过
-# 基准 × (1 + SUPPLIER_PRICE_TOLERANCE_PCT) 的供应商都一并纳入
-# （库存取并集，定价取其中成本最高者）。如果窗口内供应商凑出来的
-# 有货尺码数仍然很少，也不会为了凑尺码去找窗口外更贵的供应商——
-# 价格窗口内选完就停。
-SUPPLIER_PRICE_TOLERANCE_PCT = 0.10
-# 无论价格窗口内有多少家满足条件，最多合并几家供应商来覆盖库存
-SUPPLIER_MAX_SITES = 3
-# 初选供应商时，只有"有货尺码数 >= 此值"的供应商才有资格参与价格窗口
-# 排序/入选（包括不能作为最低价基准）。例如某商品 A 供应商报价最低但
-# 只有 1 个尺码有货，B 供应商价格略高但 5 个尺码有货：设为 2 时 A 会被
-# 排除，改以 B（或更多尺码更全的供应商）为基准，避免"价格最低但几乎
-# 断货"的供应商单独垄断分配、导致最终库存只剩一两个尺码。
-# 设为 1 = 不做尺码数门槛，等价于旧行为（只要有货就有资格）。
-# 若价格窗口容忍比例内没有任何供应商达到这个门槛，会自动回退为不设
-# 门槛（避免整个商品被强制清零库存），并在运行日志里打印回退计数。
-#
-# 2026-09-22 基于全量已发布商品（1145 个）模拟对比 1/2/3 三档的结果：
-# 门槛=2 用很小的整体成本代价（均价 +1.6%）几乎修复了所有"能修复"的
-# 单尺码断货商品（157 -> 80，77 个被修复）；门槛=3 收益递减（80 -> 85，
-# 因"筛空则整体回退不设门槛"是全有全无式的，反而对部分商品产生"回退
-# 悬崖"副作用，让本来在门槛=2 下已修复的商品又退回单尺码），且成本
-# 接近翻倍。因此选定 2 作为默认值。
-SUPPLIER_MIN_SIZES_IN_STOCK = 2
+from brands.barbour.pipeline.session_config import (
+    SUPPLIER_PRICE_TOLERANCE_PCT,
+    SUPPLIER_MAX_SITES,
+    SUPPLIER_MIN_SIZES_IN_STOCK,
+    TAOBAO_STORE_DISCOUNT,
+    SUPPLIER_OVERRIDE_XLSX,
+)
 
-# ── 定价 ────────────────────────────────────────────────────────
-# 未税价 -> 淘宝店铺价的折扣系数（1.0 = 不打折）
-TAOBAO_STORE_DISCOUNT = 1.0
-
-# ── 人工指定供应商（可选） ─────────────────────────────────────────
-# Excel 需含列：商品编码 / 供货商。命中的商品跳过自动选择，
-# 直接用指定站点，但仍走同一套定价/库存回填逻辑。
-# 文件不存在时会被自动忽略，不影响正常运行。
-SUPPLIER_OVERRIDE_XLSX = r"D:\TB\Products\barbour\document\barbour_supplier.xlsx"
+__all__ = [
+    "SUPPLIER_PRICE_TOLERANCE_PCT",
+    "SUPPLIER_MAX_SITES",
+    "SUPPLIER_MIN_SIZES_IN_STOCK",
+    "TAOBAO_STORE_DISCOUNT",
+    "SUPPLIER_OVERRIDE_XLSX",
+]

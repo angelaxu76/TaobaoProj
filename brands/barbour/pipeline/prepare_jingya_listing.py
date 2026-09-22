@@ -22,99 +22,46 @@ from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-from config import resolve_shared_path
-
 # ══════════════════════════════════════════════════════════════════
 #  CONFIG — 按需修改
 #
 #  参数索引（想改什么参数，去哪个文件）：
-#    - 本文件下方：阶段开关 RUN_*、A/B 阶段供应商列表、各类导出路径、日志目录
-#      —— 每次跑流水线最常改的参数，都在这一个文件里。
-#    - brands/barbour/jingya/allocate_supplier_and_price_config.py
-#      —— C 阶段供应商/定价策略：价格容忍比例 SUPPLIER_PRICE_TOLERANCE_PCT、
-#         最多合并几家供应商 SUPPLIER_MAX_SITES、淘宝店铺折扣
-#         TAOBAO_STORE_DISCOUNT、人工指定供应商清单路径 SUPPLIER_OVERRIDE_XLSX。
+#    - brands/barbour/pipeline/session_config.py
+#      —— 阶段开关 RUN_*、A/B 阶段供应商列表、C 阶段供应商/定价策略
+#         （价格容忍比例 SUPPLIER_PRICE_TOLERANCE_PCT、最多合并几家供应商
+#         SUPPLIER_MAX_SITES、淘宝店铺折扣 TAOBAO_STORE_DISCOUNT、人工指定
+#         供应商清单路径 SUPPLIER_OVERRIDE_XLSX）、各类导出路径、日志目录。
+#      —— 每次跑流水线最常改的参数，都集中在这一个文件里。
 #    - cfg/brands/barbour.py 里的 BARBOUR["SUPPLIER_DISCOUNT_RULES"]
 #      —— 各供应商在"落地成本价"计算时的折扣策略/运费（影响 B 阶段导入
 #         offers 时算出的 sale_price_gbp，进而影响 C 阶段选供应商的排序）。
+#         留在 cfg/ 里是因为 cfg/ 层不能反过来 import brands/ 下的模块。
 #    - cfg/settings.py
 #      —— 汇率 EXCHANGE_RATE、API_KEYS 等全品牌共用的全局设置。
 # ══════════════════════════════════════════════════════════════════
 
-# ── 阶段开关 ──────────────────────────────────────────────────────
-RUN_A_BACKUP    = True   # 备份并清空 TXT 目录（重跑某供货商时设 False）
-RUN_A_CRAWL     = True   # A 阶段总开关（False = 跳过整个 A 阶段）
-RUN_B_IMPORT    = True   # TXT 导入 products + offers
-RUN_C_INVENTORY = True   # 重建 supplier_map + inventory
-RUN_D_EXPORT    = True   # 导出库存 / 价格 Excel
-
-# ── C 阶段：供应商策略参数 ────────────────────────────────────────
-# 每次运行都会用"当前最便宜的供应商 + 价格上浮一定比例内的供应商组合"
-# 重新计算价格+库存，不再需要单独的"低库存换供应商"开关。
-# 价格容忍比例 / 最多合并几家供应商 / 初选最低有货尺码数门槛 / 淘宝店铺
-# 折扣 / 人工指定供应商路径，统一在
-# brands/barbour/jingya/allocate_supplier_and_price_config.py 中配置
-# （全局默认）。如果只想本次运行临时改一下"最低有货尺码数门槛"（不改
-# 配置文件），在下面填非 None 的整数即可；留 None 则使用配置文件里的
-# SUPPLIER_MIN_SIZES_IN_STOCK。
-C_MIN_SIZES_IN_STOCK: int | None = None
-
-# ── 路径配置 ─────────────────────────────────────────────────────
-# 共享盘路径统一走 resolve_shared_path()：VM 内用 \\vmware-host\Shared Folders\...，
-# 本地运行访问不到时自动切到 E:\shared\...
-EXCLUDE_LIST_XLSX    = resolve_shared_path(r"\\vmware-host\Shared Folders\shared\barbour\barbour_exclude_list.xlsx")
-STOCK_EXPORT_DIR     = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\input")
-PRICE_EXPORT_DIR     = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\barbour\publication_prices")
-
-# ── D 阶段：淘宝店铺价格导出 ──────────────────────────────────────
-# 淘宝店铺导出的 Excel 所在文件夹（每个店铺一个文件）
-STORE_PRICE_INPUT_DIR  = resolve_shared_path(r"\\vmware-host\Shared Folders\shared\barbour\store_prices")
-# 生成的店铺价格导入表保存位置
-STORE_PRICE_OUTPUT_DIR = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\barbour\store_prices")
-
-# ── 日志目录（留空则不写文件日志）────────────────────────────────
-LOG_DIR = r"D:\TB\Logs\barbour"
-
-# ── A 阶段：每个供应商独立控制 get_links / fetch_info ────────────
-# get_links：True = 重新爬取链接列表；False = 沿用上次已保存的链接
-# fetch_info：True = 抓取商品详情并写 TXT；False = 跳过（保留上次的 TXT）
-A_SUPPLIERS = {
-    #  supplier             get_links  fetch_info
-    "barbour":           (  True,      True  ),
-    "outdoorandcountry": (  True,     True ),
-    "allweathers":       (  True,     True ),
-    "terraces":          (  True,     True ),
-    "philipmorris":      (  True,     True ),
-    "cho":               (  True,     True ),
-    "magrigg":           (  True,     True ),
-    "williampowell":     (  True,     True ),
-    "samturner":         (  True,     True ),
-    # "very":            (  False,     False ),
-    # houseoffraser 单次运行需 4-6 小时，太耗时，暂时屏蔽
-    # "houseoffraser":   (  True,     True ),
-}
-
-# ── B 阶段：要导入的供应商列表 ────────────────────────────────────
-B_SUPPLIERS = [
-    "barbour",
-    "outdoorandcountry",
-    "allweathers",
-    "terraces",
-    "philipmorris",
-    "cho",
-    "magrigg",
-    "williampowell",
-    "samturner",
-    # "very",
-    # houseoffraser 已在 A 阶段屏蔽，不再重复导入
-    # "houseoffraser",
-]
-
-# B 阶段并发线程数：每个供应商内部会各自新建一条独立数据库连接
-# （products 按 product_code+size UPSERT，offers 按 site_name+offer_url+size
-#  UPSERT，不同供应商不会写同一行），因此可以安全并行。默认等于供应商数量，
-# 超过供应商数量没有意义；如需限制数据库并发连接数可调小。
-B_IMPORT_MAX_WORKERS = len(B_SUPPLIERS)
+from brands.barbour.pipeline.session_config import (
+    # 阶段开关
+    RUN_A_BACKUP,
+    RUN_A_CRAWL,
+    RUN_B_IMPORT,
+    RUN_C_INVENTORY,
+    RUN_D_EXPORT,
+    # C 阶段
+    C_MIN_SIZES_IN_STOCK,
+    # 路径配置
+    EXCLUDE_LIST_XLSX,
+    STOCK_EXPORT_DIR,
+    PRICE_EXPORT_DIR,
+    STORE_PRICE_INPUT_DIR,
+    STORE_PRICE_OUTPUT_DIR,
+    LOG_DIR,
+    # A 阶段
+    A_SUPPLIERS,
+    # B 阶段
+    B_SUPPLIERS,
+    B_IMPORT_MAX_WORKERS,
+)
 
 # ══════════════════════════════════════════════════════════════════
 #  日志：同时写 console + 文件
