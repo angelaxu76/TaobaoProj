@@ -67,6 +67,9 @@ BASE_URLS = [
 
     # ── 折扣季（不分男女，男女款商品都在此页面下）──
     "https://www.camper.com/en_GB/all/shoes/end_of_season?page={}",
+
+    # ── 配件（包袋/箱包等，不分男女）──
+    "https://www.camper.com/en_GB/all/bags-accessories?page={}",
 ]
 
 HEADERS = {
@@ -142,7 +145,8 @@ def get_links_from_page(url):
         href = normalize_link(a.get("href"))
         if not href:
             continue
-        if ("/women/shoes/" in href or "/men/shoes/" in href or "/kids/shoes/" in href):
+        if ("/women/shoes/" in href or "/men/shoes/" in href or "/kids/shoes/" in href
+                or "/bags-accessories/" in href or "/bags/" in href or "/accessories/" in href):
             if href.count("/") >= 7:
                 links.add(href)
 
