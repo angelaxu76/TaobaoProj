@@ -10,6 +10,7 @@ from brands.barbour.core.keyword_mapping import KEYWORD_EQUIVALENTS
 from common.product.size_utils import clean_size_for_barbour  # 旧名保留
 from brands.barbour.core.site_utils import canonical_site, assert_site_or_raise
 from brands.barbour.core.text_utils import ONE_SIZE, normalize_barbour_code, is_no_size_value
+from brands.barbour.pipeline.session_config import ONE_SIZE_PREFIXES
 from config import BARBOUR, DEFAULT_STOCK_COUNT  # 已有导入就不要重复
 from brands.barbour.core.supplier_price_rules import (
     strategy_all_ratio,
@@ -20,6 +21,11 @@ from brands.barbour.core.supplier_price_rules import (
 # ---------- 小工具 ----------
 _PRICE_NUM = re.compile(r"([0-9]+(?:\.[0-9]+)?)")
 RE_CODE = re.compile(r'[A-Z]{3}\d{3,4}[A-Z]{2,3}\d{2,3}')
+_ONE_SIZE_PREFIXES = {p.strip().upper() for p in ONE_SIZE_PREFIXES if p.strip()}
+
+
+def _is_one_size_code(code: str | None) -> bool:
+    return (code or "")[:3].upper() in _ONE_SIZE_PREFIXES
 
 # ==================== 仅新增：供货商“全价才打折”策略 ====================
 
@@ -235,9 +241,11 @@ def parse_txt(filepath: Path):
                 })
 
         # 均码商品（包/帽子/围巾等）：页面无尺码选择，TXT 写的是 "No Data"。
-        # 页面能抓到有效价格即视为有货，按 ONESIZE + 默认库存入库。
+        # 仅对 session_config.ONE_SIZE_PREFIXES 中的类别生效；页面能抓到有效
+        # 价格即视为有货，按 ONESIZE + 默认库存入库。
         # 注意：抓取脚本目前无法区分均码商品是否缺货，缺货的也会被当成有货。
         if (not info["offers"] and base_price > 0
+                and _is_one_size_code(info["product_code"])
                 and (size_detail_line is not None or size_line is not None)
                 and is_no_size_value(size_detail_line) and is_no_size_value(size_line)):
             info["offers"].append({

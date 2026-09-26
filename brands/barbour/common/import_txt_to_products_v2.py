@@ -18,6 +18,9 @@ import sys
 
 from config import PGSQL_CONFIG, BARBOUR
 from brands.barbour.core.text_utils import ONE_SIZE, normalize_barbour_code, is_no_size_value
+from brands.barbour.pipeline.session_config import ONE_SIZE_PREFIXES
+
+_ONE_SIZE_PREFIXES = {p.strip().upper() for p in ONE_SIZE_PREFIXES if p.strip()}
 
 # —— 可选：标题生成（存在则用，不存在忽略）——
 try:
@@ -249,7 +252,7 @@ def enrich_record_optional(rec: Dict) -> Dict:
     return rec
 
 
-def _parse_sizes_from_size_detail_line(text: str) -> list[str]:
+def _parse_sizes_from_size_detail_line(text: str, product_code: str | None = None) -> list[str]:
     """
     统一模板变体：Product Size Detail: 6:0:000...;8:3:000...;...
     仅提取尺码，不管后面的数量/占位码。
@@ -257,8 +260,9 @@ def _parse_sizes_from_size_detail_line(text: str) -> list[str]:
     line = _extract_field(text, r'(?i)Product\s+Size\s+Detail')
     if not line:
         return []
-    # 均码商品（包/帽子/围巾等）页面无尺码，TXT 写 "No Data"，统一记为 ONESIZE
-    if is_no_size_value(line):
+    # 均码类别（session_config.ONE_SIZE_PREFIXES）页面无尺码，TXT 写 "No Data"，统一记为 ONESIZE；
+    # 其他类别保持原样（仍记为 "No Data"）
+    if is_no_size_value(line) and (product_code or "")[:3].upper() in _ONE_SIZE_PREFIXES:
         return [ONE_SIZE]
     sizes = []
     for token in line.split(";"):
@@ -325,7 +329,7 @@ def parse_txt_file(filepath: Path, conn) -> List[Dict]:
         info["category"] = cat
 
     # Product Size Detail（唯一来源）
-    sizes = _parse_sizes_from_size_detail_line(text)
+    sizes = _parse_sizes_from_size_detail_line(text, info.get("product_code"))
     info["sizes"] = sizes
 
     # 来源（用于写入 source_* 与 rank）

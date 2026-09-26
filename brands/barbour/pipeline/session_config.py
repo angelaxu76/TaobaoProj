@@ -72,20 +72,31 @@ SUPPLIER_OVERRIDE_XLSX = r"D:\TB\Products\barbour\document\barbour_supplier.xlsx
 C_MIN_SIZES_IN_STOCK: int | None = None
 
 # ══════════════════════════════════════════════════════════════════
-#  发布候选导出（publish_generate_excel.py → export_barbour_discounts_excel_multi）
+#  均码类别（包 / 帽子 / 围巾等）
 # ══════════════════════════════════════════════════════════════════
-# 均码/单尺码类别的编码前缀（product_code 前 3 位）。命中这些前缀的商品
-# 在导出折扣候选时不受 min_sizes（最少有货尺码数）限制，只要有货即可入选。
-# 例：帽子、围巾、包包、配饰等通常只有一个尺码（One Size）。
-# （2026-09-26 按 barbour_offers 实际存在的前缀整理；数据库里没有 UBA/USC/MHO）
-MIN_SIZES_EXEMPT_PREFIXES = [
+# 均码类别的编码前缀（product_code 前 3 位），同时用于：
+#   1) B 阶段导入：这些前缀的 TXT 若尺码为 "No Data"（页面无尺码选择），
+#      按 ONESIZE 入库 barbour_products / barbour_offers；
+#      其他前缀遇到 "No Data" 仍跳过（多为鞋服断货/抓取失败，不能当均码有货）。
+#   2) 发布候选导出：不受 min_sizes（最少有货尺码数）限制，只要有货即可入选。
+ONE_SIZE_PREFIXES = [
+    "UBA",  # 中性包袋
+    "LBA",  # 女士包袋
     "MHA",  # 男士帽子
     "LHA",  # 女士帽子
+    "MHO",  # 兜帽
+    "USC",  # 中性围巾
+    "LSC",  # 女士围巾
     "MAC",  # 男士配饰（围巾、皮带等）
-    "LAC",  # 女士配饰（围巾、皮带等）
-    "LBA",  # 女士包袋
-    "DAC",  # 狗狗配饰
+    "UAC",  # 中性配饰（护理套装、蜡油、徽章、圣诞袜等）
+    "MGS",  # 男士礼盒（帽子+围巾/手套、袜子礼盒）
+    "LGS",  # 女士礼盒（帽子+围巾等）
+    "UFA",  # 鞋类配件（靴袋、护理喷雾；绑腿分尺码，只在 TXT 无尺码时才会当均码）
+    "DAC",  # 狗狗用品（玩具、牵引绳、狗窝；项圈/胸背带分尺码，同上）
 ]
+
+# 发布候选导出沿用同一份名单（兼容旧变量名）
+MIN_SIZES_EXEMPT_PREFIXES = ONE_SIZE_PREFIXES
 
 # ══════════════════════════════════════════════════════════════════
 #  路径配置
