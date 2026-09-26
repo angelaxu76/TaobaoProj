@@ -43,6 +43,12 @@ WHITE_BG_SKIP = False
 # 输出统一边长（px）；None = 不缩放，保持裁剪后的原始尺寸
 TARGET_SIZE = 1500
 
+# 毛绒模式：带毛球/毛边的商品（如帽子毛球），默认抠图会在毛边留下灰色锯齿残影。
+# 命中的图改用：按原图实际背景色去毛边 + 不做闭运算，其余图仍走默认抠图，不受影响。
+# 命中规则：文件名以 FUR_CODES 中的编码或 FUR_PREFIXES 中的前缀开头
+FUR_CODES: set[str] = set()           # 如 {"LHA0555CR11", "LHA0336ST15"}
+FUR_PREFIXES: tuple[str, ...] = ("LHA",)
+
 # ============================================================
 
 import helper.image.cut_square_white_watermark as _mod
@@ -50,6 +56,8 @@ import helper.image.cut_square_white_watermark as _mod
 _mod.AUTO_CUTOUT   = AUTO_CUTOUT
 _mod.WHITE_BG_SKIP = WHITE_BG_SKIP
 _mod.TARGET_SIZE   = TARGET_SIZE
+_mod.FUR_CODES     = FUR_CODES
+_mod.FUR_PREFIXES  = FUR_PREFIXES
 
 if __name__ == "__main__":
     _mod.batch_process(INPUT_DIR, OUTPUT_DIR, max_workers=MAX_WORKERS)

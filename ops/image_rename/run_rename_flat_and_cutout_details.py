@@ -61,6 +61,13 @@ JPEG_QUALITY = 95
 # 并发线程数（rembg 推理 CPU 密集，建议 <= 4）
 MAX_WORKERS = 2
 
+# 毛绒模式：带毛球/毛边的商品（如帽子毛球），默认抠图会在毛边留下灰色锯齿残影。
+# 命中的商品改用：按原图实际背景色去毛边 + 不做闭运算，其余商品仍走默认抠图，不受影响。
+# 命中规则：编码在 FUR_CODES 中，或编码以 FUR_PREFIXES 任一前缀开头
+# （实现见 helper/image/cut_square_white_watermark.py 的毛绒模式）
+FUR_CODES: set[str] = set()           # 如 {"LHA0555CR11", "LHA0336ST15"}
+FUR_PREFIXES: tuple[str, ...] = ("LHA",)
+
 # ============================================================
 
 import helper.image.cut_square_white_watermark as _mod
@@ -69,6 +76,8 @@ _mod.AUTO_CUTOUT   = AUTO_CUTOUT
 _mod.WHITE_BG_SKIP = WHITE_BG_SKIP
 _mod.DIAGONAL_TEXT_ENABLE = False
 _mod.LOCAL_LOGO_ENABLE    = False
+_mod.FUR_CODES    = FUR_CODES
+_mod.FUR_PREFIXES = FUR_PREFIXES
 
 _EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 
@@ -168,8 +177,9 @@ def _pad_square_white(rgb: Image.Image, target: int | None) -> Image.Image:
 def process_one(path: Path, out_dir: Path) -> None:
     img = Image.open(str(path))
 
-    # 1) 抠图（去场景背景），不加水印
-    img = _mod.ensure_cutout(img)
+    # 1) 抠图（去场景背景），不加水印；毛绒商品走专用处理
+    fur = _mod.is_fur(path.stem)
+    img = _mod.ensure_cutout(img, fur=fur)
 
     # 2) 合成白底
     rgb = _flatten_to_white(img)
@@ -184,7 +194,8 @@ def process_one(path: Path, out_dir: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     dst = out_dir / f"{path.stem}.jpg"
     out.save(str(dst), quality=JPEG_QUALITY, subsampling=0, optimize=True)
-    print(f"  OK  {path.name} -> {dst.name}  (crop {bbox})")
+    tag = " [毛绒模式]" if fur else ""
+    print(f"  OK  {path.name} -> {dst.name}  (crop {bbox}){tag}")
 
 
 def main() -> None:

@@ -69,6 +69,14 @@ ALPHA_MATTING_FG_THRESHOLD = 240
 ALPHA_MATTING_BG_THRESHOLD = 10
 ALPHA_MATTING_ERODE_SIZE   = 10
 
+# 毛绒模式（默认关闭）：带毛球/毛边的商品，默认后处理会在毛边留下灰色锯齿残影。
+# 命中的图改用：rembg alpha + 原图颜色 -> 轻度侵蚀 -> 按原图实际背景色去毛边（不做闭运算）。
+# 命中规则：文件名（不含扩展名）以 FUR_CODES 或 FUR_PREFIXES 中任一项开头。两者都为空 = 不启用。
+FUR_CODES: set[str] = set()            # 如 {"LHA0555CR11", "LHA0336ST15"}
+FUR_PREFIXES: tuple[str, ...] = ()     # 如 ("LHA",)
+FUR_ALPHA_ERODE = 1                    # 毛绒模式下 alpha 侵蚀像素数
+FUR_BG_PATCH = 0.02                    # 估算背景色时，四边采样条带占短边的比例
+
 # 斜纹整幅水印
 DIAGONAL_TEXT_ENABLE = True
 DIAGONAL_TEXT = "英国玛莎百货商店"
@@ -379,13 +387,67 @@ def _cutout_via_rembg(img: Image.Image) -> Image.Image:
     return result
 
 
-def ensure_cutout(img: Image.Image) -> Image.Image:
+# ================== 毛绒模式（毛球/毛边商品） ==================
+def is_fur(name: str) -> bool:
+    """文件名（stem）是否命中毛绒模式。"""
+    keys = tuple(FUR_CODES) + tuple(FUR_PREFIXES)
+    return bool(keys) and name.upper().startswith(tuple(k.upper() for k in keys))
+
+
+def _estimate_bg_color(rgb: Image.Image) -> np.ndarray:
+    """取图片四边条带像素的中位数作为背景色（商品图背景常为浅灰而非纯白）。"""
+    arr = np.asarray(rgb, dtype=np.float32)
+    h, w = arr.shape[:2]
+    p = max(3, int(min(w, h) * FUR_BG_PATCH))
+    border = np.concatenate([
+        arr[:p].reshape(-1, 3), arr[-p:].reshape(-1, 3),
+        arr[:, :p].reshape(-1, 3), arr[:, -p:].reshape(-1, 3),
+    ])
+    return np.median(border, axis=0)
+
+
+def _defringe_bg(rgba: Image.Image, bg: np.ndarray) -> Image.Image:
+    """逆混合去毛边：C_fg = (C - (1-a) * bg) / a，bg 为实际背景色（纯白时等同 _defringe_white）。"""
+    arr = np.array(rgba, dtype=np.float32)
+    a = arr[:, :, 3:4] / 255.0
+    mask = (a > 0) & (a < 1)
+    rgb = arr[:, :, :3]
+    safe_a = np.where(mask, a, 1.0)
+    fg = np.clip((rgb - (1.0 - safe_a) * bg) / safe_a, 0, 255)
+    arr[:, :, :3] = np.where(mask, fg, rgb)
+    return Image.fromarray(arr.astype(np.uint8), "RGBA")
+
+
+def _cutout_fur(img: Image.Image) -> Image.Image:
+    """毛绒模式抠图：rembg alpha + 原图颜色 -> 轻度侵蚀 -> 按实际背景色去毛边（不做闭运算，避免方块锯齿）。"""
+    rgb = img.convert("RGB")
+    bg = _estimate_bg_color(rgb)
+    buf = io.BytesIO()
+    rgb.save(buf, format="PNG")
+    cut = remove(
+        buf.getvalue(),
+        session=_get_session(),
+        alpha_matting=ALPHA_MATTING,
+        alpha_matting_foreground_threshold=ALPHA_MATTING_FG_THRESHOLD,
+        alpha_matting_background_threshold=ALPHA_MATTING_BG_THRESHOLD,
+        alpha_matting_erode_size=ALPHA_MATTING_ERODE_SIZE,
+    )
+    # rembg 输出的 RGB 已与黑色预乘（半透明毛边发暗），只取其 alpha，颜色用原图
+    alpha = Image.open(io.BytesIO(cut)).convert("RGBA").split()[-1]
+    result = rgb.convert("RGBA")
+    result.putalpha(alpha)
+    result = _erode_alpha(result, FUR_ALPHA_ERODE)
+    return _defringe_bg(result, bg)
+
+
+def ensure_cutout(img: Image.Image, fur: bool = False) -> Image.Image:
     """
     抠图入口，按 CUTOUT_BACKEND 路由：
       "removebg" -> remove.bg API（需填 REMOVEBG_API_KEY，精度最高）
       "bria"     -> BRIA RMBG-2.0 本地模型（免费最佳，需装 transformers torch）
       "rembg"    -> 本地 rembg（默认，无额外依赖）
 
+    fur=True 时走毛绒模式（本地 rembg + 按实际背景色去毛边），忽略 CUTOUT_BACKEND。
     白底图自动跳过（WHITE_BG_SKIP=True），已含透明通道直接返回。
     """
     if not AUTO_CUTOUT:
@@ -400,6 +462,9 @@ def ensure_cutout(img: Image.Image) -> Image.Image:
     if amin < 255 and amax > 0:
         return rgba
     # ③ 按后端路由
+    if fur:
+        print("    🧶 毛绒模式抠图...")
+        return _cutout_fur(img)
     if CUTOUT_BACKEND == "removebg":
         print("    🌐 使用 remove.bg API 抠图...")
         return _cutout_via_removebg(img)
@@ -468,7 +533,7 @@ def process_one(path: Path, out_dir: Path, add_watermark: bool = True):
         img = Image.open(str(path))
 
         # 1) 必要时抠图
-        img = ensure_cutout(img)
+        img = ensure_cutout(img, fur=is_fur(path.stem))
 
         # 2) 精裁
         img = _autocrop_by_alpha(img, 5) if _has_alpha(img) else _autocrop_white_border(img, 8)
