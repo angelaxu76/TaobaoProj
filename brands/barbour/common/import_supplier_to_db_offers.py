@@ -9,6 +9,7 @@ from pathlib import Path
 from brands.barbour.core.keyword_mapping import KEYWORD_EQUIVALENTS
 from common.product.size_utils import clean_size_for_barbour  # 旧名保留
 from brands.barbour.core.site_utils import canonical_site, assert_site_or_raise
+from brands.barbour.core.text_utils import ONE_SIZE, normalize_barbour_code, is_no_size_value
 from config import BARBOUR, DEFAULT_STOCK_COUNT  # 已有导入就不要重复
 from brands.barbour.core.supplier_price_rules import (
     strategy_all_ratio,
@@ -191,6 +192,7 @@ def parse_txt(filepath: Path):
         m = RE_CODE.search(filepath.stem.upper())
         if m:
             info["product_code"] = m.group(0)
+    info["product_code"] = normalize_barbour_code(info["product_code"])
 
     # 如果没有显式 offer 行，用 Size Detail / Size 生成
     if not info["offers"]:
@@ -231,6 +233,18 @@ def parse_txt(filepath: Path):
                     "price": base_price,
                     "stock_count": stock_count
                 })
+
+        # 均码商品（包/帽子/围巾等）：页面无尺码选择，TXT 写的是 "No Data"。
+        # 页面能抓到有效价格即视为有货，按 ONESIZE + 默认库存入库。
+        # 注意：抓取脚本目前无法区分均码商品是否缺货，缺货的也会被当成有货。
+        if (not info["offers"] and base_price > 0
+                and (size_detail_line is not None or size_line is not None)
+                and is_no_size_value(size_detail_line) and is_no_size_value(size_line)):
+            info["offers"].append({
+                "size": ONE_SIZE,
+                "price": base_price,
+                "stock_count": DEFAULT_STOCK_COUNT,
+            })
 
     info["price_line"] = price_line
     info["adjusted_price_line"] = adjusted_price_line

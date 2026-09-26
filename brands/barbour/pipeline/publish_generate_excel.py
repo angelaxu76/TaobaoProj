@@ -19,6 +19,12 @@ def _save_codes_to_xlsx(excel_path: Path, codes_xlsx: Path = CODES_XLSX) -> int:
         .pipe(lambda s: s[s != ""])
         .tolist()
     )
+    if not codes:
+        # 不覆盖旧的 codes.xlsx，直接停止，避免第 3 步报"未读取到任何编码"
+        raise SystemExit(
+            f"❌ 折扣候选导出为空，未写入 codes.xlsx：{excel_path}\n"
+            "   请检查编码前缀是否存在于 barbour_offers、是否已全部发布、或 min_sizes 过高"
+        )
     codes_xlsx.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame({"product_code": codes}).to_excel(codes_xlsx, index=False)
     print(f"✅ 已写入 {len(codes)} 个编码 → {codes_xlsx}")
@@ -32,9 +38,10 @@ def pipeline_barbour():
     # 取消注释需要的那一行（women / men）：
     # excel_path = export_barbour_discounts_excel_multi(0, 3, "LWX,LSP,LWB,LCA,LOL,LGI,LFL, LQU")
     # excel_path = export_barbour_discounts_excel_multi(0, 3, "MWX,MQU,MWB,MFL,MOS,MCA,MFL,MQU,MOL,MGI")
-    excel_path = export_barbour_discounts_excel_multi(0, 3, "MSH,MOS")
+    # excel_path = export_barbour_discounts_excel_multi(0, 3, "MSH,MOS")
     # excel_path = export_barbour_discounts_excel_multi(0, 3, "LTS,LSH,LDR,LSK,LML")
-    # excel_path = export_barbour_discounts_excel_multi(0, 3, "UBA,MHA,MAC,USC")
+    # excel_path = export_barbour_discounts_excel_multi(0, 3, "UBA,MHA,MAC,USC, MHO, LBA,LHA,LSC")
+    excel_path = export_barbour_discounts_excel_multi(0, 3, "UBA")
     # print(excel_path)
 
     # ── 步骤 2：将 Excel 中的商品编码自动写入 codes.xlsx ────────────

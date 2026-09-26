@@ -457,3 +457,27 @@ def is_truthy(value: any) -> bool:
         return value_lower in ["true", "yes", "1", "y", "on", "有货"]
 
     return bool(value)
+
+
+# ================== 编码 / 均码 ==================
+
+# 均码商品（包、帽子、围巾等）在 DB 中统一使用的尺码值，
+# 与 common.product.size_utils.clean_size_for_barbour("One Size") 的结果一致
+ONE_SIZE = "ONESIZE"
+
+# 官网均码商品的 JSON-LD sku 是"标准 11 位编码 + 1 位变体数字"，如 UBA0003OL711
+_RE_CODE_WITH_VARIANT = re.compile(r"^([A-Z]{3}\d{4}[A-Z]{2}\d{2})\d$")
+
+
+def normalize_barbour_code(code: Optional[str]) -> Optional[str]:
+    """把 12 位变体 SKU（UBA0003OL711）裁成标准 11 位编码（UBA0003OL71），其余原样返回。"""
+    if not code:
+        return code
+    c = code.strip().upper()
+    m = _RE_CODE_WITH_VARIANT.match(c)
+    return m.group(1) if m else code.strip()
+
+
+def is_no_size_value(value: Optional[str]) -> bool:
+    """TXT 中 Product Size / Product Size Detail 表示"无尺码"的取值（均码商品）。"""
+    return (value or "").strip().lower() in {"", "no data", "null", "none"}

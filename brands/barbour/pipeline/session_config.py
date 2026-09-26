@@ -72,6 +72,22 @@ SUPPLIER_OVERRIDE_XLSX = r"D:\TB\Products\barbour\document\barbour_supplier.xlsx
 C_MIN_SIZES_IN_STOCK: int | None = None
 
 # ══════════════════════════════════════════════════════════════════
+#  发布候选导出（publish_generate_excel.py → export_barbour_discounts_excel_multi）
+# ══════════════════════════════════════════════════════════════════
+# 均码/单尺码类别的编码前缀（product_code 前 3 位）。命中这些前缀的商品
+# 在导出折扣候选时不受 min_sizes（最少有货尺码数）限制，只要有货即可入选。
+# 例：帽子、围巾、包包、配饰等通常只有一个尺码（One Size）。
+# （2026-09-26 按 barbour_offers 实际存在的前缀整理；数据库里没有 UBA/USC/MHO）
+MIN_SIZES_EXEMPT_PREFIXES = [
+    "MHA",  # 男士帽子
+    "LHA",  # 女士帽子
+    "MAC",  # 男士配饰（围巾、皮带等）
+    "LAC",  # 女士配饰（围巾、皮带等）
+    "LBA",  # 女士包袋
+    "DAC",  # 狗狗配饰
+]
+
+# ══════════════════════════════════════════════════════════════════
 #  路径配置
 #  共享盘路径统一走 resolve_shared_path()：VM 内用
 #  \\vmware-host\Shared Folders\...，本地运行访问不到时自动切到 E:\shared\...

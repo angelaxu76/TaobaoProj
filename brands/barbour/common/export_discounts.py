@@ -2,6 +2,7 @@
 """
 导出 Barbour 折扣候选为 Excel：
 - 参数：min_discount（折扣率阈值，%）、min_sizes（最少有货尺码数）、code_like（编码模糊关键词，可空）
+- 编码前缀在 session_config.MIN_SIZES_EXEMPT_PREFIXES 中的均码类别不受 min_sizes 限制
 - 读取 config.BARBOUR 的 PGSQL_CONFIG 与 OUTPUT_DIR
 - 返回生成的 .xlsx 文件路径
 """
@@ -12,6 +13,7 @@ import psycopg2
 import pandas as pd
 
 from config import BARBOUR, ensure_all_dirs  # 确保 ensure_all_dirs 存在
+from brands.barbour.pipeline.session_config import MIN_SIZES_EXEMPT_PREFIXES
 
 SQL = """
 WITH p1 AS (
@@ -44,6 +46,7 @@ WHERE o.product_code IS NOT NULL
 )
 GROUP BY o.product_code
 HAVING COUNT(DISTINCT o.size) > %s
+    OR UPPER(LEFT(o.product_code, 3)) = ANY(%s)
 ORDER BY discount_pct DESC, price_gbp ASC, o.product_code;
 """
 
@@ -59,7 +62,9 @@ def export_barbour_discounts_excel(min_discount: float, min_sizes: int, code_lik
     ensure_all_dirs(out_dir)
 
     kw_like = f"%{code_like}%" if code_like else None
-    params = (min_discount, None if kw_like is None else kw_like, kw_like, min_sizes)
+    # 均码类别（帽子/围巾/包等）不受 min_sizes 限制，名单见 session_config
+    exempt = [p.strip().upper() for p in MIN_SIZES_EXEMPT_PREFIXES if p.strip()]
+    params = (min_discount, None if kw_like is None else kw_like, kw_like, min_sizes, exempt)
 
     with psycopg2.connect(**BARBOUR["PGSQL_CONFIG"]) as conn, conn.cursor() as cur:
         cur.execute(SQL, params)

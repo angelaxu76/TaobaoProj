@@ -17,6 +17,7 @@ import unicodedata
 import sys
 
 from config import PGSQL_CONFIG, BARBOUR
+from brands.barbour.core.text_utils import ONE_SIZE, normalize_barbour_code, is_no_size_value
 
 # —— 可选：标题生成（存在则用，不存在忽略）——
 try:
@@ -256,6 +257,9 @@ def _parse_sizes_from_size_detail_line(text: str) -> list[str]:
     line = _extract_field(text, r'(?i)Product\s+Size\s+Detail')
     if not line:
         return []
+    # 均码商品（包/帽子/围巾等）页面无尺码，TXT 写 "No Data"，统一记为 ONESIZE
+    if is_no_size_value(line):
+        return [ONE_SIZE]
     sizes = []
     for token in line.split(";"):
         token = token.strip()
@@ -286,6 +290,7 @@ def parse_txt_file(filepath: Path, conn) -> List[Dict]:
         info["product_code"] = code
     else:
         info["product_code"] = guess_product_code_from_filename(filepath)
+    info["product_code"] = normalize_barbour_code(info["product_code"])
 
     # Product Name
     name = _extract_field(text, r'(?i)Product\s+Name')
