@@ -274,14 +274,25 @@ BARBOUR = {
         "LSK": ("女款", "中长裙"),
     },
 
-    # 配件类前缀（包/帽子/围巾/皮带等，非服装夹克）
-    # 用于 generate_taobao_title_accessories.py，与 CODE_PREFIX_RULES（服装夹克）分开维护
+    # 配件类前缀（包/帽子/围巾/皮带等，非服装夹克）→ (性别词, 默认品类)
+    # 用于 generate_taobao_title_accessories.py，与 CODE_PREFIX_RULES（服装夹克）分开维护。
+    # 默认品类只在商品名里识别不出具体品类词时兜底；命中这些前缀的编码，
+    # 发布 Excel 会改用配件标题生成（见 generate_publication_excel.py）。
+    # 新增均码前缀时请与 brands/barbour/pipeline/session_config.py 的 ONE_SIZE_PREFIXES 同步。
     "ACCESSORY_PREFIX_RULES": {
-        "UBA": ("", "包"),
-        "MHA": ("", "帽子"),
-        "MHO": ("", "兜帽"),
-        "MAC": ("", "皮带"),
-        "USC": ("", "围巾"),
+        "UBA": ("男女同款", "包"),
+        "LBA": ("女士", "包"),
+        "MHA": ("男士", "帽子"),
+        "LHA": ("女士", "帽子"),
+        "MHO": ("男女同款", "兜帽"),
+        "USC": ("男女同款", "围巾"),
+        "LSC": ("女士", "围巾"),
+        "MAC": ("男士", "配饰"),
+        "UAC": ("男女同款", "配饰"),
+        "MGS": ("男士", "礼盒"),
+        "LGS": ("女士", "礼盒"),
+        "UFA": ("男女同款", "鞋类配件"),
+        "DAC": ("", "宠物用品"),
     },
 
     "BARBOUR_COLOR_CODE_MAP": {

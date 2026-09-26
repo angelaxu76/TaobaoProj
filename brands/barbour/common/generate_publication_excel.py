@@ -10,6 +10,10 @@ from sqlalchemy import create_engine, text
 
 from config import BRAND_CONFIG, BARBOUR, SETTINGS, EXCHANGE_RATE
 from brands.barbour.common.generate_taobao_title_v2 import generate_barbour_taobao_title
+from brands.barbour.common.generate_taobao_title_accessories import (
+    generate_barbour_accessory_title,
+    is_accessory_code,
+)
 from common.pricing.price_utils import calculate_jingya_prices
 from datetime import datetime
 from brands.barbour.core.site_utils import canonical_site
@@ -108,7 +112,7 @@ def infer_fit_neck_length(name: str, desc: str = "", feature: str = ""):
 
 # ========== SQL ==========
 SQL_PRODUCT = text("""
-    SELECT DISTINCT style_name, color
+    SELECT DISTINCT style_name, color, product_description
     FROM barbour_products
     WHERE product_code = :code
     ORDER BY style_name
@@ -302,7 +306,12 @@ def generate_publication_excel():
             last_checked = best["last_checked"]
 
             # 中文标题
-            title_info = generate_barbour_taobao_title(code, style_name, color_en)
+            # 配件（包/帽子/围巾等，前缀见 ACCESSORY_PREFIX_RULES）走配件标题生成
+            if is_accessory_code(code):
+                title_info = generate_barbour_accessory_title(
+                    code, style_name, color_en, description=product.get("product_description"))
+            else:
+                title_info = generate_barbour_taobao_title(code, style_name, color_en)
             title_cn = title_info["Title"]
 
             # 售价计算
