@@ -381,6 +381,7 @@ def run_d_export():
     from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
     from brands.barbour.jingya.allocate_supplier_and_price import (
         _load_exclude_and_forced_sites,
+        load_locked_channel_ids,
         write_codes_excel,
     )
 
@@ -403,6 +404,19 @@ def run_d_export():
         print(f"   🛡️ {len(bare_codes)} 个「排除清单中未指定供应商」的编码将跳过库存导出，"
               f"避免覆盖鲸芽端已有/手动设置的库存。")
 
+    # ── D0'：排除清单"渠道商品ID"列 → 价格锁定 ─────────────────────────
+    # 锁价以鲸芽 listing 为单位：展开成该 ID 下的全部颜色编码（包括没写进
+    # 清单的颜色），鲸芽价格 Excel 和淘宝店铺价格 Excel 都整款不导出，完全
+    # 靠人工在平台上定价。同样落到系统临时目录（原因同上）。
+    _locked_ids, locked_codes = load_locked_channel_ids(EXCLUDE_LIST_XLSX, verbose=False)
+    price_exclude_file = None
+    if locked_codes:
+        price_exclude_file = write_codes_excel(
+            locked_codes, str(Path(tempfile.gettempdir()) / "_barbour_price_locked_codes.xlsx")
+        )
+        print(f"   🔒 {len(_locked_ids)} 个渠道商品ID（{len(locked_codes)} 个颜色编码）价格锁定，"
+              f"不导出鲸芽价格和淘宝店铺价格。")
+
     _step("导出库存 Excel → 用于鲸芽批量更新库存")
     t = time.time()
     try:
@@ -414,7 +428,7 @@ def run_d_export():
     _step("导出价格 Excel → 用于鲸芽批量更新价格")
     t = time.time()
     try:
-        export_jiangya_channel_prices(brand="barbour", output_dir=PRICE_EXPORT_DIR, exclude_excel_file=EXCLUDE_LIST_XLSX,chunk_size=200)
+        export_jiangya_channel_prices(brand="barbour", output_dir=PRICE_EXPORT_DIR, exclude_excel_file=price_exclude_file, chunk_size=200)
         _ok(f"价格 Excel 已生成：{PRICE_EXPORT_DIR}", time.time() - t)
     except Exception as e:
         _fail("D-export_price", e)
@@ -428,8 +442,8 @@ def run_d_export():
             output_dir=STORE_PRICE_OUTPUT_DIR,
             suffix="_价格",
             drop_rows_without_price=False,
-            blacklist_excel_file=EXCLUDE_LIST_XLSX,
-            allow_blacklist_price_increase=True,  # 黑名单商品仅允许涨价（降价/持平不动）
+            blacklist_excel_file=price_exclude_file,
+            allow_blacklist_price_increase=False,  # 锁价商品整款不调价（涨降都不动）
         )
         _ok(f"淘宝店铺价格 Excel 已生成：{STORE_PRICE_OUTPUT_DIR}", time.time() - t)
     except Exception as e:

@@ -28,11 +28,14 @@ merge_offer_into_inventory.py、db_build_supplier_map_and_inventory.py
   source_price_gbp / discount_price_gbp 列，最后会由
   apply_fixed_prices_from_excel() 覆盖为人工固定价——供应商决定库存，
   这两列决定价格，两者配合实现"强行指定供货商和价格"。
+  该文件的"渠道商品ID"列用于按鲸芽 listing 锁价（见 load_locked_channel_ids）：
+  锁定 ID 下的所有颜色不做同款价格对齐，阶段 D 也不导出鲸芽/淘宝价格。
 """
 from __future__ import annotations
 
 import os
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -136,6 +139,113 @@ def _load_exclude_and_forced_sites(xlsx_path: Optional[str]) -> Tuple[Set[str], 
     return bare, forced
 
 
+def _normalize_channel_id(v) -> str:
+    """鲸芽渠道商品ID 统一成纯数字字符串（兼容 Excel 里存成数字/科学计数法/带 .0 的情况）。"""
+    s = str(v if v is not None else "").strip()
+    if not s or s.lower() in ("nan", "none"):
+        return ""
+    if "e" in s.lower():
+        try:
+            s = str(int(Decimal(s)))
+        except InvalidOperation:
+            pass
+    if s.endswith(".0"):
+        s = s[:-2]
+    return s
+
+
+def load_locked_channel_ids(
+    xlsx_path: Optional[str],
+    engine: Optional[Engine] = None,
+    verbose: bool = True,
+) -> Tuple[Set[str], Set[str]]:
+    """
+    读取排除清单里的"渠道商品ID"列，返回 (locked_ids, locked_codes)。
+
+    价格锁定以鲸芽渠道商品ID（一个 listing）为单位：ID 列出现过的 ID，其下
+    所有颜色编码（按 barbour_inventory.channel_product_id 展开，包括没写进
+    清单的颜色）都视为价格锁定——不参与同款价格对齐，也不导出到鲸芽价格
+    Excel 和淘宝店铺价格 Excel，完全靠人工在平台上定价。
+
+    库存不受影响：清单里的"商品编码 + 供货商"仍按颜色编码走
+    _load_exclude_and_forced_sites() 那套逻辑。
+
+    verbose=True 时打印核对提示（ID 在库中不存在 / ID 下有未写进清单的颜色 /
+    清单填的 ID 与库中不一致 / 编码未填 ID 因而未锁价）。
+    """
+    if not xlsx_path or not Path(xlsx_path).exists():
+        return set(), set()
+
+    df = pd.read_excel(xlsx_path, dtype=str)
+    col_map = {str(c).strip().lower().replace(" ", ""): c for c in df.columns}
+    id_col = next((col_map[k] for k in ("渠道商品id", "渠道产品id", "channel_product_id", "商品id") if k in col_map), None)
+    code_col = next((col_map[k] for k in ("productcode", "商品编码", "product_code", "color_code", "编码") if k in col_map), None)
+    if not id_col:
+        if verbose:
+            print(f"⚠️ 排除清单中没有「渠道商品ID」列，本次不锁定任何价格：{list(df.columns)}")
+        return set(), set()
+
+    row_id_by_code: Dict[str, str] = {}
+    codes_without_id: List[str] = []
+    locked_ids: Set[str] = set()
+    for _, row in df.iterrows():
+        cid = _normalize_channel_id(row.get(id_col))
+        code = str(row.get(code_col) or "").strip() if code_col else ""
+        if code.lower() == "nan":
+            code = ""
+        if cid:
+            locked_ids.add(cid)
+            if code:
+                row_id_by_code[code] = cid
+        elif code:
+            codes_without_id.append(code)
+
+    if not locked_ids:
+        return set(), set()
+
+    engine = engine or _get_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT DISTINCT product_code, TRIM(channel_product_id) AS cid
+            FROM barbour_inventory
+            WHERE TRIM(channel_product_id) = ANY(:ids)
+               OR product_code = ANY(:codes)
+        """), {"ids": list(locked_ids), "codes": list(row_id_by_code) + codes_without_id}).fetchall()
+
+    db_codes_by_id: Dict[str, Set[str]] = {}
+    db_id_by_code: Dict[str, str] = {}
+    for code, cid in rows:
+        cid = _normalize_channel_id(cid)
+        if cid:
+            db_id_by_code[code] = cid
+            db_codes_by_id.setdefault(cid, set()).add(code)
+
+    locked_codes: Set[str] = set()
+    for cid in locked_ids:
+        locked_codes |= db_codes_by_id.get(cid, set())
+
+    if verbose:
+        print(f"🔒 价格锁定：{len(locked_ids)} 个渠道商品ID，展开为 {len(locked_codes)} 个颜色编码"
+              f"（不做价格对齐，不导出鲸芽/淘宝价格）。")
+        missing_ids = sorted(cid for cid in locked_ids if cid not in db_codes_by_id)
+        if missing_ids:
+            print(f"   ⚠️ 以下渠道商品ID在 barbour_inventory 中找不到（未发布或填错）：{', '.join(missing_ids)}")
+        listed = set(row_id_by_code)
+        for cid in sorted(locked_ids):
+            extra = sorted(db_codes_by_id.get(cid, set()) - listed)
+            if extra:
+                print(f"   ℹ️ 渠道商品ID {cid} 下这些颜色没写在清单里，同样锁价：{', '.join(extra)}")
+        for code, cid in sorted(row_id_by_code.items()):
+            db_cid = db_id_by_code.get(code)
+            if db_cid and db_cid != cid:
+                print(f"   ⚠️ {code}：清单填的渠道商品ID={cid}，库中实际为 {db_cid}，请核对。")
+        not_locked = sorted(c for c in codes_without_id if c not in locked_codes)
+        if not_locked:
+            print(f"   ℹ️ 以下编码未填渠道商品ID，价格不锁定（仅用于库存/供货商）：{', '.join(not_locked)}")
+
+    return locked_ids, locked_codes
+
+
 def _load_supplier_overrides(xlsx_path: Optional[str]) -> Dict[str, str]:
     """人工指定供应商：Excel 需含列 商品编码 / 供货商。"""
     if not xlsx_path:
@@ -194,7 +304,7 @@ def _load_publication_mappings(pub_dir: Path) -> Dict[str, str]:
     return mappings
 
 
-def _reconcile_shared_channel_prices(engine: Engine, dry_run: bool) -> int:
+def _reconcile_shared_channel_prices(engine: Engine, dry_run: bool, locked_ids: Optional[Set[str]] = None) -> int:
     """
     同一个鲸芽 channel_product_id 下可能对应多个 product_code（比如同一款式
     的两个颜色，各自是独立编码，但共用一个鲸芽商品listing）。allocate_and_sync
@@ -210,6 +320,7 @@ def _reconcile_shared_channel_prices(engine: Engine, dry_run: bool) -> int:
     组内最高（最不容易亏本）的那个。
 
     只对接标的价格字段做同步（不动库存），返回受影响的 product_code 数。
+    locked_ids（排除清单"渠道商品ID"列）里的 listing 整组跳过——价格由人工锁定。
     """
     with engine.connect() as conn:
         grp = pd.read_sql(text("""
@@ -225,7 +336,10 @@ def _reconcile_shared_channel_prices(engine: Engine, dry_run: bool) -> int:
         return 0
 
     updates: List[dict] = []
+    locked_ids = locked_ids or set()
     for channel_id, g in grp.groupby("channel_product_id"):
+        if _normalize_channel_id(channel_id) in locked_ids:
+            continue  # 人工锁价的 listing，不参与对齐
         if g["product_code"].nunique() <= 1:
             continue  # 这个 listing 只有一个 product_code，没有分叉风险
         if g["base_price_gbp"].nunique() <= 1:
@@ -385,6 +499,7 @@ def allocate_and_sync(
     # supplier_override_xlsx 是专门的"强制供应商"文件，若与排除清单里的
     # 供货商列同时指定了同一个编码，以 supplier_override_xlsx 为准。
     manual_overrides = {**exclude_forced_sites, **_load_supplier_overrides(supplier_override_xlsx)}
+    locked_ids, _locked_codes = load_locked_channel_ids(exclude_xlsx, engine=engine)
     pub_map = _load_publication_mappings(PUBLICATION_DIR)
     taobao_discount = TAOBAO_STORE_DISCOUNT
 
@@ -609,7 +724,7 @@ def allocate_and_sync(
             for r in dry_run_zero_report[:20]:
                 print(f"   {r}")
         print("\n[DRY-RUN] 同款多颜色共用鲸芽 channel_product_id 的价格对齐预览：")
-        reconciled_preview = _reconcile_shared_channel_prices(engine, dry_run=True)
+        reconciled_preview = _reconcile_shared_channel_prices(engine, dry_run=True, locked_ids=locked_ids)
         if reconciled_preview == 0:
             print("   （当前没有需要对齐的分叉价格）")
         return {
@@ -683,7 +798,7 @@ def allocate_and_sync(
         )
 
     # ── 同款多颜色共用鲸芽 channel_product_id 时，价格对齐到组内最高者 ──
-    reconciled = _reconcile_shared_channel_prices(engine, dry_run=False)
+    reconciled = _reconcile_shared_channel_prices(engine, dry_run=False, locked_ids=locked_ids)
     if reconciled:
         print(f"✅ 同款多颜色价格分叉已对齐：{reconciled} 个 product_code 的价格已同步为组内最高价。")
 
