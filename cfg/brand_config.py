@@ -6,6 +6,7 @@ from cfg.brands.ecco import ECCO
 from cfg.brands.reiss import REISS
 from cfg.brands.birkenstock import BIRKENSTOCK
 from cfg.brands.marksandspencer import MARKSANDSPENCER
+from cfg.brands.toast import TOAST
 
 
 BRAND_CONFIG = {
@@ -17,4 +18,5 @@ BRAND_CONFIG = {
     "barbour": BARBOUR,
     "reiss": REISS,
     "marksandspencer": MARKSANDSPENCER,
+    "toast": TOAST,
 }

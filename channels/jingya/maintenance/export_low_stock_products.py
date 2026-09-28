@@ -19,15 +19,21 @@ def export_low_stock_channel_products(
     stock_threshold: int,
     output_excel_path: str,
     max_allowed_size_count: int = 2,
+    one_size_prefixes: list[str] | None = None,
 ):
     """
     从 brand 对应的 inventory 表中，找出满足以下条件之一的商品：
         1）单个商品编码的库存总和 < stock_threshold
         2）有货的尺码数量 <= max_allowed_size_count
 
+    one_size_prefixes：均码类别的编码前缀（product_code 前 3 位，如 Barbour 的
+    帽子/围巾/包）。这些商品只有一个尺码、库存为默认值，上面两个条件必然命中，
+    因此改为只在总库存 <= 0（完全无货）时才导出。
+
     然后导出一个包含 4 列的 Excel 文件：
         Product Code / 总库存 / 有货尺码数 / 渠道产品ID
     """
+    exempt = [p.strip().upper() for p in (one_size_prefixes or []) if p.strip()]
 
     if brand not in BRAND_CONFIG:
         raise ValueError(f"❌ 未知品牌: {brand}")
@@ -60,8 +66,14 @@ def export_low_stock_channel_products(
         FROM stock_agg
         WHERE
             (
-                total_stock < %s
-                OR available_size_count <= %s
+                (
+                    NOT (UPPER(LEFT(product_code, 3)) = ANY(%s::text[]))
+                    AND (total_stock < %s OR available_size_count <= %s)
+                )
+                OR (
+                    UPPER(LEFT(product_code, 3)) = ANY(%s::text[])
+                    AND total_stock <= 0
+                )
             )
             AND channel_product_id IS NOT NULL
             AND channel_product_id <> ''
@@ -72,7 +84,7 @@ def export_low_stock_channel_products(
     try:
         conn = psycopg2.connect(**pgsql)
         with conn.cursor(cursor_factory=DictCursor) as cur:
-            cur.execute(sql, (stock_threshold, max_allowed_size_count))
+            cur.execute(sql, (exempt, stock_threshold, max_allowed_size_count, exempt))
             rows = cur.fetchall()
 
         # 每一行对应一个 product_code
@@ -90,7 +102,9 @@ def export_low_stock_channel_products(
 
         print(
             f"✅ 品牌={brand} | 阈值: 总库存<{stock_threshold} "
-            f"或 有货尺码数≤{max_allowed_size_count} | 导出 {len(df)} 条商品 -> {output_excel_path}"
+            f"或 有货尺码数≤{max_allowed_size_count}"
+            + (f"（均码前缀 {len(exempt)} 个仅在无货时导出）" if exempt else "")
+            + f" | 导出 {len(df)} 条商品 -> {output_excel_path}"
         )
 
     except Exception as e:
