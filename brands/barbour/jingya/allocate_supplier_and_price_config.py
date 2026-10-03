@@ -9,6 +9,9 @@ tool_inspect_supplier.py 已有的 import 路径；不要在这个文件里改�
 """
 
 from brands.barbour.pipeline.session_config import (
+    SUPPLIER_STRATEGY,
+    FILL_SIZES_TARGET,
+    FILL_SIZES_MAX_SITES,
     SUPPLIER_PRICE_TOLERANCE_PCT,
     SUPPLIER_MAX_SITES,
     SUPPLIER_MIN_SIZES_IN_STOCK,
@@ -17,6 +20,9 @@ from brands.barbour.pipeline.session_config import (
 )
 
 __all__ = [
+    "SUPPLIER_STRATEGY",
+    "FILL_SIZES_TARGET",
+    "FILL_SIZES_MAX_SITES",
     "SUPPLIER_PRICE_TOLERANCE_PCT",
     "SUPPLIER_MAX_SITES",
     "SUPPLIER_MIN_SIZES_IN_STOCK",

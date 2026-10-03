@@ -6,7 +6,9 @@ Barbour 供应商 / 价格 / 库存 —— 单一入口
 merge_offer_into_inventory.py、db_build_supplier_map_and_inventory.py
 里的"选供应商 → 算价格 → 算库存"逻辑。
 
-核心策略（allocate_and_sync）：
+核心策略（allocate_and_sync）：由 session_config.SUPPLIER_STRATEGY 选择——
+"fill_sizes"（策略二）见 _select_sites_by_fill_sizes；下面描述的是
+"price_window"（策略一）：
 - 每个已发布商品，按"真实落地成本"（barbour_offers.sale_price_gbp——
   已在导入阶段套用过 SUPPLIER_DISCOUNT_RULES 的折扣比例 + 运费，见
   import_supplier_to_db_offers.compute_supplier_sale_price；取不到则
@@ -49,6 +51,9 @@ from brands.barbour.core.site_utils import canonical_site
 from common.product.size_utils import clean_size_for_barbour
 from common.pricing.price_utils import calculate_jingya_prices
 from brands.barbour.jingya.allocate_supplier_and_price_config import (
+    SUPPLIER_STRATEGY,
+    FILL_SIZES_TARGET,
+    FILL_SIZES_MAX_SITES,
     SUPPLIER_PRICE_TOLERANCE_PCT,
     SUPPLIER_MAX_SITES,
     SUPPLIER_MIN_SIZES_IN_STOCK,
@@ -463,6 +468,65 @@ def _select_sites_by_price_window(
     return chosen
 
 
+def _select_sites_by_fill_sizes(
+    cand: Optional[pd.DataFrame],
+    sizes_by_site: Dict[str, Set[str]],
+    target_sizes: int,
+    max_suppliers: Optional[int] = None,
+) -> List[dict]:
+    """
+    凑尺码选站点（策略二）：按有效成本从低到高逐家合并库存，合并后的有货
+    尺码数（并集）达到 target_sizes 就停止。不能带来任何新尺码的供应商直接
+    跳过——它只会抬高定价基准（取所选最贵者）却不增加库存。所有供应商都
+    合并完仍不够 target_sizes，就用已合并的全部。
+
+    不使用 min_sizes_in_stock 门槛：单尺码的低价供应商也能参与合并。
+    sizes_by_site: site_name -> 该站点有货的 size_norm 集合。
+    """
+    chosen: List[dict] = []
+    if cand is None or cand.empty:
+        return chosen
+
+    ranked = cand.sort_values(
+        ["min_eff_price", "sizes_in_stock", "latest"],
+        ascending=[True, False, False],
+    )
+    covered: Set[str] = set()
+    for _, r in ranked.iterrows():
+        if len(covered) >= target_sizes:
+            break
+        if max_suppliers and len(chosen) >= max_suppliers:
+            break
+        site_sizes = sizes_by_site.get(r["site_name"], set())
+        if chosen and not (site_sizes - covered):
+            continue  # 没有新尺码，跳过
+        covered |= site_sizes
+        chosen.append({
+            "site": r["site_name"],
+            "min_eff_price": float(r["min_eff_price"]),
+            "sizes_in_stock": int(r["sizes_in_stock"]),
+        })
+    return chosen
+
+
+def _select_sites(
+    cand: Optional[pd.DataFrame],
+    sizes_by_site: Dict[str, Set[str]],
+    strategy: str,
+    price_tolerance_pct: float,
+    max_suppliers: int,
+    min_sizes_in_stock: int,
+    fill_target: int,
+    fill_max_sites: Optional[int],
+) -> List[dict]:
+    """按 strategy 分派到对应的选站点算法；allocate_and_sync 和 select_suppliers_for_code 共用。"""
+    if strategy == "price_window":
+        return _select_sites_by_price_window(cand, price_tolerance_pct, max_suppliers, min_sizes_in_stock)
+    if strategy == "fill_sizes":
+        return _select_sites_by_fill_sizes(cand, sizes_by_site, fill_target, fill_max_sites)
+    raise ValueError(f"未知的 SUPPLIER_STRATEGY：{strategy!r}（可选 'price_window' / 'fill_sizes'）")
+
+
 # ═══════════════════════════════════════════════════════════════════
 #  主入口
 # ═══════════════════════════════════════════════════════════════════
@@ -475,6 +539,7 @@ def allocate_and_sync(
     exclude_xlsx: Optional[str] = None,
     supplier_override_xlsx: Optional[str] = SUPPLIER_OVERRIDE_XLSX,
     dry_run: bool = False,
+    strategy: Optional[str] = None,
 ) -> dict:
     """
     为所有已发布商品重新计算供应商组合 + 价格 + 库存，并同步到
@@ -493,6 +558,8 @@ def allocate_and_sync(
     price_tolerance_pct = price_tolerance_pct if price_tolerance_pct is not None else SUPPLIER_PRICE_TOLERANCE_PCT
     max_suppliers = max_suppliers if max_suppliers is not None else SUPPLIER_MAX_SITES
     min_sizes_in_stock = min_sizes_in_stock if min_sizes_in_stock is not None else SUPPLIER_MIN_SIZES_IN_STOCK
+    strategy = strategy or SUPPLIER_STRATEGY
+    print(f"🧮 供应商选择策略：{strategy}")
 
     engine = _get_engine()
     exclude_codes, exclude_forced_sites = _load_exclude_and_forced_sites(exclude_xlsx)
@@ -622,11 +689,19 @@ def allocate_and_sync(
                 _force_zero_stock(code)
                 continue
         else:
-            chosen = _select_sites_by_price_window(
+            sizes_by_site = (
+                {s: stock_sizes_map.get((code, s), set()) for s in cand["site_name"]}
+                if cand is not None else {}
+            )
+            chosen = _select_sites(
                 cand,
+                sizes_by_site,
+                strategy,
                 price_tolerance_pct,
                 max_suppliers,
                 min_sizes_in_stock,
+                FILL_SIZES_TARGET,
+                FILL_SIZES_MAX_SITES,
             )
 
             if not chosen:
@@ -822,9 +897,10 @@ def select_suppliers_for_code(
     price_tolerance_pct: Optional[float] = None,
     max_suppliers: Optional[int] = None,
     min_sizes_in_stock: Optional[int] = None,
+    strategy: Optional[str] = None,
 ) -> dict:
     """
-    对单个商品跑一遍与 allocate_and_sync 相同的价格窗口选择算法，只返回结果、不写库。
+    对单个商品跑一遍与 allocate_and_sync 相同的供应商选择算法（按 strategy），只返回结果、不写库。
     返回 {"chosen": [{"site","min_eff_price","sizes_in_stock"}, ...],
           "covered_sizes": set(size_norm), "price_basis": float | None}
     """
@@ -865,11 +941,15 @@ def select_suppliers_for_code(
     )
     stock_sizes_map = in_stock_df.groupby("site_name")["size_norm"].apply(set).to_dict()
 
-    chosen = _select_sites_by_price_window(
+    chosen = _select_sites(
         site_agg,
+        stock_sizes_map,
+        strategy or SUPPLIER_STRATEGY,
         price_tolerance_pct,
         max_suppliers,
         min_sizes_in_stock,
+        FILL_SIZES_TARGET,
+        FILL_SIZES_MAX_SITES,
     )
     covered: Set[str] = set()
     for c in chosen:

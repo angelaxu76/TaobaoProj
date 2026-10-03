@@ -25,6 +25,9 @@ from brands.barbour.jingya.allocate_supplier_and_price import (
     select_suppliers_for_code,
 )
 from brands.barbour.jingya.allocate_supplier_and_price_config import (
+    SUPPLIER_STRATEGY,
+    FILL_SIZES_TARGET,
+    FILL_SIZES_MAX_SITES,
     SUPPLIER_PRICE_TOLERANCE_PCT,
     SUPPLIER_MAX_SITES,
 )
@@ -178,7 +181,10 @@ def inspect(product_code: str) -> None:
     # ════════════════════════════════════════
     price_tolerance_pct = SUPPLIER_PRICE_TOLERANCE_PCT
     max_sites = SUPPLIER_MAX_SITES
-    print(f"\n[3] 自动分配预览（price_tolerance_pct={price_tolerance_pct:.0%}, max_suppliers={max_sites}）\n")
+    if SUPPLIER_STRATEGY == "fill_sizes":
+        print(f"\n[3] 自动分配预览（策略 fill_sizes, 目标尺码数={FILL_SIZES_TARGET}, max_suppliers={FILL_SIZES_MAX_SITES}）\n")
+    else:
+        print(f"\n[3] 自动分配预览（策略 price_window, price_tolerance_pct={price_tolerance_pct:.0%}, max_suppliers={max_sites}）\n")
 
     preview = select_suppliers_for_code(code, price_tolerance_pct=price_tolerance_pct, max_suppliers=max_sites)
     if not preview["chosen"]:

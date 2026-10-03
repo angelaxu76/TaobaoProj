@@ -350,6 +350,7 @@ def run_c_inventory():
         _fail("C3-jingya_id", e)
 
     # ── 步骤 C4：供应商组合 + 价格 + 库存一次性同步 ───────────────────
+    # 选择策略由 session_config.SUPPLIER_STRATEGY 决定（price_window / fill_sizes），以下为策略一 price_window：
     # 每个商品：按真实落地成本找出最低价供应商作为基准，成本不超过基准
     # × (1 + SUPPLIER_PRICE_TOLERANCE_PCT) 的供应商都一并纳入（最多凑满
     # SUPPLIER_MAX_SITES 家）；库存取这几家的并集，定价取这几家里成本

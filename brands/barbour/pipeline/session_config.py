@@ -34,6 +34,23 @@ RUN_D_EXPORT    = True   # 导出库存 / 价格 Excel
 #  （原 brands/barbour/jingya/allocate_supplier_and_price_config.py）
 # ══════════════════════════════════════════════════════════════════
 
+# 供应商选择 / 定价策略（二选一）：
+#   "price_window" —— 策略一（价格窗口）：以最低成本供应商为基准，成本不超过
+#                     基准 × (1 + SUPPLIER_PRICE_TOLERANCE_PCT) 的都纳入（最多
+#                     SUPPLIER_MAX_SITES 家，受 SUPPLIER_MIN_SIZES_IN_STOCK 门槛约束）。
+#   "fill_sizes"   —— 策略二（凑尺码）：从成本最低的供应商开始往上逐家合并库存，
+#                     合并后的有货尺码数达到 FILL_SIZES_TARGET 就停止；不能带来
+#                     新尺码的供应商直接跳过（避免白白抬高定价）。所有供应商都
+#                     合并完仍不够，就用已合并的全部。
+#   两种策略都是：库存 = 所选供应商有货尺码的并集，定价 = 所选供应商里成本最高者。
+SUPPLIER_STRATEGY = "fill_sizes"
+
+# 策略二参数：合并到多少个有货尺码就停止
+FILL_SIZES_TARGET = 4
+# 策略二参数：最多合并几家供应商（None = 不限制，直到凑够尺码或供应商用完）
+FILL_SIZES_MAX_SITES: int | None = None
+
+# ── 以下三个参数只对策略一 "price_window" 生效 ──
 # 价格窗口：以最低有效成本的供应商为基准，成本不超过
 # 基准 × (1 + SUPPLIER_PRICE_TOLERANCE_PCT) 的供应商都一并纳入
 # （库存取并集，定价取其中成本最高者）。如果窗口内供应商凑出来的
