@@ -114,7 +114,7 @@ BARBOUR = {
         # 如果你之后明确它不叠加就改成 ratio_when_no_discount
         "barbour": {
             "strategy": "all_ratio",                # 对应 strategy_all_ratio
-            "extra_ratio": 1.0,                     # 目前不额外打折
+            "extra_ratio":0.9,                     # 目前不额外打折
             "shipping_fee": 0.0,
         },
 
