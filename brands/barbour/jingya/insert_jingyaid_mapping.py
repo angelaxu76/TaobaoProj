@@ -80,7 +80,13 @@ def split_sku_name(s: str):
     parts = [p.strip() for p in s.split("，") if p.strip()]
     if len(parts) != 2:
         return None
-    return parts[0], parts[1]
+    a, b = parts
+    # 鲸芽导出中部分配件（ONESIZE）是反序的：'ONESIZE，LHA0477BK11' → 交换为 (编码, 尺码)
+    if _BARBOUR_CODE_RE.match(b.upper()) and not _BARBOUR_CODE_RE.match(a.upper()):
+        a, b = b, a
+    return a, b
+
+_BARBOUR_CODE_RE = re.compile(r"^[A-Z]{3}\d{4}[A-Z]{2}\d{2}$")
 
 def clear_barbour_inventory():
     """清空 Barbour inventory 表（用于全量初始化）"""
