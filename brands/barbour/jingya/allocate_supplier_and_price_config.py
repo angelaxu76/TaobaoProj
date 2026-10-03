@@ -16,7 +16,8 @@ from brands.barbour.pipeline.session_config import (
     SUPPLIER_MAX_SITES,
     SUPPLIER_MIN_SIZES_IN_STOCK,
     TAOBAO_STORE_DISCOUNT,
-    SUPPLIER_OVERRIDE_XLSX,
+    MANUAL_STOCK_XLSX,
+    MANUAL_PRICE_XLSX,
 )
 
 __all__ = [
@@ -27,5 +28,6 @@ __all__ = [
     "SUPPLIER_MAX_SITES",
     "SUPPLIER_MIN_SIZES_IN_STOCK",
     "TAOBAO_STORE_DISCOUNT",
-    "SUPPLIER_OVERRIDE_XLSX",
+    "MANUAL_STOCK_XLSX",
+    "MANUAL_PRICE_XLSX",
 ]

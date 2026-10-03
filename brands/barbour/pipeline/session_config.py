@@ -79,11 +79,6 @@ SUPPLIER_MIN_SIZES_IN_STOCK = 2
 # 未税价 -> 淘宝店铺价的折扣系数（1.0 = 不打折）
 TAOBAO_STORE_DISCOUNT = 1.0
 
-# 人工指定供应商（可选）。Excel 需含列：商品编码 / 供货商。命中的商品
-# 跳过自动选择，直接用指定站点，但仍走同一套定价/库存回填逻辑。
-# 文件不存在时会被自动忽略，不影响正常运行。
-SUPPLIER_OVERRIDE_XLSX = r"D:\TB\Products\barbour\document\barbour_supplier.xlsx"
-
 # 本次运行临时改一下"最低有货尺码数门槛"（不改上面的 SUPPLIER_MIN_SIZES_IN_STOCK
 # 默认值）时，在这里填非 None 的整数；留 None 则使用上面的默认值。
 C_MIN_SIZES_IN_STOCK: int | None = None
@@ -120,7 +115,15 @@ MIN_SIZES_EXEMPT_PREFIXES = ONE_SIZE_PREFIXES
 #  共享盘路径统一走 resolve_shared_path()：VM 内用
 #  \\vmware-host\Shared Folders\...，本地运行访问不到时自动切到 E:\shared\...
 # ══════════════════════════════════════════════════════════════════
-EXCLUDE_LIST_XLSX    = resolve_shared_path(r"\\vmware-host\Shared Folders\shared\barbour\barbour_exclude_list.xlsx")
+# 人工干预清单（两个独立文件，都按"渠道商品ID"整组生效，文件不存在时自动忽略）：
+#   手动库存 MANUAL_STOCK_XLSX —— 列：渠道商品ID / 供货商
+#     只填 ID       → 导出鲸芽库存时跳过（库存在鲸芽端手动维护）
+#     ID + 供货商   → 该 ID 下所有颜色只用这个供货商的库存，正常导出
+#   手动价格 MANUAL_PRICE_XLSX —— 列：渠道商品ID / source_price_gbp / discount_price_gbp
+#     填了价格      → 按 discount_price_gbp（空则 source_price_gbp）定价，覆盖自动价
+#     价格留空      → 导出鲸芽/淘宝价格时跳过（沿用平台上已设好的价格）
+MANUAL_STOCK_XLSX    = resolve_shared_path(r"\\vmware-host\Shared Folders\shared\barbour\barbour_manual_stock.xlsx")
+MANUAL_PRICE_XLSX    = resolve_shared_path(r"\\vmware-host\Shared Folders\shared\barbour\barbour_manual_price.xlsx")
 STOCK_EXPORT_DIR     = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\input")
 PRICE_EXPORT_DIR     = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\barbour\publication_prices")
 

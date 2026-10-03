@@ -29,8 +29,8 @@ from pathlib import Path
 #    - brands/barbour/pipeline/session_config.py
 #      —— 阶段开关 RUN_*、A/B 阶段供应商列表、C 阶段供应商/定价策略
 #         （价格容忍比例 SUPPLIER_PRICE_TOLERANCE_PCT、最多合并几家供应商
-#         SUPPLIER_MAX_SITES、淘宝店铺折扣 TAOBAO_STORE_DISCOUNT、人工指定
-#         供应商清单路径 SUPPLIER_OVERRIDE_XLSX）、各类导出路径、日志目录。
+#         SUPPLIER_MAX_SITES、淘宝店铺折扣 TAOBAO_STORE_DISCOUNT）、手动库存/
+#         手动价格清单路径 MANUAL_STOCK_XLSX / MANUAL_PRICE_XLSX、各类导出路径、日志目录。
 #      —— 每次跑流水线最常改的参数，都集中在这一个文件里。
 #    - cfg/brands/barbour.py 里的 BARBOUR["SUPPLIER_DISCOUNT_RULES"]
 #      —— 各供应商在"落地成本价"计算时的折扣策略/运费（影响 B 阶段导入
@@ -50,7 +50,8 @@ from brands.barbour.pipeline.session_config import (
     # C 阶段
     C_MIN_SIZES_IN_STOCK,
     # 路径配置
-    EXCLUDE_LIST_XLSX,
+    MANUAL_STOCK_XLSX,
+    MANUAL_PRICE_XLSX,
     STOCK_EXPORT_DIR,
     PRICE_EXPORT_DIR,
     STORE_PRICE_INPUT_DIR,
@@ -354,14 +355,15 @@ def run_c_inventory():
     # 每个商品：按真实落地成本找出最低价供应商作为基准，成本不超过基准
     # × (1 + SUPPLIER_PRICE_TOLERANCE_PCT) 的供应商都一并纳入（最多凑满
     # SUPPLIER_MAX_SITES 家）；库存取这几家的并集，定价取这几家里成本
-    # 最高的那个。exclude_list.xlsx 里的编码跳过自动分配，改用其中的
-    # 固定价格覆盖。
+    # 最高的那个。手动库存清单里"ID + 供货商"的商品强制用该供货商；
+    # 手动价格清单里填了价格的商品，最后用人工价覆盖。
     _step("C4：供应商组合 + 价格 + 库存同步（allocate_and_sync）")
     t = time.time()
     try:
         allocate_and_sync(
             brand="barbour",
-            exclude_xlsx=EXCLUDE_LIST_XLSX,
+            manual_stock_xlsx=MANUAL_STOCK_XLSX,
+            manual_price_xlsx=MANUAL_PRICE_XLSX,
             min_sizes_in_stock=C_MIN_SIZES_IN_STOCK,
             dry_run=False,
         )
@@ -381,42 +383,39 @@ def run_d_export():
     from channels.jingya.export.export_channel_price_excel_jingya import export_jiangya_channel_prices
     from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
     from brands.barbour.jingya.allocate_supplier_and_price import (
-        _load_exclude_and_forced_sites,
-        load_locked_channel_ids,
+        load_manual_stock,
+        load_manual_price,
+        codes_by_channel_id,
         write_codes_excel,
     )
 
-    # ── D0：排除清单里"没指定供应商"的编码，库存导出要跳过它们 ──────────
-    # 这些编码 C4 阶段完全没碰（库存还停在骨架占位值 0），如果照常导出，
-    # 会把 0 推到鲸芽，覆盖掉你可能在鲸芽端手动设置的库存。价格导出那两步
-    # 已经在用 EXCLUDE_LIST_XLSX 排除了，库存导出之前漏了这一层，这里补上。
-    # 注意：只排除"没指定供应商"的那部分——排除清单里"指定了供应商"的编码
-    # 库存是真实算出来的，仍然要正常导出。
-    # 注意：这是纯内部中间文件（供 export_stock_excel 的 exclude_excel_file
-    # 参数读取），不是鲸芽库存文件本身。绝不能写进 STOCK_EXPORT_DIR —— 那是
-    # UiPath 扫描的 input 目录，混进去会被当成待处理文件，导致后续处理异常。
-    # 因此落到系统临时目录，只在本次运行内使用。
-    bare_codes, _forced = _load_exclude_and_forced_sites(EXCLUDE_LIST_XLSX)
-    stock_exclude_file = None
-    if bare_codes:
-        stock_exclude_file = write_codes_excel(
-            bare_codes, str(Path(tempfile.gettempdir()) / "_barbour_bare_exclude_for_stock.xlsx")
-        )
-        print(f"   🛡️ {len(bare_codes)} 个「排除清单中未指定供应商」的编码将跳过库存导出，"
-              f"避免覆盖鲸芽端已有/手动设置的库存。")
+    # ── D0：手动库存清单"只填 ID"、手动价格清单"价格留空"的渠道商品ID ──────
+    # 按 ID 展开成其下全部颜色编码，分别从库存导出 / 价格导出（鲸芽 + 淘宝店铺）
+    # 中跳过，沿用鲸芽/平台端手动设置好的库存和价格。
+    # 注意：跳过名单是纯内部中间文件（供导出函数的 exclude 参数读取），绝不能
+    # 写进 STOCK_EXPORT_DIR —— 那是 UiPath 扫描的 input 目录，混进去会被当成
+    # 待处理文件。因此落到系统临时目录，只在本次运行内使用。
+    skip_stock_ids, _forced = load_manual_stock(MANUAL_STOCK_XLSX)
+    locked_price_ids, _fixed = load_manual_price(MANUAL_PRICE_XLSX)
+    by_id = codes_by_channel_id(skip_stock_ids | locked_price_ids)
 
-    # ── D0'：排除清单"渠道商品ID"列 → 价格锁定 ─────────────────────────
-    # 锁价以鲸芽 listing 为单位：展开成该 ID 下的全部颜色编码（包括没写进
-    # 清单的颜色），鲸芽价格 Excel 和淘宝店铺价格 Excel 都整款不导出，完全
-    # 靠人工在平台上定价。同样落到系统临时目录（原因同上）。
-    _locked_ids, locked_codes = load_locked_channel_ids(EXCLUDE_LIST_XLSX, verbose=False)
+    skip_stock_codes = {c for cid in skip_stock_ids for c in by_id.get(cid, set())}
+    stock_exclude_file = None
+    if skip_stock_codes:
+        stock_exclude_file = write_codes_excel(
+            skip_stock_codes, str(Path(tempfile.gettempdir()) / "_barbour_manual_stock_skip.xlsx")
+        )
+        print(f"   🛡️ 手动库存：{len(skip_stock_ids)} 个渠道商品ID（{len(skip_stock_codes)} 个颜色编码）"
+              f"跳过库存导出，沿用鲸芽端库存。")
+
+    locked_codes = {c for cid in locked_price_ids for c in by_id.get(cid, set())}
     price_exclude_file = None
     if locked_codes:
         price_exclude_file = write_codes_excel(
-            locked_codes, str(Path(tempfile.gettempdir()) / "_barbour_price_locked_codes.xlsx")
+            locked_codes, str(Path(tempfile.gettempdir()) / "_barbour_manual_price_skip.xlsx")
         )
-        print(f"   🔒 {len(_locked_ids)} 个渠道商品ID（{len(locked_codes)} 个颜色编码）价格锁定，"
-              f"不导出鲸芽价格和淘宝店铺价格。")
+        print(f"   🔒 手动价格：{len(locked_price_ids)} 个渠道商品ID（{len(locked_codes)} 个颜色编码）"
+              f"跳过鲸芽价格和淘宝店铺价格导出，沿用平台价格。")
 
     _step("导出库存 Excel → 用于鲸芽批量更新库存")
     t = time.time()

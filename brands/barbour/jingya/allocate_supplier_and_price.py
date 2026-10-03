@@ -20,18 +20,14 @@ merge_offer_into_inventory.py、db_build_supplier_map_and_inventory.py
 - 最终定价 = 所选各站点里成本最高的那个（避免低价站点断货、临时改用
   高价站点补货时倒贴运费亏本）。
 
-人工干预（可选，两个独立 Excel，逻辑可叠加）：
-- supplier_override_xlsx（如 barbour_supplier.xlsx）：强制指定某商品的
-  供应商，跳过自动选择，但仍走同一套定价/库存回填逻辑。
-- exclude_xlsx（如 barbour_exclude_list.xlsx）：编码列出现的商品默认跳过
-  自动分配；但若同一行还填了"供货商"/"供应商"列，则改为强制走该供应商
-  （效果等同 supplier_override_xlsx），从而拿到真实库存，而不是停在 0；
-  只有既没填供应商、也没填价格的行才是真正"完全不处理"。若该文件同时含
-  source_price_gbp / discount_price_gbp 列，最后会由
-  apply_fixed_prices_from_excel() 覆盖为人工固定价——供应商决定库存，
-  这两列决定价格，两者配合实现"强行指定供货商和价格"。
-  该文件的"渠道商品ID"列用于按鲸芽 listing 锁价（见 load_locked_channel_ids）：
-  锁定 ID 下的所有颜色不做同款价格对齐，阶段 D 也不导出鲸芽/淘宝价格。
+人工干预（两个独立 Excel，都按鲸芽"渠道商品ID"整组生效，可叠加）：
+- 手动库存 MANUAL_STOCK_XLSX（load_manual_stock）：列 渠道商品ID / 供货商
+  · 只填 ID     → 照常自动分配，但阶段 D 导出鲸芽库存时跳过（鲸芽端手动维护）
+  · ID + 供货商 → 该 ID 下所有颜色只用这个供货商的库存，正常导出
+- 手动价格 MANUAL_PRICE_XLSX（load_manual_price）：列 渠道商品ID /
+  source_price_gbp / discount_price_gbp
+  · 填了价格    → 自动分配后由 _apply_fixed_prices() 覆盖为人工价
+  · 价格留空    → 不做同款价格对齐，阶段 D 不导出鲸芽/淘宝价格（沿用平台价）
 """
 from __future__ import annotations
 
@@ -58,7 +54,8 @@ from brands.barbour.jingya.allocate_supplier_and_price_config import (
     SUPPLIER_MAX_SITES,
     SUPPLIER_MIN_SIZES_IN_STOCK,
     TAOBAO_STORE_DISCOUNT,
-    SUPPLIER_OVERRIDE_XLSX,
+    MANUAL_STOCK_XLSX,
+    MANUAL_PRICE_XLSX,
 )
 
 TABLE_ALLOC = "barbour_supplier_allocation"
@@ -102,48 +99,6 @@ def _ensure_price_columns(conn) -> None:
     """))
 
 
-def _load_exclude_and_forced_sites(xlsx_path: Optional[str]) -> Tuple[Set[str], Dict[str, str]]:
-    """
-    读取排除清单。"商品编码"列出现的商品默认跳过自动分配；但如果同一行还
-    填了"供货商"/"供应商"列，就不再是纯跳过，而是把它当成人工强制指定的
-    供应商（和 supplier_override_xlsx 走同一条"人工指定→仍按同一套逻辑
-    回填价格/库存"的路径），配合文件里的 source_price_gbp/discount_price_gbp
-    列由 apply_fixed_prices_from_excel() 覆盖最终价格——这样才能同时实现
-    "强行指定供货商" + "强行指定价格"，而不是让这些商品的库存一直停在 0。
-
-    只有"商品编码"列出现、但没有可识别供应商的行，才是真正的"跳过不处理"。
-
-    返回 (bare_exclude_codes, forced_site_by_code)。
-    """
-    if not xlsx_path:
-        return set(), {}
-    if not Path(xlsx_path).exists():
-        print(f"ℹ️ 排除清单文件不存在，已跳过：{xlsx_path}")
-        return set(), {}
-
-    df = pd.read_excel(xlsx_path, dtype=str)
-    col_map = {c.strip().lower().replace(" ", ""): c for c in df.columns}
-    code_col = next((col_map[k] for k in ("productcode", "商品编码", "product_code", "color_code", "编码") if k in col_map), None)
-    if not code_col:
-        print(f"⚠️ 未在排除清单中识别到编码列：{list(df.columns)}，将忽略该文件。")
-        return set(), {}
-    site_col = next((col_map[k] for k in ("供货商", "供应商", "supplier", "site") if k in col_map), None)
-
-    bare: Set[str] = set()
-    forced: Dict[str, str] = {}
-    for _, row in df.iterrows():
-        code = str(row.get(code_col) or "").strip()
-        if not code:
-            continue
-        site_raw = str(row.get(site_col) or "").strip() if site_col else ""
-        site = canonical_site(site_raw) if site_raw else None
-        if site:
-            forced[code] = site
-        else:
-            bare.add(code)
-    return bare, forced
-
-
 def _normalize_channel_id(v) -> str:
     """鲸芽渠道商品ID 统一成纯数字字符串（兼容 Excel 里存成数字/科学计数法/带 .0 的情况）。"""
     s = str(v if v is not None else "").strip()
@@ -159,115 +114,122 @@ def _normalize_channel_id(v) -> str:
     return s
 
 
-def load_locked_channel_ids(
-    xlsx_path: Optional[str],
-    engine: Optional[Engine] = None,
-    verbose: bool = True,
-) -> Tuple[Set[str], Set[str]]:
+_ID_COL_KEYS = ("渠道商品id", "渠道产品id", "channel_product_id", "商品id")
+_SITE_COL_KEYS = ("供货商", "供应商", "supplier", "site")
+
+
+def _read_channel_id_sheet(xlsx_path: Optional[str], label: str) -> Optional[pd.DataFrame]:
     """
-    读取排除清单里的"渠道商品ID"列，返回 (locked_ids, locked_codes)。
-
-    价格锁定以鲸芽渠道商品ID（一个 listing）为单位：ID 列出现过的 ID，其下
-    所有颜色编码（按 barbour_inventory.channel_product_id 展开，包括没写进
-    清单的颜色）都视为价格锁定——不参与同款价格对齐，也不导出到鲸芽价格
-    Excel 和淘宝店铺价格 Excel，完全靠人工在平台上定价。
-
-    库存不受影响：清单里的"商品编码 + 供货商"仍按颜色编码走
-    _load_exclude_and_forced_sites() 那套逻辑。
-
-    verbose=True 时打印核对提示（ID 在库中不存在 / ID 下有未写进清单的颜色 /
-    清单填的 ID 与库中不一致 / 编码未填 ID 因而未锁价）。
+    读手动清单 Excel（第一个 sheet），返回带规范化 "cid" 列的 DataFrame；
+    文件不存在 / 没有渠道商品ID列时返回 None。
     """
-    if not xlsx_path or not Path(xlsx_path).exists():
-        return set(), set()
-
+    if not xlsx_path:
+        return None
+    if not Path(xlsx_path).exists():
+        print(f"ℹ️ {label}文件不存在，已跳过：{xlsx_path}")
+        return None
     df = pd.read_excel(xlsx_path, dtype=str)
     col_map = {str(c).strip().lower().replace(" ", ""): c for c in df.columns}
-    id_col = next((col_map[k] for k in ("渠道商品id", "渠道产品id", "channel_product_id", "商品id") if k in col_map), None)
-    code_col = next((col_map[k] for k in ("productcode", "商品编码", "product_code", "color_code", "编码") if k in col_map), None)
+    id_col = next((col_map[k] for k in _ID_COL_KEYS if k in col_map), None)
     if not id_col:
-        if verbose:
-            print(f"⚠️ 排除清单中没有「渠道商品ID」列，本次不锁定任何价格：{list(df.columns)}")
-        return set(), set()
+        print(f"⚠️ {label}中没有「渠道商品ID」列，已忽略：{list(df.columns)}")
+        return None
+    df["cid"] = df[id_col].map(_normalize_channel_id)
+    df = df[df["cid"] != ""]
+    df.attrs["col_map"] = col_map
+    return df
 
-    row_id_by_code: Dict[str, str] = {}
-    codes_without_id: List[str] = []
-    locked_ids: Set[str] = set()
+
+def load_manual_stock(xlsx_path: Optional[str]) -> Tuple[Set[str], Dict[str, str]]:
+    """
+    读手动库存清单（列：渠道商品ID / 供货商），返回 (skip_ids, forced_site_by_id)：
+    - 只填 ID              → skip_ids：阶段 D 导出鲸芽库存时整组跳过
+    - ID + 可识别的供货商  → forced_site_by_id：该 ID 下所有颜色只用这个供货商
+    供货商填了但识别不出来的行，按"跳过导出"处理并打印警告——宁可不推库存，
+    也不推一个来源不明的库存到鲸芽。
+    """
+    df = _read_channel_id_sheet(xlsx_path, "手动库存清单")
+    if df is None:
+        return set(), {}
+    col_map = df.attrs["col_map"]
+    site_col = next((col_map[k] for k in _SITE_COL_KEYS if k in col_map), None)
+
+    skip_ids: Set[str] = set()
+    forced: Dict[str, str] = {}
     for _, row in df.iterrows():
-        cid = _normalize_channel_id(row.get(id_col))
-        code = str(row.get(code_col) or "").strip() if code_col else ""
-        if code.lower() == "nan":
-            code = ""
-        if cid:
-            locked_ids.add(cid)
-            if code:
-                row_id_by_code[code] = cid
-        elif code:
-            codes_without_id.append(code)
+        cid = row["cid"]
+        site_raw = str(row.get(site_col) or "").strip() if site_col else ""
+        if site_raw.lower() == "nan":
+            site_raw = ""
+        if not site_raw:
+            skip_ids.add(cid)
+            continue
+        site = canonical_site(site_raw)
+        if site:
+            forced[cid] = site
+        else:
+            print(f"⚠️ 手动库存清单：渠道商品ID {cid} 的供货商「{site_raw}」无法识别，按跳过库存导出处理。")
+            skip_ids.add(cid)
+    return skip_ids, forced
 
-    if not locked_ids:
-        return set(), set()
 
+def load_manual_price(xlsx_path: Optional[str]) -> Tuple[Set[str], Dict[str, Tuple[Optional[float], Optional[float]]]]:
+    """
+    读手动价格清单（列：渠道商品ID / source_price_gbp / discount_price_gbp），
+    返回 (locked_ids, fixed_price_by_id)：
+    - 两个价格都留空 → locked_ids：阶段 D 不导出鲸芽/淘宝价格，也不参与同款价格对齐
+    - 填了价格       → fixed_price_by_id[cid] = (source_price_gbp, discount_price_gbp)
+    """
+    df = _read_channel_id_sheet(xlsx_path, "手动价格清单")
+    if df is None:
+        return set(), {}
+    col_map = df.attrs["col_map"]
+
+    def _num(row, key):
+        col = col_map.get(key)
+        if not col:
+            return None
+        v = pd.to_numeric(row.get(col), errors="coerce")
+        return None if pd.isna(v) or float(v) <= 0 else float(v)
+
+    locked: Set[str] = set()
+    fixed: Dict[str, Tuple[Optional[float], Optional[float]]] = {}
+    for _, row in df.iterrows():
+        src, disc = _num(row, "source_price_gbp"), _num(row, "discount_price_gbp")
+        if src is None and disc is None:
+            locked.add(row["cid"])
+        else:
+            fixed[row["cid"]] = (src, disc)
+    return locked, fixed
+
+
+def codes_by_channel_id(ids, engine: Optional[Engine] = None) -> Dict[str, Set[str]]:
+    """按 barbour_inventory 把渠道商品ID 展开成其下全部颜色编码；库中找不到的 ID 打印警告。"""
+    ids = {i for i in ids if i}
+    if not ids:
+        return {}
     engine = engine or _get_engine()
     with engine.connect() as conn:
         rows = conn.execute(text("""
-            SELECT DISTINCT product_code, TRIM(channel_product_id) AS cid
+            SELECT DISTINCT TRIM(channel_product_id) AS cid, product_code
             FROM barbour_inventory
             WHERE TRIM(channel_product_id) = ANY(:ids)
-               OR product_code = ANY(:codes)
-        """), {"ids": list(locked_ids), "codes": list(row_id_by_code) + codes_without_id}).fetchall()
-
-    db_codes_by_id: Dict[str, Set[str]] = {}
-    db_id_by_code: Dict[str, str] = {}
-    for code, cid in rows:
-        cid = _normalize_channel_id(cid)
-        if cid:
-            db_id_by_code[code] = cid
-            db_codes_by_id.setdefault(cid, set()).add(code)
-
-    locked_codes: Set[str] = set()
-    for cid in locked_ids:
-        locked_codes |= db_codes_by_id.get(cid, set())
-
-    if verbose:
-        print(f"🔒 价格锁定：{len(locked_ids)} 个渠道商品ID，展开为 {len(locked_codes)} 个颜色编码"
-              f"（不做价格对齐，不导出鲸芽/淘宝价格）。")
-        missing_ids = sorted(cid for cid in locked_ids if cid not in db_codes_by_id)
-        if missing_ids:
-            print(f"   ⚠️ 以下渠道商品ID在 barbour_inventory 中找不到（未发布或填错）：{', '.join(missing_ids)}")
-        listed = set(row_id_by_code)
-        for cid in sorted(locked_ids):
-            extra = sorted(db_codes_by_id.get(cid, set()) - listed)
-            if extra:
-                print(f"   ℹ️ 渠道商品ID {cid} 下这些颜色没写在清单里，同样锁价：{', '.join(extra)}")
-        for code, cid in sorted(row_id_by_code.items()):
-            db_cid = db_id_by_code.get(code)
-            if db_cid and db_cid != cid:
-                print(f"   ⚠️ {code}：清单填的渠道商品ID={cid}，库中实际为 {db_cid}，请核对。")
-        not_locked = sorted(c for c in codes_without_id if c not in locked_codes)
-        if not_locked:
-            print(f"   ℹ️ 以下编码未填渠道商品ID，价格不锁定（仅用于库存/供货商）：{', '.join(not_locked)}")
-
-    return locked_ids, locked_codes
+              AND product_code IS NOT NULL AND product_code <> ''
+        """), {"ids": list(ids)}).fetchall()
+    out: Dict[str, Set[str]] = {}
+    for cid, code in rows:
+        out.setdefault(_normalize_channel_id(cid), set()).add(code)
+    missing = sorted(ids - set(out))
+    if missing:
+        print(f"⚠️ 以下渠道商品ID在 barbour_inventory 中找不到（未发布或填错）：{', '.join(missing)}")
+    return out
 
 
-def _load_supplier_overrides(xlsx_path: Optional[str]) -> Dict[str, str]:
-    """人工指定供应商：Excel 需含列 商品编码 / 供货商。"""
-    if not xlsx_path:
-        return {}
-    if not Path(xlsx_path).exists():
-        print(f"ℹ️ 供应商指定清单文件不存在，已跳过：{xlsx_path}")
-        return {}
-    df = pd.read_excel(xlsx_path, dtype=str)
-    required = ["商品编码", "供货商"]
-    if not all(c in df.columns for c in required):
-        print(f"⚠️ 供应商指定清单缺少必需列 {required}，当前列：{list(df.columns)}，已忽略。")
-        return {}
-    df = df[required].rename(columns={"商品编码": "product_code", "供货商": "site_name"})
-    df["product_code"] = df["product_code"].astype(str).str.strip()
-    df["site_name"] = df["site_name"].astype(str).str.strip().map(lambda s: canonical_site(s) or s)
-    df = df[(df["product_code"] != "") & (df["site_name"] != "")]
-    return dict(zip(df["product_code"], df["site_name"]))
+def _expand(ids, by_id: Dict[str, Set[str]]) -> Set[str]:
+    codes: Set[str] = set()
+    for cid in ids:
+        codes |= by_id.get(cid, set())
+    return codes
 
 
 def _load_publication_mappings(pub_dir: Path) -> Dict[str, str]:
@@ -325,7 +287,7 @@ def _reconcile_shared_channel_prices(engine: Engine, dry_run: bool, locked_ids: 
     组内最高（最不容易亏本）的那个。
 
     只对接标的价格字段做同步（不动库存），返回受影响的 product_code 数。
-    locked_ids（排除清单"渠道商品ID"列）里的 listing 整组跳过——价格由人工锁定。
+    locked_ids（手动价格清单里的 ID）整组跳过——价格由人工决定。
     """
     with engine.connect() as conn:
         grp = pd.read_sql(text("""
@@ -536,8 +498,8 @@ def allocate_and_sync(
     price_tolerance_pct: Optional[float] = None,
     max_suppliers: Optional[int] = None,
     min_sizes_in_stock: Optional[int] = None,
-    exclude_xlsx: Optional[str] = None,
-    supplier_override_xlsx: Optional[str] = SUPPLIER_OVERRIDE_XLSX,
+    manual_stock_xlsx: Optional[str] = MANUAL_STOCK_XLSX,
+    manual_price_xlsx: Optional[str] = MANUAL_PRICE_XLSX,
     dry_run: bool = False,
     strategy: Optional[str] = None,
 ) -> dict:
@@ -546,8 +508,11 @@ def allocate_and_sync(
     barbour_inventory + barbour_supplier_allocation。
 
     dry_run=True 时只打印将要发生的变更，不写库。
-    supplier_override_xlsx 默认指向配置里的固定路径，文件不存在时自动忽略；
-    传 None 可显式关闭人工指定供应商这一层。
+    manual_stock_xlsx：手动库存清单里"ID + 供货商"的行，该 ID 下所有颜色强制
+    只用这个供货商（"只填 ID"的行只影响阶段 D 的库存导出，这里照常自动分配）。
+    manual_price_xlsx：手动价格清单里填了价格的 ID，自动分配后用人工价覆盖；
+    价格留空的 ID 不参与同款价格对齐（阶段 D 也不导出其价格）。
+    两个文件不存在时自动忽略；传 None 可显式关闭。
     min_sizes_in_stock：初选供应商的最低有货尺码数门槛，默认取配置文件里
     的 SUPPLIER_MIN_SIZES_IN_STOCK；传参可临时覆盖（单次运行生效，不改
     配置文件）。
@@ -562,20 +527,22 @@ def allocate_and_sync(
     print(f"🧮 供应商选择策略：{strategy}")
 
     engine = _get_engine()
-    exclude_codes, exclude_forced_sites = _load_exclude_and_forced_sites(exclude_xlsx)
-    # supplier_override_xlsx 是专门的"强制供应商"文件，若与排除清单里的
-    # 供货商列同时指定了同一个编码，以 supplier_override_xlsx 为准。
-    manual_overrides = {**exclude_forced_sites, **_load_supplier_overrides(supplier_override_xlsx)}
-    locked_ids, _locked_codes = load_locked_channel_ids(exclude_xlsx, engine=engine)
+    _skip_stock_ids, forced_site_by_id = load_manual_stock(manual_stock_xlsx)
+    locked_ids, fixed_price_by_id = load_manual_price(manual_price_xlsx)
+    by_id = codes_by_channel_id(set(forced_site_by_id) | locked_ids | set(fixed_price_by_id), engine)
+    manual_overrides: Dict[str, str] = {
+        code: site for cid, site in forced_site_by_id.items() for code in by_id.get(cid, set())
+    }
+    fixed_price_by_code: Dict[str, Tuple[Optional[float], Optional[float]]] = {
+        code: prices for cid, prices in fixed_price_by_id.items() for code in by_id.get(cid, set())
+    }
     pub_map = _load_publication_mappings(PUBLICATION_DIR)
     taobao_discount = TAOBAO_STORE_DISCOUNT
 
-    if exclude_codes:
-        print(f"🛡️ 排除清单：{len(exclude_codes)} 个编码（无指定供应商）将跳过自动分配。")
-    if exclude_forced_sites:
-        print(f"🧭 排除清单里指定了供应商：{len(exclude_forced_sites)} 条，将强制走该供应商（价格随后由固定价覆盖）。")
     if manual_overrides:
-        print(f"🧭 人工指定供应商合计：{len(manual_overrides)} 条。")
+        print(f"🧭 手动库存指定供货商：{len(forced_site_by_id)} 个渠道商品ID（{len(manual_overrides)} 个颜色编码）。")
+    if fixed_price_by_code:
+        print(f"💷 手动固定价格：{len(fixed_price_by_id)} 个渠道商品ID（{len(fixed_price_by_code)} 个颜色编码）。")
 
     with engine.begin() as conn:
         conn.execute(SQL_CREATE_ALLOC)
@@ -638,7 +605,6 @@ def allocate_and_sync(
     inventory_updates: List[dict] = []
     allocation_rows: List[dict] = []
     zero_stock_updates: List[dict] = []   # 无法分配供应商的商品：强制清零库存，防止超卖
-    diag_excluded: List[str] = []
     diag_unresolved: List[Tuple[str, str, str]] = []
     diag_unresolved_codes: List[str] = []
     diag_auto: List[str] = []
@@ -662,10 +628,6 @@ def allocate_and_sync(
                     })
 
     for code in published_codes:
-        if code in exclude_codes:
-            diag_excluded.append(code)
-            continue
-
         forced_site = manual_overrides.get(code)
         cand = site_agg_by_code.get(code)
 
@@ -780,8 +742,8 @@ def allocate_and_sync(
 
     # ── 打印诊断 ──
     print(
-        f"✅ 自动分配：{len(diag_auto)} 个；人工指定：{len(diag_manual)} 个；"
-        f"排除清单跳过：{len(diag_excluded)} 个；无法分配：{len(diag_unresolved)} 个。"
+        f"✅ 自动分配：{len(diag_auto)} 个；手动指定供货商：{len(diag_manual)} 个；"
+        f"无法分配：{len(diag_unresolved)} 个。"
     )
     if diag_unresolved:
         print(f"⚠️ 以下 {len(diag_unresolved)} 个商品本次未能分配供应商（库存已强制清零，避免超卖/淘宝处罚；价格字段保持不变）：")
@@ -789,6 +751,8 @@ def allocate_and_sync(
             print(f"   {code}: {reason} {extra}".rstrip())
         if len(diag_unresolved) > 30:
             print(f"   ...共 {len(diag_unresolved)} 个，已省略 {len(diag_unresolved) - 30} 个")
+
+    no_reconcile_ids = locked_ids | set(fixed_price_by_id)
 
     if dry_run:
         print(f"\n[DRY-RUN] 将变更 {len(dry_run_report)} 条尺码记录（未写库）。示例前 20 条：")
@@ -798,13 +762,13 @@ def allocate_and_sync(
             print(f"\n[DRY-RUN] 无达标供应商、库存将被强制清零的尺码记录共 {len(dry_run_zero_report)} 条。示例前 20 条：")
             for r in dry_run_zero_report[:20]:
                 print(f"   {r}")
+        _apply_fixed_prices(engine, fixed_price_by_code, dry_run=True)
         print("\n[DRY-RUN] 同款多颜色共用鲸芽 channel_product_id 的价格对齐预览：")
-        reconciled_preview = _reconcile_shared_channel_prices(engine, dry_run=True, locked_ids=locked_ids)
+        reconciled_preview = _reconcile_shared_channel_prices(engine, dry_run=True, locked_ids=no_reconcile_ids)
         if reconciled_preview == 0:
             print("   （当前没有需要对齐的分叉价格）")
         return {
             "processed": len(diag_auto) + len(diag_manual),
-            "excluded": len(diag_excluded),
             "unresolved": len(diag_unresolved),
             "would_change": len(dry_run_report),
             "would_force_zero_stock": len(dry_run_zero_report),
@@ -866,20 +830,17 @@ def allocate_and_sync(
         f"{TABLE_ALLOC} 已写入 {len(allocation_rows)} 条供应商分配记录。"
     )
 
-    # ── 人工固定价覆盖（最终层，沿用今天的 exclude_list.xlsx 双重用途）──
-    if exclude_xlsx:
-        apply_fixed_prices_from_excel(
-            xlsx_path=exclude_xlsx, code_col="商品编码", sheet_name=0, dry_run=False
-        )
+    # ── 手动价格清单覆盖（最终层）──
+    _apply_fixed_prices(engine, fixed_price_by_code, dry_run=False)
 
     # ── 同款多颜色共用鲸芽 channel_product_id 时，价格对齐到组内最高者 ──
-    reconciled = _reconcile_shared_channel_prices(engine, dry_run=False, locked_ids=locked_ids)
+    # 手动价格清单里的 ID（锁价 / 固定价）不参与对齐。
+    reconciled = _reconcile_shared_channel_prices(engine, dry_run=False, locked_ids=no_reconcile_ids)
     if reconciled:
         print(f"✅ 同款多颜色价格分叉已对齐：{reconciled} 个 product_code 的价格已同步为组内最高价。")
 
     return {
         "processed": len(processed_codes),
-        "excluded": len(diag_excluded),
         "unresolved": len(diag_unresolved),
         "inventory_rows_updated": len(inventory_updates),
         "inventory_rows_zeroed": len(zero_stock_updates),
@@ -960,131 +921,61 @@ def select_suppliers_for_code(
 
 
 # ═══════════════════════════════════════════════════════════════════
-#  人工固定价覆盖（原 merge_offer_into_inventory.apply_fixed_prices_from_excel，原样迁移）
+#  手动价格清单覆盖
 # ═══════════════════════════════════════════════════════════════════
 
-def apply_fixed_prices_from_excel(
-    xlsx_path: str,
-    sheet_name: str | None = None,
-    code_col: str = "product_code",
-    source_price_col: str = "source_price_gbp",
-    discount_price_col: str = "discount_price_gbp",
-    also_set_original_price: bool = True,
-    mark_source: bool = True,
+def _apply_fixed_prices(
+    engine: Engine,
+    fixed_price_by_code: Dict[str, Tuple[Optional[float], Optional[float]]],
     dry_run: bool = False,
-):
+) -> int:
     """
-    从 Excel 读取固定价格清单，批量回填到 barbour_inventory（按 product_code 覆盖所有尺码行）。
+    手动价格清单覆盖：按 product_code 覆盖所有尺码行的价格字段。
+    fixed_price_by_code: code -> (source_price_gbp, discount_price_gbp)，至少一个非空。
 
-    Excel 必需列（默认列名，可通过参数改）：
-      - product_code
-      - source_price_gbp
-      - discount_price_gbp
-
-    会更新的字段（默认）：
-      - source_price_gbp / discount_price_gbp
-      - original_price_gbp（可选：also_set_original_price=True 时设置为折扣价）
-      - base_price_gbp（= COALESCE(discount_price_gbp, source_price_gbp)）
-      - jingya_untaxed_price / taobao_store_price（由 calculate_jingya_prices 计算）
-      - last_checked
-      - （可选）source_site/source_offer_url 标记为 manual
+    定价基准 base = discount_price_gbp（空则 source_price_gbp），更新：
+      source_price_gbp / discount_price_gbp / original_price_gbp（= 折扣价，空则保留原值）
+      base_price_gbp / jingya_untaxed_price / taobao_store_price（由 calculate_jingya_prices 计算）
+    库存与 source_site 不动（库存来源由手动库存清单/自动分配决定）。
     """
-    if not xlsx_path or not os.path.exists(xlsx_path):
-        print(f"ℹ️ 固定价格清单文件不存在，已跳过：{xlsx_path}")
-        return
+    if not fixed_price_by_code:
+        return 0
 
-    engine = _get_engine()
-    df = pd.read_excel(xlsx_path, sheet_name=sheet_name)
-
-    if isinstance(df, dict):
-        if not df:
-            raise ValueError("Excel 里没有任何 sheet。")
-        df = next(iter(df.values()))
-
-    if source_price_col not in df.columns or discount_price_col not in df.columns:
-        # 该 Excel 只用于"排除自动分配"，没有价格列，属正常情况，直接跳过。
-        return
-
-    df = df.rename(columns={
-        code_col: "product_code",
-        source_price_col: "source_price_gbp",
-        discount_price_col: "discount_price_gbp",
-    })
-
-    df["product_code"] = df["product_code"].astype(str).str.strip()
-    df = df[df["product_code"].notna() & (df["product_code"] != "")]
-    df["source_price_gbp"] = pd.to_numeric(df["source_price_gbp"], errors="coerce")
-    df["discount_price_gbp"] = pd.to_numeric(df["discount_price_gbp"], errors="coerce")
-
-    df["base_gbp"] = df["discount_price_gbp"].fillna(df["source_price_gbp"])
-    df = df[df["base_gbp"].notna()]
-    if df.empty:
-        return
-
-    discount = TAOBAO_STORE_DISCOUNT
-    jy_list, tb_list = [], []
-    for v in df["base_gbp"].tolist():
-        untaxed, retail = calculate_jingya_prices(float(v))
-        jy_list.append(round(float(untaxed), 2) if untaxed is not None else None)
-        tb_list.append(round(float(retail) * float(discount), 2) if retail is not None else None)
-
-    df["jingya_untaxed_price"] = jy_list
-    df["taobao_store_price"] = tb_list
-
-    src_tag = "manual_excel"
-    offer_tag = f"excel:{os.path.basename(xlsx_path)}"
     payload = []
-    for r in df.to_dict("records"):
+    for code, (src, disc) in sorted(fixed_price_by_code.items()):
+        base = disc if disc is not None else src
+        untaxed, retail = calculate_jingya_prices(float(base))
         payload.append({
-            "product_code": r["product_code"],
-            "source_price_gbp": None if pd.isna(r["source_price_gbp"]) else float(r["source_price_gbp"]),
-            "discount_price_gbp": None if pd.isna(r["discount_price_gbp"]) else float(r["discount_price_gbp"]),
-            "original_price_gbp": None if (not also_set_original_price or pd.isna(r["discount_price_gbp"])) else float(r["discount_price_gbp"]),
-            "base_price_gbp": None if pd.isna(r["base_gbp"]) else float(r["base_gbp"]),
-            "jingya_untaxed_price": r["jingya_untaxed_price"],
-            "taobao_store_price": r["taobao_store_price"],
-            "source_site": src_tag,
-            "source_offer_url": offer_tag,
+            "product_code": code,
+            "source_price_gbp": src,
+            "discount_price_gbp": disc,
+            "original_price_gbp": disc,
+            "base_price_gbp": base,
+            "jingya_untaxed_price": round(float(untaxed), 2) if untaxed is not None else None,
+            "taobao_store_price": round(float(retail) * float(TAOBAO_STORE_DISCOUNT), 2) if retail is not None else None,
         })
 
     if dry_run:
-        print(f"[DryRun] 将覆盖 {len(payload)} 个 product_code 的 inventory 价格（所有尺码行）。示例前5行：")
+        print(f"\n[DRY-RUN] 手动价格将覆盖 {len(payload)} 个 product_code（所有尺码行）。示例前 5 条：")
         for x in payload[:5]:
-            print(x)
-        return
+            print(f"   {x}")
+        return len(payload)
 
     with engine.begin() as conn:
-        if mark_source:
-            sql = text("""
-                UPDATE barbour_inventory
-                SET
-                    source_price_gbp     = :source_price_gbp,
-                    original_price_gbp   = COALESCE(:original_price_gbp, original_price_gbp),
-                    discount_price_gbp   = :discount_price_gbp,
-                    base_price_gbp       = :base_price_gbp,
-                    jingya_untaxed_price = :jingya_untaxed_price,
-                    taobao_store_price   = :taobao_store_price,
-                    source_site          = :source_site,
-                    source_offer_url     = :source_offer_url,
-                    last_checked         = NOW()
-                WHERE product_code = :product_code
-            """)
-        else:
-            sql = text("""
-                UPDATE barbour_inventory
-                SET
-                    source_price_gbp     = :source_price_gbp,
-                    original_price_gbp   = COALESCE(:original_price_gbp, original_price_gbp),
-                    discount_price_gbp   = :discount_price_gbp,
-                    base_price_gbp       = :base_price_gbp,
-                    jingya_untaxed_price = :jingya_untaxed_price,
-                    taobao_store_price   = :taobao_store_price,
-                    last_checked         = NOW()
-                WHERE product_code = :product_code
-            """)
-        conn.execute(sql, payload)
+        conn.execute(text("""
+            UPDATE barbour_inventory
+            SET source_price_gbp     = :source_price_gbp,
+                original_price_gbp   = COALESCE(:original_price_gbp, original_price_gbp),
+                discount_price_gbp   = :discount_price_gbp,
+                base_price_gbp       = :base_price_gbp,
+                jingya_untaxed_price = :jingya_untaxed_price,
+                taobao_store_price   = :taobao_store_price,
+                last_checked         = NOW()
+            WHERE product_code = :product_code
+        """), payload)
 
-    print(f"✅ 固定价格已回填到 barbour_inventory：{len(payload)} 个 product_code（覆盖所有尺码行）。")
+    print(f"✅ 手动价格已回填到 barbour_inventory：{len(payload)} 个 product_code（覆盖所有尺码行）。")
+    return len(payload)
 
 
 # ═══════════════════════════════════════════════════════════════════
