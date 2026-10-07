@@ -6,10 +6,10 @@ import time
 
 import requests
 
-from common.browser.selenium_utils import get_driver, quit_driver
+from common.browser.driver_auto import build_uc_driver
 
-SELENIUM_HEADLESS = True  # 若 headless 仍被拦，改为 False
-DRIVER_NAME = "clarks_fetch"
+# 普通 Selenium / headless 会被 Cloudflare 识别，需 undetected_chromedriver + 可见窗口
+SELENIUM_HEADLESS = False
 SELENIUM_PAGE_WAIT = 2
 
 # 只带 "Mozilla/5.0" 会被 Clarks 反爬识别并返回 403
@@ -32,19 +32,33 @@ class PageNotFound(Exception):
     pass
 
 
+_driver = None
+
+
+def _is_blocked(driver):
+    title = (driver.title or "").lower()
+    return any(k in title for k in ("access denied", "forbidden", "attention required", "just a moment"))
+
+
+def _get_driver():
+    global _driver
+    if _driver is None:
+        _driver = build_uc_driver(headless=SELENIUM_HEADLESS, verbose=False)
+        _driver.set_page_load_timeout(30)
+    return _driver
+
+
 def _fetch_selenium(url):
-    driver = get_driver(DRIVER_NAME, headless=SELENIUM_HEADLESS)
+    driver = _get_driver()
     driver.get(url)
     time.sleep(SELENIUM_PAGE_WAIT)
-    title = (driver.title or "").lower()
-    if "access denied" in title or "forbidden" in title:
+    if _is_blocked(driver):
         # 浏览器也被拦：换一个新浏览器再试一次
-        quit_driver(DRIVER_NAME)
-        driver = get_driver(DRIVER_NAME, headless=SELENIUM_HEADLESS)
+        close()
+        driver = _get_driver()
         driver.get(url)
         time.sleep(SELENIUM_PAGE_WAIT)
-        title = (driver.title or "").lower()
-        if "access denied" in title or "forbidden" in title:
+        if _is_blocked(driver):
             raise RuntimeError(f"Selenium 也被拦截（页面标题: {driver.title}）")
     return driver.page_source
 
@@ -65,4 +79,10 @@ def fetch_html(url, timeout=15):
 
 
 def close():
-    quit_driver(DRIVER_NAME)
+    global _driver
+    if _driver is not None:
+        try:
+            _driver.quit()
+        except Exception:
+            pass
+        _driver = None

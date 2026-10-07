@@ -4,7 +4,7 @@ import time
 from bs4 import BeautifulSoup
 from selenium.webdriver.common.by import By
 
-from common.browser.selenium_utils import get_driver, quit_driver
+from common.browser.driver_auto import build_uc_driver
 
 BASE_DOMAIN = "https://www.clarksoutlet.co.uk"
 # 商品链接格式：https://www.clarksoutlet.co.uk/<product-name>/<id>-p
@@ -51,7 +51,6 @@ URLS = {
 
 # Outlet 站分类页商品列表由前端 JS 渲染，且用「Load more」按钮分页（非 requests 可抓取的 SSR 页面），
 # 必须用浏览器打开并点击按钮把该分类下的商品全部加载出来，否则每个分类只能拿到页面初始 HTML 里的极少数链接。
-DRIVER_NAME = "clarks_outlet"
 MAX_LOAD_MORE_CLICKS = 30
 PAGE_LOAD_WAIT = 2
 CLICK_WAIT = 1.5
@@ -59,6 +58,10 @@ CLICK_WAIT = 1.5
 # （表现为 "Timed out receiving message from renderer"），所以定期重启 driver，
 # 并在单个分类抓取异常时重启后重试一次，避免一个卡死的分类连累后面所有分类。
 RECYCLE_DRIVER_EVERY = 5
+# Outlet 站有 Cloudflare：普通 Selenium（无论是否 headless）同一浏览器第二次访问即返回
+# "Attention Required"；undetected_chromedriver + 可见窗口 才能稳定通过（headless 仍会被拦）
+HEADLESS = False
+CHALLENGE_WAIT = 30  # 遇到 Cloudflare 拦截页时最多等待的秒数（等自动放行或手动验证）
 
 
 def _extract_links(html: str) -> set:
@@ -90,14 +93,47 @@ def _load_all_products(driver) -> int:
     return clicks
 
 
+_driver = None
+
+
+def _quit_driver():
+    global _driver
+    if _driver is not None:
+        try:
+            _driver.quit()
+        except Exception:
+            pass
+        _driver = None
+
+
 def _restart_driver():
-    quit_driver(DRIVER_NAME)
-    return get_driver(DRIVER_NAME, headless=True)
+    global _driver
+    _quit_driver()
+    _driver = build_uc_driver(headless=HEADLESS, verbose=False)
+    _driver.set_page_load_timeout(30)
+    return _driver
+
+
+def _is_challenge(driver) -> bool:
+    title = (driver.title or "").lower()
+    return "cloudflare" in title or "just a moment" in title or "attention required" in title
+
+
+def _wait_challenge(driver):
+    if not _is_challenge(driver):
+        return
+    print(f"  ⏳ 遇到 Cloudflare 验证页，最多等待 {CHALLENGE_WAIT}s（可在浏览器窗口中手动验证）")
+    deadline = time.time() + CHALLENGE_WAIT
+    while time.time() < deadline and _is_challenge(driver):
+        time.sleep(1)
+    if not _is_challenge(driver):
+        time.sleep(PAGE_LOAD_WAIT)
 
 
 def _scrape_category(driver, url):
     driver.get(url)
     time.sleep(PAGE_LOAD_WAIT)
+    _wait_challenge(driver)
     clicks = _load_all_products(driver)
     matched = _extract_links(driver.page_source)
     return clicks, matched
@@ -105,7 +141,7 @@ def _scrape_category(driver, url):
 
 def get_outlet_product_links():
     all_links = set()
-    driver = get_driver(DRIVER_NAME, headless=True)
+    driver = _restart_driver()
 
     try:
         for i, (category, url) in enumerate(URLS.items(), start=1):
@@ -127,7 +163,7 @@ def get_outlet_product_links():
                     continue
 
             if not matched:
-                # 同一浏览器连续访问时会被反爬拦截（页面无商品），换新浏览器重试一次
+                # 被 Cloudflare 拦截或页面未加载出商品，换新浏览器重试一次
                 print(f"  ⚠️ 未抓到链接（页面标题: {driver.title!r}），重启浏览器后重试一次")
                 try:
                     driver = _restart_driver()
@@ -138,7 +174,7 @@ def get_outlet_product_links():
             print(f"  ✅ 点击 Load more {clicks} 次，抓取 {len(matched)} 条链接")
             all_links.update(matched)
     finally:
-        quit_driver(DRIVER_NAME)
+        _quit_driver()
 
     print(f"✅ 总共抓取 OUTLET 链接 {len(all_links)} 条")
     return sorted(all_links)
