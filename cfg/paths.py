@@ -45,6 +45,14 @@ GEI_SHARED_BASE = Path(resolve_shared_path(r"\\vmware-host\Shared Folders\shared
 # 鲸芽后台导出的渠道产品目录文件（GEI@sales_catalogue_export@...xlsx）存放目录，按品牌分子目录
 GEI_EXPORT_BASE = Path(r"E:\shared\GEI_SHARED")
 
+# 发布黑名单（Excel，每行一个商品编码），跨品牌共享；在名单里的编码不会出现在发布 Excel 中。
+# 按顺序取第一个存在的目录（VM 内优先走共享盘，宿主机回退到 E:\shared\GEI_SHARED）。
+PUBLISH_BLOCKLIST_FILENAME = "publish_blocklist.xlsx"
+PUBLISH_BLOCKLIST_DIRS = [
+    Path(r"\\vmware-host\Shared Folders\shared"),
+    Path(r"E:\shared\GEI_SHARED"),
+]
+
 # 当前 Windows 用户目录及常用子目录。换电脑/换用户名后自动跟随系统，
 # 不再需要在各脚本里硬编码 C:\Users\<某用户名>。
 USER_HOME = Path.home()

@@ -4,6 +4,7 @@ import re
 import shutil
 import pandas as pd
 from sqlalchemy import create_engine
+from common.publication.publish_blocklist import load_publish_blocklist, filter_blocked_codes
 
 # ✅ 仍然兼容老代码的 import 方式，但实际来源是拆分后的 config/*
 from config import (
@@ -94,6 +95,12 @@ def generate_publication_excels(brand: str):
 
     # 统一清洗编码，避免后面映射 miss
     df_codes["product_code"] = df_codes["product_code"].astype(str).str.strip().str.upper()
+
+    # 发布黑名单过滤（跨品牌共享）
+    blocklist = load_publish_blocklist()
+    if blocklist:
+        filter_blocked_codes(df_codes["product_code"].unique(), blocklist)
+        df_codes = df_codes[~df_codes["product_code"].isin(blocklist)]
 
     product_codes = df_codes["product_code"].tolist()
     print(f"✅ 获取到商品数: {len(product_codes)}")

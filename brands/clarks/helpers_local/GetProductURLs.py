@@ -3,10 +3,28 @@ import requests
 from bs4 import BeautifulSoup
 import time
 
+from common.browser.selenium_utils import get_driver, quit_driver
+
 MAX_PAGES = 30  # 安全上限；实际会在翻页不再增加新链接时提前停止
 DELAY_PER_REQUEST = 1
 LINK_PREFIX = "https://www.clarks.com"
 TARGET_LINK_CLASS = "gGNOkU"
+SELENIUM_HEADLESS = True  # 若 headless 仍被拦，改为 False
+
+# 完整浏览器请求头；只带 "Mozilla/5.0" 会被 Clarks 反爬识别并返回 403
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-GB,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+}
+
+_session = requests.Session()
+_session.headers.update(HEADERS)
+_use_selenium = False  # requests 遇到 403 后切换为 Selenium，本次运行内不再切回
 
 BASE_URL_TEMPLATES = {
     "women_shoes": "https://www.clarks.com/en-gb/womens/womens-shoes/w_shoes_uk-c?page={}",
@@ -50,18 +68,44 @@ BASE_URL_TEMPLATES = {
     "pace": "https://www.clarks.com/en-gb/pace/pace_walking_shoes_uk-c?page={}",
 }
 
-def get_links_from_page(url):
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-    except Exception as e:
-        print(f"❌ 请求失败: {url}，错误: {e}")
-        return []
+def _fetch_html_requests(url):
+    response = _session.get(url, timeout=15)
+    response.raise_for_status()
+    return response.text
 
-    soup = BeautifulSoup(response.text, "html.parser")
+
+def _fetch_html_selenium(url):
+    driver = get_driver("clarks_links", headless=SELENIUM_HEADLESS)
+    driver.get(url)
+    time.sleep(2)  # 等待前端渲染商品列表
+    return driver.page_source
+
+
+def get_links_from_page(url):
+    global _use_selenium
+    html = None
+    if not _use_selenium:
+        try:
+            html = _fetch_html_requests(url)
+        except requests.HTTPError as e:
+            if e.response is not None and e.response.status_code == 403:
+                print("⚠️ requests 被拒（403），切换为 Selenium 抓取")
+                _use_selenium = True
+            else:
+                print(f"❌ 请求失败: {url}，错误: {e}")
+                return []
+        except Exception as e:
+            print(f"❌ 请求失败: {url}，错误: {e}")
+            return []
+
+    if html is None:
+        try:
+            html = _fetch_html_selenium(url)
+        except Exception as e:
+            print(f"❌ Selenium 请求失败: {url}，错误: {e}")
+            return []
+
+    soup = BeautifulSoup(html, "html.parser")
     product_links = []
 
     for a in soup.find_all("a", href=True):
@@ -93,5 +137,6 @@ def get_regular_product_links():
                 break
             time.sleep(DELAY_PER_REQUEST)
 
+    quit_driver("clarks_links")
     print(f"✅ 总共抓取普通商品链接 {len(all_links)} 条")
     return sorted(all_links)

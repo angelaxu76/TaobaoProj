@@ -7,6 +7,7 @@ from config import BRAND_CONFIG, SETTINGS, EXCHANGE_RATE
 from common.pricing.price_utils import calculate_jingya_prices
 from common.text.generate_taobao_title_v1 import generate_taobao_title
 from common.product.category_utils import infer_shoe_publish_category
+from common.publication.publish_blocklist import load_publish_blocklist, filter_blocked_codes
 
 # ==== 固定参数 ====
 上市季节 = "2025春季"
@@ -95,6 +96,13 @@ def generate_publication_excels(brand: str):
       AND sc.total_stock > {MIN_TOTAL_STOCK}
     """
     df_codes = pd.read_sql(query, engine)
+
+    # === 发布黑名单过滤（跨品牌共享）===
+    blocklist = load_publish_blocklist()
+    if blocklist:
+        filter_blocked_codes(df_codes["product_code"].unique(), blocklist)
+        df_codes = df_codes[~df_codes["product_code"].str.strip().str.upper().isin(blocklist)]
+
     product_codes = df_codes["product_code"].tolist()
     print(f"✅ 获取到商品数: {len(product_codes)}")
 

@@ -15,6 +15,7 @@ from pathlib import Path
 from sqlalchemy import create_engine, text
 from importlib import import_module
 from config import BRAND_CONFIG, SETTINGS, EXCHANGE_RATE
+from common.publication.publish_blocklist import load_publish_blocklist, filter_blocked_codes
 
 # ============================================================
 # 可修改参数（Excel 导出字段固定值）
@@ -232,6 +233,13 @@ def generate_publication_excels_clothing(
     """
     with engine.connect() as conn:
         df = pd.read_sql_query(sql=text(query), con=conn)
+
+    # 发布黑名单过滤（跨品牌共享）
+    blocklist = load_publish_blocklist()
+    if blocklist:
+        filter_blocked_codes(df["product_code"].unique(), blocklist)
+        df = df[~df["product_code"].astype(str).str.strip().str.upper().isin(blocklist)]
+
     print(f"✅ 候选商品数：{len(df)}")
     if df.empty:
         print("⚠️ 没有符合条件的商品，任务结束"); return
