@@ -8,12 +8,11 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 import re
 import json
-import requests
+from brands.clarks.helpers_local import http_fetch
 from bs4 import BeautifulSoup
 from config import CLARKS
 from common.ingest.txt_writer import format_txt
 
-HEADERS = {"User-Agent": "Mozilla/5.0"}
 LINK_FILE = CLARKS["BASE"] / "publication" / "product_links.txt"
 TXT_DIR = CLARKS["TXT_DIR"]
 BRAND = CLARKS["BRAND"]
@@ -266,9 +265,8 @@ def extract_kids_size_stock(soup):
 # =========================
 def process_product(url):
     try:
-        r = requests.get(url, headers=HEADERS, timeout=15)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "html.parser")
+        html = http_fetch.fetch_html(url)
+        soup = BeautifulSoup(html, "html.parser")
 
         code = extract_product_code(url)
         title = soup.title.get_text(strip=True) if soup.title else "No Title"
@@ -313,7 +311,6 @@ def process_product(url):
 
         # ✅ 提取颜色（通过 JSON）
         try:
-            html = r.text
             pattern = r'{"key":"(\d+)",\s*"color\.en-GB":"(.*?)",\s*"image":"(https://cdn\.media\.amplience\.net/i/clarks/[^"]+)"}'
             matches = re.findall(pattern, html)
             for key, color, img_url in matches:
@@ -369,6 +366,13 @@ def clarks_fetch_info(links_file=None):
     with open(links_file, "r", encoding="utf-8") as f:
         urls = [line.strip() for line in f if line.strip()]
 
+    try:
+        _fetch_all(urls)
+    finally:
+        http_fetch.close()
+
+
+def _fetch_all(urls):
     for url in urls:
         info = process_product(url)
         if info:

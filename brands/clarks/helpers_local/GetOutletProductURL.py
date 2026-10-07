@@ -126,6 +126,15 @@ def get_outlet_product_links():
                     print(f"  ❌ 重试仍失败，跳过该分类：{e2}")
                     continue
 
+            if not matched:
+                # 同一浏览器连续访问时会被反爬拦截（页面无商品），换新浏览器重试一次
+                print(f"  ⚠️ 未抓到链接（页面标题: {driver.title!r}），重启浏览器后重试一次")
+                try:
+                    driver = _restart_driver()
+                    clicks, matched = _scrape_category(driver, url)
+                except Exception as e:
+                    print(f"  ❌ 重试失败：{e}")
+
             print(f"  ✅ 点击 Load more {clicks} 次，抓取 {len(matched)} 条链接")
             all_links.update(matched)
     finally:
