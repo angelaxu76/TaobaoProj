@@ -145,8 +145,16 @@ class BarbourFetcher(BaseFetcher):
                 continue
 
             classes = span.get("class") or []
-            # unselectable = 缺货；selectable = 有货
-            disabled = "unselectable" in classes or "not-available" in classes
+            # 缺货标记（2026-10 起页面不再加 unselectable，改为 disabled / aria-disabled / aria-label="X Out of stock"）
+            # 只有带 selectable 且无任何缺货标记才算有货
+            disabled = (
+                "unselectable" in classes
+                or "not-available" in classes
+                or span.has_attr("disabled")
+                or span.get("aria-disabled", "").lower() == "true"
+                or "out of stock" in span.get("aria-label", "").lower()
+                or "selectable" not in classes
+            )
             stock_count = 0 if disabled else self.default_stock
 
             size_detail[size_text] = {
