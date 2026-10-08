@@ -20,3 +20,7 @@ ECMS_RECIPIENTS = [
 # ECMS_RECIPIENTS = [
 #     "angela112617@gmail.com"
 # ]
+# 运行提醒（Cloudflare 验证等需要人工介入时）的收件人，见 common/utils/alert.py
+ALERT_RECIPIENTS = [
+    EMAIL_SENDER,
+]

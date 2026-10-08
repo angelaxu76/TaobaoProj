@@ -31,6 +31,7 @@ from selenium.common.exceptions import TimeoutException
 
 # 导入基类和工具
 from brands.barbour.core.base_fetcher import BaseFetcher, setup_logging
+from common.utils.alert import notify
 
 # ── undetected_chromedriver 驱动池（按线程 id 隔离）──────────────────
 # OutdoorAndCountry 被 Cloudflare 保护，必须用 uc 绕过；
@@ -159,7 +160,13 @@ class OutdoorAndCountryFetcher(BaseFetcher):
                 )
             except TimeoutException:
                 if _is_cf_challenge(driver):
-                    # 自动验证未通过：给人工点击验证框留时间
+                    # 自动验证未通过：声音 + 邮件提醒，并给人工点击验证框留时间
+                    notify(
+                        "Cloudflare 验证需要手动处理",
+                        f"outdoorandcountry 抓取卡在 Cloudflare 验证页，请到浏览器窗口点击验证框"
+                        f"（最多等待 {CF_MANUAL_WAIT_SECONDS}s）。\n{url}",
+                        key="cf_outdoorandcountry",
+                    )
                     self.logger.warning(
                         f"⚠️ Cloudflare 验证页未自动通过，请在浏览器窗口中手动完成验证"
                         f"（最多等待 {CF_MANUAL_WAIT_SECONDS}s）: {url}"
