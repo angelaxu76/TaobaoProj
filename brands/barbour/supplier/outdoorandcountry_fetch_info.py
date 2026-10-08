@@ -66,6 +66,23 @@ DEFAULT_STOCK_COUNT = SETTINGS.get("DEFAULT_STOCK_COUNT", 3)
 # Outdoor 强风控站点：有效并发上限（与 v2 一致）
 EFFECTIVE_MAX_WORKERS = 2
 
+# uc 浏览器持久化 profile 根目录（保存 Cloudflare cf_clearance cookie）
+_UC_PROFILE_ROOT = Path.home() / ".taobaoproj" / "uc_profiles" / SITE_NAME
+# Cloudflare 验证页未自动通过时，等待人工点击的最长秒数
+CF_MANUAL_WAIT_SECONDS = 180
+
+
+def _is_cf_challenge(driver) -> bool:
+    """判断当前页面是否停留在 Cloudflare 验证页"""
+    try:
+        title = (driver.title or "").lower()
+        if "just a moment" in title or "attention required" in title:
+            return True
+        src = driver.page_source
+        return "challenges.cloudflare.com" in src or "cf-turnstile" in src
+    except Exception:
+        return False
+
 
 # ================== 采集器实现 ==================
 
@@ -90,15 +107,24 @@ class OutdoorAndCountryFetcher(BaseFetcher):
         with _uc_lock:
             if key not in _uc_drivers:
                 from common.browser.driver_auto import build_uc_driver
+                # 注意：不要加 --blink-settings=imagesEnabled=false，
+                # 禁图会导致 Cloudflare Turnstile 验证框无法渲染（一直转圈、看不到按钮）。
+                # 每个线程使用独立的持久化 profile，保留 cf_clearance cookie，过一次验证后可复用。
+                # 同一 profile 不能被两个 Chrome 同时占用：取第一个未被占用的编号
+                in_use = {getattr(d, "_oc_profile_idx", None) for d in _uc_drivers.values()}
+                idx = next(i for i in range(len(in_use) + 1) if i not in in_use)
+                profile_dir = _UC_PROFILE_ROOT / f"worker_{idx}"
+                profile_dir.mkdir(parents=True, exist_ok=True)
                 driver = build_uc_driver(
                     headless=False,
                     extra_options=[
                         "--window-size=1920,1080",
-                        "--blink-settings=imagesEnabled=false",
                         "--disable-notifications",
+                        f"--user-data-dir={profile_dir}",
                     ],
                     verbose=True,
                 )
+                driver._oc_profile_idx = idx
                 driver.set_page_load_timeout(40)
                 _uc_drivers[key] = driver
                 self.logger.info(f"🚗 [uc] undetected_chromedriver 已启动 (key={key})")
@@ -132,7 +158,20 @@ class OutdoorAndCountryFetcher(BaseFetcher):
                     lambda d: "var stockInfo" in d.page_source
                 )
             except TimeoutException:
-                self.logger.warning(f"等待 stockInfo 超时 (30s)，继续使用当前 page_source: {url}")
+                if _is_cf_challenge(driver):
+                    # 自动验证未通过：给人工点击验证框留时间
+                    self.logger.warning(
+                        f"⚠️ Cloudflare 验证页未自动通过，请在浏览器窗口中手动完成验证"
+                        f"（最多等待 {CF_MANUAL_WAIT_SECONDS}s）: {url}"
+                    )
+                    try:
+                        WebDriverWait(driver, CF_MANUAL_WAIT_SECONDS).until(
+                            lambda d: "var stockInfo" in d.page_source
+                        )
+                    except TimeoutException:
+                        self.logger.warning(f"Cloudflare 验证等待超时，继续使用当前 page_source: {url}")
+                else:
+                    self.logger.warning(f"等待 stockInfo 超时 (30s)，继续使用当前 page_source: {url}")
             return driver.page_source
         except Exception:
             self.logger.warning(f"driver.get() 失败，销毁并重建浏览器: {url}")
