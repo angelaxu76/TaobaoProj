@@ -180,6 +180,22 @@ def ensure_publication_date_column(conn) -> None:
             print("✅ 已自动为 catalog_items 添加 publication_date(date) 字段")
 
 
+def ensure_store_name_column(conn) -> None:
+    """
+    多店铺：如果 catalog_items 还没有 store_name 字段，自动补上（增量字段，不动已有数据）。
+    """
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema='public' AND table_name=%s AND column_name='store_name'
+        """, (CATALOG_TABLE,))
+        if cur.fetchone() is None:
+            cur.execute(f"ALTER TABLE {CATALOG_TABLE} ADD COLUMN store_name text;")
+            conn.commit()
+            print("✅ 已自动为 catalog_items 添加 store_name(text) 字段")
+
+
 def ensure_indexes(conn) -> None:
     """
     只建“不会限制业务”的普通索引（不对 product_code 做 unique）
@@ -195,12 +211,20 @@ def ensure_indexes(conn) -> None:
             ON catalog_items (current_item_id)
             WHERE current_item_id IS NOT NULL;
         """)
+        cur.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_catalog_items_store_item
+            ON catalog_items (store_name, current_item_id);
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_catalog_items_store_code
+            ON catalog_items (store_name, product_code);
+        """)
     conn.commit()
 
 
-def load_existing_by_item_id(conn, item_ids: List[int]) -> Dict[int, Dict[str, Any]]:
+def load_existing_by_item_id(conn, item_ids: List[int], store_name: str) -> Dict[int, Dict[str, Any]]:
     """
-    从 DB 读取已有记录：current_item_id -> row
+    从 DB 读取该店铺已有记录：current_item_id -> row
     """
     if not item_ids:
         return {}
@@ -208,9 +232,10 @@ def load_existing_by_item_id(conn, item_ids: List[int]) -> Dict[int, Dict[str, A
     sql = f"""
     SELECT id, current_item_id, product_code, item_name, brand, category, list_price, publication_date
     FROM {CATALOG_TABLE}
-    WHERE current_item_id = ANY(%s)
+    WHERE store_name = %s
+      AND current_item_id = ANY(%s)
     """
-    df = pd.read_sql(sql, conn, params=(item_ids,))
+    df = pd.read_sql(sql, conn, params=(store_name, item_ids))
     existing: Dict[int, Dict[str, Any]] = {}
     for _, r in df.iterrows():
         cid = int(r["current_item_id"])
@@ -250,13 +275,19 @@ def import_catalog_items_from_excel(
     sheet_name: str | int | None = 0,
     create_unique_index: bool = True,
     brand_keywords: Optional[dict] = None,
+    store_name: Optional[str] = None,
     **kwargs
 ):
 
     """
     ✅ 外部调用入口：
-        import_catalog_items_from_excel(r"D:\\TB\\Reports\\商品统计_20251230.xlsx")
+        import_catalog_items_from_excel(r"D:\\TB\\Reports\\商品统计_20251230.xlsx", store_name="英国维尔顿百货")
+
+    store_name：淘宝真实店铺名（必填），多店铺数据靠它区分
     """
+    if not store_name:
+        raise ValueError("store_name 不能为空：多店铺模式下必须指定商品所属店铺")
+
     df = pd.read_excel(excel_path, sheet_name=sheet_name)
 
     if isinstance(df, dict):
@@ -294,12 +325,13 @@ def import_catalog_items_from_excel(
 
         # 确保字段存在
         ensure_publication_date_column(conn)
+        ensure_store_name_column(conn)
 
         if create_unique_index:
             ensure_indexes(conn)
 
         item_ids = [int(r["current_item_id"]) for r in rows]
-        existing = load_existing_by_item_id(conn, item_ids)
+        existing = load_existing_by_item_id(conn, item_ids, store_name)
 
         inserted = 0
         updated = 0
@@ -329,11 +361,11 @@ def import_catalog_items_from_excel(
                 else:
                     sql = f"""
                         INSERT INTO {CATALOG_TABLE}
-                        (product_code, item_name, brand, category, list_price, current_item_id, publication_date)
+                        (store_name, product_code, item_name, brand, category, list_price, current_item_id, publication_date)
                         VALUES
-                        (%(product_code)s, %(item_name)s, %(brand)s, %(category)s, %(list_price)s, %(current_item_id)s, %(publication_date)s)
+                        (%(store_name)s, %(product_code)s, %(item_name)s, %(brand)s, %(category)s, %(list_price)s, %(current_item_id)s, %(publication_date)s)
                     """
-                    cur.execute(sql, r)
+                    cur.execute(sql, {**r, "store_name": store_name})
                     inserted += 1
 
         conn.commit()
@@ -350,4 +382,4 @@ def import_catalog_items_from_excel(
 if __name__ == "__main__":
     # 示例：改成你本机路径
     excel_path = r"D:\TB\Reports\商品统计_20251230.xlsx"
-    import_catalog_items_from_excel(excel_path, create_indexes=True)
+    import_catalog_items_from_excel(excel_path, store_name="英国维尔顿百货")

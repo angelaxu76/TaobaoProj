@@ -22,6 +22,8 @@ class ExportConfig:
     # 只显示 publication_date < 该日期 的商品（更老才显示）
     min_publication_date: Optional[date] = None
     output_path: Optional[str] = None
+    # 只看某个店铺（淘宝真实店铺名）；None = 不限店铺
+    store_name: Optional[str] = None
     # 是否按店铺拆分（默认汇总）
     split_by_store: bool = False
     # 是否包含“今天”（True: [today-days+1, today]；False: [today-days, today)）
@@ -234,7 +236,10 @@ def export_brand_bad_products_report(cfg: ExportConfig) -> str:
     params: Dict[str, Any] = {
         "brand": cfg.brand,
         "min_pub": cfg.min_publication_date,
+        "store_name": cfg.store_name,
     }
+    daily_store_filter = "AND d.store_name = %(store_name)s" if cfg.store_name else ""
+    catalog_store_filter = "AND c.store_name = %(store_name)s" if cfg.store_name else ""
 
     pub_filter_sql = """
       AND (
@@ -260,6 +265,7 @@ def export_brand_bad_products_report(cfg: ExportConfig) -> str:
       FROM {DAILY_TABLE} d
       WHERE d.stat_date >= {start_expr}
         AND d.stat_date {end_op} {end_expr}
+        {daily_store_filter}
       GROUP BY d.item_id {store_group}
     )
     SELECT
@@ -291,6 +297,7 @@ def export_brand_bad_products_report(cfg: ExportConfig) -> str:
       ON d30.item_id = c.current_item_id
 
     WHERE LOWER(TRIM(c.brand)) = LOWER(TRIM(%(brand)s))
+      {catalog_store_filter}
       {pub_filter_sql}
 
     ORDER BY

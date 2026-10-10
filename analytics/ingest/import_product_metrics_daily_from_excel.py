@@ -229,13 +229,26 @@ def upsert_rows(conn, rows: List[Tuple], batch_size: int = 2000) -> int:
 # =========================
 # ✅ 对外暴露的主函数
 # =========================
-def import_product_metrics_daily(excel_path: str) -> int:
+def validate_store_name(df: pd.DataFrame, expected_store_name: str) -> None:
+    """多店铺：Excel 里的店铺名必须全部等于当前店铺，防止日报放错店铺目录。"""
+    actual = {str(v).strip() for v in df["店铺名称"].dropna().unique()}
+    unexpected = actual - {expected_store_name}
+    if unexpected:
+        raise ValueError(
+            f"日报店铺名与当前店铺不一致：期望「{expected_store_name}」，Excel 中出现 {sorted(unexpected)}。"
+            f"请检查文件是否放错目录，或 store_config.STORE_NAME_MAP 是否正确。"
+        )
+
+
+def import_product_metrics_daily(excel_path: str, expected_store_name: Optional[str] = None) -> int:
     """
     外部调用入口：
-        import_product_metrics_daily(r"D:\\xxx\\202512.xlsx")
+        import_product_metrics_daily(r"D:\\xxx\\202512.xlsx", expected_store_name="英国维尔顿百货")
     """
     df = load_excel(excel_path)
     validate_columns(df)
+    if expected_store_name:
+        validate_store_name(df, expected_store_name)
     rows = build_rows(df)
 
     conn = psycopg2.connect(**PGSQL_CONFIG)

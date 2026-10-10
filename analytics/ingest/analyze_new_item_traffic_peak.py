@@ -29,6 +29,7 @@ class TrafficPeakConfig:
     weeks: int = 4                      # 只分析发布时间在最近 N 周内的商品
     metric: str = "visitors"            # "visitors"（访客数）或 "pageviews"（浏览量）
     brand: Optional[str] = None         # None = 不限品牌
+    store_name: Optional[str] = None    # 淘宝真实店铺名；None = 不限店铺（多店铺数据混合）
     min_total_traffic: int = 1          # 累计流量低于此值的商品无有效峰值，排除出分布
     early_window_days: int = 14         # "新品早期流量"统计窗口（发布后第几天内），默认两周
     output_path: Optional[str] = None   # Excel 输出路径（明细 + 分布表），None 则不导出
@@ -40,8 +41,9 @@ def _fetch_daily_traffic(cfg: TrafficPeakConfig) -> pd.DataFrame:
         raise ValueError(f"metric 必须是 {VALID_METRICS} 之一，收到：{cfg.metric}")
 
     cutoff_date = date.today() - timedelta(weeks=cfg.weeks)
-    params = {"cutoff_date": cutoff_date, "brand": cfg.brand}
+    params = {"cutoff_date": cutoff_date, "brand": cfg.brand, "store_name": cfg.store_name}
     brand_filter = "AND LOWER(TRIM(c.brand)) = LOWER(TRIM(%(brand)s))" if cfg.brand else ""
+    store_filter = "AND c.store_name = %(store_name)s" if cfg.store_name else ""
 
     sql = f"""
         WITH pub AS (
@@ -56,6 +58,7 @@ def _fetch_daily_traffic(cfg: TrafficPeakConfig) -> pd.DataFrame:
               AND c.publication_date >= %(cutoff_date)s
               AND c.publication_date <= CURRENT_DATE
               {brand_filter}
+          {store_filter}
         )
         SELECT
             p.item_id,

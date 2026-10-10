@@ -3,6 +3,9 @@ DROP TABLE IF EXISTS catalog_items;
 CREATE TABLE catalog_items (
     id SERIAL PRIMARY KEY,
 
+    -- 所属店铺（淘宝真实店铺名，与 product_metrics_daily.store_name 一致）
+    store_name     TEXT,
+
     -- 商品唯一业务主键
     product_code   VARCHAR(64),    -- 商品编码（跨链接唯一）
     item_name      TEXT,            -- 商品名称
@@ -31,6 +34,23 @@ DROP INDEX IF EXISTS idx_catalog_items_product_code;
 CREATE INDEX IF NOT EXISTS idx_catalog_items_product_code
 ON catalog_items (product_code)
 WHERE product_code IS NOT NULL;
+
+-- 多店铺：同一店铺内宝贝ID唯一
+CREATE UNIQUE INDEX IF NOT EXISTS uq_catalog_items_store_item
+ON catalog_items (store_name, current_item_id);
+
+-- 跨店铺对比：按商品编码聚合
+CREATE INDEX IF NOT EXISTS idx_catalog_items_store_code
+ON catalog_items (store_name, product_code);
+
+
+-- ===============================
+-- 已有库升级（不删数据）：单店铺 → 多店铺
+-- 只需执行一次；之后 run_import_data 会按店铺增量导入
+-- ===============================
+-- ALTER TABLE catalog_items ADD COLUMN IF NOT EXISTS store_name TEXT;
+-- CREATE UNIQUE INDEX IF NOT EXISTS uq_catalog_items_store_item ON catalog_items (store_name, current_item_id);
+-- CREATE INDEX IF NOT EXISTS idx_catalog_items_store_code ON catalog_items (store_name, product_code);
 
 
 

@@ -28,6 +28,7 @@ class WindowCloseConfig:
     weeks: int = 4                      # "新品"的定义：只分析发布时间在最近 N 周内的商品
     metric: str = "visitors"            # "visitors"（访客数）或 "pageviews"（浏览量）
     brand: Optional[str] = None         # None = 不限品牌
+    store_name: Optional[str] = None    # 淘宝真实店铺名；None = 不限店铺（多店铺数据混合）
     max_day: int = 20                   # 分析发布后前多少天的"零流量 -> 是否后续复活"情况
     trailing_check_days: int = 7        # 判断"之后还有没有流量"时，往后看多少天
     revive_threshold_pct: float = 5.0   # 复活概率低于此阈值，视为窗口已关闭
@@ -47,8 +48,9 @@ def _fetch(cfg: WindowCloseConfig) -> Tuple[pd.DataFrame, pd.DataFrame]:
         raise ValueError(f"metric 必须是 {VALID_METRICS} 之一，收到：{cfg.metric}")
 
     cutoff_date = date.today() - timedelta(weeks=cfg.weeks)
-    params = {"cutoff_date": cutoff_date, "brand": cfg.brand}
+    params = {"cutoff_date": cutoff_date, "brand": cfg.brand, "store_name": cfg.store_name}
     brand_filter = "AND LOWER(TRIM(c.brand)) = LOWER(TRIM(%(brand)s))" if cfg.brand else ""
+    store_filter = "AND c.store_name = %(store_name)s" if cfg.store_name else ""
 
     items_sql = f"""
         SELECT
@@ -62,6 +64,7 @@ def _fetch(cfg: WindowCloseConfig) -> Tuple[pd.DataFrame, pd.DataFrame]:
           AND c.publication_date >= %(cutoff_date)s
           AND c.publication_date <= CURRENT_DATE
           {brand_filter}
+          {store_filter}
     """
 
     conn = psycopg2.connect(**PGSQL_CONFIG)
