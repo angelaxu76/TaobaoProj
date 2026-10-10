@@ -22,8 +22,15 @@ from config import resolve_shared_path
 
 # ══════════════════════════════════════════════════════════════════
 #  阶段开关
+#
+#  多机运行（3 台虚拟机共用共享盘上的 publication 目录）：
+#    - 第一台：RUN_A_BACKUP=True，先启动，负责备份并清空 publication / repulibcation
+#    - 其他机器：RUN_A_BACKUP=False，等第一台清空完成后再启动
+#    - 每台机器在 A_SUPPLIERS 里只把自己负责的供货商设为 True
+#    - 只有主机把 RUN_B_IMPORT / RUN_C_INVENTORY / RUN_D_EXPORT 设为 True；
+#      主机进入 B 阶段前会先等待 WAIT_SUPPLIERS 里各供货商的 TXT 就绪（见下方 WAIT_*）
 # ══════════════════════════════════════════════════════════════════
-RUN_A_BACKUP    = True   # 备份并清空 TXT 目录（重跑某供货商时设 False）
+RUN_A_BACKUP    = True   # 备份并清空 publication / repulibcation（多机时只在第一台设 True；重跑某供货商时设 False）
 RUN_A_CRAWL     = True   # A 阶段总开关（False = 跳过整个 A 阶段）
 RUN_B_IMPORT    = True   # TXT 导入 products + offers
 RUN_C_INVENTORY = True   # 重建 supplier_map + inventory
@@ -180,3 +187,36 @@ B_SUPPLIERS = [
 #  UPSERT，不同供应商不会写同一行），因此可以安全并行。默认等于供应商数量，
 # 超过供应商数量没有意义；如需限制数据库并发连接数可调小。
 B_IMPORT_MAX_WORKERS = len(B_SUPPLIERS)
+
+# ══════════════════════════════════════════════════════════════════
+#  多机协作：清空保护 + 主机等待各供货商 TXT 就绪
+# ══════════════════════════════════════════════════════════════════
+# 清空保护：RUN_A_BACKUP=True 时，如果共享盘上任一供货商 TXT 目录在最近
+# 这么多分钟内有文件写入（说明别的机器正在抓），拒绝清空并中止本机运行。
+BACKUP_GUARD_MINUTES = 10
+
+# 主机在 B 阶段前是否等待各供货商 TXT 就绪（只在 RUN_B_IMPORT=True 时生效）。
+# 单机全跑时也可以保持 True：A 阶段刚跑完，文件都已就绪，会立即通过。
+WAIT_FOR_SUPPLIERS = True
+
+# 要等待的供货商（None = B_SUPPLIERS 全部）。
+# 未就绪的供货商在 B 阶段被跳过，数据库保留其上一轮的 offers，不会被清空。
+WAIT_SUPPLIERS: list[str] | None = None
+
+# 就绪条件（同时满足）：
+#   1) TXT 数量 >= 门槛（按供货商单独设，未列出的用默认值）
+#   2) 文件是本轮生成的（晚于本轮清空时间；本轮没人清空时，取最近 WAIT_MAX_AGE_HOURS 小时内）
+#   3) 抓取机器已写完成标记 _DONE.json，或者连续 WAIT_STABLE_MINUTES 分钟文件数量/大小无变化
+WAIT_MIN_TXT_DEFAULT = 100
+WAIT_MIN_TXT: dict[str, int] = {
+    # "barbour":           300,
+    # "outdoorandcountry": 300,
+}
+# 无完成标记时的兜底稳定时间。须大于 ops/run_barbour_jingya_listing.py 的
+# SILENCE_TIMEOUT_SEC（20 分钟）：抓取卡死时文件也"无变化"，看门狗要 20 分钟后才 kill，
+# 太短会把抓了一半的 TXT 当成就绪导入（B 阶段 clear_first 会清掉缺失部分的库存）。
+# 正常完成的供货商都有 _DONE.json，不受这个值影响，立即就绪。
+WAIT_STABLE_MINUTES  = 30
+WAIT_POLL_SEC        = 60
+WAIT_TIMEOUT_MINUTES = 360   # 超时后跳过未就绪的供货商，用已就绪的继续跑 B/C/D
+WAIT_MAX_AGE_HOURS   = 20

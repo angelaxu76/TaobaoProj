@@ -53,7 +53,8 @@ def backup_and_clear_brand_dirs(brand_config: dict):
     BASE = brand_config["BASE"]
     BACKUP_DIR = BASE / "backup"
 
-    publication_dir = BASE / "publication"
+    # 品牌可通过 PUBLICATION_BASE 把 publication 放到共享盘（如 Barbour 多机抓取）
+    publication_dir = Path(brand_config.get("PUBLICATION_BASE", BASE / "publication"))
     repub_dir = BASE / "repulibcation"
 
     print(f"\n🧼 清理品牌目录: {BASE.name}")

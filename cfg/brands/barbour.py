@@ -36,14 +36,20 @@ BARBOUR_BASE = BASE_DIR / "barbour"
 IMAGES_BASE = BARBOUR_BASE / "images"
 PROCESS_BASE = BARBOUR_BASE / "repulibcation"
 
+# publication/（各供货商的 product_links.txt + TXT）放在共享盘上，
+# 多台虚拟机分别抓不同供货商，结果都写到同一个目录，由主机统一导入。
+# VM 内为 \\vmware-host\Shared Folders\shared\barbour\publication，宿主机上为 E:\shared\shared\barbour\publication。
+PUBLICATION_BASE = GEI_SHARED_BASE / "barbour" / "publication"
+
 BARBOUR = {
     "BRAND": "barbour",
     "BASE": BARBOUR_BASE,
+    "PUBLICATION_BASE": PUBLICATION_BASE,
     "GEI_DIR": GEI_SHARED_BASE / "barbour",
     "FEATURE_DELIMITER": ";",
 	**IMAGE_PRIORITY_CONFIG["barbour"],
     "TXT_DIR": BARBOUR_BASE / "document" /"TXT",
-    "TXT_DIR_ALL": BARBOUR_BASE / "publication" /"TXT",
+    "TXT_DIR_ALL": PUBLICATION_BASE /"TXT",
     "OUTPUT_DIR": BARBOUR_BASE / "repulibcation",
     "STORE_DIR": BARBOUR_BASE / "document" / "store",
     "PUBLICATION_DIR": BARBOUR_BASE / "document" / "publication",
@@ -76,23 +82,23 @@ BARBOUR = {
     # brands/barbour/jingya/allocate_supplier_and_price_config.py
     # （跟着 allocate_and_sync() 一起改，不用再来这里翻）
     "PGSQL_CONFIG": PGSQL_CONFIG,
-    "LINKS_FILE": BARBOUR_BASE / "publication" / "barbour" / "product_links.txt",
+    "LINKS_FILE": PUBLICATION_BASE / "barbour" / "product_links.txt",
     # === 新增 houseoffraser 配置 ===
     
 # === 新增 very 配置 ===
     "LINKS_FILES": {
-        "outdoorandcountry": BARBOUR_BASE / "publication" / "outdoorandcountry" / "product_links.txt",
-        "allweathers":       BARBOUR_BASE / "publication" / "allweathers" / "product_links.txt",
-        "barbour":           BARBOUR_BASE / "publication" / "barbour" / "product_links.txt",
-        "houseoffraser":     BARBOUR_BASE / "publication" / "houseoffraser" / "product_links.txt",
-        "philipmorris":      BARBOUR_BASE / "publication" / "philipmorris" / "product_links.txt",
-        "very":              BARBOUR_BASE / "publication" / "very" / "product_links.txt",
-        "terraces":          BARBOUR_BASE / "publication" / "terraces" / "product_links.txt",
-        "flannels":          BARBOUR_BASE / "publication" / "flannels" / "product_links.txt",
-        "cho":               BARBOUR_BASE / "publication" / "cho" / "product_links.txt",
-        "magrigg":           BARBOUR_BASE / "publication" / "magrigg" / "product_links.txt",
-        "williampowell":     BARBOUR_BASE / "publication" / "williampowell" / "product_links.txt",
-        "samturner":         BARBOUR_BASE / "publication" / "samturner" / "product_links.txt",
+        "outdoorandcountry": PUBLICATION_BASE / "outdoorandcountry" / "product_links.txt",
+        "allweathers":       PUBLICATION_BASE / "allweathers" / "product_links.txt",
+        "barbour":           PUBLICATION_BASE / "barbour" / "product_links.txt",
+        "houseoffraser":     PUBLICATION_BASE / "houseoffraser" / "product_links.txt",
+        "philipmorris":      PUBLICATION_BASE / "philipmorris" / "product_links.txt",
+        "very":              PUBLICATION_BASE / "very" / "product_links.txt",
+        "terraces":          PUBLICATION_BASE / "terraces" / "product_links.txt",
+        "flannels":          PUBLICATION_BASE / "flannels" / "product_links.txt",
+        "cho":               PUBLICATION_BASE / "cho" / "product_links.txt",
+        "magrigg":           PUBLICATION_BASE / "magrigg" / "product_links.txt",
+        "williampowell":     PUBLICATION_BASE / "williampowell" / "product_links.txt",
+        "samturner":         PUBLICATION_BASE / "samturner" / "product_links.txt",
     },
 
 
@@ -176,19 +182,19 @@ BARBOUR = {
 
 
     "TXT_DIRS": {
-        "all":               BARBOUR_BASE / "publication" / "TXT",
-        "outdoorandcountry": BARBOUR_BASE / "publication" / "outdoorandcountry" / "TXT",
-        "allweathers":       BARBOUR_BASE / "publication" / "allweathers" / "TXT",
-        "barbour":           BARBOUR_BASE / "publication" / "barbour" / "TXT",
-        "houseoffraser":     BARBOUR_BASE / "publication" / "houseoffraser" / "TXT",
-        "philipmorris":      BARBOUR_BASE / "publication" / "philipmorris" / "TXT",
-        "very":              BARBOUR_BASE / "publication" / "very" / "TXT",
-        "terraces":          BARBOUR_BASE / "publication" / "terraces" / "TXT",
-        "flannels":          BARBOUR_BASE / "publication" / "flannels" / "TXT",
-        "cho":               BARBOUR_BASE / "publication" / "cho" / "TXT",
-        "magrigg":           BARBOUR_BASE / "publication" / "magrigg" / "TXT",
-        "williampowell":     BARBOUR_BASE / "publication" / "williampowell" / "TXT",
-        "samturner":         BARBOUR_BASE / "publication" / "samturner" / "TXT",
+        "all":               PUBLICATION_BASE / "TXT",
+        "outdoorandcountry": PUBLICATION_BASE / "outdoorandcountry" / "TXT",
+        "allweathers":       PUBLICATION_BASE / "allweathers" / "TXT",
+        "barbour":           PUBLICATION_BASE / "barbour" / "TXT",
+        "houseoffraser":     PUBLICATION_BASE / "houseoffraser" / "TXT",
+        "philipmorris":      PUBLICATION_BASE / "philipmorris" / "TXT",
+        "very":              PUBLICATION_BASE / "very" / "TXT",
+        "terraces":          PUBLICATION_BASE / "terraces" / "TXT",
+        "flannels":          PUBLICATION_BASE / "flannels" / "TXT",
+        "cho":               PUBLICATION_BASE / "cho" / "TXT",
+        "magrigg":           PUBLICATION_BASE / "magrigg" / "TXT",
+        "williampowell":     PUBLICATION_BASE / "williampowell" / "TXT",
+        "samturner":         PUBLICATION_BASE / "samturner" / "TXT",
     },
 
 

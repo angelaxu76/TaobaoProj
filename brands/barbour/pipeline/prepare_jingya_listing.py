@@ -62,6 +62,16 @@ from brands.barbour.pipeline.session_config import (
     # B 阶段
     B_SUPPLIERS,
     B_IMPORT_MAX_WORKERS,
+    # 多机协作
+    BACKUP_GUARD_MINUTES,
+    WAIT_FOR_SUPPLIERS,
+    WAIT_SUPPLIERS,
+    WAIT_MIN_TXT_DEFAULT,
+    WAIT_MIN_TXT,
+    WAIT_STABLE_MINUTES,
+    WAIT_POLL_SEC,
+    WAIT_TIMEOUT_MINUTES,
+    WAIT_MAX_AGE_HOURS,
 )
 
 # ══════════════════════════════════════════════════════════════════
@@ -182,9 +192,16 @@ def run_a_crawl():
 
     from config import BARBOUR
     from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
+    from brands.barbour.pipeline import multi_node
+    pub_base = BARBOUR["PUBLICATION_BASE"]
     if RUN_A_BACKUP:
         _step("备份并清空 publication / repulibcation 目录")
+        try:
+            multi_node.assert_no_active_crawl(pub_base, BACKUP_GUARD_MINUTES)
+        except Exception as e:
+            _fail("A-backup-guard", e)
         backup_and_clear_brand_dirs(BARBOUR)
+        multi_node.mark_round_started(pub_base)
     else:
         _skip("备份/清空（RUN_A_BACKUP=False）")
 
@@ -223,6 +240,10 @@ def run_a_crawl():
         # "houseoffraser":   (houseoffraser_get_links,            lambda: houseoffraser_fetch_info(max_workers=7, headless=False)),
     }
 
+    # 这些供货商的 TXT 里混有非 Barbour 编码文件，抓完后移到 TXT.bk
+    from brands.barbour.tools.move_non_barbour_files import move_non_barbour_files
+    _FILTER_SUPPLIERS = ["cho", "philipmorris", "terraces", "magrigg", "williampowell", "samturner"]
+
     for supplier, (do_get_links, do_fetch_info) in A_SUPPLIERS.items():
         if not do_get_links and not do_fetch_info:
             _skip(f"[{supplier}] get_links + fetch_info（均已关闭）")
@@ -247,24 +268,21 @@ def run_a_crawl():
 
         if do_fetch_info:
             _step(f"[{supplier}] 抓取商品详情 → TXT")
+            multi_node.clear_supplier_markers(pub_base, supplier)
+            txt_dir = Path(BARBOUR["TXT_DIRS"][supplier])
             t = time.time()
             try:
                 fetch_fn()
-                _ok(f"{supplier} 详情抓取完成", time.time() - t)
+                # 过滤放在写完成标记之前：主机看到 _DONE.json 时文件数量已是最终值
+                if supplier in _FILTER_SUPPLIERS:
+                    move_non_barbour_files(str(txt_dir), str(txt_dir.with_name("TXT.bk")))
             except Exception as e:
+                multi_node.mark_supplier_failed(pub_base, supplier, e)
                 _fail(f"A-fetch_info-{supplier}", e)
+            n = multi_node.mark_supplier_done(pub_base, supplier, txt_dir)
+            _ok(f"{supplier} 详情抓取完成，{n} 个 TXT", time.time() - t)
         else:
             _skip(f"[{supplier}] fetch_info（保留上次 TXT）")
-
-    _step("过滤非 Barbour 编码文件（cho / philipmorris / terraces / magrigg / williampowell / samturner）")
-    from brands.barbour.tools.move_non_barbour_files import move_non_barbour_files
-    _FILTER_SUPPLIERS = ["cho", "philipmorris", "terraces", "magrigg", "williampowell", "samturner"]
-    for s in _FILTER_SUPPLIERS:
-        if A_SUPPLIERS.get(s, (False, False))[1]:  # 只对本次执行了 fetch_info 的过滤
-            src = rf"D:\TB\Products\barbour\publication\{s}\TXT"
-            bk  = rf"D:\TB\Products\barbour\publication\{s}\TXT.bk"
-            move_non_barbour_files(src, bk)
-    _ok("非 Barbour 文件过滤完成", 0)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -298,21 +316,55 @@ def _run_b_stage_parallel(stage_name: str, label: str, fn, suppliers=B_SUPPLIERS
     _ok(f"{label}（全部 {len(suppliers)} 个供应商，{max_workers} 线程并行）", time.time() - t0)
 
 
-def run_b_import():
+def _wait_for_suppliers() -> list[str]:
+    """
+    等待各供货商 TXT 就绪（多机抓取时其他机器可能还在跑）。返回可以导入的供货商。
+    未就绪 / 抓取失败的供货商被跳过：B 阶段不导入，数据库保留它们上一轮的 offers
+    （B 阶段 clear_first=True，导入半截 TXT 会把该供货商的库存大面积清零）。
+    """
+    from config import BARBOUR
+    from brands.barbour.pipeline.multi_node import wait_for_suppliers
+
+    targets = [s for s in (WAIT_SUPPLIERS or B_SUPPLIERS) if s in B_SUPPLIERS]
+    _banner(f"等待各供货商 TXT 就绪（{len(targets)} 个供货商）")
+    t = time.time()
+    ready = wait_for_suppliers(
+        publication_base=BARBOUR["PUBLICATION_BASE"],
+        txt_dirs=BARBOUR["TXT_DIRS"],
+        suppliers=targets,
+        min_txt=WAIT_MIN_TXT,
+        min_txt_default=WAIT_MIN_TXT_DEFAULT,
+        stable_minutes=WAIT_STABLE_MINUTES,
+        poll_sec=WAIT_POLL_SEC,
+        timeout_minutes=WAIT_TIMEOUT_MINUTES,
+        max_age_hours=WAIT_MAX_AGE_HOURS,
+    )
+    # 不在等待名单里的 B_SUPPLIERS 照常导入
+    result = [s for s in B_SUPPLIERS if s in ready or s not in targets]
+    skipped = [s for s in B_SUPPLIERS if s not in result]
+    if skipped:
+        print(f"\n⚠️  以下供货商未就绪，本轮 B 阶段跳过（数据库保留上一轮数据）：{', '.join(skipped)}")
+    _ok(f"等待结束，{len(result)} 个供货商进入 B 阶段", time.time() - t)
+    return result
+
+
+def run_b_import(suppliers: list[str] = B_SUPPLIERS):
     _banner("阶段 B：TXT 导入 barbour_products + barbour_offers")
+    workers = max(1, min(B_IMPORT_MAX_WORKERS, len(suppliers)))
 
     from brands.barbour.common.import_txt_to_products_v2 import batch_import_txt_to_barbour_product
     from brands.barbour.common.import_supplier_to_db_offers import import_txt_for_supplier
 
-    _step(f"导入商品基础信息 → barbour_products（{B_IMPORT_MAX_WORKERS} 线程并行）")
-    _run_b_stage_parallel("B-products", "→ products", batch_import_txt_to_barbour_product)
+    _step(f"导入商品基础信息 → barbour_products（{workers} 线程并行）")
+    _run_b_stage_parallel("B-products", "→ products", batch_import_txt_to_barbour_product, suppliers, workers)
 
     # clear_first=True：先删除该 supplier 的所有旧 offer 行，再从 TXT 重建，
     # 彻底避免"TXT 无此商品但 DB 仍有旧数据"导致的库存残留问题。
-    _step(f"导入供应商库存/价格 → barbour_offers（先清空再导入，确保与 TXT 完全一致；{B_IMPORT_MAX_WORKERS} 线程并行）")
+    _step(f"导入供应商库存/价格 → barbour_offers（先清空再导入，确保与 TXT 完全一致；{workers} 线程并行）")
     _run_b_stage_parallel(
         "B-offers", "→ offers",
         lambda supplier: import_txt_for_supplier(supplier, dryrun=False, full_sweep=True, clear_first=True),
+        suppliers, workers,
     )
 
 
@@ -467,7 +519,10 @@ def main():
         _skip("阶段 A（RUN_A_CRAWL=False）")
 
     if RUN_B_IMPORT:
-        run_b_import()
+        b_suppliers = _wait_for_suppliers() if WAIT_FOR_SUPPLIERS else B_SUPPLIERS
+        if not b_suppliers:
+            _fail("B-wait", RuntimeError("没有任何供货商的 TXT 就绪，不执行 B/C/D"))
+        run_b_import(b_suppliers)
     else:
         _skip("阶段 B（RUN_B_IMPORT=False）")
 
