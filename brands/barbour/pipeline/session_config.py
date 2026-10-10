@@ -30,7 +30,7 @@ from config import resolve_shared_path
 #    - 只有主机把 RUN_B_IMPORT / RUN_C_INVENTORY / RUN_D_EXPORT 设为 True；
 #      主机进入 B 阶段前会先等待 WAIT_SUPPLIERS 里各供货商的 TXT 就绪（见下方 WAIT_*）
 # ══════════════════════════════════════════════════════════════════
-RUN_A_BACKUP    = True   # 备份并清空 publication / repulibcation（多机时只在第一台设 True；重跑某供货商时设 False）
+RUN_A_BACKUP    = False   # 备份并清空 publication / repulibcation（多机时只在第一台设 True；重跑某供货商时设 False）
 RUN_A_CRAWL     = True   # A 阶段总开关（False = 跳过整个 A 阶段）
 RUN_B_IMPORT    = True   # TXT 导入 products + offers
 RUN_C_INVENTORY = True   # 重建 supplier_map + inventory
@@ -150,13 +150,13 @@ LOG_DIR = r"D:\TB\Logs\barbour"
 # ══════════════════════════════════════════════════════════════════
 A_SUPPLIERS = {
     #  supplier             get_links  fetch_info
-    "barbour":           (  True,      True  ),
+    "barbour":           (  False,      False  ),
     "outdoorandcountry": (  True,     True ),
-    "allweathers":       (  True,     True ),
-    "terraces":          (  True,     True ),
-    "philipmorris":      (  True,     True ),
-    "cho":               (  True,     True ),
-    "magrigg":           (  True,     True ),
+    "allweathers":       (  False,     False ),
+    "terraces":          (  False,     False ),
+    "philipmorris":      (  False,     False ),
+    "cho":               (  False,     False ),
+    "magrigg":           (  False,     False ),
     "williampowell":     (  True,     True ),
     "samturner":         (  True,     True ),
     # "very":            (  False,     False ),

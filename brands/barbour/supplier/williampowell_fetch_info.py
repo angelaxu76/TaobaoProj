@@ -34,6 +34,8 @@ from sqlalchemy.engine import Connection
 from brands.barbour.core.base_fetcher import BaseFetcher, setup_logging
 from brands.barbour.core.color_utils import COLOR_MAP, normalize_color
 from brands.barbour.core.hybrid_barbour_matcher import resolve_product_code
+from brands.barbour.supplier.williampowell_get_links import PAGE_INTERVAL
+from brands.barbour.supplier.williampowell_get_links import _fetch_page as _fetch_collection_page
 
 from config import BARBOUR, BRAND_CONFIG, SETTINGS
 
@@ -70,6 +72,36 @@ def _product_js_url(url: str) -> str:
     return urlunsplit((parts.scheme, parts.netloc, path, "", ""))
 
 
+def _gbp_to_pence(value: Any) -> Optional[int]:
+    try:
+        return int(round(float(value) * 100))
+    except (TypeError, ValueError):
+        return None
+
+
+def _collection_product_to_js(p: Dict[str, Any]) -> Dict[str, Any]:
+    """collection products.json 的商品对象 (价格为英镑字符串) → 单品 .js 接口结构 (价格为便士)"""
+    variants = p.get("variants") or []
+    prices = [x for x in (_gbp_to_pence(v.get("price")) for v in variants) if x is not None]
+    compares = [x for x in (_gbp_to_pence(v.get("compare_at_price")) for v in variants) if x]
+    return {
+        "title": p.get("title"),
+        "description": p.get("body_html") or "",
+        "price": min(prices) if prices else None,
+        "compare_at_price": min(compares) if compares else None,
+        "available": any(v.get("available") for v in variants),
+        "variants": [
+            {
+                "title": v.get("title"),
+                "option1": v.get("option1"),
+                "available": v.get("available"),
+                "barcode": v.get("barcode"),
+            }
+            for v in variants
+        ],
+    }
+
+
 def _extract_color_from_title(name: str) -> str:
     """标题尾部即颜色 (William Powell 每个颜色是独立商品页), 用已知颜色词表兜底识别多词颜色"""
     words = re.findall(r"[A-Za-z']+", name or "")
@@ -99,7 +131,7 @@ class WilliamPowellFetcher(BaseFetcher):
 
     # 全局节流: 多线程共用同一个时间戳, 保证站点收到请求的最小间隔,
     # 避免像之前 philipmorrisdirect 一样并发打爆导致 429
-    _MIN_REQUEST_INTERVAL = 1.0
+    _MIN_REQUEST_INTERVAL = 2.0
     _rate_lock = threading.Lock()
     _last_request_at = 0.0
 
@@ -113,6 +145,31 @@ class WilliamPowellFetcher(BaseFetcher):
             f"@{PG['host']}:{PG['port']}/{PG['dbname']}"
         )
         self._engine = create_engine(engine_url, pool_size=self.max_workers + 2)
+
+        # 单品 .js 接口限流极严 (几十次请求后整个 IP 429 60s),
+        # 而 collection products.json 每页 250 条且字段齐全, 先整体拉取作为主数据源
+        self._collection_cache = self._load_collection_cache()
+
+    def _load_collection_cache(self) -> Dict[str, Dict[str, Any]]:
+        """拉取整个 collection, 转换成与单品 .js 接口相同的结构, 按 handle 索引"""
+        session = requests.Session()
+        cache: Dict[str, Dict[str, Any]] = {}
+        page = 1
+        try:
+            while True:
+                products = _fetch_collection_page(session, page)
+                if not products:
+                    break
+                for p in products:
+                    handle = (p.get("handle") or "").strip()
+                    if handle:
+                        cache[handle] = _collection_product_to_js(p)
+                page += 1
+                time.sleep(PAGE_INTERVAL)
+        except Exception as e:
+            self.logger.warning(f"⚠️ collection products.json 拉取中断 (page={page}): {e}, 未命中的商品将回退单品接口")
+        self.logger.info(f"📦 collection 缓存: {len(cache)} 个商品")
+        return cache
 
     def _get_dbapi_connection(self, conn: Connection):
         try:
@@ -132,17 +189,27 @@ class WilliamPowellFetcher(BaseFetcher):
             cls._last_request_at = now
 
     def _fetch_html(self, url: str) -> str:
-        """实际抓取的是 Shopify 商品 JSON 接口, 不是渲染后的 HTML"""
-        self._throttle()
-        resp = self._session.get(_product_js_url(url), timeout=20)
+        """实际抓取的是 Shopify 商品 JSON 接口, 不是渲染后的 HTML; 优先使用 collection 缓存"""
+        handle = urlsplit(url).path.rstrip("/").rsplit("/", 1)[-1].removesuffix(".js")
+        cached = self._collection_cache.get(handle)
+        if cached is not None:
+            return json.dumps(cached)
 
-        if resp.status_code == 429:
+        for attempt in range(1, 4):
+            self._throttle()
+            # Shopify 对带 _shopify_essential cookie 的后续请求直接 429，每次请求前清空 cookie
+            self._session.cookies.clear()
+            resp = self._session.get(_product_js_url(url), timeout=20)
+            if resp.status_code != 429:
+                break
+
             retry_after = resp.headers.get("Retry-After")
             try:
-                wait = float(retry_after) if retry_after else 10.0
+                wait = float(retry_after) if retry_after else 0.0
             except ValueError:
-                wait = 10.0
-            self.logger.warning(f"  ⏳ 429 限流, 等待 {wait:.0f}s 后重试: {url}")
+                wait = 0.0
+            wait = max(wait, 10.0 * attempt)
+            self.logger.warning(f"  ⏳ 429 限流, 等待 {wait:.0f}s 后重试 ({attempt}/3): {url}")
             time.sleep(wait)
             # 拉长下一次全局节流的起点, 让其它线程也一起放慢
             with WilliamPowellFetcher._rate_lock:
