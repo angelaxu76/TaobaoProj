@@ -151,13 +151,13 @@ LOG_DIR = r"D:\TB\Logs\barbour"
 A_SUPPLIERS = {
     #  supplier             get_links  fetch_info
     "barbour":           (  False,      False  ),
-    "outdoorandcountry": (  True,     True ),
+    "outdoorandcountry": (  False,     False ),
     "allweathers":       (  False,     False ),
     "terraces":          (  False,     False ),
     "philipmorris":      (  False,     False ),
     "cho":               (  False,     False ),
     "magrigg":           (  False,     False ),
-    "williampowell":     (  True,     True ),
+    "williampowell":     (  False,     False ),
     "samturner":         (  True,     True ),
     # "very":            (  False,     False ),
     # houseoffraser 单次运行需 4-6 小时，太耗时，暂时屏蔽

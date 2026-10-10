@@ -23,13 +23,18 @@ from __future__ import annotations
 
 import json
 import re
+import threading
+import time
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlsplit
 
 import requests
 from bs4 import BeautifulSoup
 
 from brands.barbour.core.base_fetcher import BaseFetcher, setup_logging
 from brands.barbour.core.text_utils import safe_filename
+from brands.barbour.supplier.samturner_get_links import PAGE_INTERVAL
+from brands.barbour.supplier.samturner_get_links import _fetch_page as _fetch_collection_page
 from common.ingest.txt_writer import format_txt
 
 from config import BARBOUR, SETTINGS
@@ -55,6 +60,36 @@ def _extract_code_from_sku(sku: str) -> str:
     return m.group(0) if m else ""
 
 
+def _gbp_to_pence(value: Any) -> Optional[int]:
+    try:
+        return int(round(float(value) * 100))
+    except (TypeError, ValueError):
+        return None
+
+
+def _collection_product_to_js(p: Dict[str, Any]) -> Dict[str, Any]:
+    """collection products.json 的商品对象 (价格为英镑字符串, option1/2/3) → 单品 .js 接口结构"""
+    options = p.get("options") or []
+    n_opts = len(options)
+    return {
+        "title": p.get("title"),
+        "description": p.get("body_html") or "",
+        "options": [{"name": o.get("name")} for o in options],
+        "variants": [
+            {
+                "title": v.get("title"),
+                "options": [v.get(f"option{i}") for i in range(1, n_opts + 1)],
+                "sku": v.get("sku"),
+                "available": v.get("available"),
+                "barcode": v.get("barcode"),
+                "price": _gbp_to_pence(v.get("price")),
+                "compare_at_price": _gbp_to_pence(v.get("compare_at_price")),
+            }
+            for v in p.get("variants") or []
+        ],
+    }
+
+
 class SamTurnerFetcher(BaseFetcher):
     """Sam Turner 采集器 - requests 抓取 Shopify .js 接口, SKU 直接给官方编码"""
 
@@ -68,14 +103,77 @@ class SamTurnerFetcher(BaseFetcher):
         "Accept-Language": "en-GB,en;q=0.9",
     }
 
+    # 单品 .js 回退请求的全局节流 (多线程共用)
+    _MIN_REQUEST_INTERVAL = 2.0
+    _rate_lock = threading.Lock()
+    _last_request_at = 0.0
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._session = requests.Session()
         self._session.headers.update(self._REQ_HEADERS)
 
+        # 单品 .js 接口限流极严 (几十次请求后整个 IP 429 60s),
+        # 而 collection products.json 每页 250 条且字段齐全, 先整体拉取作为主数据源
+        self._collection_cache = self._load_collection_cache()
+
+    def _load_collection_cache(self) -> Dict[str, Dict[str, Any]]:
+        """拉取整个 collection, 转换成与单品 .js 接口相同的结构, 按 handle 索引"""
+        session = requests.Session()
+        cache: Dict[str, Dict[str, Any]] = {}
+        page = 1
+        try:
+            while True:
+                products = _fetch_collection_page(session, page)
+                if not products:
+                    break
+                for p in products:
+                    handle = (p.get("handle") or "").strip()
+                    if handle:
+                        cache[handle] = _collection_product_to_js(p)
+                page += 1
+                time.sleep(PAGE_INTERVAL)
+        except Exception as e:
+            self.logger.warning(f"⚠️ collection products.json 拉取中断 (page={page}): {e}, 未命中的商品将回退单品接口")
+        self.logger.info(f"📦 collection 缓存: {len(cache)} 个商品")
+        return cache
+
+    def _throttle(self) -> None:
+        cls = SamTurnerFetcher
+        with cls._rate_lock:
+            now = time.monotonic()
+            wait = cls._last_request_at + cls._MIN_REQUEST_INTERVAL - now
+            if wait > 0:
+                time.sleep(wait)
+                now = time.monotonic()
+            cls._last_request_at = now
+
     def _fetch_html(self, url: str) -> str:
+        """优先使用 collection 缓存; 未命中才请求单品 .js 接口"""
+        handle = urlsplit(url).path.rstrip("/").rsplit("/", 1)[-1].removesuffix(".js")
+        cached = self._collection_cache.get(handle)
+        if cached is not None:
+            return json.dumps(cached)
+
         js_url = url.rstrip("/") + ".js"
-        resp = self._session.get(js_url, timeout=20)
+        for attempt in range(1, 4):
+            self._throttle()
+            # Shopify 对带 _shopify_essential cookie 的后续请求直接 429，每次请求前清空 cookie
+            self._session.cookies.clear()
+            resp = self._session.get(js_url, timeout=20)
+            if resp.status_code != 429:
+                break
+
+            try:
+                wait = float(resp.headers.get("Retry-After") or 0)
+            except ValueError:
+                wait = 0.0
+            wait = max(wait, 10.0 * attempt)
+            self.logger.warning(f"  ⏳ 429 限流, 等待 {wait:.0f}s 后重试 ({attempt}/3): {url}")
+            time.sleep(wait)
+            with SamTurnerFetcher._rate_lock:
+                SamTurnerFetcher._last_request_at = time.monotonic()
+
         resp.raise_for_status()
         return resp.text
 

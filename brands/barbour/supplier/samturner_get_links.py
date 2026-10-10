@@ -39,11 +39,28 @@ _HEADERS = {
 }
 
 
+PAGE_INTERVAL = 3.0   # 翻页间隔；0.5s 时 Shopify 第 2 页就会返回 429
+MAX_RETRIES = 5
+
+
 def _fetch_page(session: requests.Session, page: int) -> list[dict]:
     url = f"{BASE_URL}/collections/{COLLECTION_HANDLE}/products.json"
-    resp = session.get(url, params={"limit": PAGE_LIMIT, "page": page}, headers=_HEADERS, timeout=20)
+    for attempt in range(1, MAX_RETRIES + 1):
+        # Shopify 对带 _shopify_essential cookie 的后续请求直接 429，每次请求前清空 cookie
+        session.cookies.clear()
+        resp = session.get(url, params={"limit": PAGE_LIMIT, "page": page}, headers=_HEADERS, timeout=20)
+        if resp.status_code != 429:
+            resp.raise_for_status()
+            return resp.json().get("products", [])
+        try:
+            wait = float(resp.headers.get("Retry-After") or 0)
+        except ValueError:
+            wait = 0
+        wait = max(wait, 10.0 * attempt)
+        print(f"⏳ page={page} 429 限流, 等待 {wait:.0f}s 后重试 ({attempt}/{MAX_RETRIES})")
+        time.sleep(wait)
     resp.raise_for_status()
-    return resp.json().get("products", [])
+    return []
 
 
 def samturner_get_links():
@@ -78,7 +95,7 @@ def samturner_get_links():
         )
 
         page += 1
-        time.sleep(0.5)  # 友好一点，别刷太猛
+        time.sleep(PAGE_INTERVAL)
 
     sorted_links = sorted(all_links)
     OUTPUT_PATH.write_text("\n".join(sorted_links), encoding="utf-8")
