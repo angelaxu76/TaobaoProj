@@ -1,17 +1,19 @@
 import re
 import json
-import requests
+import threading
 import psycopg2
 from bs4 import BeautifulSoup
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from config import CLARKS, ensure_all_dirs
 from psycopg2.extras import RealDictCursor
+from brands.clarks.helpers_local import http_fetch
 
 # === 配置 ===
 PRODUCT_LINKS_FILE = CLARKS["BASE"] / "publication" / "product_links.txt"
 IMAGE_DIR = CLARKS["IMAGE_DOWNLOAD"]
-HEADERS = {"User-Agent": "Mozilla/5.0"}
+# 页面抓取走 http_fetch（被 403 后自动切 Selenium）；Selenium driver 不是线程安全的，需加锁
+_page_lock = threading.Lock()
 MAX_WORKERS = 5
 SKIP_EXISTING_IMAGE = True
 
@@ -42,7 +44,7 @@ def download_image(url, save_path):
         if SKIP_EXISTING_IMAGE and save_path.exists():
             print(f"✅ 已存在，跳过: {save_path.name}")
             return
-        r = requests.get(url, headers=HEADERS, timeout=10)
+        r = http_fetch._session.get(url, timeout=10)
         if r.status_code == 200:
             with open(save_path, "wb") as f:
                 f.write(r.content)
@@ -56,9 +58,9 @@ def download_image(url, save_path):
 def process_image_only(url):
     print(f"📷 处理图片: {url}")
     try:
-        r = requests.get(url, headers=HEADERS, timeout=15)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "html.parser")
+        with _page_lock:
+            html = http_fetch.fetch_html(url)
+        soup = BeautifulSoup(html, "html.parser")
 
         code = extract_product_code(url)
         image_urls = extract_image_urls(soup)
