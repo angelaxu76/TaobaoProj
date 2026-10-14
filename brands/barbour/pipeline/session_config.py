@@ -18,15 +18,24 @@ brands/barbour/jingya/allocate_supplier_and_price_config.py 两处，现在
   - cfg/settings.py 里的 EXCHANGE_RATE、API_KEYS 等全品牌共用的全局设置。
 """
 
+import os
+
 from config import resolve_shared_path
 
 # ══════════════════════════════════════════════════════════════════
 #  阶段开关
 #
-#  多机运行（3 台虚拟机共用共享盘上的 publication 目录）：
+#  多机运行（多台虚拟机共用共享盘上的 publication 目录）：
+#    不用再手改下面这些值——在文件末尾的 NODE_PROFILES 里给每台机器配一个
+#    节点档案，然后各机器运行对应的入口脚本即可：
+#      主机：python ops/run_barbour_jingya_listing_main.py
+#      副机：python ops/run_barbour_jingya_listing_worker.py
+#    （等价于 python ops/run_barbour_jingya_listing.py --node main / worker）
+#    节点档案会覆盖这里的 RUN_* 开关和 A_SUPPLIERS；不指定节点（直接运行
+#    run_barbour_jingya_listing.py 或 prepare_jingya_listing.py）时按下面写的值单机全跑。
+#    规则：
 #    - 第一台：RUN_A_BACKUP=True，先启动，负责备份并清空 publication / repulibcation
 #    - 其他机器：RUN_A_BACKUP=False，等第一台清空完成后再启动
-#    - 每台机器在 A_SUPPLIERS 里只把自己负责的供货商设为 True
 #    - 只有主机把 RUN_B_IMPORT / RUN_C_INVENTORY / RUN_D_EXPORT 设为 True；
 #      主机进入 B 阶段前会先等待 WAIT_SUPPLIERS 里各供货商的 TXT 就绪（见下方 WAIT_*）
 # ══════════════════════════════════════════════════════════════════
@@ -220,3 +229,54 @@ WAIT_STABLE_MINUTES  = 30
 WAIT_POLL_SEC        = 60
 WAIT_TIMEOUT_MINUTES = 360   # 超时后跳过未就绪的供货商，用已就绪的继续跑 B/C/D
 WAIT_MAX_AGE_HOURS   = 20
+
+# ══════════════════════════════════════════════════════════════════
+#  多机节点档案：每台虚拟机一个档案，入口脚本通过环境变量 BARBOUR_NODE 选择
+#
+#  "a_suppliers"：本机负责抓取的供货商（get_links / fetch_info 开关沿用上方
+#                 A_SUPPLIERS 表里的值；不在列表里的供货商本机不抓）。
+#  其余键覆盖同名 RUN_* 开关，没写的沿用上方的值。
+#  所有档案的 a_suppliers 合起来应覆盖 A_SUPPLIERS 全部供货商，且不要重复。
+#  增加第三台机器：加一个档案，再复制一份 ops/run_barbour_jingya_listing_worker.py
+#  把 NODE 改成新名字即可。
+# ══════════════════════════════════════════════════════════════════
+NODE_PROFILES: dict[str, dict] = {
+    # 主机：先启动，清空 publication，抓一部分供货商，等全部 TXT 就绪后跑 B/C/D
+    "main": {
+        "RUN_A_BACKUP":    True,
+        "RUN_A_CRAWL":     True,
+        "RUN_B_IMPORT":    True,
+        "RUN_C_INVENTORY": True,
+        "RUN_D_EXPORT":    True,
+        "a_suppliers": ["barbour",  "philipmorris", "allweathers", "terraces", "samturner"],
+    },
+    # 副机：主机清空完成后再启动，只抓自己那部分供货商
+    "worker": {
+        "RUN_A_BACKUP":    False,
+        "RUN_A_CRAWL":     True,
+        "RUN_B_IMPORT":    False,
+        "RUN_C_INVENTORY": False,
+        "RUN_D_EXPORT":    False,
+        "a_suppliers": ["outdoorandcountry","cho", "magrigg", "williampowell"],
+    },
+}
+
+_RUN_FLAGS = ("RUN_A_BACKUP", "RUN_A_CRAWL", "RUN_B_IMPORT", "RUN_C_INVENTORY", "RUN_D_EXPORT")
+
+NODE_NAME = os.environ.get("BARBOUR_NODE", "").strip() or None
+
+if NODE_NAME:
+    if NODE_NAME not in NODE_PROFILES:
+        raise ValueError(f"未知节点 BARBOUR_NODE={NODE_NAME!r}，可选：{list(NODE_PROFILES)}")
+    _profile = NODE_PROFILES[NODE_NAME]
+    _unknown = [k for k in _profile if k not in _RUN_FLAGS and k != "a_suppliers"]
+    if _unknown:
+        raise ValueError(f"节点 {NODE_NAME!r} 含未知配置项：{_unknown}")
+    for _flag in _RUN_FLAGS:
+        if _flag in _profile:
+            globals()[_flag] = _profile[_flag]
+    if "a_suppliers" in _profile:
+        _missing = [s for s in _profile["a_suppliers"] if s not in A_SUPPLIERS]
+        if _missing:
+            raise ValueError(f"节点 {NODE_NAME!r} 的 a_suppliers 不在 A_SUPPLIERS 中：{_missing}")
+        A_SUPPLIERS = {s: A_SUPPLIERS[s] for s in _profile["a_suppliers"]}

@@ -72,6 +72,8 @@ from brands.barbour.pipeline.session_config import (
     WAIT_POLL_SEC,
     WAIT_TIMEOUT_MINUTES,
     WAIT_MAX_AGE_HOURS,
+    # 多机节点档案
+    NODE_NAME,
 )
 
 # ══════════════════════════════════════════════════════════════════
@@ -511,6 +513,9 @@ def main():
     start = time.time()
     print(f"\n{'★'*60}")
     print(f"  Barbour 日常流水线  {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"  节点：{NODE_NAME or '单机（未指定 BARBOUR_NODE）'}")
+    print(f"  A 阶段供货商：{', '.join(A_SUPPLIERS) if RUN_A_CRAWL else '（跳过）'}")
+    print(f"  阶段开关：BACKUP={RUN_A_BACKUP} A={RUN_A_CRAWL} B={RUN_B_IMPORT} C={RUN_C_INVENTORY} D={RUN_D_EXPORT}")
     print(f"{'★'*60}")
 
     if RUN_A_CRAWL:
