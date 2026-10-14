@@ -73,3 +73,45 @@ def filter_blocked_codes(codes, blocklist: set[str] | None = None) -> tuple[list
     if blocked:
         print(f"🚫 黑名单拦截 {len(blocked)} 个编码：{', '.join(map(str, blocked))}")
     return kept, blocked
+
+
+def append_to_blocklist(rows: list[dict]) -> tuple[list[str], list[str]]:
+    """
+    追加记录到发布黑名单。rows 每项为 {列名: 值}，列名取自 BLOCKLIST_COLUMNS。
+    已在名单里的编码不重复追加。写入前把原文件备份为 *.bak.xlsx。
+    返回 (新增的编码, 已存在而跳过的编码)。
+    """
+    path = get_blocklist_path()
+    if path is None:
+        raise FileNotFoundError(f"❌ 未找到发布黑名单目录：{PUBLISH_BLOCKLIST_DIRS}")
+    if not path.exists():
+        create_blocklist_template(path)
+
+    df = pd.read_excel(path, dtype={CODE_COL: str})
+    existing = {c.strip().upper() for c in df[CODE_COL].dropna().astype(str) if c.strip()}
+
+    added, skipped, new_rows = [], [], []
+    for r in rows:
+        code = str(r.get(CODE_COL) or "").strip()
+        if not code:
+            continue
+        if code.upper() in existing:
+            skipped.append(code)
+            continue
+        existing.add(code.upper())
+        added.append(code)
+        new_rows.append({c: r.get(c) for c in BLOCKLIST_COLUMNS})
+
+    if not new_rows:
+        return added, skipped
+
+    path.with_suffix(".bak.xlsx").write_bytes(path.read_bytes())
+    out = pd.concat([df, pd.DataFrame(new_rows, columns=BLOCKLIST_COLUMNS)], ignore_index=True)
+    with pd.ExcelWriter(path, engine="openpyxl") as writer:
+        out.to_excel(writer, index=False, sheet_name="blocklist")
+        ws = writer.sheets["blocklist"]
+        for col, width in zip("ABCDEFG", [18, 12, 10, 12, 8, 16, 40]):
+            ws.column_dimensions[col].width = width
+        ws.freeze_panes = "A2"
+    print(f"🚫 已追加 {len(added)} 个编码到发布黑名单：{path}（已存在跳过 {len(skipped)} 个）")
+    return added, skipped
