@@ -103,3 +103,11 @@ BAD_MAX_PAY_QTY: int = 0            # 有成交就不算差；设 None 关闭此
 BAD_REQUIRE_ALL_STORES: bool = True
 # 是否把待删除商品写入发布黑名单（cfg/paths.py 的 PUBLISH_BLOCKLIST_FILENAME）
 BAD_WRITE_BLOCKLIST: bool = True
+# 品牌价格阈值（淘宝一口价 CNY）：只有该店一口价 > 阈值的商品才可能判为差；未列出的品牌不限价格
+BAD_MIN_PRICE_BY_BRAND: dict[str, float] = {
+    "ecco":    2500,
+    "camper":  2500,
+    "clarks":  1500,
+    "geox":    2000,
+    "barbour": 3500,
+}

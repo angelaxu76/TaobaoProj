@@ -3,8 +3,10 @@
 
 判定规则见 analytics/pipeline/store_config.py 的 BAD_* 参数：
   单店差 = 截至最新日报日期发布满 N 天 且 最近窗口内 浏览量(或访客) < 阈值 且 成交件数 <= 阈值
+           且 该店一口价 > 品牌价格阈值（品牌未配置阈值则不限价格）
   差商品 = 在（全部）上架店铺都差
   待删除 = 差商品 且 库存表里未打折（discount_price_gbp 为空或不低于 original_price_gbp）
+           Barbour 例外：库存表价格不含折扣信息，改用 barbour_offers 在售报价判断
 """
 from __future__ import annotations
 
@@ -34,6 +36,7 @@ class BadProductRule:
     metric_max: int = 10
     max_pay_qty: Optional[int] = 0
     require_all_stores: bool = True
+    min_price_by_brand: dict[str, float] = field(default_factory=dict)  # 品牌 → 一口价阈值（CNY）
 
 
 def _fetch_store_detail(rule: BadProductRule) -> tuple[pd.DataFrame, date]:
@@ -64,6 +67,7 @@ def _fetch_store_detail(rule: BadProductRule) -> tuple[pd.DataFrame, date]:
                MAX(LOWER(TRIM(c.brand)))            AS brand,
                MAX(c.item_name)                     AS item_name,
                MIN(c.publication_date)              AS publication_date,
+               MAX(c.list_price)                    AS list_price,
                STRING_AGG(DISTINCT c.current_item_id::text, ',') AS item_ids,
                SUM(COALESCE(d.pageviews, 0))        AS pageviews,
                SUM(COALESCE(d.visitors, 0))         AS visitors,
@@ -88,6 +92,9 @@ def _mark_store_bad(df: pd.DataFrame, rule: BadProductRule, end_date: date) -> p
     bad &= df[rule.metric] < rule.metric_max
     if rule.max_pay_qty is not None:
         bad &= df["pay_qty"] <= rule.max_pay_qty
+    if rule.min_price_by_brand:
+        price_min = df["brand"].map(rule.min_price_by_brand)
+        bad &= price_min.isna() | (pd.to_numeric(df["list_price"], errors="coerce") > price_min)
     df["store_bad"] = bad
     return df
 
@@ -111,12 +118,47 @@ def _fetch_inventory(codes_by_brand: dict[str, list[str]]) -> pd.DataFrame:
             GROUP BY UPPER(TRIM(product_code));
             """
             part = pd.read_sql(sql, conn, params=(codes,))
+            if brand == "barbour":
+                part = _override_barbour_prices(conn, part, codes)
             part["brand"] = brand
             frames.append(part)
     finally:
         conn.close()
     cols = ["code_key", "original_price_gbp", "discount_price_gbp", "channel_product_ids", "brand"]
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=cols)
+
+
+def _override_barbour_prices(conn, part: pd.DataFrame, codes: list[str]) -> pd.DataFrame:
+    """
+    barbour_inventory 的 original/discount 都写成同一个成本价，看不出折扣，
+    改从 barbour_offers 取：有货的在售报价优先，没有则取全部在售报价。
+    注意 barbour_offers 字段名：price_gbp = 原价，original_price_gbp = 折后价。
+    """
+    sql = """
+    WITH o AS (
+      SELECT UPPER(TRIM(product_code)) AS code_key, site_name, price_gbp, original_price_gbp,
+             COALESCE(stock_count, 0) > 0 AS in_stock
+      FROM barbour_offers
+      WHERE is_active AND UPPER(TRIM(product_code)) = ANY(%s) AND price_gbp > 0
+    ), pick AS (
+      SELECT o.*, MAX(price_gbp) OVER (PARTITION BY code_key) AS max_rrp FROM o
+      WHERE in_stock OR NOT EXISTS (SELECT 1 FROM o o2 WHERE o2.code_key = o.code_key AND o2.in_stock)
+    )
+    -- 原价取各家最高原价，折后价取各家最低现价：任一家卖得比最高原价便宜即算打折
+    SELECT code_key,
+           MAX(price_gbp)                                                AS offer_original,
+           MIN(original_price_gbp) FILTER (WHERE original_price_gbp > 0) AS offer_discount,
+           STRING_AGG(DISTINCT site_name, ',')
+             FILTER (WHERE original_price_gbp > 0 AND original_price_gbp < max_rrp) AS discount_sites
+    FROM pick
+    GROUP BY code_key;
+    """
+    offers = pd.read_sql(sql, conn, params=(codes,))
+    part = part.merge(offers, on="code_key", how="left")
+    has_offer = part["offer_original"].notna()
+    part.loc[has_offer, "original_price_gbp"] = part.loc[has_offer, "offer_original"]
+    part.loc[has_offer, "discount_price_gbp"] = part.loc[has_offer, "offer_discount"]
+    return part.drop(columns=["offer_original", "offer_discount"])
 
 
 def _store_values(g: pd.DataFrame, col: str, rule: BadProductRule) -> dict:
@@ -145,6 +187,7 @@ def _build_codes(df: pd.DataFrame, rule: BadProductRule) -> pd.DataFrame:
             "total_pay_qty": int(g["pay_qty"].sum()),
         }
         row.update(_store_values(g, rule.metric, rule))
+        row.update(_store_values(g, "list_price", rule))
         row.update(_store_values(g, "item_ids", rule))
         rows.append(row)
     return pd.DataFrame(rows)
@@ -158,9 +201,11 @@ def _reason(row, rule: BadProductRule, end_date: date) -> str:
         if pd.notna(row.get(f"{rule.metric}@{rule.store_labels.get(s, s)}"))
     )
     sold = "，无成交" if rule.max_pay_qty == 0 else ""
+    price_min = rule.min_price_by_brand.get(row["brand"])
+    price = f"，一口价>{price_min:g}" if price_min is not None else ""
     return (f"{row['store_cnt']}店均表现差：发布满{rule.min_publish_days}天，"
             f"截至{end_date}近{rule.window_days}天{label} {per_store}（阈值<{rule.metric_max}）"
-            f"{sold}，未打折；{date.today()} 自动加入")
+            f"{sold}{price}，未打折；{date.today()} 自动加入")
 
 
 def build_bad_product_report(rule: BadProductRule) -> dict:

@@ -10,7 +10,7 @@ from analytics.ingest.export_cross_store_bad_products import BadProductRule, bui
 from analytics.pipeline.store_config import (
     CROSS_STORE_EXPORT_DIR, get_active_stores,
     BAD_WINDOW_DAYS, BAD_MIN_PUBLISH_DAYS, BAD_METRIC, BAD_METRIC_MAX, BAD_MAX_PAY_QTY,
-    BAD_REQUIRE_ALL_STORES, BAD_WRITE_BLOCKLIST,
+    BAD_REQUIRE_ALL_STORES, BAD_WRITE_BLOCKLIST, BAD_MIN_PRICE_BY_BRAND,
 )
 from common.publication.publish_blocklist import append_to_blocklist
 
@@ -41,10 +41,12 @@ if __name__ == "__main__":
         metric_max=BAD_METRIC_MAX,
         max_pay_qty=BAD_MAX_PAY_QTY,
         require_all_stores=BAD_REQUIRE_ALL_STORES,
+        min_price_by_brand=BAD_MIN_PRICE_BY_BRAND,
     )
     print(f"店铺：{'、'.join(str(s) for s in stores)}")
     print(f"规则：发布满 {rule.min_publish_days} 天，近 {rule.window_days} 天 {rule.metric} < {rule.metric_max}，"
           f"成交 <= {rule.max_pay_qty}，{'须全部店铺上架' if rule.require_all_stores else '上架店铺都差即可'}")
+    print(f"价格阈值（一口价 >）：{rule.min_price_by_brand or '不限'}")
 
     result = build_bad_product_report(rule)
     xlsx, txt = write_report(result, CROSS_STORE_EXPORT_DIR)

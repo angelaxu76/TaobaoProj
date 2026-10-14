@@ -71,16 +71,18 @@ def _extract_price_pair_from_dom_cho(soup: BeautifulSoup) -> Tuple[Optional[floa
     从 CHO DOM 中抓取 (original_price, current_price)
     - 打折:
         .price__sale .price-item--sale        => 现价
-        .savings-price .price-item--regular   => 原价
+        .price__sale .price-item--regular     => 原价（划线价；旧版页面包在 .savings-price 里）
     - 无打折:
         .price__regular .price-item--regular  => 原价 == 现价
     """
     sale_span = soup.select_one(".price__sale .price-item--sale")
-    was_span = soup.select_one(".price__sale .savings-price .price-item--regular")
+    was_span = (soup.select_one(".price__sale .savings-price .price-item--regular")
+                or soup.select_one(".price__sale .price-item--regular"))
     sale_price = _to_float(sale_span.get_text(" ", strip=True)) if sale_span else None
     was_price = _to_float(was_span.get_text(" ", strip=True)) if was_span else None
 
-    if sale_price is not None and was_price is not None:
+    # 无打折的页面里 .price__sale 也存在（隐藏），划线价为空或不高于现价，走下面的常规价
+    if sale_price is not None and was_price is not None and was_price > sale_price:
         return was_price, sale_price  # (原价, 折后价)
 
     reg_span = soup.select_one(".price__regular .price-item--regular")
