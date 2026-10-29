@@ -4,10 +4,26 @@ import re
 import time
 import psycopg2
 import pandas as pd
+import openpyxl
 from pathlib import Path
 from typing import Dict, Tuple
 from config import BRAND_CONFIG, PGSQL_CONFIG
 from common.product.size_utils import clean_size_for_barbour
+from channels.jingya.cainiao.barbour_goods_type import build_barbour_goods_name
+
+# 菜鸟官方「单个商品绑定上传模板」：直接往模板里填数据，生成的文件可直接导入
+# （用 pandas 另存的新文件菜鸟导入不认，需要手工复制到模板里）
+TEMPLATE_FILE = Path("D:/TB/taofenxiao/模版文件/单个商品绑定上传模板.xlsx")
+TEMPLATE_SHEET = "单个商品绑定"
+# 第 1 行表头、第 2 行模板自带提示、第 3 行再写一行提示（菜鸟导入跳过前 3 行，少这一行会导入失败），
+# 数据从第 4 行开始
+TEMPLATE_TIP_ROW = 3
+TEMPLATE_DATA_START_ROW = 4
+TEMPLATE_TIP_VALUES = {
+    "*销售渠道": "填写销售渠道名称，请参见下方'销售渠道参考'sheet表",
+    "*渠道店铺ID": "填写店铺ID，请参照以下地址https://g.cainiao.com/infra/tao-fuwu/information",
+    "*发货模式": "请选择直发或代发",
+}
 
 # 仅保留模板的 6 列（按你要求的顺序，“*菜鸟货品ID”放最后）
 TEMPLATE_COLUMNS = [
@@ -34,60 +50,18 @@ STYLE_MAP_SHOES = {
     "casual": "休闲鞋",
 }
 
-# 服装风格 → 中文（Barbour 用）
-CLOTHING_STYLE_MAP = {
-    # 外套
-    "t-shirt": "T恤", "tee": "T恤",
-    "wax": "蜡棉夹克", "jacket": "夹克", "jackets": "夹克",
-    "quilt": "菱格夹克", "puffer": "羽绒服",
-    "gilet": "马甲", "vest": "马甲",
-    "coat": "大衣", "parka": "派克",
-    # 上装
-    "overshirt": "衬衫", "shirt": "衬衫",
-    "sweat": "卫衣", "hoodie": "卫衣",
-    "knit": "针织衫", "sweater": "毛衣", "jumper": "毛衣",
-    "fleece": "抓绒",
-    # 下装
-    "trouser": "长裤", "trousers": "长裤",
-    "jeans": "牛仔裤", "shorts": "短裤",
-    # 其他
-    "dress": "连衣裙", "skirt": "半身裙", "shirt-dress": "衬衫裙",
-    "scarf": "围巾", "cap": "帽", "hat": "帽",
-}
-
-def _guess_clothing_style_zh(text: str) -> str:
-    """从英文标题/类别里猜中文服装款式（Barbour 用）"""
-    t = (text or "").lower()
-    # 为避免 "t-shirt" 被 "shirt" 抢匹配，按 key 长度倒序
-    for k in sorted(CLOTHING_STYLE_MAP.keys(), key=len, reverse=True):
-        if k in t:
-            return CLOTHING_STYLE_MAP[k]
-    return "服装"
-
-def _normalize_gender(gender: str, title: str = "") -> str:
-    """统一性别：男装 / 女装 / ''"""
-    src = f"{gender} {title}".lower()
-    if any(x in src for x in ["women", "women's", "womens", "female", "lady", "ladies"]):
-        return "女装"
-    if any(x in src for x in ["men", "men's", "mens", "male"]):
-        return "男装"
-    if "女" in gender:
-        return "女装"
-    if "男" in gender:
-        return "男装"
-    return ""
+# Barbour 服装/帽子等品类匹配见 barbour_goods_type.py
 
 def _parse_code_size_from_goods_name(name: str) -> Tuple[str, str]:
     """
-    从 “货品名称” 中解析：颜色分类:CODE;尺码:S    （也兼容 “颜色:CODE;尺码:S”）
+    从 “货品名称” 中解析：颜色分类:CODE;尺码:S    （也兼容 “颜色:CODE”，以及 “尺码:S;颜色分类:CODE” 顺序颠倒）
     """
     s = str(name or "")
-    m = re.search(r"(?:颜色分类|颜色)\s*:\s*([^;]+)\s*;\s*尺码\s*:\s*(.+)", s)
-    if not m:
+    m_code = re.search(r"(?:颜色分类|颜色)\s*[:：]\s*([^;；]+)", s)
+    m_size = re.search(r"尺码\s*[:：]\s*([^;；]+)", s)
+    if not m_code or not m_size:
         return "", ""
-    code = m.group(1).strip()
-    size_raw = m.group(2).strip()
-    return code, size_raw
+    return m_code.group(1).strip(), m_size.group(1).strip()
 
 def _parse_code_size_from_any(text: str) -> Tuple[str, str]:
     """
@@ -143,19 +117,20 @@ def _fetch_maps(table: str, pgcfg: Dict):
 
 def _fetch_barbour_products(pgcfg: Dict) -> Dict[Tuple[str, str], Dict[str, str]]:
     """
-    读取 barbour_products：用 (color_code, clean_size) → {title, gender, category}
+    读取 barbour_products：用 (color_code, clean_size) → {title, gender, category, style_name}
     """
     m: Dict[Tuple[str, str], Dict[str, str]] = {}
     conn = psycopg2.connect(**pgcfg)
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT product_code, size, COALESCE(gender,''), COALESCE(title,''), COALESCE(category,'')
+                SELECT product_code, size, COALESCE(gender,''), COALESCE(title,''), COALESCE(category,''),
+                       COALESCE(style_name,'')
                 FROM barbour_products
             """)
-            for code, sz, gender, title, cat in cur.fetchall():
+            for code, sz, gender, title, cat, style_name in cur.fetchall():
                 key = (str(code or ""), clean_size_for_barbour(str(sz or "")))
-                m[key] = {"gender": gender, "title": title, "category": cat}
+                m[key] = {"gender": gender, "title": title, "category": cat, "style_name": style_name}
     finally:
         conn.close()
     return m
@@ -167,19 +142,26 @@ def _build_product_name(brand: str,
                         style_from_inv: str = "",
                         bp_title: str = "",
                         bp_gender: str = "",
-                        bp_category: str = "") -> str:
+                        bp_category: str = "",
+                        bp_style_name: str = "") -> str:
     """
     统一生成 *商品名称
-    - Barbour：优先使用 barbour_products 的 title/gender/category 推断服装品类（中文），输出：{品牌}{男装/女装}{品类}{编码}尺码{size}
+    - Barbour：按 编码前缀 → 英文名(style_name) → category 逐步匹配商品类型（服装/帽子/…），
+      输出：{品牌}{男装/女装/男士/女士}{品类}{编码}尺码{size}（见 barbour_goods_type.py）
     - 其他品牌：保留鞋类逻辑：{品牌}{男鞋/女鞋}{风格}{编码}尺码{size}
     """
     b = (brand or "").lower()
     brand_label = BRAND_MAP.get(b, brand)
 
     if b == "barbour":
-        gender_std = _normalize_gender(bp_gender or gender_from_inv, bp_title)
-        style_zh = _guess_clothing_style_zh(bp_category or bp_title)
-        return f"{brand_label}{gender_std}{style_zh}{code}尺码{size_raw}".replace("None", "")
+        name, _ = build_barbour_goods_name(
+            code, size_raw,
+            style_name=bp_style_name or bp_title,
+            gender=bp_gender or gender_from_inv,
+            category=bp_category,
+            brand_label=brand_label,
+        )
+        return name.replace("None", "")
 
     # 鞋类
     gender_label = "男鞋" if "男" in (gender_from_inv or bp_gender or "") else "女鞋"
@@ -315,7 +297,7 @@ def generate_channel_binding_excel(brand: str, goods_dir: Path, debug: bool = Tr
         # inventory 提供的性别/风格（鞋类）
         inv_gender, inv_style = code_size_to_gender_style.get((code, row.get("_size_raw_from_map","")), ("", ""))
         # Barbour: 用 bp_map 提升准确性（用 clean_size 匹配）
-        bp_title = bp_gender = bp_category = ""
+        bp_title = bp_gender = bp_category = bp_style_name = ""
         if brand == "barbour" and code and size_norm:
             info = bp_map.get((code, size_norm))
             if info is None:
@@ -328,6 +310,7 @@ def generate_channel_binding_excel(brand: str, goods_dir: Path, debug: bool = Tr
                 bp_title = info.get("title", "")
                 bp_gender = info.get("gender", "")
                 bp_category = info.get("category", "")
+                bp_style_name = info.get("style_name", "")
         return _build_product_name(
             brand=brand,
             code=code,
@@ -336,7 +319,8 @@ def generate_channel_binding_excel(brand: str, goods_dir: Path, debug: bool = Tr
             style_from_inv=inv_style,
             bp_title=bp_title,
             bp_gender=bp_gender,
-            bp_category=bp_category
+            bp_category=bp_category,
+            bp_style_name=bp_style_name
         )
 
     t = time.time()
@@ -346,6 +330,16 @@ def generate_channel_binding_excel(brand: str, goods_dir: Path, debug: bool = Tr
     # 按 6 列输出
     final_df = unbound_df.reindex(columns=TEMPLATE_COLUMNS)
     log(f"✓ 最终列顺序：{TEMPLATE_COLUMNS}")
+
+    # 写文件
+    output_file = goods_dir / "未绑定商品绑定信息.xlsx"
+    t = time.time()
+    if TEMPLATE_FILE.exists():
+        _write_into_template(final_df, output_file)
+        log(f"✓ 写入Excel（基于模板 {TEMPLATE_FILE.name}）：{output_file} 用时 {time.time()-t:.2f}s")
+        log(f"🎉 全流程完成，总耗时 {time.time()-t0:.2f}s；数据行数={len(final_df)}")
+        return output_file
+    log(f"⚠ 未找到模板 {TEMPLATE_FILE}，改为直接导出（可能需要手工复制到模板再导入）")
 
     # 第一行提示
     tip_row = {
@@ -361,14 +355,31 @@ def generate_channel_binding_excel(brand: str, goods_dir: Path, debug: bool = Tr
         ignore_index=True
     )
 
-    # 写文件
-    output_file = goods_dir / "未绑定商品绑定信息.xlsx"
-    t = time.time()
     with pd.ExcelWriter(output_file, engine="openpyxl") as writer:
         final_df_with_tip.to_excel(writer, index=False, sheet_name="单个商品绑定")
     log(f"✓ 写入Excel：{output_file} 用时 {time.time()-t:.2f}s")
     log(f"🎉 全流程完成，总耗时 {time.time()-t0:.2f}s；总行数（含提示行）={len(final_df_with_tip)}")
     return output_file
+
+def _write_into_template(final_df: pd.DataFrame, output_file: Path) -> None:
+    """复制官方模板：保留表头/提示行/其他 sheet，清掉第 3 行起的旧内容，写第 3 行提示，再按文本格式写入新数据"""
+    wb = openpyxl.load_workbook(TEMPLATE_FILE)
+    ws = wb[TEMPLATE_SHEET]
+    if ws.max_row >= TEMPLATE_TIP_ROW:
+        ws.delete_rows(TEMPLATE_TIP_ROW, ws.max_row - TEMPLATE_TIP_ROW + 1)
+
+    header = [c.value for c in ws[1]]
+    col_idx = {name: i + 1 for i, name in enumerate(header) if name}
+    for name, v in TEMPLATE_TIP_VALUES.items():
+        ws.cell(row=TEMPLATE_TIP_ROW, column=col_idx[name], value=v)
+    for r, rec in enumerate(final_df.to_dict("records"), start=TEMPLATE_DATA_START_ROW):
+        for name in TEMPLATE_COLUMNS:
+            v = rec.get(name)
+            cell = ws.cell(row=r, column=col_idx[name], value="" if pd.isna(v) else str(v))
+            cell.number_format = "@"
+    wb.active = wb.sheetnames.index(TEMPLATE_SHEET)
+    wb.save(output_file)
+
 
 if __name__ == "__main__":
     # 本地快速测试

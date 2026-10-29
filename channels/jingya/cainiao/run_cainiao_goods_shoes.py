@@ -13,7 +13,24 @@ GOODS_DIR = Path("D:/TB/taofenxiao/goods")
 GROUP_SIZE = 500
 
 
+KNOWN_BRANDS = ("camper", "ecco", "clarks", "geox")
+
+
+def check_brand_matches_goods_file():
+    """货品导出文件名带品牌后缀时（如 ..._geox.xlsx），校验与 BRAND 一致，防止选错品牌"""
+    files = sorted(GOODS_DIR.glob("货品导出*.xlsx"), reverse=True)
+    if not files:
+        return
+    stem = files[0].stem.lower()
+    file_brand = next((b for b in KNOWN_BRANDS if stem.endswith(f"_{b}")), None)
+    if file_brand and file_brand != BRAND:
+        raise SystemExit(
+            f"❌ 品牌不一致：货品导出文件是 {file_brand}（{files[0].name}），但 BRAND = {BRAND}，请修改 BRAND"
+        )
+
+
 def run():
+    check_brand_matches_goods_file()
     print(f"\n🚀 鲸芽菜鸟流程 — {BRAND} 货品更新 & 绑定")
 
     print(f"\n📦 导出 {BRAND} 货品导入 Excel（用于更新货品名称）")

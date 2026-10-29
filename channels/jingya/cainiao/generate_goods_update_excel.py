@@ -5,6 +5,8 @@ import psycopg2
 from pathlib import Path
 from config import BRAND_CONFIG
 from common.product.size_utils import clean_size_for_barbour
+from channels.jingya.cainiao.barbour_goods_type import build_barbour_goods_name, get_package_spec
+from channels.jingya.cainiao.generate_binding_goods_excel import _parse_code_size_from_goods_name
 
 # ======================= ✅【参数配置区】=======================
 BRAND = "barbour"                     # 这里默认做 Barbour 服装
@@ -44,9 +46,9 @@ def guess_style_zh(text: str) -> str:
 def normalize_gender(g: str, title: str = "") -> str:
     """将 gender 标准化为：男装 / 女装 / ''"""
     src = f"{g} {title}".lower()
-    # 英文优先识别
-    if any(x in src for x in ["men", "men's", "mens", "male"]): return "男装"
+    # 英文优先识别（先判 women：'women' 里包含 'men'）
     if any(x in src for x in ["women", "women's", "womens", "female"]): return "女装"
+    if any(x in src for x in ["men", "men's", "mens", "male"]): return "男装"
     # 中文兜底
     if "男" in g: return "男装"
     if "女" in g: return "女装"
@@ -71,14 +73,15 @@ def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 50
     prod = {}
     with psycopg2.connect(**pg) as conn, conn.cursor() as cur:
         if brand.lower() == "barbour":
-            # 服装：从 barbour_products 取（写死仅对 barbour 生效）
+            # 服装/帽子等：从 barbour_products 取（写死仅对 barbour 生效）
             cur.execute("""
-                SELECT product_code, size, COALESCE(gender,''), COALESCE(title,''), COALESCE(category,'')
+                SELECT product_code, size, COALESCE(gender,''), COALESCE(title,''), COALESCE(category,''),
+                       COALESCE(style_name,'')
                 FROM barbour_products
             """)
-            for code, sz, gender, title, cat in cur.fetchall():
+            for code, sz, gender, title, cat, style_name in cur.fetchall():
                 key = (str(code), clean_size_for_barbour(str(sz)))
-                prod[key] = {"gender": gender, "title": title, "category": cat}
+                prod[key] = {"gender": gender, "title": title, "category": cat, "style_name": style_name}
         else:
             # 其他品牌：从各自的 inventory 表取（字段名以你现有结构为准）
             # 这里尽量做了字段兜底：product_name 为编码（你数据库里用它存 code），
@@ -102,20 +105,15 @@ def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 50
     df = pd.read_excel(infile)
     out_rows = []
 
-    # 既支持 “颜色分类:CODE;尺码:S” 也支持 “颜色:CODE;尺码:S”
-    pat = re.compile(r"(?:颜色分类|颜色)\s*:\s*([^;]+)\s*;\s*尺码\s*:\s*(.+)")
-
     for _, row in df.iterrows():
         raw = str(row.get("货品名称", ""))
         code_field = str(row.get("货品编码", ""))
         barcode = str(row.get("条形码", ""))
 
-        m = pat.search(raw)
-        if not m:
+        # 支持 “颜色分类:CODE;尺码:S” / “颜色:CODE;尺码:S” / “尺码:S;颜色分类:CODE”
+        color_code, size_raw = _parse_code_size_from_goods_name(raw)
+        if not color_code:
             continue
-
-        color_code = m.group(1).strip()
-        size_raw = m.group(2).strip()
 
         if brand.lower() == "barbour":
             size_norm = clean_size_for_barbour(size_raw)
@@ -137,21 +135,32 @@ def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 50
                 else:
                     continue
 
-        gender_std = normalize_gender(info.get("gender",""), info.get("title",""))
-        style_zh = guess_style_zh(info.get("category","") or info.get("title",""))
-
-        new_name = f"{brand_label}{gender_std}{style_zh}{color_code}尺码{size_raw}"
+        if brand.lower() == "barbour":
+            # 按编码前缀 → 英文名 → category 逐步匹配商品类型（服装/帽子/…）
+            new_name, goods_type = build_barbour_goods_name(
+                color_code, size_raw,
+                style_name=info.get("style_name", "") or info.get("title", ""),
+                gender=info.get("gender", ""),
+                category=info.get("category", ""),
+                brand_label=brand_label,
+            )
+            package = get_package_spec(goods_type)
+        else:
+            gender_std = normalize_gender(info.get("gender",""), info.get("title",""))
+            style_zh = guess_style_zh(info.get("category","") or info.get("title",""))
+            new_name = f"{brand_label}{gender_std}{style_zh}{color_code}尺码{size_raw}"
+            package = get_package_spec("")
 
         row_out = {
             "货品编码": code_field,
             "货品名称": new_name,
-            "货品名称（英文）": info.get("title",""),
+            "货品名称（英文）": info.get("title","") or info.get("style_name",""),
             "条形码": barcode,
             "吊牌价": "", "零售价": "", "成本价": "",
             "易碎品": "", "危险品": "", "温控要求": "",
             "效期管理": "", "有效期（天）": "", "临期预警（天）": "",
             "禁售天数（天）": "", "禁收天数（天）": "",
-            "长": 400, "宽": 300, "高": 70, "毛重": 1200, "净重": 900,
+            **package,
             "长-运输单元": "", "宽-运输单元": "", "高-运输单元": "", "重量-运输单元": "",
             "包含电池": ""
         }
