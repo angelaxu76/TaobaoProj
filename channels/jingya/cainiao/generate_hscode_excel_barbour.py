@@ -3,7 +3,10 @@
 从一张清单（brand + 货品ID）连库生成备案导入 Excel（Barbour 服装版，无模板）。
 - 仅需提供：清单 Excel（两列：brand、货品ID 或 goods_id）
 - 其他信息从数据库取
-- HSCODE 固定 6201309000
+- HSCODE 按性别（服装）
+- 商品类型按 编码前缀 → 英文名 → category 逐步匹配（见 barbour_goods_type.py）；
+  只有 HSCODE_SUPPORTED_TYPES 里的类型才生成备案行，其他类型（帽子/兜帽/包…）
+  暂未配置海关编码，跳过并记录到日志 + 跳过清单 Excel
 """
 
 import os
@@ -12,6 +15,8 @@ from pathlib import Path
 from datetime import datetime
 import pandas as pd
 from sqlalchemy import create_engine, text
+from channels.jingya.cainiao.barbour_goods_type import classify_barbour_goods
+from common.utils.logger_utils import setup_logger
 
 # ======================= ✅【参数配置区】=======================
 # 1) 输入清单（两列：brand, 货品ID / goods_id）
@@ -30,6 +35,10 @@ HSCODE_MAP = {
     "女": "6102300000",
     "男": "6101909000",
 }
+
+# 已配置海关编码的商品类型（classify_barbour_goods 返回的 goods_type）。
+# 帽子/兜帽/包/围巾等拿到 HSCODE 和申报要素后再加进来，没加之前一律跳过。
+HSCODE_SUPPORTED_TYPES = {"服装"}
 # 4) 品牌映射：从哪个表取哪些字段
 BRAND_MAP = {
     "barbour": {
@@ -193,6 +202,15 @@ def _gender_label_for_decl(g: str) -> tuple[str, str]:
         return ("女式", "女式")
     return ("男式", "男式")
 
+class SkipGoods(Exception):
+    """该货品暂不生成备案行（如商品类型未配置海关编码）"""
+
+    def __init__(self, reason: str, info: dict):
+        super().__init__(reason)
+        self.reason = reason
+        self.info = info
+
+
 def build_row(brand: str, goods_id: str) -> dict:
     b = BRAND_MAP[brand]
     fields = b["fields"]
@@ -211,13 +229,28 @@ def build_row(brand: str, goods_id: str) -> dict:
     gender_raw = (prod.get("gender") or "")
     gender_norm = _normalize_gender(gender_raw)
 
+    # ✅ 商品类型：未配置海关编码的类型跳过（不再一律按大衣申报）
+    style_name = prod.get("style_name") or ""
+    if code:
+        goods_type, _, style_zh = classify_barbour_goods(
+            code, style_name, gender_raw, prod.get("category") or ""
+        )
+        # 前缀/英文名都没识别出来（如鞋、香水）时 style_zh 为兜底 "服装"，同样视为未配置
+        if goods_type not in HSCODE_SUPPORTED_TYPES or style_zh == "服装":
+            raise SkipGoods(
+                f"商品类型[{goods_type}/{style_zh}]未配置海关编码",
+                {"goods_type": goods_type, "style_zh": style_zh,
+                 "product_code": code, "style_name": style_name},
+            )
+
     hscode = HSCODE_MAP.get(gender_norm, HSCODE_MAP["男"])
 
     category = _category_from_gender(gender_norm)
     bracket_label, bracket_value = _gender_label_for_decl(gender_norm)
 
     # ✅ 标题：优先 products，其次 TXT 兜底
-    title_en = (prod.get("product_title") or prod.get("title_en") or prod.get("title") or "")
+    title_en = (prod.get("product_title") or prod.get("title_en") or prod.get("title")
+                or prod.get("style_name") or "")
     if not title_en and code:
         title_en = read_title_from_txt(brand, code)
 
@@ -326,7 +359,16 @@ def generate_barbour_hscode(
 
     df["brand"] = df["brand"].str.lower().str.strip()
 
+    output_dir.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    logger = setup_logger(
+        name="barbour_hscode",
+        log_dir=str(output_dir / "logs"),
+        filename="barbour_hscode.log",
+    )
+
     rows = []
+    skipped = []
     for i, r in df.iterrows():
         brand = r["brand"]
         goods_id = str(r[gid_col]).strip()
@@ -341,20 +383,32 @@ def generate_barbour_hscode(
 
         try:
             rows.append(build_row(brand, goods_id))
+        except SkipGoods as e:
+            msg = (f"跳过 货品ID={goods_id} 货号={e.info['product_code']} "
+                   f"({e.info['style_name']})：{e.reason}")
+            print(f"⏭ {msg}")
+            logger.info(msg)
+            skipped.append({"货品ID": goods_id, "货号": e.info["product_code"],
+                            "英文名": e.info["style_name"], "商品类型": e.info["goods_type"],
+                            "品类": e.info["style_zh"], "跳过原因": e.reason})
         except Exception as e:
             print(f"❌ 第{i+1}行失败（brand={brand}, 货品ID={goods_id}）：{e}")
 
     out_df = pd.DataFrame(rows, columns=CORRECT_COLUMNS)
 
-    # ---- mkdir 不再报错，因为 output_dir 已是 Path ----
-    output_dir.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_path = output_dir / f"备案导入_barbour_{ts}.xlsx"
 
     with pd.ExcelWriter(out_path, engine="openpyxl") as w:
         out_df.to_excel(w, sheet_name=sheet_name, index=False)
 
-    print(f"✅ 生成完成：{out_path}")
+    print(f"✅ 生成完成：{out_path}（{len(rows)} 行）")
+    logger.info(f"生成完成：{out_path}（{len(rows)} 行，跳过 {len(skipped)} 行）")
+
+    if skipped:
+        skip_path = output_dir / f"备案跳过清单_barbour_{ts}.xlsx"
+        pd.DataFrame(skipped).to_excel(skip_path, index=False)
+        print(f"⚠ 跳过 {len(skipped)} 个未配置海关编码的货品，清单：{skip_path}")
+        print(f"  日志：{output_dir / 'logs' / 'barbour_hscode.log'}")
 
 
 if __name__ == "__main__":

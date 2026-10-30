@@ -20,6 +20,12 @@ def download_image(code, suffix, idx, max_retries=3, delay=1.0):
         try:
             response = requests.get(image_url, timeout=10)
             response.raise_for_status()
+            # CDN 对不存在的图返回 200 + 空 text/html，不能当图片保存
+            content_type = response.headers.get('Content-Type', '')
+            if not content_type.startswith('image/') or not response.content:
+                if os.path.exists(save_path):
+                    os.remove(save_path)
+                return f"⚠️ {idx:04d} - 无此图片: {image_name}（{content_type or '无类型'}, {len(response.content)} bytes）"
             with open(save_path, 'wb') as f:
                 f.write(response.content)
             return f"✅ {idx:04d} - 下载成功: {image_name}"

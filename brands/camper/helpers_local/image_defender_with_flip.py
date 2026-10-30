@@ -1,7 +1,7 @@
 import os
 import random
 from pathlib import Path
-from PIL import Image, ImageEnhance, ImageOps
+from PIL import Image, ImageEnhance, ImageOps, UnidentifiedImageError
 import numpy as np
 from config import CAMPER
 
@@ -64,7 +64,10 @@ def edit_image(img_path: Path, out_path: Path):
 def batch_process_images(INPUT_DIR, OUTPUT_DIR):
     for file in INPUT_DIR.glob("*.jpg"):
         out_file = OUTPUT_DIR / file.name
-        edit_image(file, out_file)
+        try:
+            edit_image(file, out_file)
+        except (UnidentifiedImageError, OSError) as e:
+            print(f"⚠️ 跳过无效图片: {file.name}（{e}）")
 
 if __name__ == "__main__":
     batch_process_images()
