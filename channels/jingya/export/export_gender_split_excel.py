@@ -88,10 +88,12 @@ def export_gender_split_excel(brand: str):
     df_unique = df_raw.drop_duplicates(subset=["channel_product_id"])
 
     # ✅ 男款 & 女款
-    df_male = df_unique[df_unique["gender"] == "男款"][["channel_product_id", "product_code"]]
+    # 鞋类品牌 TXT 写中文（男款/女款），服装品牌（如 toast）写英文（Men/Women）
+    gender_l = df_unique["gender"].str.lower()
+    df_male = df_unique[gender_l.isin(["男款", "men", "male"])][["channel_product_id", "product_code"]]
     df_male.columns = ["渠道产品ID", "商品编码"]
 
-    df_female = df_unique[df_unique["gender"] == "女款"][["channel_product_id", "product_code"]]
+    df_female = df_unique[gender_l.isin(["女款", "women", "female"])][["channel_product_id", "product_code"]]
     df_female.columns = ["渠道产品ID", "商品编码"]
 
     out_base = Path(config["OUTPUT_DIR"])

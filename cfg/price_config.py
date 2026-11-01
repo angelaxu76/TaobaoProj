@@ -44,6 +44,7 @@ BRAND_DISCOUNT = {
     "geox":   1.00,
     "clarks": 1.00,
     "barbour": 1.00,
+    "toast":  1.00,   # 暂无品牌折扣，按默认价格
 }
 
 

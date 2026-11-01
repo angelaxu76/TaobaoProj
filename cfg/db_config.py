@@ -22,4 +22,5 @@ BRAND_TABLE = {
     "ecco": "ecco_inventory",
     "geox": "geox_inventory",
     "barbour": "barbour_inventory",
+    "toast": "toast_inventory",
 }

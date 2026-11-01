@@ -13,4 +13,5 @@ BRAND_NAME_MAP = {
     "reiss": ("REISS", ""),
     "ms": ("Marks & Spencer", "马莎"),
     "marksandspencer": ("英国M&S", "马莎"),
+    "toast": ("TOAST", ""),
 }
