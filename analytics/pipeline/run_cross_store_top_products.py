@@ -18,7 +18,7 @@ if __name__ == "__main__":
     rule = TopProductRule(
         stores=[s.store_name for s in stores],
         store_labels={s.store_name: s.folder for s in stores},
-        window_days=TOP_WINDOW_DAYS,7
+        window_days=TOP_WINDOW_DAYS,
         weights=TOP_SCORE_WEIGHTS,
         min_pageviews=TOP_MIN_PAGEVIEWS,
         min_cart=TOP_MIN_CART,
