@@ -42,6 +42,56 @@ def detect_brand_from_name(name: str) -> str:
     return ""
 
 
+# 货品名称识别不出品牌时（如 "颜色分类:xxx;尺码:36"），用货品id 到各品牌表反查
+BRAND_TABLES = {
+    "camper": "camper_inventory",
+    "ecco": "ecco_inventory",
+    "clarks": "clarks_inventory",
+    "geox": "geox_inventory",
+    "barbour": "barbour_inventory",
+}
+
+
+def lookup_brands_by_item_ids(item_ids) -> dict:
+    """
+    批量按 channel_item_id 在各品牌库存表中查找，返回 {货品id: brand}。
+    数据库不可用时返回空 dict，不中断流程。
+    """
+    item_ids = list({i for i in item_ids if i})
+    if not item_ids:
+        return {}
+
+    try:
+        import psycopg2
+        from config import PGSQL_CONFIG
+        conn = psycopg2.connect(**PGSQL_CONFIG)
+    except Exception as e:
+        print(f"[WARN] 无法连接数据库，跳过货品id反查品牌: {e}")
+        return {}
+
+    found = {}
+    try:
+        with conn.cursor() as cur:
+            for brand, table in BRAND_TABLES.items():
+                remaining = [i for i in item_ids if i not in found]
+                if not remaining:
+                    break
+                try:
+                    cur.execute(
+                        f"SELECT DISTINCT channel_item_id FROM {table} WHERE channel_item_id = ANY(%s)",
+                        (remaining,),
+                    )
+                    for (cid,) in cur.fetchall():
+                        found[str(cid)] = brand
+                except Exception as e:
+                    conn.rollback()
+                    print(f"[WARN] 查询 {table} 失败: {e}")
+    finally:
+        conn.close()
+
+    return found
+
+
 def normalize_product_id(val) -> str:
     """
     把货品id统一转成“文本”形式，避免：
@@ -139,10 +189,21 @@ def extract_goods_brand_info(input_dir: str, shoes_output: str, barbour_output: 
         return False, False
 
     final_df = pd.concat(all_results, ignore_index=True)
-    final_df = final_df[final_df["brand"] != ""]
 
     # 再保险：这里再统一做一遍文本转换
     final_df["货品id"] = final_df["货品id"].apply(normalize_product_id)
+
+    # 名称里没有品牌的，用货品id 反查数据库
+    unknown_mask = final_df["brand"] == ""
+    if unknown_mask.any():
+        id_brand = lookup_brands_by_item_ids(final_df.loc[unknown_mask, "货品id"])
+        final_df.loc[unknown_mask, "brand"] = final_df.loc[unknown_mask, "货品id"].map(id_brand).fillna("")
+        print(f"[INFO] 名称未识别品牌 {unknown_mask.sum()} 行，数据库反查命中 {len(id_brand)} 个货品id。")
+        still_unknown = final_df.loc[final_df["brand"] == "", "货品id"].unique().tolist()
+        if still_unknown:
+            print(f"[WARN] 以下货品id 仍无法识别品牌，已跳过: {still_unknown}")
+
+    final_df = final_df[final_df["brand"] != ""]
 
     shoe_brands = {"camper", "ecco", "clarks", "geox"}
 
