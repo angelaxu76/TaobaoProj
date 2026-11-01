@@ -1,10 +1,12 @@
 from ..paths import BASE_DIR, GEI_SHARED_BASE
 from ..db_config import PGSQL_CONFIG
+from ops.image_rename.image_priority_config import IMAGE_PRIORITY_CONFIG
 
 TOAST_BASE = BASE_DIR / "toast"
 TOAST = {
     "BRAND": "toast",
     "BASE": TOAST_BASE,
+    **IMAGE_PRIORITY_CONFIG["toast"],
     # 鲸芽导出 GEI@sales_catalogue_export@*.xlsx 放这里（与其他品牌一致）
     "GEI_DIR": GEI_SHARED_BASE / "toast",
     "SITE_ROOT": "https://www.toa.st",
@@ -29,6 +31,8 @@ TOAST = {
     "HTML_IMAGE": TOAST_BASE / "publication" / "html_image",
     "HTML_IMAGE_DES": TOAST_BASE / "publication" / "html_image" / "description",
     "HTML_IMAGE_FIRST_PAGE": TOAST_BASE / "publication" / "html_image" / "first_page",
+    "HTML_CUTTER_DES": TOAST_BASE / "publication" / "html_cutter" / "description",
+    "HTML_CUTTER_FIRST_PAGE": TOAST_BASE / "publication" / "html_cutter" / "first_page",
     # 尺码表：{编码}_size.json（原始数据）+ {编码}_size.html（中文页面），截图输出到 SIZE_CHART_IMAGE_DIR
     # 放 document/ 下长期保留（publication/ 每次运行 prepare_jingya_listing 都会被清空）；已抓过的 json 会自动跳过
     "SIZE_CHART_DIR": TOAST_BASE / "document" / "size",

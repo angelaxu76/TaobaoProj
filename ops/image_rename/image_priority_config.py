@@ -95,6 +95,14 @@ IMAGE_PRIORITY_CONFIG = {
         "IMAGE_FIRST_PRIORITY": [1, 2],
         "IMAGE_DES_PRIORITY": [2, 1],
     },
+    "toast": {
+        # 下载脚本按官网展示顺序命名 {code}_1/_2/...；显式列出数字，避免按字母排序成 1,10,11,2...
+        "IMAGE_RENAME_PRIORITY": [str(i) for i in range(1, 21)],
+        # 官网第 1 张一般是模特正面，首页优先用它
+        "IMAGE_FIRST_PRIORITY": [1, 2, 3, 4],
+        # 详情页优先用第二张，避免和首页撞图
+        "IMAGE_DES_PRIORITY": [2, 1, 3, 4],
+    },
     "reiss": {
         "IMAGE_RENAME_PRIORITY": ["s", "s2", "s3", "s4", "s5"],
         # 原始后缀 s/s3/s4 对应改名后的 __1/__3/__4
