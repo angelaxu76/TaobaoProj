@@ -75,7 +75,18 @@ def _get(url: str, params: Optional[dict] = None, retry: int = 3, timeout: int =
                 time.sleep(wait)
                 continue
             if r.status_code == 429:
-                time.sleep(5 * attempt)
+                # Shopify 限流（JSON: TOO_MANY_REQUESTS + retry-after），整站封 IP，短间隔重试只会越封越久
+                if cf_hits >= len(CF_BACKOFF):
+                    raise RuntimeError("Shopify 持续限流 429（IP 被限流），请稍后再跑或调大 REQUEST_MIN_INTERVAL")
+                try:
+                    retry_after = int(r.headers.get("Retry-After", 0))
+                except ValueError:
+                    retry_after = 0
+                wait = max(retry_after, CF_BACKOFF[cf_hits])
+                cf_hits += 1
+                attempt -= 1  # 限流不计入普通重试次数
+                print(f"🛑 429 限流（retry-after={retry_after}s），{wait}s 后重试：{url}")
+                time.sleep(wait)
                 continue
             r.raise_for_status()
             return r

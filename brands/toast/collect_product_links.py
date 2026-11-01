@@ -49,13 +49,18 @@ def toast_get_links(
     exclude_type_kw = TOAST.get("EXCLUDE_PRODUCT_TYPE_KEYWORDS") or []
 
     meta: Dict[str, dict] = {}
+    failed: List[str] = []
 
     for idx, (coll, gender) in enumerate(collections.items(), 1):
         print(f"\n▶ 类目 [{idx}/{len(collections)}]: {coll} ({gender})")
         try:
             products = iter_collection_products(coll)
         except Exception as e:
-            print(f"💥 类目抓取失败，跳过：{e}")
+            print(f"💥 类目抓取失败：{e}")
+            failed.append(coll)
+            if "限流" in str(e):
+                # 整站封 IP，后面的类目也抓不到，直接停
+                break
             continue
 
         cat_links: List[str] = []
@@ -74,6 +79,10 @@ def toast_get_links(
 
         _write_lines(out_path.with_name(f"links_{coll}.txt"), sorted(set(cat_links)))
         print(f"   ✅ 共 {len(products)} 个商品，保留 {len(cat_links)}，过滤 {skipped}")
+
+    # 有类目失败时不写总链接文件：残缺的链接列表会导致后续 TXT / 入库缺商品
+    if failed:
+        raise RuntimeError(f"以下类目抓取失败，已中止（未写入 {out_path.name}）：{failed}")
 
     all_links = sorted(meta.keys())
     _write_lines(out_path, all_links)
