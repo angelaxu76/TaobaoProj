@@ -111,3 +111,21 @@ BAD_MIN_PRICE_BY_BRAND: dict[str, float] = {
     "geox":    2000,
     "barbour": 3500,
 }
+
+# ============================================================
+# 跨店铺优质商品规则（run_cross_store_top_products 使用，选直通车推广候选）
+# 统计窗口：最近 TOP_WINDOW_DAYS 天（截止到库里最新日报日期），指标为所有店铺合计
+# 综合得分 = Σ 权重 × 该指标在【品牌内】的百分位排名（0~100）
+#   按品牌内排名而不是绝对值，避免 Barbour 这种高流量品牌把其它品牌挤掉
+# 入选：同时满足下列门槛，再按得分取每个品牌前 TOP_N_PER_BRAND 个
+TOP_WINDOW_DAYS: int = 30
+TOP_SCORE_WEIGHTS: dict[str, float] = {
+    "pageviews":      0.20,   # 浏览量
+    "cart_buyer_cnt": 0.35,   # 加购人数
+    "pay_qty":        0.45,   # 成交件数
+}
+TOP_MIN_PAGEVIEWS: int = 50       # 合计浏览量 >= 此值
+TOP_MIN_CART: int = 3             # 合计加购人数 >= 此值
+TOP_MIN_PAY_QTY: int = 0          # 合计成交件数 >= 此值（0 = 不要求有成交）
+TOP_MIN_STORE_CNT: int = 1        # 至少在 N 个店铺上架（2 = 只看多店都上架的商品）
+TOP_N_PER_BRAND: int = 30         # 每个品牌最多导出多少个
