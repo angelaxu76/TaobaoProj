@@ -5,17 +5,24 @@ TOAST (https://www.toa.st) 是 Shopify 站点，直接走公开 JSON 接口，�
 - /products/{handle}.js                                   单品详情（带 available / barcode / 价格单位为便士）
 
 本文件只放 collect / fetch / download 三个脚本共用的请求与编码工具。
+
+请求方式（TOAST["FETCH_MODE"]）：
+- "browser"（默认）：弹出真实 Chrome，先打开首页拿到 Cloudflare / Shopify cookie，之后所有接口都在页面内用 fetch() 请求。
+  python requests 会被识别成机器人直接 429，浏览器不会。
+- "requests"：直接用 requests 请求（旧方式）。
 """
 from __future__ import annotations
 
+import atexit
 import random
 import re
 import threading
 import time
 from typing import Dict, List, Optional
-from urllib.parse import urlparse
+from urllib.parse import urlencode, urlparse
 
 import requests
+from requests.structures import CaseInsensitiveDict
 
 from config import TOAST
 
@@ -50,13 +57,128 @@ def _throttle() -> None:
         _last_request_at = time.time()
 
 
-def _is_cf_block(r: requests.Response) -> bool:
+# ================= 浏览器请求 =================
+FETCH_MODE = TOAST.get("FETCH_MODE", "browser")
+
+_driver = None
+_driver_lock = threading.RLock()
+
+# 在页面内发 fetch，带上浏览器自己的 cookie / 指纹；结果回传给 Python
+_FETCH_JS = """
+const url = arguments[0], done = arguments[arguments.length - 1];
+fetch(url, {credentials: "include", headers: {"Accept": "application/json,text/html;q=0.9,*/*;q=0.8"}})
+  .then(r => r.text().then(t => done({
+      status: r.status,
+      headers: {"Retry-After": r.headers.get("retry-after"), "Cf-Mitigated": r.headers.get("cf-mitigated")},
+      text: t,
+  })))
+  .catch(e => done({status: 0, headers: {}, text: "", error: String(e)}));
+"""
+
+
+class _BrowserResponse:
+    """模拟 requests.Response 的最小接口，_get 的重试 / 限流逻辑两种模式共用"""
+
+    def __init__(self, url: str, data: dict):
+        self.url = url
+        self.status_code = int(data.get("status") or 0)
+        self.headers = CaseInsensitiveDict({k: v for k, v in (data.get("headers") or {}).items() if v})
+        self.text = data.get("text") or ""
+        self.error = data.get("error")
+
+    def json(self):
+        import json
+        return json.loads(self.text)
+
+    def raise_for_status(self) -> None:
+        if self.status_code == 0:
+            raise requests.ConnectionError(f"浏览器 fetch 失败: {self.error} ({self.url})")
+        if self.status_code >= 400:
+            raise requests.HTTPError(f"{self.status_code} Error for url: {self.url}")
+
+
+def _wait_page_ready(driver, max_wait: int = 120) -> None:
+    """等首页加载完；遇到 Cloudflare 验证页时等它自动通过（必要时在弹出的浏览器里手动点一下）"""
+    deadline = time.time() + max_wait
+    hinted = False
+    while time.time() < deadline:
+        try:
+            title = (driver.title or "").lower()
+            ready = driver.execute_script("return document.readyState") == "complete"
+        except Exception:
+            title, ready = "", False
+        if ready and "just a moment" not in title and "verif" not in title:
+            return
+        if not hinted:
+            print("⏳ 等待浏览器通过 Cloudflare 验证（如有人机验证请在弹出的浏览器里手动完成）...")
+            hinted = True
+        time.sleep(2)
+    print("⚠️ 首页等待超时，继续尝试请求")
+
+
+def _get_driver():
+    global _driver
+    with _driver_lock:
+        if _driver is None:
+            from common.browser.driver_auto import build_uc_driver
+            print("🌐 启动浏览器（真实 Chrome 访问 TOAST）...")
+            _driver = build_uc_driver(headless=False, verbose=False)
+            _driver.get(SITE_ROOT)
+            _wait_page_ready(_driver)
+        return _driver
+
+
+def refresh_browser() -> None:
+    """被拦截后重新打开首页，让浏览器重新拿 cookie / 通过验证"""
+    with _driver_lock:
+        if _driver is not None:
+            try:
+                _driver.get(SITE_ROOT)
+                _wait_page_ready(_driver)
+            except Exception:
+                close_browser()
+
+
+def close_browser() -> None:
+    global _driver
+    with _driver_lock:
+        if _driver is not None:
+            try:
+                _driver.quit()
+            except Exception:
+                pass
+            # uc.Chrome.__del__ 在 Windows 上会对已关闭的进程再 quit 一次，报 OSError: 句柄无效（无害），这里屏蔽掉
+            type(_driver).__del__ = lambda self: None
+            _driver = None
+
+
+atexit.register(close_browser)
+
+
+def _request(url: str, params: Optional[dict], timeout: int):
+    if FETCH_MODE != "browser":
+        return requests.get(url, params=params, headers=HEADERS, timeout=timeout)
+
+    full_url = f"{url}?{urlencode(params)}" if params else url
+    with _driver_lock:
+        driver = _get_driver()
+        try:
+            driver.set_script_timeout(timeout)
+            data = driver.execute_async_script(_FETCH_JS, full_url)
+        except Exception:
+            # 浏览器崩溃 / 被关掉：丢弃实例，下次重试时重新启动
+            close_browser()
+            raise
+    return _BrowserResponse(full_url, data or {})
+
+
+def _is_cf_block(r) -> bool:
     return r.status_code in (403, 429) and (
         r.headers.get("Cf-Mitigated") == "challenge" or "Verifying your connection" in r.text[:3000]
     )
 
 
-def _get(url: str, params: Optional[dict] = None, retry: int = 3, timeout: int = 30) -> requests.Response:
+def _get(url: str, params: Optional[dict] = None, retry: int = 3, timeout: int = 30):
     last_err = None
     cf_hits = 0
     attempt = 0
@@ -64,7 +186,7 @@ def _get(url: str, params: Optional[dict] = None, retry: int = 3, timeout: int =
         attempt += 1
         _throttle()
         try:
-            r = requests.get(url, params=params, headers=HEADERS, timeout=timeout)
+            r = _request(url, params, timeout)
             if _is_cf_block(r):
                 if cf_hits >= len(CF_BACKOFF):
                     raise RuntimeError("Cloudflare 持续拦截（IP 被限流），请稍后再跑或降低并发")
@@ -73,6 +195,8 @@ def _get(url: str, params: Optional[dict] = None, retry: int = 3, timeout: int =
                 attempt -= 1  # 被 CF 拦截不计入普通重试次数
                 print(f"🛑 Cloudflare 拦截，{wait}s 后重试：{url}")
                 time.sleep(wait)
+                if FETCH_MODE == "browser":
+                    refresh_browser()
                 continue
             if r.status_code == 429:
                 # Shopify 限流（JSON: TOO_MANY_REQUESTS + retry-after），整站封 IP，短间隔重试只会越封越久
@@ -87,6 +211,8 @@ def _get(url: str, params: Optional[dict] = None, retry: int = 3, timeout: int =
                 attempt -= 1  # 限流不计入普通重试次数
                 print(f"🛑 429 限流（retry-after={retry_after}s），{wait}s 后重试：{url}")
                 time.sleep(wait)
+                if FETCH_MODE == "browser":
+                    refresh_browser()
                 continue
             r.raise_for_status()
             return r

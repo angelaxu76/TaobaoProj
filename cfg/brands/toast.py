@@ -10,6 +10,8 @@ TOAST = {
     "SITE_ROOT": "https://www.toa.st",
     # 站点有 Cloudflare，请求过密会封 IP；所有请求之间的最小间隔（秒）
     "REQUEST_MIN_INTERVAL": 1.5,
+    # "browser" = 弹出真实 Chrome，在页面内 fetch 接口（requests 会被识别成机器人 429）；"requests" = 旧方式
+    "FETCH_MODE": "browser",
     "FEATURE_DELIMITER": "|",
     "TXT_DIR": TOAST_BASE / "publication" / "TXT",
     "ORG_IMAGE_DIR": TOAST_BASE / "document" / "orgin_images",
