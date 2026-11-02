@@ -80,7 +80,48 @@ def _get_driver_major(driver_path: str) -> int | None:
         return None
 
 
-def build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True):
+class UcStartTimeout(RuntimeError):
+    pass
+
+
+def _start_uc_with_timeout(kwargs: dict, timeout: float):
+    """
+    在后台线程里执行 uc.Chrome(**kwargs)，超过 timeout 秒未返回就强杀这次新启动的
+    chromedriver / chrome 进程并抛 UcStartTimeout。
+    uc.Chrome() 偶发卡死（selenium 与 chromedriver 之间的 HTTP 调用默认无超时），
+    而调用方持有 _uc_init_lock，卡死会让所有排队启动浏览器的线程一起永远卡住。
+    """
+    import psutil
+
+    me = psutil.Process()
+    before = {p.pid for p in me.children(recursive=True)}
+    result: dict = {}
+
+    def _target():
+        try:
+            result["driver"] = uc.Chrome(**kwargs)
+        except BaseException as e:
+            result["error"] = e
+
+    t = threading.Thread(target=_target, daemon=True, name="uc-start")
+    t.start()
+    t.join(timeout)
+
+    if t.is_alive():
+        for p in me.children(recursive=True):
+            if p.pid not in before:
+                try:
+                    p.kill()
+                except psutil.NoSuchProcess:
+                    pass
+        # 卡住的线程被丢弃（daemon，不阻塞退出）；万一之后又返回了 driver，也让它自行失效
+        raise UcStartTimeout(f"uc.Chrome 启动超过 {timeout:.0f}s 未返回，已强杀新启动的浏览器进程")
+    if "error" in result:
+        raise result["error"]
+    return result["driver"]
+
+
+def build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True, start_timeout=180):
     """
     自动适配本机 Chrome 主版本，构建 uc.Chrome 并返回 driver 实例。
 
@@ -89,25 +130,28 @@ def build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True)
       - extra_options: 额外的 Chrome 启动参数（list[str]），例如 ["--disable-gpu"]
       - retries: 失败后（清缓存）最大重试次数
       - verbose: 是否打印调试信息
+      - start_timeout: 单次 uc.Chrome() 启动最长等待秒数，超时强杀并重试
 
     返回：
       - selenium webdriver 实例（undetected_chromedriver.Chrome）
     """
-    options = uc.ChromeOptions()
-    options.add_argument("--start-maximized")
-    # 你可以按需添加固定参数，例如禁用自动化标记等：
-    # options.add_argument("--disable-blink-features=AutomationControlled")
-
-    if extra_options:
-        for arg in extra_options:
-            options.add_argument(arg)
+    def _make_options():
+        # uc 不允许复用同一个 ChromeOptions 对象，每次尝试都新建
+        options = uc.ChromeOptions()
+        options.add_argument("--start-maximized")
+        # 你可以按需添加固定参数，例如禁用自动化标记等：
+        # options.add_argument("--disable-blink-features=AutomationControlled")
+        if extra_options:
+            for arg in extra_options:
+                options.add_argument(arg)
+        return options
 
     major = _detect_chrome_major_on_windows()
     if verbose:
         print(f"🔍 Detected Chrome major version: {major if major else 'UNKNOWN'}")
 
     # 传入 version_main 可确保拉取兼容的驱动
-    kwargs = dict(options=options, headless=headless)
+    kwargs = dict(headless=headless)
     if major:
         kwargs["version_main"] = major
 
@@ -129,10 +173,14 @@ def build_uc_driver(headless=False, extra_options=None, retries=2, verbose=True)
             try:
                 if verbose:
                     print(f"\U0001f697 Creating uc.Chrome (attempt {attempt}/{retries}) with {kwargs} ...")
-                driver = uc.Chrome(**kwargs)
+                driver = _start_uc_with_timeout({**kwargs, "options": _make_options()}, start_timeout)
                 if verbose:
                     print("✅ uc.Chrome started successfully.")
                 return driver
+            except UcStartTimeout as e:
+                last_err = e
+                print(f"⚠️ {e}，重试 ({attempt}/{retries})")
+                time.sleep(3)
             except SessionNotCreatedException as e:
                 last_err = e
                 if verbose:
