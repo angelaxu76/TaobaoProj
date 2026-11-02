@@ -56,7 +56,7 @@ def _fetch_page(session: requests.Session, page: int) -> list[dict]:
             wait = float(resp.headers.get("Retry-After") or 0)
         except ValueError:
             wait = 0
-        wait = max(wait, 10.0 * attempt)
+        wait = max(wait, 30.0 * 2 ** (attempt - 1))   # 指数退避 30/60/120/240/480s
         print(f"⏳ page={page} 429 限流, 等待 {wait:.0f}s 后重试 ({attempt}/{MAX_RETRIES})")
         time.sleep(wait)
     resp.raise_for_status()

@@ -34,8 +34,7 @@ from sqlalchemy.engine import Connection
 from brands.barbour.core.base_fetcher import BaseFetcher, setup_logging
 from brands.barbour.core.color_utils import COLOR_MAP, normalize_color
 from brands.barbour.core.hybrid_barbour_matcher import resolve_product_code
-from brands.barbour.supplier.williampowell_get_links import PAGE_INTERVAL
-from brands.barbour.supplier.williampowell_get_links import _fetch_page as _fetch_collection_page
+from brands.barbour.supplier.williampowell_get_links import fetch_all_collection_products
 
 from config import BARBOUR, BRAND_CONFIG, SETTINGS
 
@@ -152,22 +151,14 @@ class WilliamPowellFetcher(BaseFetcher):
 
     def _load_collection_cache(self) -> Dict[str, Dict[str, Any]]:
         """拉取整个 collection, 转换成与单品 .js 接口相同的结构, 按 handle 索引"""
-        session = requests.Session()
         cache: Dict[str, Dict[str, Any]] = {}
-        page = 1
         try:
-            while True:
-                products = _fetch_collection_page(session, page)
-                if not products:
-                    break
-                for p in products:
-                    handle = (p.get("handle") or "").strip()
-                    if handle:
-                        cache[handle] = _collection_product_to_js(p)
-                page += 1
-                time.sleep(PAGE_INTERVAL)
+            for p in fetch_all_collection_products():
+                handle = (p.get("handle") or "").strip()
+                if handle:
+                    cache[handle] = _collection_product_to_js(p)
         except Exception as e:
-            self.logger.warning(f"⚠️ collection products.json 拉取中断 (page={page}): {e}, 未命中的商品将回退单品接口")
+            self.logger.warning(f"⚠️ collection products.json 拉取中断: {e}, 未命中的商品将回退单品接口")
         self.logger.info(f"📦 collection 缓存: {len(cache)} 个商品")
         return cache
 

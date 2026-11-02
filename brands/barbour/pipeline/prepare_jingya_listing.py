@@ -246,6 +246,18 @@ def run_a_crawl():
     from brands.barbour.tools.move_non_barbour_files import move_non_barbour_files
     _FILTER_SUPPLIERS = ["cho", "philipmorris", "terraces", "magrigg", "williampowell", "samturner"]
 
+    # 单个供货商失败不中断整个 A 阶段：写 _FAILED.json 让主机跳过它，继续跑其余供货商
+    failed_suppliers: dict[str, str] = {}
+
+    def _supplier_fail(step: str, supplier: str, exc: Exception):
+        print(f"\n{'!'*60}")
+        print(f"❌ [{step}] 失败，错误信息：")
+        print(f"   {type(exc).__name__}: {exc}")
+        print(f"   → 已标记 {supplier} 失败，继续下一个供货商")
+        print(f"{'!'*60}", flush=True)
+        multi_node.mark_supplier_failed(pub_base, supplier, exc)
+        failed_suppliers[supplier] = f"{step}: {type(exc).__name__}: {exc}"
+
     for supplier, (do_get_links, do_fetch_info) in A_SUPPLIERS.items():
         if not do_get_links and not do_fetch_info:
             _skip(f"[{supplier}] get_links + fetch_info（均已关闭）")
@@ -264,7 +276,9 @@ def run_a_crawl():
                 get_links_fn()
                 _ok(f"{supplier} 链接获取完成", time.time() - t)
             except Exception as e:
-                _fail(f"A-get_links-{supplier}", e)
+                multi_node.clear_supplier_markers(pub_base, supplier)
+                _supplier_fail(f"A-get_links-{supplier}", supplier, e)
+                continue   # 没有新链接，不跑 fetch_info
         else:
             _skip(f"[{supplier}] get_links（沿用上次链接）")
 
@@ -279,12 +293,17 @@ def run_a_crawl():
                 if supplier in _FILTER_SUPPLIERS:
                     move_non_barbour_files(str(txt_dir), str(txt_dir.with_name("TXT.bk")))
             except Exception as e:
-                multi_node.mark_supplier_failed(pub_base, supplier, e)
-                _fail(f"A-fetch_info-{supplier}", e)
+                _supplier_fail(f"A-fetch_info-{supplier}", supplier, e)
+                continue
             n = multi_node.mark_supplier_done(pub_base, supplier, txt_dir)
             _ok(f"{supplier} 详情抓取完成，{n} 个 TXT", time.time() - t)
         else:
             _skip(f"[{supplier}] fetch_info（保留上次 TXT）")
+
+    if failed_suppliers:
+        print(f"\n⚠️  A 阶段有 {len(failed_suppliers)} 个供货商失败（已写 _FAILED.json，主机 B 阶段会跳过）：")
+        for s, err in failed_suppliers.items():
+            print(f"   - {s}: {err}")
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -552,5 +571,46 @@ def main():
     print(f"{'★'*60}\n")
 
 
+def _hard_exit(code: int) -> None:
+    """
+    强制退出：先杀掉本进程派生的 chromedriver / chrome 子进程，再 os._exit。
+    正常退出时 Python 要等非 daemon 线程 + 跑 atexit（selenium_utils 的
+    driver.quit()），残留的 driver 卡住时会一直挂着不退出，外层看门狗要
+    20 分钟后才会 kill 并整轮重跑。
+    """
+    try:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except Exception:
+        pass
+    try:
+        import psutil
+        children = psutil.Process().children(recursive=True)
+        for child in children:
+            try:
+                child.kill()
+            except psutil.NoSuchProcess:
+                pass
+        psutil.wait_procs(children, timeout=10)
+    except Exception as e:
+        print(f"⚠️ 清理子进程失败：{e}", flush=True)
+    os._exit(code)
+
+
 if __name__ == "__main__":
-    main()
+    import os
+    import traceback
+
+    exit_code = 0
+    try:
+        main()
+    except SystemExit as e:
+        if isinstance(e.code, int):
+            exit_code = e.code
+        elif e.code is not None:
+            print(e.code, flush=True)
+            exit_code = 1
+    except BaseException:
+        traceback.print_exc()
+        exit_code = 1
+    _hard_exit(exit_code)
