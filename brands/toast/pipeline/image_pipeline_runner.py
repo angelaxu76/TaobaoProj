@@ -5,15 +5,16 @@ TOAST 图片 + 详情页流水线（与 camper / clarks 一致）
 
 步骤（各步骤可独立开关）：
   1. 按编码下载商品图片（+视频）          → IMAGE_DOWNLOAD / VIDEO_DOWNLOAD
-  2. 防指纹扰动（微旋转/裁剪/噪点）       → IMAGE_PROCESS
-  3. 复制到 document 长期图库             → IMAGE_DIR（发布 Excel 从这里取图）
-  4. 图片横向合并                         → MERGED_DIR
-  5. 按优先级把 IMAGE_PROCESS 改名为 __1/__2/...（供选图用）
-  6. 生成详情卡 HTML + 首页 HTML          → HTML_DIR_DES / HTML_DIR_FIRST_PAGE
-  7. 详情 HTML → 图片 → 裁边              → HTML_IMAGE_DES → HTML_CUTTER_DES
-  8. 首页 HTML → 图片 → 裁边              → HTML_IMAGE_FIRST_PAGE → HTML_CUTTER_FIRST_PAGE
-  9. 抓尺码表（json + html，已抓过的跳过）→ SIZE_CHART_DIR（document/size）
- 10. 尺码表 html → 图片（已有图片的跳过） → SIZE_CHART_IMAGE_DIR（document/size_image）
+  2. 防指纹扰动（微旋转/裁剪/噪点）       → IMAGE_PROCESS（长方形，供 HTML 使用）
+  3. 白底扩展成正方形（不裁切，统一 JPG） → IMAGE_CUTTER（正方形，供上架主图使用）
+  4. 正方形图复制到 document 长期图库     → IMAGE_DIR（发布 Excel 从这里取图）
+  5. 正方形图横向合并                     → MERGED_DIR
+  6. 按优先级把 IMAGE_PROCESS 改名为 __1/__2/...（供选图用）
+  7. 用长方形图生成详情卡 + 首页 HTML     → HTML_DIR_DES / HTML_DIR_FIRST_PAGE
+  8. 详情 HTML → 图片 → 裁边              → HTML_IMAGE_DES → HTML_CUTTER_DES
+  9. 首页 HTML → 图片 → 裁边              → HTML_IMAGE_FIRST_PAGE → HTML_CUTTER_FIRST_PAGE
+ 10. 抓尺码表（json + html，已抓过的跳过）→ SIZE_CHART_DIR（document/size）
+ 11. 尺码表 html → 图片（已有图片的跳过） → SIZE_CHART_IMAGE_DIR（document/size_image）
 """
 from config import TOAST
 from brands.toast.download_product_images import download_images_from_codes
@@ -22,6 +23,7 @@ from brands.toast.pipeline.tool_sizechart_to_image import toast_sizechart_to_ima
 from common.publication.generate_html import generate_html_from_codes_files
 from common.publication.generate_html_FristPage import generate_first_page_from_codes_files
 from helper.image.image_antifingerprint import batch_process_images
+from helper.image.expand_to_square import process_folder as expand_images_to_square
 from helper.image.copy_images import copy_images
 from helper.image.merge_product_images import batch_merge_images
 from helper.html.html_to_png_multithread import convert_html_to_images
@@ -31,19 +33,22 @@ from ops.image_rename.rename_by_shot_priority import rename_by_shot_priority
 # ── 步骤开关 ──────────────────────────────────────────────────────
 RUN_1_DOWNLOAD     = True
 RUN_2_PROCESS      = True
-RUN_3_COPY_DOC     = True
-RUN_4_MERGE        = True
-RUN_5_RENAME       = True
-RUN_6_HTML         = True
-RUN_7_RENDER_DES   = True
-RUN_8_RENDER_FIRST = True
-RUN_9_SIZE_CHART   = True
-RUN_10_SIZE_IMAGE  = True
+RUN_3_SQUARE       = True
+RUN_4_COPY_DOC     = True
+RUN_5_MERGE        = True
+RUN_6_RENAME       = True
+RUN_7_HTML         = True
+RUN_8_RENDER_DES   = True
+RUN_9_RENDER_FIRST = True
+RUN_10_SIZE_CHART  = True
+RUN_11_SIZE_IMAGE  = True
 
 # ── 参数 ──────────────────────────────────────────────────────────
 CODE_FILE = TOAST["OUTPUT_DIR"] / "publication_codes_outerwear.txt"
 DOWNLOAD_VIDEOS = True
 FLIP = False          # 服装图有文字/印花，默认不水平翻转
+SQUARE_FILL = (255, 255, 255)   # 扩展正方形的填充色（与防指纹加的白边一致）
+SQUARE_QUALITY = 90
 HTML_WORKERS = 6      # HTML → 图片渲染并发线程数
 
 
@@ -58,38 +63,43 @@ def main():
         print("图片防指纹扰动")
         batch_process_images(TOAST["IMAGE_DOWNLOAD"], TOAST["IMAGE_PROCESS"], flip=FLIP)
 
-    if RUN_3_COPY_DOC:
-        print("将处理好的图片copy到document目录")
-        copy_images(TOAST["IMAGE_PROCESS"], TOAST["IMAGE_DIR"])
+    if RUN_3_SQUARE:
+        print("将图片扩展成正方形（白底填充，不裁切）")
+        expand_images_to_square(TOAST["IMAGE_PROCESS"], TOAST["IMAGE_CUTTER"],
+                                fill_color=SQUARE_FILL, quality=SQUARE_QUALITY)
 
-    if RUN_4_MERGE:
+    if RUN_4_COPY_DOC:
+        print("将正方形图片copy到document目录")
+        copy_images(TOAST["IMAGE_CUTTER"], TOAST["IMAGE_DIR"])
+
+    if RUN_5_MERGE:
         print("将图片merge到一张图片中")
-        batch_merge_images(TOAST["IMAGE_PROCESS"], TOAST["MERGED_DIR"], width=750)
+        batch_merge_images(TOAST["IMAGE_CUTTER"], TOAST["MERGED_DIR"], width=750)
 
-    if RUN_5_RENAME:
+    if RUN_6_RENAME:
         print("按优先级把 IMAGE_PROCESS 里的图片改名为 __1/__2/...")
         rename_by_shot_priority(TOAST["IMAGE_PROCESS"], brand="toast")
 
-    if RUN_6_HTML:
-        print("生成产品详情卡HTML")
+    if RUN_7_HTML:
+        print("生成产品详情卡HTML（使用 IMAGE_PROCESS 里的长方形图）")
         generate_html_from_codes_files("toast", code_file_path, max_workers=2)
         generate_first_page_from_codes_files("toast", code_file_path)
 
-    if RUN_7_RENDER_DES:
+    if RUN_8_RENDER_DES:
         print("生成产品详情卡图片")
         convert_html_to_images(TOAST["HTML_DIR_DES"], TOAST["HTML_IMAGE_DES"], "", HTML_WORKERS)
         trim_sides_batch(TOAST["HTML_IMAGE_DES"], TOAST["HTML_CUTTER_DES"])
 
-    if RUN_8_RENDER_FIRST:
+    if RUN_9_RENDER_FIRST:
         print("生成产品首页图片")
         convert_html_to_images(TOAST["HTML_DIR_FIRST_PAGE"], TOAST["HTML_IMAGE_FIRST_PAGE"], "", HTML_WORKERS)
         trim_sides_batch(TOAST["HTML_IMAGE_FIRST_PAGE"], TOAST["HTML_CUTTER_FIRST_PAGE"])
 
-    if RUN_9_SIZE_CHART:
+    if RUN_10_SIZE_CHART:
         print("抓取尺码表 → json + html（已抓过的跳过）")
         toast_fetch_size_charts(codes_file=CODE_FILE)
 
-    if RUN_10_SIZE_IMAGE:
+    if RUN_11_SIZE_IMAGE:
         print("尺码表 html → 图片（已有图片的跳过）")
         toast_sizechart_to_image(codes_file=CODE_FILE)
 
