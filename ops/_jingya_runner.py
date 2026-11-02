@@ -10,6 +10,7 @@
 kill 并可重试。
 """
 
+import os
 import subprocess
 import sys
 import threading
@@ -95,7 +96,7 @@ def _banner(text: str):
     print(f"{line}", flush=True)
 
 
-def _run_once(brand: str, script: Path, attempt: int, silence_timeout_sec: int) -> bool:
+def _run_once(brand: str, script: Path, attempt: int, silence_timeout_sec: int, first_start_ts: float) -> bool:
     """
     启动子进程运行品牌脚本，实时打印输出，并用看门狗监控静默超时。
     返回 True 表示成功（exit code 0），False 表示失败或超时被 kill。
@@ -103,9 +104,17 @@ def _run_once(brand: str, script: Path, attempt: int, silence_timeout_sec: int) 
     label = f"{brand.upper()}（第 {attempt} 次）" if attempt > 1 else brand.upper()
     _banner(f"开始：{label}  [{datetime.now().strftime('%H:%M:%S')}]")
 
+    # 告诉子进程当前是第几次尝试：Barbour 重试时据此跳过备份清空、续跑未完成的供货商
+    env = {
+        **os.environ,
+        "JINGYA_RUN_ATTEMPT": str(attempt),
+        "JINGYA_FIRST_ATTEMPT_TS": str(first_start_ts),
+    }
+
     proc = subprocess.Popen(
         [sys.executable, "-u", str(script)],  # -u 关闭输出缓冲，确保实时显示
         cwd=str(ROOT_DIR),
+        env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
@@ -167,8 +176,9 @@ def run_brand(brand: str, silence_timeout_sec: int, max_retries: int) -> bool:
         print(f"⚠️  脚本不存在，跳过：{script}")
         return False
 
+    first_start_ts = time.time()
     for attempt in range(1, max_retries + 2):  # +2：1 次正常 + max_retries 次重试
-        success = _run_once(brand, script, attempt, silence_timeout_sec)
+        success = _run_once(brand, script, attempt, silence_timeout_sec, first_start_ts)
         if success:
             return True
         if attempt <= max_retries:

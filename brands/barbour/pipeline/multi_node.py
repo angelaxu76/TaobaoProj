@@ -124,6 +124,19 @@ def mark_supplier_failed(publication_base: Path, supplier: str, exc: Exception) 
     })
 
 
+def round_started_after(publication_base: Path, ts: float) -> bool:
+    """_ROUND_STARTED.json 是否在 ts 之后写入（即本次运行的第一次尝试已经清空过 publication）"""
+    round_ts = _read_ts(publication_base / ROUND_FILE)
+    return round_ts is not None and round_ts >= ts
+
+
+def supplier_done_this_round(publication_base: Path, supplier: str) -> bool:
+    """该供货商在本轮（_ROUND_STARTED.json 之后）已经写过 _DONE.json —— 重试续跑时可跳过"""
+    round_ts = _read_ts(publication_base / ROUND_FILE)
+    done_ts = _read_ts(publication_base / supplier / DONE_FILE)
+    return round_ts is not None and done_ts is not None and done_ts >= round_ts
+
+
 # ══════════════════════════════════════════════════════════════════
 #  主机等待
 # ══════════════════════════════════════════════════════════════════

@@ -62,6 +62,46 @@ PGSQL_CONFIG = BARBOUR["PGSQL_CONFIG"]
 
 # 问题文件目录
 TXT_PROBLEM_DIR = OUTPUT_DIR.parent / "TXT.problem"
+
+# 浏览器防卡死：selenium 与 chromedriver 之间的 HTTP 调用默认没有超时，
+# 标签页渲染进程挂住时 driver.get()/page_source 会永远阻塞，线程池等不到
+# 这一条，整个流水线静默卡死。单次浏览器操作超过 BROWSER_CALL_TIMEOUT 秒
+# 就强杀该线程的 Chrome，让阻塞的调用抛异常后重启浏览器重试。
+PAGE_LOAD_TIMEOUT = 45
+BROWSER_CALL_TIMEOUT = 120
+
+
+class BrowserHungError(RuntimeError):
+    pass
+
+
+def _kill_driver_processes(driver) -> None:
+    """强杀 uc.Chrome 对应的 chromedriver + chrome 进程树（driver.quit() 本身也可能卡住）"""
+    import psutil
+
+    pids = [getattr(driver, "browser_pid", None)]
+    proc = getattr(getattr(driver, "service", None), "process", None)
+    pids.append(getattr(proc, "pid", None))
+    for pid in filter(None, pids):
+        try:
+            root = psutil.Process(pid)
+            for p in [*root.children(recursive=True), root]:
+                try:
+                    p.kill()
+                except psutil.NoSuchProcess:
+                    pass
+        except psutil.NoSuchProcess:
+            pass
+        except Exception:
+            pass
+
+
+def _quit_driver_safely(driver, timeout: float = 15) -> None:
+    """driver.quit() 放到后台线程，超时未返回就强杀进程"""
+    t = threading.Thread(target=lambda: driver.quit(), daemon=True)
+    t.start()
+    t.join(timeout)
+    _kill_driver_processes(driver)
 TXT_PROBLEM_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -450,6 +490,8 @@ class PhilipMorrisFetcher(BaseFetcher):
                 )
             except Exception as e:
                 self.logger.warning(f"  ⚠️ CDP 屏蔽静态资源失败 (不影响功能): {e}")
+            driver.set_page_load_timeout(PAGE_LOAD_TIMEOUT)
+            driver.set_script_timeout(15)
             self._local.driver = driver
             with self._browsers_lock:
                 self._all_browsers.append(driver)
@@ -463,18 +505,35 @@ class PhilipMorrisFetcher(BaseFetcher):
           格式化后的 JSON 文本，可直接 json.loads()
         """
         driver = self._get_browser()
-        driver.get(url)
+        hung = threading.Event()
 
-        for _ in range(10):
-            if "Verifying your connection" not in driver.page_source:
-                break
-            time.sleep(1)
-        else:
-            raise RuntimeError(f"Cloudflare 校验未通过 (浏览器也被拦截): {url}")
+        def _on_timeout():
+            hung.set()
+            self.logger.warning(f"  💀 浏览器操作超过 {BROWSER_CALL_TIMEOUT}s 未返回，强杀 Chrome: {url}")
+            _kill_driver_processes(driver)
 
-        if url.endswith(".json"):
-            return driver.find_element("tag name", "body").text
-        return driver.page_source
+        timer = threading.Timer(BROWSER_CALL_TIMEOUT, _on_timeout)
+        timer.daemon = True
+        timer.start()
+        try:
+            driver.get(url)
+
+            for _ in range(10):
+                if "Verifying your connection" not in driver.page_source:
+                    break
+                time.sleep(1)
+            else:
+                raise RuntimeError(f"Cloudflare 校验未通过 (浏览器也被拦截): {url}")
+
+            if url.endswith(".json"):
+                return driver.find_element("tag name", "body").text
+            return driver.page_source
+        except Exception as e:
+            if hung.is_set():
+                raise BrowserHungError(f"浏览器卡死已强杀: {url}") from e
+            raise
+        finally:
+            timer.cancel()
 
     def _reset_browser(self):
         """只重启【当前线程】自己的浏览器实例，不影响其他线程"""
@@ -484,10 +543,7 @@ class PhilipMorrisFetcher(BaseFetcher):
             with self._browsers_lock:
                 if driver in self._all_browsers:
                     self._all_browsers.remove(driver)
-            try:
-                driver.quit()
-            except Exception:
-                pass
+            _quit_driver_safely(driver)
 
     def close(self):
         """关闭所有线程各自创建的浏览器实例"""
@@ -495,10 +551,7 @@ class PhilipMorrisFetcher(BaseFetcher):
             browsers = self._all_browsers
             self._all_browsers = []
         for driver in browsers:
-            try:
-                driver.quit()
-            except Exception:
-                pass
+            _quit_driver_safely(driver)
 
     def fetch_one_product(self, url: str, idx: int, total: int):
         """
@@ -650,16 +703,18 @@ class PhilipMorrisFetcher(BaseFetcher):
 
             except Exception as e:
                 is_blocked = "Cloudflare" in str(e)
+                # 卡死被强杀 / 页面加载超时后 driver 已不可用或状态不明，重开浏览器
+                needs_reset = is_blocked or isinstance(e, BrowserHungError) or "timeout" in type(e).__name__.lower()
 
                 self.logger.error(
                     f"❌ [{idx}/{total}] 尝试 {attempt}/{self.max_retries} 失败: {url} - {e}",
                     exc_info=(attempt == self.max_retries),
                 )
 
-                if is_blocked:
-                    # 浏览器也被拦截了，说明当前线程的 session/驱动已被标记，
+                if needs_reset:
+                    # 浏览器被拦截 / 卡死，说明当前线程的 session/驱动已不可用，
                     # 只重启这个线程自己的浏览器实例，不影响其他线程
-                    self.logger.warning(f"  ⏳ [线程 {threading.get_ident()}] 浏览器被 Cloudflare 拦截，重启浏览器实例")
+                    self.logger.warning(f"  ⏳ [线程 {threading.get_ident()}] 浏览器被拦截或卡死，重启浏览器实例")
                     self._reset_browser()
 
                 if attempt < self.max_retries:

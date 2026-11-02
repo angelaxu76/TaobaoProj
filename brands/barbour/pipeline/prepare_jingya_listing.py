@@ -15,6 +15,7 @@ Barbour 日常运营流水线（单一入口）
 """
 
 import logging
+import os
 import sys
 import tempfile
 import time
@@ -196,7 +197,17 @@ def run_a_crawl():
     from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
     from brands.barbour.pipeline import multi_node
     pub_base = BARBOUR["PUBLICATION_BASE"]
-    if RUN_A_BACKUP:
+
+    # 外层 runner 重试（第 2 次及以后）时：第一次尝试已经清空过 publication，
+    # 不能再清空（会把本机和其它机器本轮已抓好的 TXT 清掉，且其它机器正在写时
+    # 会被 backup-guard 拦下），并跳过本轮已完成的供货商，只续跑没完成的
+    attempt = int(os.environ.get("JINGYA_RUN_ATTEMPT", "1") or 1)
+    first_ts = float(os.environ.get("JINGYA_FIRST_ATTEMPT_TS", "0") or 0)
+    resume = attempt > 1 and first_ts > 0 and multi_node.round_started_after(pub_base, first_ts)
+    if resume:
+        print(f"\n🔁 第 {attempt} 次尝试：续跑模式，不再备份清空，跳过本轮已完成的供货商")
+
+    if RUN_A_BACKUP and not resume:
         _step("备份并清空 publication / repulibcation 目录")
         try:
             multi_node.assert_no_active_crawl(pub_base, BACKUP_GUARD_MINUTES)
@@ -204,6 +215,8 @@ def run_a_crawl():
             _fail("A-backup-guard", e)
         backup_and_clear_brand_dirs(BARBOUR)
         multi_node.mark_round_started(pub_base)
+    elif resume:
+        _skip("备份/清空（续跑模式，第一次尝试已清空）")
     else:
         _skip("备份/清空（RUN_A_BACKUP=False）")
 
@@ -265,6 +278,10 @@ def run_a_crawl():
 
         if supplier not in _FETCH_MAP:
             print(f"⚠️  未知供应商，跳过：{supplier}")
+            continue
+
+        if resume and multi_node.supplier_done_this_round(pub_base, supplier):
+            _skip(f"[{supplier}] 本轮已完成（续跑模式）")
             continue
 
         get_links_fn, fetch_fn = _FETCH_MAP[supplier]
@@ -598,7 +615,6 @@ def _hard_exit(code: int) -> None:
 
 
 if __name__ == "__main__":
-    import os
     import traceback
 
     exit_code = 0
