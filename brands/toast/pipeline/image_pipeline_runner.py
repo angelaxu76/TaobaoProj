@@ -6,7 +6,8 @@ TOAST 图片 + 详情页流水线（与 camper / clarks 一致）
 步骤（各步骤可独立开关）：
   1. 按编码下载商品图片（+视频）          → IMAGE_DOWNLOAD / VIDEO_DOWNLOAD
   2. 防指纹扰动（微旋转/裁剪/噪点）       → IMAGE_PROCESS（长方形，供 HTML 使用）
-  3. 白底扩展成正方形（不裁切，统一 JPG） → IMAGE_CUTTER（正方形，供上架主图使用）
+  3. 精确抠图 + 白底正方形（同 barbour 的 run_cut_square_watermark，不加水印）
+                                          → IMAGE_CUTTER（正方形，供上架主图使用）
   4. 正方形图复制到 document 长期图库     → IMAGE_DIR（发布 Excel 从这里取图）
   5. 正方形图横向合并                     → MERGED_DIR
   6. 按优先级把 IMAGE_PROCESS 改名为 __1/__2/...（供选图用）
@@ -24,6 +25,7 @@ from common.publication.generate_html import generate_html_from_codes_files
 from common.publication.generate_html_FristPage import generate_first_page_from_codes_files
 from helper.image.image_antifingerprint import batch_process_images
 from helper.image.expand_to_square import process_folder as expand_images_to_square
+import helper.image.cut_square_white_watermark as cutout
 from helper.image.copy_images import copy_images
 from helper.image.merge_product_images import batch_merge_images
 from helper.html.html_to_png_multithread import convert_html_to_images
@@ -47,7 +49,10 @@ RUN_11_SIZE_IMAGE  = True
 CODE_FILE = TOAST["OUTPUT_DIR"] / "publication_codes_outerwear.txt"
 DOWNLOAD_VIDEOS = True
 FLIP = False          # 服装图有文字/印花，默认不水平翻转
-SQUARE_FILL = (255, 255, 255)   # 扩展正方形的填充色（与防指纹加的白边一致）
+AUTO_CUTOUT = True    # True = rembg 精确抠图后放白底正方形；False = 不抠图，只用白底补成正方形
+CUTOUT_SIZE = 1500    # 抠图输出边长（px），与 barbour 一致
+CUTOUT_WORKERS = 2    # birefnet 推理 CPU 密集，建议 ≤ 4
+SQUARE_FILL = (255, 255, 255)   # AUTO_CUTOUT=False 时的填充色（与防指纹加的白边一致）
 SQUARE_QUALITY = 90
 HTML_WORKERS = 6      # HTML → 图片渲染并发线程数
 
@@ -64,9 +69,18 @@ def main():
         batch_process_images(TOAST["IMAGE_DOWNLOAD"], TOAST["IMAGE_PROCESS"], flip=FLIP)
 
     if RUN_3_SQUARE:
-        print("将图片扩展成正方形（白底填充，不裁切）")
-        expand_images_to_square(TOAST["IMAGE_PROCESS"], TOAST["IMAGE_CUTTER"],
-                                fill_color=SQUARE_FILL, quality=SQUARE_QUALITY)
+        if AUTO_CUTOUT:
+            print("精确抠图 + 白底正方形")
+            # 防指纹步骤加了白边，白底检测会误判成已是白底而跳过抠图，必须关闭
+            cutout.WHITE_BG_SKIP = False
+            cutout.TARGET_SIZE = CUTOUT_SIZE
+            # 模块里的水印文字是 M&S 的，toast 不能加
+            cutout.batch_process(TOAST["IMAGE_PROCESS"], TOAST["IMAGE_CUTTER"],
+                                 max_workers=CUTOUT_WORKERS, add_watermark=False)
+        else:
+            print("将图片扩展成正方形（白底填充，不裁切）")
+            expand_images_to_square(TOAST["IMAGE_PROCESS"], TOAST["IMAGE_CUTTER"],
+                                    fill_color=SQUARE_FILL, quality=SQUARE_QUALITY)
 
     if RUN_4_COPY_DOC:
         print("将正方形图片copy到document目录")
