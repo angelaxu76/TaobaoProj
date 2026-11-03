@@ -24,7 +24,7 @@ TOAST = {
     "VIDEO_DOWNLOAD": TOAST_BASE / "publication" / "video_download",
     "IMAGE_PROCESS": TOAST_BASE / "publication" / "image_process",
     "IMAGE_CUTTER": TOAST_BASE / "publication" / "image_cutter",
-    "MERGED_DIR": TOAST_BASE / "document" / "image_merged",
+    "MERGED_DIR": TOAST_BASE / "publication" / "image_merged",
     "HTML_DIR": TOAST_BASE / "publication" / "html",
     "HTML_DIR_DES": TOAST_BASE / "publication" / "html" / "description",
     "HTML_DIR_FIRST_PAGE": TOAST_BASE / "publication" / "html" / "first_page",
