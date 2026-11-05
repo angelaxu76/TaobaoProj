@@ -61,6 +61,17 @@ def edit_image(img_path: Path, out_path: Path, flip: bool = False):
         print(f"  ✅ {img_path.name}")
 
 
+def perturb_without_border(img: Image.Image) -> Image.Image:
+    """
+    不加白边、不旋转的防指纹扰动（微裁切 + 亮度 + 对比度 + 噪点）。
+    用于已经扩展好背景的图片：edit_image 的白边和旋转楔形会破坏补好的背景。
+    """
+    img = _safe_crop(img.convert("RGB"), random.uniform(*CROP_PERCENT))
+    img = ImageEnhance.Brightness(img).enhance(random.uniform(0.97, 1.03))
+    img = ImageEnhance.Contrast(img).enhance(random.uniform(0.97, 1.03))
+    return _add_noise_layer(img).convert("RGB")
+
+
 def batch_process_images(input_dir=None, output_dir=None, flip: bool = False,
                          IMAGE_IN=None, IMAGE_OUT=None):
     """
