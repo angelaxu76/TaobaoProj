@@ -15,7 +15,8 @@ CATEGORY_URLS = {
     "man": "https://www.geox.com/en-GB/man/shoes/",
     "girl": "https://www.geox.com/en-GB/girl/shoes/",
     "boy": "https://www.geox.com/en-GB/boy/shoes/",
-    "preteen_girl": "https://www.geox.com/en-GB/kids/preteen_girl/"
+    "preteen_girl": "https://www.geox.com/en-GB/kids/preteen_girl/",
+    "outlet": "https://www.geox.com/en-GB/outlet/",
 }
 SAVE_FILE = Path("D:/TB/Products/GEOX/publication/product_links.txt")
 HTML_DEBUG_FILE = Path("D:/TB/Products/GEOX/publication/debug_geox_page.html")
@@ -31,6 +32,10 @@ def is_valid_product_link(href: str) -> bool:
         and href.endswith(".html")
         and re.search(r"[A-Z0-9]{4}\.html$", href) is not None
     )
+
+# 判断是否是服装链接：鞋类编码以 D/U/J/B 开头，服装以 W/M 开头
+def is_clothing_link(href: str) -> bool:
+    return href.rsplit("-", 1)[-1][0] in "WM"
 
 # 抓取单个类目的所有链接
 def fetch_product_links_for_category(category_name: str, category_url: str):
@@ -73,6 +78,11 @@ def collect_all_product_links():
 
     for category_name, category_url in CATEGORY_URLS.items():
         links, soup = fetch_product_links_for_category(category_name, category_url)
+        # outlet 没有鞋类子路径（/outlet/woman/shoes/ 为 404），只能按编码剔除服装
+        if category_name == "outlet":
+            shoe_links = {link for link in links if not is_clothing_link(link)}
+            print(f"  🧥 outlet 剔除服装链接: {len(links) - len(shoe_links)}")
+            links = shoe_links
         total_links.update(links)
         last_soup = soup  # 用于保存最后一个页面的 HTML 调试信息
 
