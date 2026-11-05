@@ -16,6 +16,7 @@ from sqlalchemy import create_engine, text
 from importlib import import_module
 from config import BRAND_CONFIG, SETTINGS, EXCHANGE_RATE
 from common.publication.publish_blocklist import load_publish_blocklist, filter_blocked_codes
+from common.product.apparel_attributes import extract_closure, extract_fabric, extract_neckline
 
 # ============================================================
 # 可修改参数（Excel 导出字段固定值）
@@ -149,6 +150,7 @@ def generate_publication_excels_clothing(
     gender_filter: str | None = None,
     category_filter: list[str] | None = None,
     all_categories: bool = False,
+    infer_attributes: bool = False,  # True=面料/衣门襟/领口设计优先取 TXT，识别不出用默认值
 ):
     brand = (brand or "").lower()
     if brand not in BRAND_CONFIG:
@@ -279,13 +281,26 @@ def generate_publication_excels_clothing(
 
         品名_local, 海关款式_local = _name_and_customs_by_cat(cat_cn)
 
+        面料_local, 衣门襟_local, 领口设计_local = 面料, 衣门襟, 领口设计
+        if infer_attributes:
+            style_cat = r.get("style_category")
+            # 名称和短规格比长描述可靠：描述里常有 "搭配高领毛衣" 这类搭配文案
+            texts = (
+                title_en,
+                extract_field("Feature", content),
+                extract_field("Product Description", content),
+            )
+            面料_local = extract_fabric(extract_field("Product Material", content)) or 面料
+            衣门襟_local = extract_closure(style_cat, *texts) or 衣门襟
+            领口设计_local = extract_neckline(style_cat, *texts) or 领口设计
+
         rows.append({
             "Product Name EN": title_en,
             "商品名称": title_cn,
             "商品编码": code,
             "淘宝价格": rmb_price,
             "上市年份季节": 上市年份季节,
-            "版型": 版型, "面料": 面料, "衣门襟": 衣门襟, "厚薄": 厚薄, "领口设计": 领口设计,
+            "版型": 版型, "面料": 面料_local, "衣门襟": 衣门襟_local, "厚薄": 厚薄, "领口设计": 领口设计_local,
             "地区国家": 地区国家, "发货时间": 发货时间, "运费模版": 运费模版,
             "品牌": brand, "性别": gender_cn, "类目": cat_cn,
             "品名": 品名_local, "海关款式": 海关款式_local,

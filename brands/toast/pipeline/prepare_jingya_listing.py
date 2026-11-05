@@ -87,7 +87,7 @@ def main():
     export_jiangya_channel_prices("toast", PUBLICATION_PRICE_DIR, chunk_size=200)
 
     print("\n🟡 Step: 6️⃣为新品创建excel用于鲸芽侧发布（服装全品类）")
-    generate_publication_excels_clothing("toast", all_categories=True)
+    generate_publication_excels_clothing("toast", all_categories=True, infer_attributes=True)
 
     print("\n🟡 Step: 6️⃣ 输出低库存的商品，准备下架")
     export_low_stock_for_brand("toast", threshold=5)
