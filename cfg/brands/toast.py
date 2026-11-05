@@ -24,6 +24,8 @@ TOAST = {
     "VIDEO_DOWNLOAD": TOAST_BASE / "publication" / "video_download",
     "IMAGE_PROCESS": TOAST_BASE / "publication" / "image_process",
     "IMAGE_CUTTER": TOAST_BASE / "publication" / "image_cutter",
+    # 白底正方形备选图：与 IMAGE_CUTTER 同名，LaMa 补错的图用这里的替换
+    "IMAGE_CUTTER_WHITE": TOAST_BASE / "publication" / "image_cutter_white",
     "MERGED_DIR": TOAST_BASE / "publication" / "image_merged",
     "HTML_DIR": TOAST_BASE / "publication" / "html",
     "HTML_DIR_DES": TOAST_BASE / "publication" / "html" / "description",
@@ -34,9 +36,9 @@ TOAST = {
     "HTML_CUTTER_DES": TOAST_BASE / "publication" / "html_cutter" / "description",
     "HTML_CUTTER_FIRST_PAGE": TOAST_BASE / "publication" / "html_cutter" / "first_page",
     # 尺码表：{编码}_size.json（原始数据）+ {编码}_size.html（中文页面），截图输出到 SIZE_CHART_IMAGE_DIR
-    # 放 document/ 下长期保留（publication/ 每次运行 prepare_jingya_listing 都会被清空）；已抓过的 json 会自动跳过
-    "SIZE_CHART_DIR": TOAST_BASE / "document" / "size",
-    "SIZE_CHART_IMAGE_DIR": TOAST_BASE / "document" / "size_image",
+    # 放 publication/ 下，随 prepare_jingya_listing 清空后重新生成；目录内已抓过的 json 会自动跳过
+    "SIZE_CHART_DIR": TOAST_BASE / "publication" / "size",
+    "SIZE_CHART_IMAGE_DIR": TOAST_BASE / "publication" / "size_image",
     "STORE_DIR": TOAST_BASE / "document" / "store",
     "OUTPUT_DIR": TOAST_BASE / "repulibcation",
     "TABLE_NAME": "toast_inventory",

@@ -5,7 +5,7 @@ TOAST 尺码表 HTML → PNG（Firefox 整页截图 + 裁掉左右纯色边）
 
 SIZE_CHART_DIR/{编码}_size.html  →  SIZE_CHART_IMAGE_DIR/{编码}_size.png
 
-- 默认只转还没有 png 的 html（尺码表长期保留在 document/ 下，不必每次全部重截）
+- 默认只转还没有 png 的 html（不必每次全部重截）
 - 传 codes_file 时只转这些编码
 """
 import re

@@ -18,13 +18,15 @@ SUPPORTED_EXTS = {'.jpg', '.jpeg', '.png', '.bmp', '.webp'}
 
 
 def process_folder(input_folder, output_folder=None, fill_color=(255, 255, 255),
-                   recursive=False, quality=95):
+                   recursive=False, quality=95, pre_process=None, target_size=None):
     """
     遍历文件夹下所有图片：
     - webp / jpg / png → 统一转为 JPG
     - 扩展为正方形（白色填充）
     - recursive=True 时递归处理所有子目录（保留目录结构）
     - quality：JPEG 保存质量（建议 85~95，低于 65 电商平台可能拒绝）
+    - pre_process：可选，补边前先处理图片（Image -> Image），放在补边前可保持填充色纯净
+    - target_size：可选，输出统一边长（px）；None 不缩放
     """
     from pathlib import Path
 
@@ -43,7 +45,11 @@ def process_folder(input_folder, output_folder=None, fill_color=(255, 255, 255),
         try:
             with Image.open(file_path) as img:
                 img = img.convert("RGB")
+                if pre_process:
+                    img = pre_process(img)
                 square_img = expand_to_square(img, fill_color)
+                if target_size:
+                    square_img = square_img.resize((target_size, target_size), Image.LANCZOS)
                 square_img.save(out_path, "JPEG", quality=quality, optimize=True)
                 ok += 1
                 print(f"✅ {rel} → {out_path.name}")

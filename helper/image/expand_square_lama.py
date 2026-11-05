@@ -20,7 +20,9 @@
     from helper.image.expand_square_lama import batch_expand_square
     batch_expand_square(src_dir, dst_dir)
 """
+import os
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Callable, Optional, Tuple
 
@@ -31,12 +33,17 @@ from PIL import Image, ImageFilter
 MODEL_PATH = Path(__file__).resolve().parents[2] / "models" / "big-lama.pt"
 
 SUPPORTED_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
-WORK_SIZE = 1024      # LaMa 推理边长；越大越慢，纹理更细但大范围结构更容易重复
+# LaMa 推理边长，耗时约与面积成正比。背景上 512~1024 看不出差别，主体被边框切断的地方
+# 512 明显发糊、640 略软，768 与 1024 基本一致
+WORK_SIZE = 768
 CONTEXT_MARGIN = 64   # 画布外参照圈宽度（WORK_SIZE 分辨率下的像素），推理后裁掉
 EDGE_INSET = 4        # mask 向原图内部多吃的像素（WORK_SIZE 分辨率）：部分原图最外侧有几列亮边，一并重新生成
 EDGE_BAND = 20        # 取边缘中位色的条带宽度（WORK_SIZE 分辨率），从 EDGE_INSET 往里取
 FEATHER = 12          # 接缝羽化宽度（原图分辨率下的像素）
 JPEG_QUALITY = 90
+# 单张推理已基本吃满物理核，并发提升有限（实测 16 核 32 线程：1 张 × 32 线程 2.84s/张，
+# 2 张 × 16 线程 2.50s/张，4 张 × 8 线程 2.44s/张），内存却按并发数翻倍，所以默认 2
+MAX_WORKERS = 2
 
 _model = None
 
@@ -121,37 +128,54 @@ def expand_to_square_lama(
     return Image.composite(orig_layer, result, alpha)
 
 
+def _expand_one(path: Path, out_path: Path, work_size, quality, post_process) -> None:
+    with Image.open(path) as img:
+        square = expand_to_square_lama(img, work_size=work_size)
+    if post_process:
+        square = post_process(square)
+    square.save(out_path, "JPEG", quality=quality, optimize=True)
+
+
 def batch_expand_square(
     input_dir,
     output_dir,
     work_size: int = WORK_SIZE,
     quality: int = JPEG_QUALITY,
     post_process: Optional[Callable[[Image.Image], Image.Image]] = None,
+    max_workers: int = MAX_WORKERS,
+    torch_threads: Optional[int] = None,
 ) -> Tuple[int, int]:
     """
     批量扩展，输出同名 JPG（已存在的覆盖）。
     post_process：可选，对扩展后的图片再做一步处理（Image -> Image）。
+    max_workers：同时处理的图片数（每多一张约多占 2.5GB 内存）。
+    torch_threads：每张图推理用的线程数；None = 全部逻辑核平均分给 max_workers。
     """
     src, dst = Path(input_dir), Path(output_dir)
     dst.mkdir(parents=True, exist_ok=True)
     files = sorted(p for p in src.iterdir() if p.is_file() and p.suffix.lower() in SUPPORTED_EXTS)
-    print(f"🖼️ LaMa 扩展正方形：{src}，共 {len(files)} 张")
+
+    threads = torch_threads or max(1, (os.cpu_count() or 1) // max_workers)
+    torch.set_num_threads(threads)
+    print(f"🖼️ LaMa 扩展正方形：{src}，共 {len(files)} 张（并发 {max_workers} × {threads} 线程）")
+    _get_model()   # 先加载，避免多个线程同时加载
 
     ok = fail = 0
     t0 = time.time()
-    for i, p in enumerate(files, 1):
-        out_path = dst / f"{p.stem}.jpg"
-        try:
-            with Image.open(p) as img:
-                square = expand_to_square_lama(img, work_size=work_size)
-            if post_process:
-                square = post_process(square)
-            square.save(out_path, "JPEG", quality=quality, optimize=True)
-            ok += 1
-            print(f"  ✅ [{i}/{len(files)}] {p.name}")
-        except Exception as e:
-            fail += 1
-            print(f"  ❌ {p.name}: {e}")
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(_expand_one, p, dst / f"{p.stem}.jpg", work_size, quality, post_process): p
+            for p in files
+        }
+        for i, future in enumerate(as_completed(futures), 1):
+            p = futures[future]
+            try:
+                future.result()
+                ok += 1
+                print(f"  ✅ [{i}/{len(files)}] {p.name}")
+            except Exception as e:
+                fail += 1
+                print(f"  ❌ {p.name}: {e}")
 
     print(f"完成：成功 {ok}，失败 {fail}，耗时 {time.time() - t0:.1f}s")
     return ok, fail

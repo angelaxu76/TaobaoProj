@@ -8,14 +8,18 @@ TOAST 图片 + 详情页流水线（与 camper / clarks 一致）
   2. 防指纹扰动（微旋转/裁剪/噪点）       → IMAGE_PROCESS（长方形，供 HTML 使用）
   3. 做成正方形                           → IMAGE_CUTTER（正方形，供上架主图使用）
        LaMa 按背景自然扩展（默认）/ 精确抠图 + 白底（AUTO_CUTOUT）/ 补纯色（LAMA_EXTEND=False）
+       LaMa 模式同时生成同名白底备选图     → IMAGE_CUTTER_WHITE（WHITE_BACKUP）
   4. 正方形图复制到 document 长期图库     → IMAGE_DIR（发布 Excel 从这里取图）
   5. 正方形图横向合并                     → MERGED_DIR
   6. 按优先级把 IMAGE_PROCESS 改名为 __1/__2/...（供选图用）
   7. 用长方形图生成详情卡 + 首页 HTML     → HTML_DIR_DES / HTML_DIR_FIRST_PAGE
   8. 详情 HTML → 图片 → 裁边              → HTML_IMAGE_DES → HTML_CUTTER_DES
   9. 首页 HTML → 图片 → 裁边              → HTML_IMAGE_FIRST_PAGE → HTML_CUTTER_FIRST_PAGE
- 10. 抓尺码表（json + html，已抓过的跳过）→ SIZE_CHART_DIR（document/size）
- 11. 尺码表 html → 图片（已有图片的跳过） → SIZE_CHART_IMAGE_DIR（document/size_image）
+ 10. 抓尺码表（json + html，已抓过的跳过）→ SIZE_CHART_DIR（publication/size）
+ 11. 尺码表 html → 图片（已有图片的跳过） → SIZE_CHART_IMAGE_DIR（publication/size_image）
+
+替换 LaMa 补错的图：把 IMAGE_CUTTER_WHITE 里的同名图复制到 IMAGE_CUTTER 覆盖，
+然后只开 RUN_4_COPY_DOC 和 RUN_5_MERGE 再跑一次（不要开 RUN_3_SQUARE，否则替换的图会被重新生成覆盖）。
 """
 from PIL import Image
 
@@ -54,9 +58,12 @@ DOWNLOAD_VIDEOS = True
 FLIP = False          # 服装图有文字/印花，默认不水平翻转
 AUTO_CUTOUT = False   # True = rembg 精确抠图后放白底正方形；False = 不抠图，保留原背景（方式见 LAMA_EXTEND）
 LAMA_EXTEND = True    # AUTO_CUTOUT=False 时：True = LaMa 按背景自然补成正方形；False = 两侧补纯色
+WHITE_BACKUP = True   # LaMa 模式下同时生成白底备选图到 IMAGE_CUTTER_WHITE，用来替换 LaMa 补错的图
+LAMA_WORK_SIZE = 768  # LaMa 推理边长：越小越快，主体贴边处越糊（512 明显发糊，不建议更低）
+LAMA_WORKERS = 2      # LaMa 同时处理的图片数，每多一张约多占 2.5GB 内存
 SQUARE_SIZE = 1500    # 抠图 / LaMa 输出边长（px），与 barbour 一致
 CUTOUT_WORKERS = 2    # birefnet 推理 CPU 密集，建议 ≤ 4
-SQUARE_FILL = (255, 255, 255)   # AUTO_CUTOUT 和 LAMA_EXTEND 都为 False 时的填充色
+SQUARE_FILL = (255, 255, 255)   # 补纯色时的填充色（白底备选图也用它）
 SQUARE_QUALITY = 90
 HTML_WORKERS = 6      # HTML → 图片渲染并发线程数
 
@@ -89,7 +96,14 @@ def main():
             print("LaMa 按背景自然扩展成正方形")
             # 输入用下载原图：IMAGE_PROCESS 带防指纹加的白边，白边会被延伸出去；防指纹放到扩展之后
             batch_expand_square(TOAST["IMAGE_DOWNLOAD"], TOAST["IMAGE_CUTTER"],
-                                quality=SQUARE_QUALITY, post_process=_finish_lama_square)
+                                work_size=LAMA_WORK_SIZE, quality=SQUARE_QUALITY,
+                                post_process=_finish_lama_square, max_workers=LAMA_WORKERS)
+            if WHITE_BACKUP:
+                print("生成白底备选图（与 LaMa 图同名）")
+                # 同样从下载原图生成：IMAGE_PROCESS 第 6 步会改名，文件名就对不上了；防指纹放在补边前，白边才是纯白
+                expand_images_to_square(TOAST["IMAGE_DOWNLOAD"], TOAST["IMAGE_CUTTER_WHITE"],
+                                        fill_color=SQUARE_FILL, quality=SQUARE_QUALITY,
+                                        pre_process=perturb_without_border, target_size=SQUARE_SIZE)
         else:
             print("将图片扩展成正方形（纯色填充，不裁切）")
             expand_images_to_square(TOAST["IMAGE_PROCESS"], TOAST["IMAGE_CUTTER"],
