@@ -10,7 +10,7 @@ TOAST 图片 + 详情页流水线（与 camper / clarks 一致）
        LaMa 按背景自然扩展（默认）/ 精确抠图 + 白底（AUTO_CUTOUT）/ 补纯色（LAMA_EXTEND=False）
        LaMa 模式同时生成同名白底备选图     → IMAGE_CUTTER_WHITE（WHITE_BACKUP）
   4. 正方形图复制到 document 长期图库     → IMAGE_DIR（发布 Excel 从这里取图）
-  5. 正方形图横向合并                     → MERGED_DIR
+  5. 抖动后的长方形图合并（不用等人工筛选）→ MERGED_DIR
   6. 按优先级把 IMAGE_PROCESS 改名为 __1/__2/...（供选图用）
   7. 用长方形图生成详情卡 + 首页 HTML     → HTML_DIR_DES / HTML_DIR_FIRST_PAGE
   8. 详情 HTML → 图片 → 裁边              → HTML_IMAGE_DES → HTML_CUTTER_DES
@@ -18,8 +18,8 @@ TOAST 图片 + 详情页流水线（与 camper / clarks 一致）
  10. 抓尺码表（json + html，已抓过的跳过）→ SIZE_CHART_DIR（publication/size）
  11. 尺码表 html → 图片（已有图片的跳过） → SIZE_CHART_IMAGE_DIR（publication/size_image）
 
-替换 LaMa 补错的图：把 IMAGE_CUTTER_WHITE 里的同名图复制到 IMAGE_CUTTER 覆盖，
-然后只开 RUN_4_COPY_DOC 和 RUN_5_MERGE 再跑一次（不要开 RUN_3_SQUARE，否则替换的图会被重新生成覆盖）。
+替换 LaMa 补错的图：在 IMAGE_CUTTER 里手动删掉错图，运行 tool_fill_white_squares.py 补上同名白底图
+（之后不要再开 RUN_3_SQUARE，否则替换的图会被重新生成覆盖）。
 """
 from PIL import Image
 
@@ -115,7 +115,7 @@ def main():
 
     if RUN_5_MERGE:
         print("将图片merge到一张图片中")
-        batch_merge_images(TOAST["IMAGE_CUTTER"], TOAST["MERGED_DIR"], width=750)
+        batch_merge_images(TOAST["IMAGE_PROCESS"], TOAST["MERGED_DIR"], width=750, keep_aspect=True)
 
     if RUN_6_RENAME:
         print("按优先级把 IMAGE_PROCESS 里的图片改名为 __1/__2/...")
