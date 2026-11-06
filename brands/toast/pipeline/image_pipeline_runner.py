@@ -60,7 +60,7 @@ AUTO_CUTOUT = False   # True = rembg 精确抠图后放白底正方形；False =
 LAMA_EXTEND = True    # AUTO_CUTOUT=False 时：True = LaMa 按背景自然补成正方形；False = 两侧补纯色
 WHITE_BACKUP = True   # LaMa 模式下同时生成白底备选图到 IMAGE_CUTTER_WHITE，用来替换 LaMa 补错的图
 LAMA_WORK_SIZE = 768  # LaMa 推理边长：越小越快，主体贴边处越糊（512 明显发糊，不建议更低）
-LAMA_WORKERS = 2      # LaMa 同时处理的图片数，每多一张约多占 2.5GB 内存
+LAMA_WORKERS = 3      # LaMa 同时处理的图片数，每多一张约多占 2.5GB 内存
 SQUARE_SIZE = 1500    # 抠图 / LaMa 输出边长（px），与 barbour 一致
 CUTOUT_WORKERS = 2    # birefnet 推理 CPU 密集，建议 ≤ 4
 SQUARE_FILL = (255, 255, 255)   # 补纯色时的填充色（白底备选图也用它）

@@ -3,6 +3,8 @@ import glob
 import argparse
 import pandas as pd
 
+from cainiao.hscode_audit import hscode_issue
+
 
 def find_column(df, candidates):
     """
@@ -121,26 +123,33 @@ def process_one_file(filepath):
     处理单个 Excel 文件：
     - 默认读取第一个 sheet
     - 找到“货品id”和“货品名称”列
-    - 返回 DataFrame：货品id(文本), brand
+    - 返回 (DataFrame[货品id(文本), brand], issues, ignored_files)
     """
+    empty = pd.DataFrame(columns=["货品id", "brand"])
+    file_name = os.path.basename(filepath)
+
     try:
         df = pd.read_excel(filepath, sheet_name=0)
     except Exception as e:
         print(f"[WARN] 无法读取文件 {filepath}: {e}")
-        return pd.DataFrame(columns=["货品id", "brand"])
+        return empty, [hscode_issue("", "", "读取订单", f"文件 {file_name} 无法读取：{e}")], []
 
     # 找列名（尽量兼容）
     product_id_col = find_column(df, ["货品id", "货品ID", "货品Id", "商品id", "商品ID"])
     product_name_col = find_column(df, ["货品名称", "货品名", "商品名称", "宝贝名称", "标题"])
 
     if not product_id_col or not product_name_col:
-        print(f"[WARN] 文件 {os.path.basename(filepath)} 缺少 '货品id' 或 '货品名称' 列，已跳过。")
-        return pd.DataFrame(columns=["货品id", "brand"])
+        print(f"[WARN] 文件 {file_name} 缺少 '货品id' 或 '货品名称' 列，已跳过。")
+        return empty, [], [file_name]
 
     sub = df[[product_id_col, product_name_col]].copy()
     sub.rename(columns={product_id_col: "货品id", product_name_col: "货品名称"}, inplace=True)
 
-    # 去掉空 id
+    # 去掉空 id；有名称却没有 id 的行要记下来
+    issues = [
+        hscode_issue("", "", "读取订单", f"文件 {file_name} 中货品id为空：{name}")
+        for name in sub.loc[sub["货品id"].isna() & sub["货品名称"].notna(), "货品名称"]
+    ]
     sub = sub[sub["货品id"].notna()]
 
     # 识别品牌
@@ -151,8 +160,8 @@ def process_one_file(filepath):
 
     result = sub[["货品id", "brand"]].copy()
 
-    print(f"[INFO] 文件 {os.path.basename(filepath)} 处理完成，行数: {len(result)}")
-    return result
+    print(f"[INFO] 文件 {file_name} 处理完成，行数: {len(result)}")
+    return result, issues, []
 
 
 # -----------------------------------------------------------
@@ -164,34 +173,42 @@ def extract_goods_brand_info(input_dir: str, shoes_output: str, barbour_output: 
     - camper/ecco/clarks/geox --> shoes_output（按 brand 排序）
     - barbour --> barbour_output
 
-    返回 (shoes_written, barbour_written)，指示对应文件本次是否实际生成，
-    供调用方判断是否需要跳过后续步骤。
+    返回 (shoes_written, barbour_written, audit)：
+    - shoes_written/barbour_written：对应文件本次是否实际生成，供调用方判断是否跳过后续步骤
+    - audit：{"order_ids", "issues", "ignored_files"}，供 report_hscode_audit 核对
     """
+
+    audit = {"order_ids": set(), "issues": [], "ignored_files": []}
 
     files = glob.glob(os.path.join(input_dir, "*.xlsx")) + \
             glob.glob(os.path.join(input_dir, "*.xls"))
+    # Excel 打开文件时产生的 ~$ 临时文件不是订单
+    files = [f for f in files if not os.path.basename(f).startswith("~$")]
 
     if not files:
         print(f"[ERROR] 没找到 Excel 文件: {input_dir}")
-        return False, False
+        return False, False, audit
 
     print(f"[INFO] 在目录 {input_dir} 中找到 {len(files)} 个文件。")
 
     all_results = []
 
     for f in files:
-        df_res = process_one_file(f)
+        df_res, file_issues, ignored = process_one_file(f)
+        audit["issues"].extend(file_issues)
+        audit["ignored_files"].extend(ignored)
         if not df_res.empty:
             all_results.append(df_res)
 
     if not all_results:
         print("[WARN] 没有任何数据被解析。")
-        return False, False
+        return False, False, audit
 
     final_df = pd.concat(all_results, ignore_index=True)
 
     # 再保险：这里再统一做一遍文本转换
     final_df["货品id"] = final_df["货品id"].apply(normalize_product_id)
+    audit["order_ids"] = set(final_df["货品id"])
 
     # 名称里没有品牌的，用货品id 反查数据库
     unknown_mask = final_df["brand"] == ""
@@ -202,6 +219,10 @@ def extract_goods_brand_info(input_dir: str, shoes_output: str, barbour_output: 
         still_unknown = final_df.loc[final_df["brand"] == "", "货品id"].unique().tolist()
         if still_unknown:
             print(f"[WARN] 以下货品id 仍无法识别品牌，已跳过: {still_unknown}")
+            audit["issues"].extend(
+                hscode_issue(goods_id, "", "识别品牌", "订单名称和库存表都识别不出品牌")
+                for goods_id in still_unknown
+            )
 
     final_df = final_df[final_df["brand"] != ""]
 
@@ -232,7 +253,7 @@ def extract_goods_brand_info(input_dir: str, shoes_output: str, barbour_output: 
         df_barbour.to_excel(barbour_output, sheet_name="sheet1", index=False)
         print(f"[DONE] Barbour 导出 → {barbour_output}，行数: {len(df_barbour)}")
 
-    return not df_shoes.empty, not df_barbour.empty
+    return not df_shoes.empty, not df_barbour.empty, audit
 
 
 # -----------------------------------------------------------

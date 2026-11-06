@@ -1,6 +1,6 @@
 from pathlib import Path
-from channels.jingya.cainiao.generate_goods_update_excel_shoes import export_goods_excel_from_db_shoes
-from channels.jingya.cainiao.generate_binding_goods_excel_shoes import generate_channel_binding_excel_shoes
+from cainiao.generate_goods_update_excel_shoes import export_goods_excel_from_db_shoes
+from cainiao.generate_binding_goods_excel_shoes import generate_channel_binding_excel_shoes
 
 
 # 👇 选择品牌（取消注释其中一行）

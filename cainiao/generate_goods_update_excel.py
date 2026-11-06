@@ -5,8 +5,8 @@ import psycopg2
 from pathlib import Path
 from config import BRAND_CONFIG
 from common.product.size_utils import clean_size_for_barbour
-from channels.jingya.cainiao.barbour_goods_type import build_barbour_goods_name, get_package_spec
-from channels.jingya.cainiao.generate_binding_goods_excel import _parse_code_size_from_goods_name
+from cainiao.barbour_goods_type import build_barbour_goods_name, get_package_spec
+from cainiao.generate_binding_goods_excel import _parse_code_size_from_goods_name
 
 # ======================= ✅【参数配置区】=======================
 BRAND = "barbour"                     # 这里默认做 Barbour 服装

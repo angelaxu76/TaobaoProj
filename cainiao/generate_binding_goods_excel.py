@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, Tuple
 from config import BRAND_CONFIG, PGSQL_CONFIG
 from common.product.size_utils import clean_size_for_barbour
-from channels.jingya.cainiao.barbour_goods_type import build_barbour_goods_name
+from cainiao.barbour_goods_type import build_barbour_goods_name
 
 # 菜鸟官方「单个商品绑定上传模板」：直接往模板里填数据，生成的文件可直接导入
 # （用 pandas 另存的新文件菜鸟导入不认，需要手工复制到模板里）

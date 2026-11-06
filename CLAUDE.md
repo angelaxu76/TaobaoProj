@@ -26,6 +26,7 @@ TaobaoProj/
 │   ├── geox/
 │   ├── marksandspencer/
 │   └── reiss/
+├── cainiao/        菜鸟仓储绑货、货品更新、HS Code Excel 生成（常用，从 channels/jingya/ 移出）
 ├── channels/       销售渠道逻辑（淘宝、精雅）
 │   ├── jingya/     精雅渠道（主力）
 │   └── taobao/
@@ -148,7 +149,6 @@ from config import BRAND_CONFIG, BRAND_NAME_MAP, PGSQL_CONFIG
 - `export/`：生成各类 Excel（发布、价格、SKU、宝贝ID）
 - `pricing/`：定价策略、折扣计算、折扣候选商品导出
 - `check/`：价格校验、鲸芽数据解析、商家编码重复检查
-- `cainiao/`：菜鸟仓储绑货相关
 - `maintenance/`：库存维护、下架操作
 
 ---

@@ -15,7 +15,8 @@ from pathlib import Path
 from datetime import datetime
 import pandas as pd
 from sqlalchemy import create_engine, text
-from channels.jingya.cainiao.barbour_goods_type import classify_barbour_goods
+from cainiao.barbour_goods_type import classify_barbour_goods
+from cainiao.hscode_audit import hscode_issue, report_hscode_audit
 from common.utils.logger_utils import setup_logger
 
 # ======================= ✅【参数配置区】=======================
@@ -216,14 +217,18 @@ def build_row(brand: str, goods_id: str) -> dict:
     fields = b["fields"]
 
     db = fetch_db_row(brand, goods_id)
+    if not db:
+        raise ValueError("库存表查不到该货品ID")
 
     # ① 先从 inventory 拿 product_code（你说这列现在都统一叫 product_code）
     code = first_existing_val(db, fields.get("product_code"))
     if not code:
         code = fetch_fallback_code(brand, db)
+    if not code:
+        raise ValueError("缺少货号")
 
     # ② 用 product_code 去 barbour_products 查商品信息（gender/title/style_category）
-    prod = fetch_product_row_by_code(brand, code or "")
+    prod = fetch_product_row_by_code(brand, code)
 
     # ✅ 性别：只信 barbour_products（按你的要求）
     gender_raw = (prod.get("gender") or "")
@@ -231,17 +236,16 @@ def build_row(brand: str, goods_id: str) -> dict:
 
     # ✅ 商品类型：未配置海关编码的类型跳过（不再一律按大衣申报）
     style_name = prod.get("style_name") or ""
-    if code:
-        goods_type, _, style_zh = classify_barbour_goods(
-            code, style_name, gender_raw, prod.get("category") or ""
+    goods_type, _, style_zh = classify_barbour_goods(
+        code, style_name, gender_raw, prod.get("category") or ""
+    )
+    # 前缀/英文名都没识别出来（如鞋、香水）时 style_zh 为兜底 "服装"，同样视为未配置
+    if goods_type not in HSCODE_SUPPORTED_TYPES or style_zh == "服装":
+        raise SkipGoods(
+            f"商品类型[{goods_type}/{style_zh}]未配置海关编码",
+            {"goods_type": goods_type, "style_zh": style_zh,
+             "product_code": code, "style_name": style_name},
         )
-        # 前缀/英文名都没识别出来（如鞋、香水）时 style_zh 为兜底 "服装"，同样视为未配置
-        if goods_type not in HSCODE_SUPPORTED_TYPES or style_zh == "服装":
-            raise SkipGoods(
-                f"商品类型[{goods_type}/{style_zh}]未配置海关编码",
-                {"goods_type": goods_type, "style_zh": style_zh,
-                 "product_code": code, "style_name": style_name},
-            )
 
     hscode = HSCODE_MAP.get(gender_norm, HSCODE_MAP["男"])
 
@@ -251,7 +255,7 @@ def build_row(brand: str, goods_id: str) -> dict:
     # ✅ 标题：优先 products，其次 TXT 兜底
     title_en = (prod.get("product_title") or prod.get("title_en") or prod.get("title")
                 or prod.get("style_name") or "")
-    if not title_en and code:
+    if not title_en:
         title_en = read_title_from_txt(brand, code)
 
     # GTIN/EAN（仍从 inventory 拿也行）
@@ -261,13 +265,13 @@ def build_row(brand: str, goods_id: str) -> dict:
     # hscode = "6202309000" if gender_norm == "女" else "6201309000"
 
     # 备案价
-    price = fetch_price(brand, code or "", "")
+    price = fetch_price(brand, code, "")
 
     filling = ""
 
     declaration = (
         f"类别（{bracket_label}）:{bracket_value}|"
-        f"货号:{code or ''}|"
+        f"货号:{code}|"
         f"出口享惠情况:{PREF_EXPORT}|"
         f"种类（大衣、短大衣、斗篷等）:{DECL_KIND}|"
         f"GTIN:{gtin}|"
@@ -278,11 +282,8 @@ def build_row(brand: str, goods_id: str) -> dict:
         f"品牌（中文或外文名称）:BARBOUR"
     )
 
-    if not code:
-        declaration = declaration + "|⚠缺少货号"
-
     # 🔎 自检：product_code 查不到 products 时给警告（这会直接解释为什么全是男）
-    if code and not prod:
+    if not prod:
         print(f"⚠ barbour_products 未找到 product_code={code} (goods_id={goods_id})，gender将默认男")
 
     row = {
@@ -292,7 +293,7 @@ def build_row(brand: str, goods_id: str) -> dict:
         '*主要成分': MAIN_COMPONENT,
         '*品牌': BRAND_FIXED.get(brand, brand),
         '*主要用途': PURPOSE,
-        '*货品英文名称': title_en or "",
+        '*货品英文名称': title_en,
         '*销售单位（枚举值详见:销售单位列表，代码及中文均支持）': UOM1,
         '*前端宝贝链接': '',
         '*商品备案价（元）': price,
@@ -369,16 +370,19 @@ def generate_barbour_hscode(
 
     rows = []
     skipped = []
+    issues = []
     for i, r in df.iterrows():
         brand = r["brand"]
-        goods_id = str(r[gid_col]).strip()
+        goods_id = "" if pd.isna(r[gid_col]) else str(r[gid_col]).strip()
 
         if brand != "barbour":
             print(f"⚠ 跳过第{i+1}行：仅支持 brand=barbour，收到 {brand}")
+            issues.append(hscode_issue(goods_id, str(brand), "生成 Barbour 备案", "品牌不是 barbour"))
             continue
 
         if not goods_id:
             print(f"⚠ 跳过第{i+1}行：空 货品ID")
+            issues.append(hscode_issue("", brand, "生成 Barbour 备案", f"清单第{i+1}行货品ID为空"))
             continue
 
         try:
@@ -391,8 +395,11 @@ def generate_barbour_hscode(
             skipped.append({"货品ID": goods_id, "货号": e.info["product_code"],
                             "英文名": e.info["style_name"], "商品类型": e.info["goods_type"],
                             "品类": e.info["style_zh"], "跳过原因": e.reason})
+            issues.append(hscode_issue(goods_id, brand, "生成 Barbour 备案",
+                                       f"{e.reason}（货号={e.info['product_code']}）"))
         except Exception as e:
             print(f"❌ 第{i+1}行失败（brand={brand}, 货品ID={goods_id}）：{e}")
+            issues.append(hscode_issue(goods_id, brand, "生成 Barbour 备案", str(e)))
 
     out_df = pd.DataFrame(rows, columns=CORRECT_COLUMNS)
 
@@ -410,6 +417,9 @@ def generate_barbour_hscode(
         print(f"⚠ 跳过 {len(skipped)} 个未配置海关编码的货品，清单：{skip_path}")
         print(f"  日志：{output_dir / 'logs' / 'barbour_hscode.log'}")
 
+    return {"generated_ids": {row['*货品ID'] for row in rows}, "issues": issues}
+
 
 if __name__ == "__main__":
-    generate_barbour_hscode()
+    result = generate_barbour_hscode()
+    report_hscode_audit(OUTPUT_DIR, (), result["generated_ids"], result["issues"])

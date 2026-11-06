@@ -7,7 +7,6 @@ channels/jingya/
   pricing/      →  折扣策略、价格生成、SKU 价格库存导出
   maintenance/  →  维护任务（低库存下架、渠道ID查询、绑定ID提取）
   check/        →  校验（价差检查、排除列表处理）
-  cainiao/      →  菜鸟/鲸芽物流相关 Excel 生成（HS Code、绑定、发货更新）
   pipeline/     →  鲸芽上架流程共享步骤库（jingya_listing_pipeline.py）
 
 channels/taobao/

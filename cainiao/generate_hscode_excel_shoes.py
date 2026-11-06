@@ -16,6 +16,7 @@ from pathlib import Path
 from datetime import datetime
 import pandas as pd
 from sqlalchemy import create_engine, text
+from cainiao.hscode_audit import hscode_issue, report_hscode_audit
 
 # ======================= ✅【参数配置区】=======================
 # 1) 仅需这一个输入（两列：brand, 货品ID）
@@ -217,6 +218,8 @@ def _category_by_gender(gender_cn: str) -> str:
 # ----------------------- 主行构建 -----------------------
 def build_row(brand: str, goods_id: str) -> dict:
     db = fetch_db_row(brand, goods_id)
+    if not db:
+        raise ValueError("库存表查不到该货品ID")
     fields = BRAND_MAP[brand]["fields"]
 
     code = first_existing_val(db, fields.get("product_code"))
@@ -234,6 +237,9 @@ def build_row(brand: str, goods_id: str) -> dict:
 
     if not title_en and code:
         title_en = read_title_from_txt(brand, code)
+
+    if not code:
+        raise ValueError("缺少货号")
 
     # ⭐ 新增：性别判定 & 动态类目
     gender_cn = _detect_gender(db, fields, title_en or "", goods_name or "")
@@ -269,8 +275,6 @@ def build_row(brand: str, goods_id: str) -> dict:
         '第二数量（请严格对应第二单位要求填写）': QTY2,
         '申报要素(枚举值详见:hscode列表)（要素内容由hscode决定）': declaration
     }
-    if not code:
-        row['申报要素(枚举值详见:hscode列表)（要素内容由hscode决定）'] += "|⚠缺少货号"
     return row
 
 from pathlib import Path
@@ -305,19 +309,23 @@ def generate_shoe_hscode(
     df["brand"] = df["brand"].str.lower().str.strip()
 
     rows = []
+    issues = []
     for i, r in df.iterrows():
         brand = r["brand"]
-        goods_id = str(r[gid_col]).strip()
+        goods_id = "" if pd.isna(r[gid_col]) else str(r[gid_col]).strip()
         if brand not in BRAND_MAP:
             print(f"⚠ 跳过第{i+1}行：未知品牌 {brand}")
+            issues.append(hscode_issue(goods_id, str(brand), "生成鞋类备案", "未知品牌"))
             continue
         if not goods_id:
             print(f"⚠ 跳过第{i+1}行：空 货品ID")
+            issues.append(hscode_issue("", brand, "生成鞋类备案", f"清单第{i+1}行货品ID为空"))
             continue
         try:
             rows.append(build_row(brand, goods_id))
         except Exception as e:
             print(f"❌ 第{i+1}行失败（brand={brand}, 货品ID={goods_id}）：{e}")
+            issues.append(hscode_issue(goods_id, brand, "生成鞋类备案", str(e)))
 
     out_df = pd.DataFrame(rows, columns=CORRECT_COLUMNS)
 
@@ -329,8 +337,10 @@ def generate_shoe_hscode(
     with pd.ExcelWriter(out_path, engine="openpyxl") as w:
         out_df.to_excel(w, sheet_name=sheet_name, index=False)
 
-    print(f"✅ 生成完成：{out_path}")
+    print(f"✅ 生成完成：{out_path}（{len(rows)} 行）")
+    return {"generated_ids": {row['货品ID'] for row in rows}, "issues": issues}
 
 
 if __name__ == "__main__":
-    generate_shoe_hscode()
+    result = generate_shoe_hscode()
+    report_hscode_audit(OUTPUT_DIR, (), result["generated_ids"], result["issues"])

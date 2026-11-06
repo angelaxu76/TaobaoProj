@@ -1,6 +1,6 @@
 from pathlib import Path
-from channels.jingya.cainiao.generate_goods_update_excel import export_goods_excel_from_db
-from channels.jingya.cainiao.generate_binding_goods_excel import generate_channel_binding_excel
+from cainiao.generate_goods_update_excel import export_goods_excel_from_db
+from cainiao.generate_binding_goods_excel import generate_channel_binding_excel
 
 
 GOODS_DIR = Path("D:/TB/taofenxiao/goods")
