@@ -1,9 +1,11 @@
 import os
+import re
 import glob
 import argparse
 import pandas as pd
 
 from cainiao.hscode_audit import hscode_issue
+from cainiao.split_excel_by_brand import _detect_brand
 
 
 def find_column(df, candidates):
@@ -42,6 +44,25 @@ def detect_brand_from_name(name: str) -> str:
         return "barbour"
 
     return ""
+
+
+def parse_code_from_goods_name(name: str) -> str:
+    """
+    从订单货品名称解析货号，提取不到返回 ""。支持：
+      - camper看步男鞋靴子K300305-028尺码41
+      - 颜色分类:K300305-028;尺码:41（也支持 颜色 / 主要颜色）
+    """
+    s = str(name or "")
+    m = re.search(r"(?:主要颜色|颜色分类|颜色)\s*[:：]\s*([^;；]+)", s) or \
+        re.search(r"([A-Za-z0-9-]+)\s*尺码", s)
+    return m.group(1).strip() if m else ""
+
+
+def detect_brand_from_goods_code(name: str) -> str:
+    """名称和库存表都识别不出品牌时，按货号格式判断。"""
+    code = parse_code_from_goods_name(name)
+    brand = _detect_brand(code) if code else ""
+    return "" if brand == "other" else brand
 
 
 # 货品名称识别不出品牌时（如 "颜色分类:xxx;尺码:36"），用货品id 到各品牌表反查
@@ -123,9 +144,9 @@ def process_one_file(filepath):
     处理单个 Excel 文件：
     - 默认读取第一个 sheet
     - 找到“货品id”和“货品名称”列
-    - 返回 (DataFrame[货品id(文本), brand], issues, ignored_files)
+    - 返回 (DataFrame[货品id(文本), brand, 货品名称, 货品编码], issues, ignored_files)
     """
-    empty = pd.DataFrame(columns=["货品id", "brand"])
+    empty = pd.DataFrame(columns=["货品id", "brand", "货品名称", "货品编码"])
     file_name = os.path.basename(filepath)
 
     try:
@@ -137,6 +158,7 @@ def process_one_file(filepath):
     # 找列名（尽量兼容）
     product_id_col = find_column(df, ["货品id", "货品ID", "货品Id", "商品id", "商品ID"])
     product_name_col = find_column(df, ["货品名称", "货品名", "商品名称", "宝贝名称", "标题"])
+    goods_sku_col = find_column(df, ["货品编码"])
 
     if not product_id_col or not product_name_col:
         print(f"[WARN] 文件 {file_name} 缺少 '货品id' 或 '货品名称' 列，已跳过。")
@@ -144,6 +166,7 @@ def process_one_file(filepath):
 
     sub = df[[product_id_col, product_name_col]].copy()
     sub.rename(columns={product_id_col: "货品id", product_name_col: "货品名称"}, inplace=True)
+    sub["货品编码"] = df[goods_sku_col].apply(normalize_product_id) if goods_sku_col else ""
 
     # 去掉空 id；有名称却没有 id 的行要记下来
     issues = [
@@ -158,7 +181,7 @@ def process_one_file(filepath):
     # 把货品id转成“文本”
     sub["货品id"] = sub["货品id"].apply(normalize_product_id)
 
-    result = sub[["货品id", "brand"]].copy()
+    result = sub[["货品id", "brand", "货品名称", "货品编码"]].copy()
 
     print(f"[INFO] 文件 {file_name} 处理完成，行数: {len(result)}")
     return result, issues, []
@@ -216,6 +239,8 @@ def extract_goods_brand_info(input_dir: str, shoes_output: str, barbour_output: 
         id_brand = lookup_brands_by_item_ids(final_df.loc[unknown_mask, "货品id"])
         final_df.loc[unknown_mask, "brand"] = final_df.loc[unknown_mask, "货品id"].map(id_brand).fillna("")
         print(f"[INFO] 名称未识别品牌 {unknown_mask.sum()} 行，数据库反查命中 {len(id_brand)} 个货品id。")
+        by_code_mask = final_df["brand"] == ""
+        final_df.loc[by_code_mask, "brand"] = final_df.loc[by_code_mask, "货品名称"].map(detect_brand_from_goods_code)
         still_unknown = final_df.loc[final_df["brand"] == "", "货品id"].unique().tolist()
         if still_unknown:
             print(f"[WARN] 以下货品id 仍无法识别品牌，已跳过: {still_unknown}")
@@ -224,7 +249,8 @@ def extract_goods_brand_info(input_dir: str, shoes_output: str, barbour_output: 
                 for goods_id in still_unknown
             )
 
-    final_df = final_df[final_df["brand"] != ""]
+    # 同一货品可能有多个订单，备案只需要一行
+    final_df = final_df[final_df["brand"] != ""].drop_duplicates(subset="货品id")
 
     shoe_brands = {"camper", "ecco", "clarks", "geox"}
 

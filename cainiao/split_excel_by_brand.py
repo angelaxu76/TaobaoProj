@@ -10,6 +10,10 @@ PRODUCT_NAME_COL = "货品名称"
 # 输入文件的 sheet 名称（默认 "file"，改成 None 则读第一个 sheet）
 INPUT_SHEET_NAME = "file"
 
+# 输入文件名前缀，以及拆分结果的文件名结尾（查找输入文件时要排除）
+INPUT_FILE_PREFIX = "货品导出"
+SPLIT_OUTPUT_PATTERN = re.compile(r"_(camper|barbour|ecco|clarks|geox|other)$")
+
 
 def _extract_code(product_name: str) -> str | None:
     """
@@ -95,9 +99,28 @@ def split_excel_by_brand(input_path: str | Path, output_dir: str | Path) -> None
     print(f"📂 输出目录：{output_dir}")
 
 
+def find_latest_export(search_dir: str | Path) -> Path:
+    """
+    在目录中查找最新的 "货品导出*.xlsx"。
+    本脚本的输出（*_camper.xlsx 等）也以 "货品导出" 开头，需要排除。
+    """
+    candidates = [
+        f for f in Path(search_dir).glob(f"{INPUT_FILE_PREFIX}*.xlsx")
+        if not SPLIT_OUTPUT_PATTERN.search(f.stem)
+    ]
+    if not candidates:
+        raise FileNotFoundError(f"{search_dir} 中没有找到 {INPUT_FILE_PREFIX}*.xlsx")
+
+    latest = max(candidates, key=lambda f: f.stat().st_mtime)
+    if len(candidates) > 1:
+        print(f"⚠ 找到 {len(candidates)} 个货品导出文件，使用最新的一个")
+    print(f"📄 输入文件：{latest.name}")
+    return latest
+
+
 # ======== 直接运行示例 ========
 if __name__ == "__main__":
-    input_file = DOWNLOADS_DIR / "货品导出2026-10-30+05_49_38结果.xlsx"   # ← 修改为实际文件名
+    input_file = find_latest_export(DOWNLOADS_DIR)
     output_directory = DOWNLOADS_DIR  # ← 修改为实际输出目录
 
     split_excel_by_brand(input_file, output_directory)

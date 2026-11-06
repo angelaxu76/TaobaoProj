@@ -16,6 +16,7 @@ from pathlib import Path
 from datetime import datetime
 import pandas as pd
 from sqlalchemy import create_engine, text
+from cainiao.extract_goods_brand_from_order_excels import parse_code_from_goods_name
 from cainiao.hscode_audit import hscode_issue, report_hscode_audit
 
 # ======================= ✅【参数配置区】=======================
@@ -171,6 +172,19 @@ def fetch_db_row(brand: str, goods_id: str) -> dict:
         row = conn.execute(sql, {"cid": str(goods_id).strip()}).mappings().first()
     return dict(row) if row else {}
 
+def fetch_db_row_by_code(brand: str, product_code: str) -> dict:
+    """货品ID查不到时按货号补标题/性别，优先取有标题的记录；查不到返回 {}。"""
+    table = BRAND_MAP[brand]["table"]
+    sql = text(f"""
+        SELECT * FROM {table}
+        WHERE product_code = :code
+        ORDER BY (product_title IS NULL OR product_title = '')
+        LIMIT 1
+    """)
+    with ENGINE.begin() as conn:
+        row = conn.execute(sql, {"code": product_code}).mappings().first()
+    return dict(row) if row else {}
+
 def read_title_from_txt(brand: str, product_code: str) -> str:
     base = TEXTS_DIRS.get(brand)
     if not base: return ""
@@ -216,16 +230,22 @@ def _category_by_gender(gender_cn: str) -> str:
     return "鞋靴 / 低帮鞋 / 时尚休闲鞋"
 
 # ----------------------- 主行构建 -----------------------
-def build_row(brand: str, goods_id: str) -> dict:
+def build_row(brand: str, goods_id: str, order_name: str = "") -> dict:
     db = fetch_db_row(brand, goods_id)
+    order_code = ""
     if not db:
-        raise ValueError("库存表查不到该货品ID")
+        # 同一货号可能有多个货品ID，库存表只存了其中一个；此时用订单信息生成
+        order_code = parse_code_from_goods_name(order_name)
+        if not order_code:
+            raise ValueError("库存表查不到该货品ID，订单名称也解析不出货号")
+        print(f"ℹ 货品ID={goods_id} 库存表查不到，按订单货号 {order_code} 生成")
+        db = fetch_db_row_by_code(brand, order_code)
     fields = BRAND_MAP[brand]["fields"]
 
-    code = first_existing_val(db, fields.get("product_code"))
+    code = first_existing_val(db, fields.get("product_code")) or order_code
     size = first_existing_val(db, fields.get("size"))
     title_en = first_existing_val(db, fields.get("title_en"))
-    goods_name = first_existing_val(db, fields.get("goods_name"))
+    goods_name = first_existing_val(db, fields.get("goods_name")) or order_name
 
     if not (code and size):
         for col in BRAND_MAP[brand]["name_like_cols"]:
@@ -322,7 +342,8 @@ def generate_shoe_hscode(
             issues.append(hscode_issue("", brand, "生成鞋类备案", f"清单第{i+1}行货品ID为空"))
             continue
         try:
-            rows.append(build_row(brand, goods_id))
+            order_name = "" if pd.isna(r.get("货品名称")) else str(r.get("货品名称"))
+            rows.append(build_row(brand, goods_id, order_name))
         except Exception as e:
             print(f"❌ 第{i+1}行失败（brand={brand}, 货品ID={goods_id}）：{e}")
             issues.append(hscode_issue(goods_id, brand, "生成鞋类备案", str(e)))

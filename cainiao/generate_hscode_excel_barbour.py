@@ -3,9 +3,9 @@
 从一张清单（brand + 货品ID）连库生成备案导入 Excel（Barbour 服装版，无模板）。
 - 仅需提供：清单 Excel（两列：brand、货品ID 或 goods_id）
 - 其他信息从数据库取
-- HSCODE 按性别（服装）
+- HSCODE 按性别（服装）；帽子/兜帽固定 6505009900，字段见 build_hat_row
 - 商品类型按 编码前缀 → 英文名 → category 逐步匹配（见 barbour_goods_type.py）；
-  只有 HSCODE_SUPPORTED_TYPES 里的类型才生成备案行，其他类型（帽子/兜帽/包…）
+  只有 HSCODE_SUPPORTED_TYPES 里的类型才生成备案行，其他类型（包/围巾…）
   暂未配置海关编码，跳过并记录到日志 + 跳过清单 Excel
 """
 
@@ -16,6 +16,8 @@ from datetime import datetime
 import pandas as pd
 from sqlalchemy import create_engine, text
 from cainiao.barbour_goods_type import classify_barbour_goods
+from cainiao.barbour_material import extract_outer_composition
+from cainiao.extract_goods_brand_from_order_excels import parse_code_from_goods_name
 from cainiao.hscode_audit import hscode_issue, report_hscode_audit
 from common.utils.logger_utils import setup_logger
 
@@ -38,8 +40,9 @@ HSCODE_MAP = {
 }
 
 # 已配置海关编码的商品类型（classify_barbour_goods 返回的 goods_type）。
-# 帽子/兜帽/包/围巾等拿到 HSCODE 和申报要素后再加进来，没加之前一律跳过。
-HSCODE_SUPPORTED_TYPES = {"服装"}
+# 包/围巾等拿到 HSCODE 和申报要素后再加进来，没加之前一律跳过。
+HAT_GOODS_TYPES = {"帽子", "兜帽"}
+HSCODE_SUPPORTED_TYPES = {"服装"} | HAT_GOODS_TYPES
 # 4) 品牌映射：从哪个表取哪些字段
 BRAND_MAP = {
     "barbour": {
@@ -109,6 +112,15 @@ CATEGORY_MAP = {
     "女士": "女装/夹克",
 }
 CATEGORY_DEFAULT = "男装/夹克"
+
+# 帽子/兜帽（参照已备案成功的 MHO0004RU52）
+HAT_HSCODE = "6505009900"
+HAT_ORIGIN = "越南"
+HAT_SPEC = "一个"
+HAT_MAIN_COMPONENT = "纯棉100%"   # 商品描述提取不到成分时的默认值
+HAT_UOM1 = "个"
+HAT_CATEGORY = "服饰配件/皮带/帽子/围巾 / 帽子"
+HAT_KNITTED_STYLES = {"毛线帽"}   # 其余按机织申报
 
 from config import PGSQL_CONFIG  # 你的数据库连接配置，保持不变
 
@@ -212,26 +224,28 @@ class SkipGoods(Exception):
         self.info = info
 
 
-def build_row(brand: str, goods_id: str) -> dict:
+def build_row(brand: str, goods_id: str, order_name: str = "", order_sku: str = "") -> dict:
     b = BRAND_MAP[brand]
     fields = b["fields"]
 
     db = fetch_db_row(brand, goods_id)
-    if not db:
-        raise ValueError("库存表查不到该货品ID")
 
     # ① 先从 inventory 拿 product_code（你说这列现在都统一叫 product_code）
     code = first_existing_val(db, fields.get("product_code"))
     if not code:
         code = fetch_fallback_code(brand, db)
     if not code:
-        raise ValueError("缺少货号")
+        # 同一货号可能有多个货品ID，库存表只存了其中一个；此时用订单信息生成
+        code = parse_code_from_goods_name(order_name)
+        if not code:
+            raise ValueError("缺少货号" if db else "库存表查不到该货品ID，订单名称也解析不出货号")
+        print(f"ℹ 货品ID={goods_id} 库存表查不到货号，按订单货号 {code} 生成")
 
     # ② 用 product_code 去 barbour_products 查商品信息（gender/title/style_category）
     prod = fetch_product_row_by_code(brand, code)
 
     # ✅ 性别：只信 barbour_products（按你的要求）
-    gender_raw = (prod.get("gender") or "")
+    gender_raw = (prod.get("gender") or order_name)
     gender_norm = _normalize_gender(gender_raw)
 
     # ✅ 商品类型：未配置海关编码的类型跳过（不再一律按大衣申报）
@@ -261,6 +275,13 @@ def build_row(brand: str, goods_id: str) -> dict:
     # GTIN/EAN（仍从 inventory 拿也行）
     gtin = first_existing_val(db, fields.get("gtin")) or ""
 
+    if goods_type in HAT_GOODS_TYPES:
+        # 帽子的 GTIN 取 skuid（已备案样例如此，ean 为空）
+        descriptions = fetch_product_descriptions(brand, code) + [db.get("product_description")]
+        main_component = extract_outer_composition(descriptions) or HAT_MAIN_COMPONENT
+        return build_hat_row(brand, goods_id, code, title_en, gtin or db.get("skuid") or order_sku,
+                             style_zh, main_component)
+
     # # ✅ 按男女分配不同 HS code（你之前的需求）
     # hscode = "6202309000" if gender_norm == "女" else "6201309000"
 
@@ -284,7 +305,7 @@ def build_row(brand: str, goods_id: str) -> dict:
 
     # 🔎 自检：product_code 查不到 products 时给警告（这会直接解释为什么全是男）
     if not prod:
-        print(f"⚠ barbour_products 未找到 product_code={code} (goods_id={goods_id})，gender将默认男")
+        print(f"⚠ barbour_products 未找到 product_code={code} (goods_id={goods_id})，gender按订单名称判断，判断不出默认男")
 
     row = {
         '*货品ID': goods_id,
@@ -306,6 +327,51 @@ def build_row(brand: str, goods_id: str) -> dict:
         '*申报要素(枚举值详见:hscode列表)（要素内容由hscode决定）': declaration
     }
     return row
+
+def build_hat_row(brand: str, goods_id: str, code: str, title_en: str, gtin: str,
+                  style_zh: str, main_component: str) -> dict:
+    weave = "针织" if style_zh in HAT_KNITTED_STYLES else WEAVE_METHOD
+    declaration = (
+        f"货号:{code}|"
+        f"出口享惠情况:{PREF_EXPORT}|"
+        f"GTIN:{gtin}|"
+        f"品牌类型:{BRAND_TYPE}|"
+        f"制作工艺（针织、机织等）:{weave}|"
+        f"品牌（中文或外文名称）:{BRAND_FIXED.get(brand, brand)}"
+    )
+    return {
+        '*货品ID': goods_id,
+        '*原产国/地区(枚举值详见:国别列表)（当原产国为日本时，须标明县市，详见国别列表）': HAT_ORIGIN,
+        '*规格型号': HAT_SPEC,
+        '*主要成分': main_component,
+        '*品牌': BRAND_FIXED.get(brand, brand),
+        '*主要用途': PURPOSE,
+        '*货品英文名称': title_en,
+        '*销售单位（枚举值详见:销售单位列表，代码及中文均支持）': HAT_UOM1,
+        '*前端宝贝链接': '',
+        '*商品备案价（元）': fetch_price(brand, code, ""),
+        '*HSCODE(枚举值详见:hscode列表)（海关十位编码）': HAT_HSCODE,
+        '*商品类目': HAT_CATEGORY,
+        '*第一单位(枚举值详见:hscode列表)（第一单位由hscode决定）（填写文字或代码）': HAT_UOM1,
+        '*第一数量（请严格对应第一单位要求填写）': QTY1,
+        '*第二单位(枚举值详见:hscode列表)（第二单位由hscode决定）（填写文字或代码）': UOM2,
+        '*第二数量（请严格对应第二单位要求填写）': QTY2,
+        '*申报要素(枚举值详见:hscode列表)（要素内容由hscode决定）': declaration,
+    }
+
+
+def fetch_product_descriptions(brand: str, product_code: str) -> list[str]:
+    """同一货号在 barbour_products 可能有多条来源记录，取全部描述。"""
+    table = BRAND_MAP[brand]["fallback"]["table"]
+    sql = text(f"""
+        SELECT product_description
+        FROM {table}
+        WHERE product_code = :code AND product_description IS NOT NULL
+        ORDER BY id
+    """)
+    with ENGINE.begin() as conn:
+        return [r[0] for r in conn.execute(sql, {"code": product_code})]
+
 
 def fetch_product_row_by_code(brand: str, product_code: str) -> dict:
     """
@@ -386,7 +452,9 @@ def generate_barbour_hscode(
             continue
 
         try:
-            rows.append(build_row(brand, goods_id))
+            order_name = "" if pd.isna(r.get("货品名称")) else str(r.get("货品名称"))
+            order_sku = "" if pd.isna(r.get("货品编码")) else str(r.get("货品编码"))
+            rows.append(build_row(brand, goods_id, order_name, order_sku))
         except SkipGoods as e:
             msg = (f"跳过 货品ID={goods_id} 货号={e.info['product_code']} "
                    f"({e.info['style_name']})：{e.reason}")
