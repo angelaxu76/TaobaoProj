@@ -75,6 +75,13 @@ def extract_prices(html: str):
             nows = re.search(r"<span class='sale'>\s*NOW\s*£\s*([\d.]+)\s*</span>", h)
             if olds: orig = orig or olds.group(1)
             if nows: curr = curr or nows.group(1)
+            # 未打折商品只有 currprice（2026-11 改版后 dataLayer 的 priceRrp 已不存在）：
+            # 原价 = 现价，否则原价落成 0，供货商规则里的"未打折再 9 折"就不会生效
+            if not (olds or nows):
+                cp = re.search(r"<span class='currprice'>\s*£\s*([\d.]+)\s*</span>", h)
+                if cp:
+                    orig = orig or cp.group(1)
+                    curr = curr or cp.group(1)
 
     # ③ 主容器 #item-price
     if not (orig and curr):

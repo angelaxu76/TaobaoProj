@@ -211,8 +211,14 @@ class OutdoorAndCountryFetcher(BaseFetcher):
         # 5. 提取特征
         features = self._extract_features(html)
 
-        # 6. 提取 Product Code (从 JSON-LD MPN)
-        product_code = info.get("Product Color Code") or self._extract_color_code_from_jsonld(html)
+        # 6. 提取 Product Code：优先 JSON-LD offers[].mpn（如 "MWX0017BE5134"，只含当前颜色）。
+        #    dataLayer 已无 products 段（2026-11 改版），失败时返回 "Unknown"（非空字符串），
+        #    所以只作兜底，且必须符合 Barbour 编码格式才采用。
+        product_code = self._extract_color_code_from_jsonld(html)
+        if not product_code:
+            dl_code = (info.get("Product Color Code") or "").strip()
+            if re.fullmatch(r"[A-Z]{3}\d{4}[A-Z]{2}\d{2}", dl_code):
+                product_code = dl_code
 
         # 7. 推断性别
         gender = self.infer_gender(
