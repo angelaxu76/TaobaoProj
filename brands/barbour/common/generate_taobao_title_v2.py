@@ -19,7 +19,10 @@ logger = setup_logger("barbour_taobao_title")
 
 # ==== 读取前缀规则（性别+类型） ====
 _cfg = BRAND_CONFIG.get("barbour") or BRAND_CONFIG.get("Barbour") or {}
-CODE_PREFIX_RULES = _cfg.get("CODE_PREFIX_RULES", {})
+CODE_PREFIX_RULES = {
+    **_cfg.get("CODE_PREFIX_RULES", {}),
+    **_cfg.get("TITLE_CLOTHING_PREFIX_RULES", {}),
+}
 
 
 # ==== 材质提示（可扩充，夹克/服装专用）====
@@ -62,7 +65,30 @@ TYPE_EXTRAS = {
     "加厚衬衫外套夹克": ["长袖", "商务休闲","翻领", "百搭"],
     "翻领薄衬衫": ["商务休闲","英伦风", "修身", "透气"],
     "T恤": ["百搭", "休闲", "日常"],
+    "休闲裤": ["百搭", "通勤", "春秋", "日常"],
+    "卡其裤": ["百搭", "通勤", "春秋", "日常"],
+    "工装裤": ["百搭", "户外", "春秋", "日常"],
+    "牛仔裤": ["百搭", "休闲", "日常"],
+    "短裤": ["百搭", "休闲", "夏季", "日常"],
+    "泳裤": ["沙滩", "度假", "夏季"],
+    "西装外套": ["英伦风", "通勤", "商务休闲"],
+    "毛呢外套": ["英伦风", "保暖", "通勤", "秋冬"],
+    "绗缝卫衣": ["轻暖", "百搭", "休闲", "春秋"],
+    "鞋": ["英伦风", "百搭", "日常"],
+    "雨靴": ["防水", "户外", "英伦风", "雨天"],
+    "切尔西靴": ["英伦风", "百搭", "通勤", "秋冬"],
+    "沙漠靴": ["英伦风", "百搭", "休闲", "秋冬"],
+    "靴子": ["英伦风", "百搭", "户外", "秋冬"],
+    "乐福鞋": ["英伦风", "通勤", "休闲"],
+    "运动鞋": ["百搭", "休闲", "日常"],
+    "穆勒鞋": ["百搭", "休闲", "日常"],
+    "拖鞋": ["居家", "舒适", "保暖"],
+    "凉鞋": ["百搭", "休闲", "夏季"],
 }
+
+# 这些品类不用的通用热词：夏季单品不写"秋冬/春秋"，鞋不写"版型"
+SUMMER_TYPES = {"短裤", "泳裤", "凉鞋"}
+SEASON_FILLERS = {"秋冬", "春秋"}
 
 
 # ==== 核心品类关键词（比卖点词更重要，客户高频搜索的大类目词）====
@@ -81,6 +107,11 @@ TYPE_CORE_KEYWORDS = {
     "夹克": ["外套"],
     "马甲": ["内胆"],
     "内胆": ["马甲"],
+    "西装外套": ["外套"],
+    "休闲裤": ["长裤"],
+    "卡其裤": ["长裤"],
+    "工装裤": ["长裤"],
+    "牛仔裤": ["长裤"],
 }
 
 
@@ -91,11 +122,38 @@ TYPE_CORE_KEYWORDS = {
 # 全局匹配会把这些商品误判成风衣/马甲
 _FLEECE_MIXED_PREFIXES = ("MFL", "LFL")       # 同前缀下既有 Fleece Gilet 也有 Fleece Jacket
 _SHOWERPROOF_MIXED_PREFIXES = ("MSP", "LSP")  # 同前缀下主要是 Showerproof Jacket，少量是 Trench Coat
+_TROUSER_PREFIXES = ("MTR", "LTR")
+_TAILORED_PREFIXES = ("MTA", "LTA", "MWO", "LWO")  # 西装/呢外套前缀下混有 Tailored Gilet
+_FOOTWEAR_PREFIXES = ("MFO", "LFO", "MRF", "LRF", "CRF", "MSL", "LSL", "MBS", "LBS")
+
+TROUSER_RULES = [
+    (r"\bjeans?\b", "牛仔裤"),
+    (r"\bcargo\b", "工装裤"),
+    (r"\bchinos?\b", "卡其裤"),
+]
+FOOTWEAR_RULES = [
+    (r"\bslippers?\b", "拖鞋"),
+    (r"\bflip\s+flops?\b|\bsandals?\b|\bespadrilles?\b", "凉鞋"),
+    (r"\bclogs?\b", "穆勒鞋"),
+    (r"\bwell(y|ies|ington)s?\b", "雨靴"),
+    (r"\bchelsea\b", "切尔西靴"),
+    (r"\bchukka\b|\bdesert\b", "沙漠靴"),
+    (r"\bboots?\b|\bbootie\b", "靴子"),
+    (r"\bdriving\b|\bloafers?\b|\bmoccasins?\b", "乐福鞋"),
+    (r"\btrainers?\b|\bsneakers?\b", "运动鞋"),
+]
 
 
 def refine_type_by_keywords(code: str, type_str: str, style_name_en: str) -> str:
     c = (code or "").upper().strip()
     text = (style_name_en or "").lower()
+    rules = (TROUSER_RULES if c.startswith(_TROUSER_PREFIXES)
+             else FOOTWEAR_RULES if c.startswith(_FOOTWEAR_PREFIXES) else [])
+    for pat, zh in rules:
+        if re.search(pat, text):
+            return zh
+    if c.startswith(_TAILORED_PREFIXES) and re.search(r"\b(gilet|waistcoat)\b", text):
+        return "马甲"
     if c.startswith(_FLEECE_MIXED_PREFIXES) and re.search(r"\b(gilet|waistcoat|bodywarmer)\b", text):
         return "马甲"
     if c.startswith(_SHOWERPROOF_MIXED_PREFIXES) and re.search(r"\btrench\b", text):
@@ -148,9 +206,14 @@ def pad_to_60_bytes(base_title: str, style_name_en: str, type_str: str) -> str:
     3) TYPE_EXTRAS 类型卖点（通勤/百搭/春秋…）
     4) FILLER_WORDS 通用安全词
     """
+    fillers = FILLER_WORDS
+    if type_str in SUMMER_TYPES:
+        fillers = [w for w in fillers if w not in SEASON_FILLERS]
+    if type_str.endswith(("鞋", "靴")):
+        fillers = [w for w in fillers if "版型" not in w]
     return _pad_to_60_bytes(
         base_title, style_name_en, type_str,
-        KEYWORD_MAP, TYPE_CORE_KEYWORDS, TYPE_EXTRAS, FILLER_WORDS,
+        KEYWORD_MAP, TYPE_CORE_KEYWORDS, TYPE_EXTRAS, fillers,
     )
 
 
@@ -247,6 +310,24 @@ NOISE = {
     "polo",
     "shirt",
     "tshirt",
+    "trousers",
+    "shorts",
+    "jeans",
+    "blazer",
+    "boot",
+    "boots",
+    "shoe",
+    "shoes",
+    "sandal",
+    "sandals",
+    "slipper",
+    "slippers",
+    "wellington",
+    "wellingtons",
+    "welly",
+    "wellies",
+    "clog",
+    "clogs",
 }
 
 

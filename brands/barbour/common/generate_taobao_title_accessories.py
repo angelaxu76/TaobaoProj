@@ -32,7 +32,10 @@ MAX_BYTES = 60
 
 # ==== 前缀规则（配件品类，见 cfg/brands/barbour.py ACCESSORY_PREFIX_RULES）====
 _cfg = BRAND_CONFIG.get("barbour") or BRAND_CONFIG.get("Barbour") or {}
-ACCESSORY_PREFIX_RULES = _cfg.get("ACCESSORY_PREFIX_RULES", {})
+ACCESSORY_PREFIX_RULES = {
+    **_cfg.get("ACCESSORY_PREFIX_RULES", {}),
+    **_cfg.get("TITLE_ACCESSORY_PREFIX_RULES", {}),
+}
 
 
 def is_accessory_code(code: str) -> bool:
@@ -76,6 +79,7 @@ CATEGORY_RULES: List[Tuple[str, List[str], str]] = [
     (r"\bsnood\b", ["围脖"], "围巾"),
     (r"\bbandana\b", ["方巾", "头巾"], "围巾"),
     (r"\bscarf\b|\bwrap\b|\bstole\b|\bserape\b", ["围巾", "披肩"], "围巾"),
+    (r"\bwrist\s?warmers?\b", ["腕套", "袖套"], "手套"),
     (r"\bgloves?\b", ["手套"], "手套"),
     (r"\bsocks?\b", ["袜子"], "袜子"),
     # —— 其他配饰 ——
@@ -162,6 +166,8 @@ TYPE_EXTRAS = {
     "鞋类配件": ["户外", "收纳", "耐用"],
     "护理": ["夹克保养", "户外", "耐用"],
     "宠物用品": ["遛狗", "户外", "耐用", "英伦风"],
+    "狗衣服": ["遛狗", "户外", "保暖", "英伦风"],
+    "钱包": ["英伦风", "商务休闲", "送礼"],
     "配饰": ["英伦风", "百搭", "送礼"],
 }
 
@@ -187,6 +193,8 @@ NOISE = {
     "belt", "umbrella", "key", "fob", "ring", "towel", "stocking", "badge", "pin",
     "gaiters", "care", "kit", "dressing", "spray", "collar", "lead", "harness", "bed",
     "toy", "blanket", "coat", "jacket", "bowl", "bow", "tie", "cage", "mat",
+    "wristwarmer", "wristwarmers", "mitt", "mitts", "mitten", "mittens", "billfold",
+    "keychain", "headscarf", "jumper", "robe",
     # 材质 / 工艺 / 图案
     "leather", "faux", "fur", "suede", "wax", "waxed", "quilted", "quilt", "lambswool",
     "wool", "cashmere", "tweed", "tartan", "check", "gingham", "plaid", "cord", "denim",

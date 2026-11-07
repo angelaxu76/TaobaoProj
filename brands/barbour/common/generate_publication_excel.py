@@ -14,6 +14,7 @@ from brands.barbour.common.generate_taobao_title_accessories import (
     generate_barbour_accessory_title,
     is_accessory_code,
 )
+from brands.barbour.common.product_attributes import detect_material, detect_product_type
 from common.pricing.price_utils import calculate_jingya_prices
 from datetime import datetime
 from brands.barbour.core.site_utils import canonical_site
@@ -117,6 +118,16 @@ SQL_PRODUCT = text("""
     WHERE product_code = :code
     ORDER BY style_name
     LIMIT 1
+""")
+
+# 同一编码可能有多个来源站点的描述，成分信息不一定都在同一条里，识别材质时全部使用
+SQL_DESCRIPTIONS = text("""
+    SELECT product_description
+    FROM barbour_products
+    WHERE product_code = :code
+      AND product_description IS NOT NULL
+    GROUP BY product_description
+    ORDER BY MIN(source_rank)
 """)
 
 # 基础 SQL（按需拼接站点过滤）
@@ -244,6 +255,7 @@ def generate_publication_excel():
         "商品名称",
         "Min Price (GBP)", "鲸芽价格", "淘宝价格",
         "版型", "领口设计", "衣长",
+        "商品类型", "商品材质",
         "Sizes (In Stock)",
         "潜在供货商数",
         "Supplier",
@@ -320,6 +332,11 @@ def generate_publication_excel():
             # 版型/领口/衣长
             fit, neckline, coat_len = infer_fit_neck_length(style_name)
 
+            # 商品类型/材质（识别不出时留空，人工补）
+            product_type = detect_product_type(code, style_name)
+            descriptions = list(conn.execute(SQL_DESCRIPTIONS, {"code": code}).scalars())
+            material = detect_material(style_name, descriptions)
+
             # 潜在供货商数（不受 supplier 过滤影响，统计该编码全部有货可下单的供应商数）
             supplier_count = conn.execute(SQL_SUPPLIER_COUNT, {"code": code}).scalar() or 0
 
@@ -329,6 +346,7 @@ def generate_publication_excel():
                 float(price_gbp) if price_gbp is not None else "",
                 untaxed, retail,
                 fit, neckline, coat_len,
+                product_type, material,
                 sizes_str,
                 supplier_count,
                 supplier or "",   # ← 新增：把输入 supplier 原样写入（作为发布清单锚点）
