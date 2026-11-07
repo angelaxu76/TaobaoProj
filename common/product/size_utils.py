@@ -37,6 +37,9 @@ ALIASES = {
     "FREE SIZE": "ONESIZE",
     "FREESIZE": "ONESIZE",
     "F/S": "ONESIZE",
+    # 鲸芽无尺码规格的商品（包/围巾等）：库存表存 NOSIZE，但供应商 offers 是 ONESIZE，
+    # 比对时必须归一成同一个值。没有这条的话，下面的子串匹配会把 NOSIZE 判成 S。
+    "NOSIZE": "ONESIZE",
     # 新增 Unknown 映射
     "UNKNOWN": "Unknown",
     "UK UNKNOWN": "Unknown",

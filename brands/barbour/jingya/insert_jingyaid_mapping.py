@@ -78,6 +78,9 @@ def split_sku_name(s: str):
         return None
     s = s.replace(",", "，")
     parts = [p.strip() for p in s.split("，") if p.strip()]
+    # 淘宝页面无法设置尺码的商品（包/围巾等）：sku名称 只有编码 → 尺码记为 NOSIZE
+    if len(parts) == 1 and _BARBOUR_CODE_RE.match(parts[0].upper()):
+        return parts[0], NO_SIZE
     if len(parts) != 2:
         return None
     a, b = parts
@@ -87,6 +90,25 @@ def split_sku_name(s: str):
     return a, b
 
 _BARBOUR_CODE_RE = re.compile(r"^[A-Z]{3}\d{4}[A-Z]{2}\d{2}$")
+NO_SIZE = "NOSIZE"
+
+def _warn_nosize_merchant_code(df, key_sku_name):
+    """NOSIZE 商品的 sku商家编码 应为 编码+NOSIZE，否则菜鸟外部渠道商品ID（编码+尺码）会对不上。"""
+    colmap = {normalize_col(c): c for c in df.columns}
+    key_merchant = colmap.get("sku商家编码")
+    if not key_merchant:
+        return
+    bad = []
+    for _, row in df.iterrows():
+        parsed = split_sku_name(row.get(key_sku_name))
+        if not parsed or parsed[1] != NO_SIZE:
+            continue
+        merchant = str(row.get(key_merchant, "")).strip()
+        if merchant.upper() != f"{parsed[0]}{NO_SIZE}".upper():
+            bad.append(f"{parsed[0]}（当前：{merchant}）")
+    if bad:
+        print(f"⚠️ {len(bad)} 个无尺码商品的 sku商家编码 未改成 编码+NOSIZE，库存/价格正常同步，"
+              f"但菜鸟绑货 ID 会对不上，请到淘宝发布页修改：{'、'.join(bad)}")
 
 def clear_barbour_inventory():
     """清空 Barbour inventory 表（用于全量初始化）"""
@@ -207,6 +229,7 @@ def insert_jingyaid_to_db(brand: str):
     gei = find_latest_gei_file(doc)
     print(f"[绑定] 使用文件：{gei}")
     df, key_sku_id, key_sku_name, key_item_id, key_ch_prod, key_ch_item = _load_excel_with_colmap(gei)
+    _warn_nosize_merchant_code(df, key_sku_name)
 
     unparsed = []
     updated, skipped = 0, 0
