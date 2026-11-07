@@ -9,7 +9,7 @@ source_dir = r"D:\TB\Products\toast\publication\image_cutter"
 target_root_dir = r"D:\TB\Products\toast\publication\image_cutter分组图片"
 
 # 每组的图片数量
-group_size = 180
+group_size = 80
 
 # 支持的图片扩展名
 image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']

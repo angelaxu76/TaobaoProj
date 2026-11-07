@@ -9,11 +9,18 @@ from pathlib import Path
 # ============================================================
 # 0. LinkFox API 凭证 / 请求参数（原 cfg/ai_config.py，2026-08 迁移至此）
 # ============================================================
+# LINKFOX_API_KEY = "202609151549469026676240384"
 LINKFOX_API_KEY = "202609151549469026676240384"
 LINKFOX_HOST    = "https://sbappstoreapi.ziniao.com/openapi-router"
 
 # 场景相似度 [0.0, 1.0]（None = 不传，接口使用默认值 0.7）
 LINKFOX_SCENE_STRENGTH: float | None = None
+
+# 只换头：把 AI 结果图的头颈贴回原图，衣服/配件/背景全部保留原图，不额外扣点
+#   True  → 开启；未经处理的 AI 图存到 linkfox_output/raw_ai/
+#   False → 直接使用 AI 结果图（衣服/配件可能被改色）
+# 只对 run_linkfox_faceswap_direct.py 生效，紫鸟版脚本不读取
+LINKFOX_PASTE_HEAD_ONLY = True
 
 # ============================================================
 # 1. 品牌根目录（切换品牌改这一行）
