@@ -33,6 +33,11 @@ CATEGORY_URLS = {
     # 联名款式经常下架/上新，不要逐个硬编码具体联名子页面（容易漏掉新联名）。
     # 官网有一个汇总所有联名商品的主分类页，覆盖当前在售的全部联名（用它自动跟随官网变化）：
     "all-collaborations": "https://www.barbour.com/gb/all-collaborations",
+    # 以下联名子页面作为兜底显式列出（与汇总页重复的链接最后会去重；页面下线时只是抓不到，不影响其他分类）
+    "collab-barbour-x-apc": "https://www.barbour.com/gb/all-collaborations/barbour-x-a.p.c.",
+    "collab-paul-smith-loves-barbour": "https://www.barbour.com/gb/all-collaborations/paul-smith-loves-barbour",
+    "collab-barbour-x-norbit": "https://www.barbour.com/gb/barbour-x-norbit",
+    "collab-womens-barbour-farm-rio": "https://www.barbour.com/gb/womens/collaborations/barbour-farm-rio",
 
     # Clothing
     "mens-clothing": "https://www.barbour.com/gb/mens/clothing",
@@ -48,6 +53,16 @@ CATEGORY_URLS = {
     # Accessories
     "mens-accessories": "https://www.barbour.com/gb/mens/accessories",
     "womens-accessories": "https://www.barbour.com/gb/womens/accessories",
+    # 配饰子分类（兜底显式列出，与上面的主分类重复的链接会去重）
+    "womens-bags-purses": "https://www.barbour.com/gb/womens/accessories/bags-purses",
+    "womens-hats-gloves": "https://www.barbour.com/gb/womens/accessories/hats-gloves",
+    "womens-scarves-wraps": "https://www.barbour.com/gb/womens/accessories/scarves-wraps",
+    "womens-gift-sets": "https://www.barbour.com/gb/womens/accessories/gift-sets",
+    "mens-bags-luggage": "https://www.barbour.com/gb/mens/accessories/bags-luggage",
+    "mens-hats-gloves": "https://www.barbour.com/gb/mens/accessories/hats-gloves",
+    "mens-belts": "https://www.barbour.com/gb/mens/accessories/belts",
+    "mens-scarves-gloves": "https://www.barbour.com/gb/mens/accessories/scarves-gloves",
+    "mens-hoods": "https://www.barbour.com/gb/mens/accessories/hoods",
 }
 
 OUTPUT_FILE = BARBOUR["LINKS_FILE"]
