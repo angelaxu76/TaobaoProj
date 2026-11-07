@@ -14,7 +14,8 @@
 计费：每张 20 点，原分辨率每张 25 点；创建中/生成中任务上限 100 个。
 
 只换头（_session_config.py 的 LINKFOX_PASTE_HEAD_ONLY = True）：
-  AI 结果图的头颈贴回原图，衣服/配件/背景保留原图，不额外扣点。
+  AI 图头部以外有明显变化时，把被改掉的衣服/配件从原图贴回来；
+  没有变化时直接用 AI 图。都不额外扣点。
   未经处理的 AI 图保存在输出目录的 raw_ai/ 下。
   合成失败的图（如背影）不进输出目录，清单写入 head_failed_*.txt。
 
@@ -105,7 +106,7 @@ def read_codes_from_excel(path: str, header_rows: int = 1) -> list[str]:
 
 
 def paste_head_onto_original(saved_path: str, r2_prefix: str) -> str:
-    """把 AI 图的头颈贴回原图，覆盖 saved_path。返回失败原因，成功返回空字符串。
+    """需要时把被 AI 改掉的衣服/配件从原图贴回，结果写到 saved_path。返回失败原因，成功返回空字符串。
 
     AI 图先移到 raw_ai/，失败时 saved_path 不再存在，避免被后续流程当成品使用。
     """
@@ -120,10 +121,11 @@ def paste_head_onto_original(saved_path: str, r2_prefix: str) -> str:
         resp.raise_for_status()
         original = cv2.imdecode(np.frombuffer(resp.content, np.uint8), cv2.IMREAD_COLOR)
         merged, reason = composite_head(original, read_image(str(raw_path)))
-        if merged is None:
-            return reason
-        write_jpg(str(path), merged)
-        return ""
+        if merged is not None:
+            write_jpg(str(path), merged)
+        elif not reason:
+            shutil.copy2(str(raw_path), str(path))  # 头部以外没变化，直接用 AI 图
+        return reason
     except Exception as e:
         return f"{type(e).__name__}: {e}"
 
@@ -183,7 +185,7 @@ def main():
                 print(f"[{code}] 只换头失败 {Path(path).name}: {reason}")
                 head_failures.append(f"{Path(path).name}\t{reason}")
             else:
-                print(f"[{code}] 已贴回原图 → {path}")
+                print(f"[{code}] 只换头完成 → {path}")
                 kept.append(path)
         return code, kept
 
