@@ -32,7 +32,7 @@ from ops.image_rename.rename_by_shot_priority import rename_by_shot_priority
 
 
 def main():
-    code_file_path = r"D:\TB\Products\barbour\repulibcation\codes.txt"
+    code_file_path = r"D:\TB\Products\barbour\repulibcation\codes.xlsx"
 
     print("将图片 merge 到一张图片中")
     batch_merge_images(BARBOUR["IMAGE_PROCESS"], BARBOUR["MERGED_DIR"], width=750)
