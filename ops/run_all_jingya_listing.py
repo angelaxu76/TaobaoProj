@@ -26,6 +26,7 @@ BRANDS_TO_RUN = [
     "camper",
     "ecco",
     "geox",
+    "toast",
     # "marksandspencer",
 ]
 

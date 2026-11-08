@@ -30,6 +30,7 @@ BRAND_SCRIPT_MAP = {
     "barbour":         ROOT_DIR / "brands" / "barbour"         / "pipeline" / "prepare_jingya_listing.py",
     "geox":            ROOT_DIR / "brands" / "geox"            / "pipeline" / "prepare_jingya_listing.py",
     "marksandspencer": ROOT_DIR / "brands" / "marksandspencer" / "pipeline" / "prepare_jingya_listing.py",
+    "toast":           ROOT_DIR / "brands" / "toast"           / "pipeline" / "prepare_jingya_listing.py",
 }
 
 
