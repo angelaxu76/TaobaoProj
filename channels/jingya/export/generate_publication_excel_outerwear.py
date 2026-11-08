@@ -18,7 +18,10 @@ from config import BRAND_CONFIG, SETTINGS, EXCHANGE_RATE
 from common.publication.publish_blocklist import load_publish_blocklist, filter_blocked_codes
 from common.product.apparel_attributes import extract_closure, extract_fabric, extract_neckline
 from common.publication.season_utils import get_next_season_label
-from common.publication.excel_columns import COLOR_COLUMN, LAUNCH_SEASON_COLUMN, MATERIAL_COLUMN
+from common.publication.excel_columns import (
+    TITLE_COLUMN, TITLE_EN_COLUMN, CODE_COLUMN, PRICE_COLUMN, SIZES_COLUMN,
+    COLOR_COLUMN, LAUNCH_SEASON_COLUMN, MATERIAL_COLUMN,
+)
 
 # ============================================================
 # 可修改参数（Excel 导出字段固定值）
@@ -333,12 +336,12 @@ def generate_publication_excels_clothing(
             领口设计_local = extract_neckline(style_cat, *texts) or 领口设计
 
         rows.append({
-            "Product Name EN": title_en,
-            "商品名称": title_cn,
-            "商品编码": code,
+            TITLE_EN_COLUMN: title_en,
+            TITLE_COLUMN: title_cn,
+            CODE_COLUMN: code,
             COLOR_COLUMN: r.get("color") or "",
-            "有货尺码": in_stock_sizes.get(code, ""),
-            "淘宝价格": rmb_price,
+            SIZES_COLUMN: in_stock_sizes.get(code, ""),
+            PRICE_COLUMN: rmb_price,
             LAUNCH_SEASON_COLUMN: 上市年份季节,
             "版型": 版型, MATERIAL_COLUMN: 面料_local, "衣门襟": 衣门襟_local, "厚薄": 厚薄, "领口设计": 领口设计_local,
             "地区国家": 地区国家, "发货时间": 发货时间, "运费模版": 运费模版,
@@ -366,14 +369,14 @@ def generate_publication_excels_clothing(
         image_dst_dir.mkdir(parents=True, exist_ok=True)
         print("\n🖼️ 复制图片 ...")
         missing = []
-        for code in df_all["商品编码"].unique():
+        for code in df_all[CODE_COLUMN].unique():
             matched = list(image_src_dir.glob(f"{code}*.jpg"))
             if not matched: missing.append(code); continue
             for img in matched: shutil.copy(img, image_dst_dir / img.name)
         pub_codes_file = cfg["OUTPUT_DIR"] / "publication_codes_outerwear.txt"
         miss_codes_file = cfg["OUTPUT_DIR"] / "missing_codes_outerwear.txt"
         with open(pub_codes_file,"w",encoding="utf-8") as f:
-            for code in sorted(set(df_all["商品编码"])): f.write(f"{code}\n")
+            for code in sorted(set(df_all[CODE_COLUMN])): f.write(f"{code}\n")
         with open(miss_codes_file,"w",encoding="utf-8") as f:
             for code in sorted(set(missing)): f.write(f"{code}\n")
         print(f"📝 已写出：{pub_codes_file} / {miss_codes_file}")

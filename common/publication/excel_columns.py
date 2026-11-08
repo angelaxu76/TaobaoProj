@@ -9,6 +9,11 @@
   - brands/barbour/common/generate_publication_excel.py
 """
 
+TITLE_COLUMN = "商品名称"            # 中文淘宝标题
+TITLE_EN_COLUMN = "Product Name EN"  # 英文原名
+CODE_COLUMN = "商品编码"
+PRICE_COLUMN = "淘宝价格"            # 淘宝零售价（CNY）
+SIZES_COLUMN = "有货尺码"
 COLOR_COLUMN = "颜色"
 LAUNCH_SEASON_COLUMN = "上市年份季节"
 MATERIAL_COLUMN = "材质"   # 鞋：鞋面材质；服装：表面面料

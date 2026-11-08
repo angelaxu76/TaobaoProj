@@ -21,7 +21,10 @@ from common.pricing.price_utils import calculate_jingya_prices
 from common.text.generate_taobao_title import generate_taobao_title
 from common.product.category_utils import infer_shoe_publish_category
 from common.publication.season_utils import get_next_season_label
-from common.publication.excel_columns import COLOR_COLUMN, LAUNCH_SEASON_COLUMN, MATERIAL_COLUMN
+from common.publication.excel_columns import (
+    TITLE_COLUMN, TITLE_EN_COLUMN, CODE_COLUMN, PRICE_COLUMN, SIZES_COLUMN,
+    COLOR_COLUMN, LAUNCH_SEASON_COLUMN, MATERIAL_COLUMN,
+)
 
 
 def extract_field(name, content):
@@ -197,11 +200,11 @@ def generate_publication_excels(brand: str):
             heel_height = ""
 
         row = {
-            "英文标题": title_en,
-            "标题": title_cn,
-            "商品编码": code_clean,
+            TITLE_EN_COLUMN: title_en,
+            TITLE_COLUMN: title_cn,
+            CODE_COLUMN: code_clean,
             COLOR_COLUMN: color_map.get(code_clean, ""),
-            "价格": rmb_price,
+            PRICE_COLUMN: rmb_price,
             "内里材质": lining_material,
             MATERIAL_COLUMN: upper_material,   # 鞋面材质
             "后跟高": heel_height,

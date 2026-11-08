@@ -17,7 +17,10 @@ from brands.barbour.common.generate_taobao_title_accessories import (
 from brands.barbour.common.product_attributes import detect_material, detect_product_type
 from common.pricing.price_utils import calculate_jingya_prices
 from common.publication.season_utils import get_next_season_label
-from common.publication.excel_columns import COLOR_COLUMN, LAUNCH_SEASON_COLUMN, MATERIAL_COLUMN
+from common.publication.excel_columns import (
+    TITLE_COLUMN, TITLE_EN_COLUMN, CODE_COLUMN, PRICE_COLUMN, SIZES_COLUMN,
+    COLOR_COLUMN, LAUNCH_SEASON_COLUMN, MATERIAL_COLUMN,
+)
 from common.product.color_utils import to_color_cn
 from datetime import datetime
 from brands.barbour.core.site_utils import canonical_site
@@ -255,13 +258,13 @@ def generate_publication_excel():
     ws.title = "Sheet1"
 
     header = [
-        "商品编码", "Product Name EN", COLOR_COLUMN,
-        "商品名称",
-        "Min Price (GBP)", "鲸芽价格", "淘宝价格",
+        CODE_COLUMN, TITLE_EN_COLUMN, COLOR_COLUMN,
+        TITLE_COLUMN,
+        "Min Price (GBP)", "鲸芽价格", PRICE_COLUMN,
         "版型", "领口设计", "衣长",
         "商品类型", MATERIAL_COLUMN,
         LAUNCH_SEASON_COLUMN,
-        "Sizes (In Stock)",
+        SIZES_COLUMN,
         "潜在供货商数",
         "Supplier",
         "Site", "Offer URL", "Stock Count", "Last Checked"

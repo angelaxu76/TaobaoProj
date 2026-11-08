@@ -9,7 +9,10 @@ from common.text.generate_taobao_title_v1 import generate_taobao_title
 from common.product.category_utils import infer_shoe_publish_category
 from common.publication.publish_blocklist import load_publish_blocklist, filter_blocked_codes
 from common.publication.season_utils import get_next_season_label
-from common.publication.excel_columns import COLOR_COLUMN, LAUNCH_SEASON_COLUMN, MATERIAL_COLUMN
+from common.publication.excel_columns import (
+    TITLE_COLUMN, TITLE_EN_COLUMN, CODE_COLUMN, PRICE_COLUMN, SIZES_COLUMN,
+    COLOR_COLUMN, LAUNCH_SEASON_COLUMN, MATERIAL_COLUMN,
+)
 
 # ==== 固定参数 ====
 上市年份季节 = get_next_season_label()   # 当前季节的下一季，如 2026-11 → "2026年冬季"
@@ -219,12 +222,12 @@ def generate_publication_excels(brand: str):
             heel_height = ""
 
         row = {
-            "英文标题": title_en,
-            "标题": title_cn,
-            "商品编码": code,
+            TITLE_EN_COLUMN: title_en,
+            TITLE_COLUMN: title_cn,
+            CODE_COLUMN: code,
             COLOR_COLUMN: color_map.get(code_clean, ""),
-            "有库存尺码": size_stock_map.get(code_clean, ""),
-            "价格": rmb_price,
+            SIZES_COLUMN: size_stock_map.get(code_clean, ""),
+            PRICE_COLUMN: rmb_price,
             "内里材质": lining_material,
             MATERIAL_COLUMN: upper_material,   # 鞋面材质
             LAUNCH_SEASON_COLUMN: 上市年份季节,
