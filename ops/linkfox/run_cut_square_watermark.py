@@ -40,6 +40,9 @@ AUTO_CUTOUT = True
 # 是否跳过已是白底的图（True = 检测到白底不调用 rembg，节省时间）
 WHITE_BG_SKIP = False
 
+# 是否加水印（True = 斜纹水印 + 右下角小字；False = 只抠图 + 白底正方形，不加任何水印）
+ADD_WATERMARK = False
+
 # 输出统一边长（px）；None = 不缩放，保持裁剪后的原始尺寸
 TARGET_SIZE = 1500
 
@@ -60,4 +63,4 @@ _mod.FUR_CODES     = FUR_CODES
 _mod.FUR_PREFIXES  = FUR_PREFIXES
 
 if __name__ == "__main__":
-    _mod.batch_process(INPUT_DIR, OUTPUT_DIR, max_workers=MAX_WORKERS)
+    _mod.batch_process(INPUT_DIR, OUTPUT_DIR, max_workers=MAX_WORKERS, add_watermark=ADD_WATERMARK)

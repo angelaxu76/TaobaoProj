@@ -16,6 +16,9 @@ from brands.barbour.common.generate_taobao_title_accessories import (
 )
 from brands.barbour.common.product_attributes import detect_material, detect_product_type
 from common.pricing.price_utils import calculate_jingya_prices
+from common.publication.season_utils import get_next_season_label
+from common.publication.excel_columns import COLOR_COLUMN, LAUNCH_SEASON_COLUMN, MATERIAL_COLUMN
+from common.product.color_utils import to_color_cn
 from datetime import datetime
 from brands.barbour.core.site_utils import canonical_site
 
@@ -76,7 +79,8 @@ def map_color(color_en: str) -> str:
     for key, zh in fallback:
         if key in cl:
             return zh
-    return c
+    # Barbour 色卡没有 → 通用颜色词表（仍识别不出时返回英文原文）
+    return to_color_cn(c) or c
 
 
 def infer_fit_neck_length(name: str, desc: str = "", feature: str = ""):
@@ -251,11 +255,12 @@ def generate_publication_excel():
     ws.title = "Sheet1"
 
     header = [
-        "商品编码", "Product Name EN", "颜色",
+        "商品编码", "Product Name EN", COLOR_COLUMN,
         "商品名称",
         "Min Price (GBP)", "鲸芽价格", "淘宝价格",
         "版型", "领口设计", "衣长",
-        "商品类型", "商品材质",
+        "商品类型", MATERIAL_COLUMN,
+        LAUNCH_SEASON_COLUMN,
         "Sizes (In Stock)",
         "潜在供货商数",
         "Supplier",
@@ -264,6 +269,7 @@ def generate_publication_excel():
     ws.append(header)
 
     rate = EXCHANGE_RATE
+    launch_season = get_next_season_label()   # 当前季节的下一季，如 2026-11 → "2026年冬季"
 
     with engine.connect() as conn:
         for idx, (code, supplier) in enumerate(code_pairs, 1):
@@ -347,6 +353,7 @@ def generate_publication_excel():
                 untaxed, retail,
                 fit, neckline, coat_len,
                 product_type, material,
+                launch_season,
                 sizes_str,
                 supplier_count,
                 supplier or "",   # ← 新增：把输入 supplier 原样写入（作为发布清单锚点）

@@ -2,7 +2,21 @@ import pandas as pd
 
 from config import DOWNLOADS_DIR
 
-file_path = str(DOWNLOADS_DIR / "GEI@sales_catalogue_export@261031164809@0786.xlsx")
+# 自动查找 Downloads 下 GEI 开头的 Excel（忽略 Excel 打开时生成的 ~$ 临时文件）
+candidates = sorted(
+    (p for p in DOWNLOADS_DIR.glob("GEI*.xls*") if not p.name.startswith("~$")),
+    key=lambda p: p.stat().st_mtime,
+    reverse=True,
+)
+if not candidates:
+    print(f"❌ 在 {DOWNLOADS_DIR} 下未找到 GEI 开头的 Excel 文件")
+    exit()
+if len(candidates) > 1:
+    print(f"⚠️ 找到 {len(candidates)} 个 GEI 文件，使用最新的一个：")
+    for p in candidates:
+        print("   ", p.name)
+file_path = str(candidates[0])
+print(f"📄 使用文件：{candidates[0].name}")
 
 # 尝试读取 Excel 文件
 try:

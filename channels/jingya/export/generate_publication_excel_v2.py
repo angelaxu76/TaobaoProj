@@ -20,6 +20,8 @@ from config import (
 from common.pricing.price_utils import calculate_jingya_prices
 from common.text.generate_taobao_title import generate_taobao_title
 from common.product.category_utils import infer_shoe_publish_category
+from common.publication.season_utils import get_next_season_label
+from common.publication.excel_columns import COLOR_COLUMN, LAUNCH_SEASON_COLUMN, MATERIAL_COLUMN
 
 
 def extract_field(name, content):
@@ -47,6 +49,7 @@ def generate_publication_excels(brand: str):
 
     # ===== V2: Excel 固定字段来自 publish_config（可按品牌覆盖）=====
     excel_constants = {
+        LAUNCH_SEASON_COLUMN: get_next_season_label(),
         **EXCEL_CONSTANTS_BASE,
         **EXCEL_CONSTANTS_BY_BRAND.get(brand, {}),
     }
@@ -136,6 +139,14 @@ def generate_publication_excels(brand: str):
     gender_df["product_code"] = gender_df["product_code"].astype(str).str.strip().str.upper()
     gender_map = {k: v for k, v in gender_df.values}
 
+    # 颜色：导入 TXT 时已翻译成中文写入 color 字段
+    color_df = pd.read_sql(
+        f"SELECT DISTINCT product_code, color FROM {config['TABLE_NAME']} WHERE color IS NOT NULL",
+        engine
+    )
+    color_df["product_code"] = color_df["product_code"].astype(str).str.strip().str.upper()
+    color_map = {k: v for k, v in color_df.values}
+
     rows = []
     print("\n📦 正在读取 TXT 并生成商品行数据...")
 
@@ -189,9 +200,10 @@ def generate_publication_excels(brand: str):
             "英文标题": title_en,
             "标题": title_cn,
             "商品编码": code_clean,
+            COLOR_COLUMN: color_map.get(code_clean, ""),
             "价格": rmb_price,
             "内里材质": lining_material,
-            "帮面材质": upper_material,
+            MATERIAL_COLUMN: upper_material,   # 鞋面材质
             "后跟高": heel_height,
             "HSCODE": hscode,
 

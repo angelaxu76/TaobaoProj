@@ -8,9 +8,11 @@ from common.pricing.price_utils import calculate_jingya_prices
 from common.text.generate_taobao_title_v1 import generate_taobao_title
 from common.product.category_utils import infer_shoe_publish_category
 from common.publication.publish_blocklist import load_publish_blocklist, filter_blocked_codes
+from common.publication.season_utils import get_next_season_label
+from common.publication.excel_columns import COLOR_COLUMN, LAUNCH_SEASON_COLUMN, MATERIAL_COLUMN
 
 # ==== 固定参数 ====
-上市季节 = "2025春季"
+上市年份季节 = get_next_season_label()   # 当前季节的下一季，如 2026-11 → "2026年冬季"
 季节 = "春秋"
 款式 = "休闲"
 闭合方式 = ""
@@ -140,6 +142,13 @@ def generate_publication_excels(brand: str):
         .values
     }
 
+    # 颜色：导入 TXT 时已翻译成中文写入 color 字段
+    color_map = {
+        k.strip().upper(): v for k, v in
+        pd.read_sql(f"SELECT DISTINCT product_code, color FROM {config['TABLE_NAME']} WHERE color IS NOT NULL", engine)
+        .values
+    }
+
     # === 新增：每个商品编码「有库存的尺码」列表 ===
     df_sizes = pd.read_sql(
         f"""
@@ -213,11 +222,12 @@ def generate_publication_excels(brand: str):
             "英文标题": title_en,
             "标题": title_cn,
             "商品编码": code,
+            COLOR_COLUMN: color_map.get(code_clean, ""),
             "有库存尺码": size_stock_map.get(code_clean, ""),
             "价格": rmb_price,
             "内里材质": lining_material,
-            "帮面材质": upper_material,
-            "上市季节": 上市季节,
+            MATERIAL_COLUMN: upper_material,   # 鞋面材质
+            LAUNCH_SEASON_COLUMN: 上市年份季节,
             "季节": 季节,
             "款式": 款式,
             "闭合方式": 闭合方式,

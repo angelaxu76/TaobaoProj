@@ -1,8 +1,8 @@
 # config/publish_config.py
 
 # Excel 发布用固定字段（通用）
+# 注：「上市年份季节」不在此写死，由发布脚本按当前日期自动计算（common/publication/season_utils.py）
 EXCEL_CONSTANTS_BASE = {
-    "上市季节": "2025冬季",
     "季节": "四季通用",
     "款式": "休闲",
     "闭合方式": "",

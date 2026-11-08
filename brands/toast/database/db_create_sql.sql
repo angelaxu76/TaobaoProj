@@ -13,6 +13,7 @@ CREATE TABLE toast_inventory (
     product_description TEXT,                         -- 商品描述（来自 TXT）
     product_title TEXT,                               -- 商品标题（英文名称）
     style_category VARCHAR(50),                       -- 商品分类（product_type 去掉性别前缀），如 Knitwear、Dresses
+    color VARCHAR(100),                               -- 颜色（中文，导入 TXT 时由 Product Color 翻译）
 
     -- 淘宝&渠道绑定信息（用于淘经销对接）
     channel_product_id VARCHAR(50),                   -- 渠道产品 ID（整个商品）

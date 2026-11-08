@@ -17,11 +17,13 @@ from importlib import import_module
 from config import BRAND_CONFIG, SETTINGS, EXCHANGE_RATE
 from common.publication.publish_blocklist import load_publish_blocklist, filter_blocked_codes
 from common.product.apparel_attributes import extract_closure, extract_fabric, extract_neckline
+from common.publication.season_utils import get_next_season_label
+from common.publication.excel_columns import COLOR_COLUMN, LAUNCH_SEASON_COLUMN, MATERIAL_COLUMN
 
 # ============================================================
 # 可修改参数（Excel 导出字段固定值）
 # ============================================================
-上市年份季节 = "2026年春季"
+上市年份季节 = get_next_season_label()   # 当前季节的下一季，如 2026-11 → "2026年冬季"
 版型       = "标准"
 面料       = "涤纶"
 衣门襟     = "拉链"
@@ -133,6 +135,38 @@ def _title_apparel(code: str, content: str, brand_key: str, fallback_en: str) ->
     r = gen_title_apparel(code, content, brand_key)
     return r.get("taobao_title") if isinstance(r, dict) else str(r or fallback_en)
 
+_ALPHA_SIZE_ORDER = ["XXXS", "XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL"]
+
+def _size_sort_key(s: str):
+    """数字尺码按数值排；字母尺码按 XXS→XL 顺序；其它放最后"""
+    t = str(s).strip().upper()
+    try:
+        return (0, float(t), t)
+    except ValueError:
+        pass
+    if t in _ALPHA_SIZE_ORDER:
+        return (1, _ALPHA_SIZE_ORDER.index(t), t)
+    return (2, 0, t)
+
+def _load_in_stock_sizes(engine, table: str, codes) -> dict[str, str]:
+    """{product_code: "4,6,8,10"} —— 仅 stock_count > 0 的尺码，便于肉眼判断数字码/字母码"""
+    codes = [str(c).strip().upper() for c in codes if str(c).strip()]
+    if not codes:
+        return {}
+    sql = text(f"""
+        SELECT UPPER(TRIM(product_code)) AS product_code, size
+        FROM {table}
+        WHERE stock_count > 0 AND UPPER(TRIM(product_code)) = ANY(:codes)
+    """)
+    with engine.connect() as conn:
+        rows = conn.execute(sql, {"codes": codes}).fetchall()
+    grouped: dict[str, set] = {}
+    for code, size in rows:
+        if size is None or not str(size).strip():
+            continue
+        grouped.setdefault(code, set()).add(str(size).strip())
+    return {c: ",".join(sorted(s, key=_size_sort_key)) for c, s in grouped.items()}
+
 def _calc_price(base_price_gbp: float, mode: str) -> float:
     base = float(base_price_gbp or 0)
     if base <= 0: return 0.0
@@ -221,7 +255,8 @@ def generate_publication_excels_clothing(
            MIN(ci.product_url)        AS product_url,
            MIN(ci.product_title)      AS product_title,
            MIN(ci.product_description)AS product_description,
-           MIN(ci.style_category)     AS style_category
+           MIN(ci.style_category)     AS style_category,
+           MIN(ci.color)              AS color
     FROM {table} ci
     JOIN size_counts   sc ON ci.product_code = sc.product_code
     JOIN publish_status ps ON ci.product_code = ps.product_code
@@ -245,6 +280,9 @@ def generate_publication_excels_clothing(
     print(f"✅ 候选商品数：{len(df)}")
     if df.empty:
         print("⚠️ 没有符合条件的商品，任务结束"); return
+
+    # 有货尺码（用于在 Excel 里直观看出是数字码还是字母码）
+    in_stock_sizes = _load_in_stock_sizes(engine, table, df["product_code"].unique())
 
     # 读取 TXT + 标题 + 价格
     rows = []
@@ -298,9 +336,11 @@ def generate_publication_excels_clothing(
             "Product Name EN": title_en,
             "商品名称": title_cn,
             "商品编码": code,
+            COLOR_COLUMN: r.get("color") or "",
+            "有货尺码": in_stock_sizes.get(code, ""),
             "淘宝价格": rmb_price,
-            "上市年份季节": 上市年份季节,
-            "版型": 版型, "面料": 面料_local, "衣门襟": 衣门襟_local, "厚薄": 厚薄, "领口设计": 领口设计_local,
+            LAUNCH_SEASON_COLUMN: 上市年份季节,
+            "版型": 版型, MATERIAL_COLUMN: 面料_local, "衣门襟": 衣门襟_local, "厚薄": 厚薄, "领口设计": 领口设计_local,
             "地区国家": 地区国家, "发货时间": 发货时间, "运费模版": 运费模版,
             "品牌": brand, "性别": gender_cn, "类目": cat_cn,
             "品名": 品名_local, "海关款式": 海关款式_local,

@@ -39,33 +39,33 @@ def ensure_default_inputs():
 
 
 def main():
-    print("\n🟡 Step: 0️⃣ 准备默认目录和空 Excel（GEI / 店铺价格 / 黑名单）")
-    ensure_default_inputs()
+    # print("\n🟡 Step: 0️⃣ 准备默认目录和空 Excel（GEI / 店铺价格 / 黑名单）")
+    # ensure_default_inputs()
 
-    print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
-    backup_and_clear_brand_dirs(TOAST)
+    # print("\n🟡 Step: 1️⃣ 清空 TXT + 发布目录")
+    # backup_and_clear_brand_dirs(TOAST)
 
-    print("\n🟡 Step: 2️⃣ 抓取商品链接")
-    toast_get_links()
+    # print("\n🟡 Step: 2️⃣ 抓取商品链接")
+    # toast_get_links()
 
-    print("\n🟡 Step: 3️⃣ 抓取商品信息")
-    toast_fetch_all()
+    # print("\n🟡 Step: 3️⃣ 抓取商品信息")
+    # toast_fetch_all()
 
-    print("\n🟡 Step: 3️⃣ 将鲸牙存在但TXT中不存在的商品抓一遍")
-    # 与 LINKS_FILE 同目录，toast_fetch_all 会读同目录下的 links_meta.json 补性别
-    missing_product_link = TOAST["BASE"] / "publication" / "missing_product_links.txt"
-    generate_missing_links_for_brand("toast", str(missing_product_link))
-    if missing_product_link.exists() and missing_product_link.stat().st_size > 0:
-        toast_fetch_all(urls_file=missing_product_link)
-    else:
-        print("  - 无缺失商品，跳过")
+    # print("\n🟡 Step: 3️⃣ 将鲸牙存在但TXT中不存在的商品抓一遍")
+    # # 与 LINKS_FILE 同目录，toast_fetch_all 会读同目录下的 links_meta.json 补性别
+    # missing_product_link = TOAST["BASE"] / "publication" / "missing_product_links.txt"
+    # generate_missing_links_for_brand("toast", str(missing_product_link))
+    # if missing_product_link.exists() and missing_product_link.stat().st_size > 0:
+    #     toast_fetch_all(urls_file=missing_product_link)
+    # else:
+    #     print("  - 无缺失商品，跳过")
 
-    print("\n🟡 Step: 3️⃣ 找出TXT中价格/库存全空的商品（网络原因导致抓取失败），重新抓一遍")
-    empty_product_link = generate_empty_product_links_for_brand("toast")
-    if empty_product_link.exists() and empty_product_link.stat().st_size > 0:
-        toast_fetch_all(urls_file=empty_product_link)
-    else:
-        print("  - 无空数据商品，跳过")
+    # print("\n🟡 Step: 3️⃣ 找出TXT中价格/库存全空的商品（网络原因导致抓取失败），重新抓一遍")
+    # empty_product_link = generate_empty_product_links_for_brand("toast")
+    # if empty_product_link.exists() and empty_product_link.stat().st_size > 0:
+    #     toast_fetch_all(urls_file=empty_product_link)
+    # else:
+    #     print("  - 无空数据商品，跳过")
 
     print("\n🟡 Step: 4️⃣ TXT导入数据库 -----将各个商品的TXT中信息导入到数据库中")
     import_txt_to_db_supplier("toast")

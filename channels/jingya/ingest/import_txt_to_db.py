@@ -8,6 +8,7 @@ from config import (
     BRAND_PRICE_OVERRIDES,
 )
 from common.ingest.txt_parser import jingya_parse_txt_file
+from common.product.color_utils import to_color_cn
 from channels.jingya.pricing.brand_price_rules import compute_brand_base_price
 try:
     from common.pricing.price_utils import calculate_jingya_prices
@@ -92,7 +93,8 @@ def import_txt_to_db_supplier(brand_name: str):
     for t in parsed_records:
         (product_code, product_url, size, gender,
          ean, stock_count, original_price_gbp, discount_price_gbp, is_published,
-         product_description, product_title, style_category) = t
+         product_description, product_title, style_category, color_en) = t
+        color = to_color_cn(color_en, product_title) or None
 
         try:
             sc = int(stock_count) if stock_count is not None else 0
@@ -145,7 +147,7 @@ def import_txt_to_db_supplier(brand_name: str):
             product_code, product_url, size, gender,
             ean, sc,
             original_price_gbp, discount_price_gbp, is_published,
-            product_description, product_title, style_category,
+            product_description, product_title, style_category, color,
             untaxed, retail
         ))
 
@@ -182,10 +184,10 @@ def import_txt_to_db_supplier(brand_name: str):
                     product_code, product_url, size, gender,
                     ean, stock_count,
                     original_price_gbp, discount_price_gbp, is_published,
-                    product_description, product_title, style_category,
+                    product_description, product_title, style_category, color,
                     jingya_untaxed_price, taobao_store_price
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             execute_batch(cur, sql, enriched, page_size=500)
             print(f"✅ [{brand_name.upper()}] 数据已写入 {table_name}")
