@@ -2,7 +2,7 @@
 LinkFox 换模特自动循环脚本。
 
 流程（每轮）：
-  1. run_linkfox_faceswap.py          — 批量换模特
+  1. run_linkfox_faceswap_direct.py   — 批量换模特
   2. run_compare_faceswap_quality.py  — 剔除衣服被改的图（共享自 ai_image）
   3. run_find_unprocessed_faceswap.py — 统计仍未完成的编码（共享自 ai_image）
 
@@ -57,7 +57,7 @@ def run_script(script_path: Path) -> None:
 
 def main() -> None:
     scripts = [
-        Path(_HERE) / "run_linkfox_faceswap.py",          # 1) 换模特（LinkFox）
+        Path(_HERE) / "run_linkfox_faceswap_direct.py",   # 1) 换模特（LinkFox 直连）
         Path(_HERE) / "run_compare_faceswap_quality.py",  # 2) 剔除质量差的图
         Path(_HERE) / "run_find_unprocessed_faceswap.py", # 3) 统计未完成编码
     ]

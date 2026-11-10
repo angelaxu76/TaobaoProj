@@ -2,7 +2,7 @@
 LinkFox 流水线 — 当前操作品牌配置。
 
 切换品牌/模特时只需修改本文件，以下所有 run_* 脚本自动同步：
-  run_linkfox_faceswap.py
+  run_linkfox_faceswap_direct.py
 """
 from pathlib import Path
 

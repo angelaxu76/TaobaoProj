@@ -122,7 +122,7 @@
 
 ================================================================================
   Step 6：运行换脸脚本
-  脚本：ops/linkfox/run_linkfox_faceswap.py
+  脚本：ops/linkfox/run_linkfox_faceswap_direct.py
 ================================================================================
 
   确认脚本顶部参数（一般无需修改）：
@@ -132,7 +132,7 @@
     REAL_MODEL   = True   ← 真人模特
 
   运行：
-    python ops/linkfox/run_linkfox_faceswap.py
+    python ops/linkfox/run_linkfox_faceswap_direct.py
 
   输出：
     文件保存在 D:\TB\Products\barbour\linkfox_output\

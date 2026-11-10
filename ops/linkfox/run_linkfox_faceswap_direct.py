@@ -1,7 +1,7 @@
 """
 批量 LinkFox AI换模特-2.0 脚本（官方 API 直连版，不经过紫鸟）。
 
-紫鸟版见 run_linkfox_faceswap.py；两者读同一份 _session_config.py，
+紫鸟版（已停用）见 legacy/run_linkfox_faceswap.py；两者读同一份 _session_config.py，
 输出目录和文件命名相同，同一批编码只需跑其中一个。
 
 用法：

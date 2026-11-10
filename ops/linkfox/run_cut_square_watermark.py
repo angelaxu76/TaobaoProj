@@ -1,7 +1,7 @@
 """
 换脸图片后处理脚本（抠图 + 白底正方形 + 水印）。
 
-在 run_linkfox_faceswap.py 生成换脸图之后运行：
+在 run_linkfox_faceswap_direct.py 生成换脸图之后运行：
   - 自动抠图（rembg birefnet-general），去除场景背景
   - 按 alpha 精裁 → 正方形白底居中
   - 斜纹水印 + 右下角小字水印
@@ -24,7 +24,7 @@ from _session_config import LINKFOX_DIR, BRAND_ROOT
 # 本次运行参数（按需修改）
 # ============================================================
 
-# 输入目录：linkfox 换脸输出图（由 run_linkfox_faceswap.py 生成）
+# 输入目录：linkfox 换脸输出图（由 run_linkfox_faceswap_direct.py 生成）
 INPUT_DIR  = str(LINKFOX_DIR)
 
 # 输出目录：后处理完成的图片

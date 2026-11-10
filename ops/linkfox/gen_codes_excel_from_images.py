@@ -32,7 +32,7 @@ import openpyxl
 # 图片来源目录
 SOURCE_DIR = BRAND_ROOT / "classify" / "target"
 
-# 输出 Excel 路径（默认与 run_linkfox_faceswap.py 共用同一文件）
+# 输出 Excel 路径（默认与 run_linkfox_faceswap_direct.py 共用同一文件）
 OUTPUT_FILE = CODES_EXCEL
 
 # 表头文字（设为 None 则不写表头）

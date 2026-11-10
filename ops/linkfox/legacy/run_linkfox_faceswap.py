@@ -22,8 +22,8 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.dirname(os.path.dirname(_HERE)))  # project root
-sys.path.insert(0, _HERE)                                    # ops/linkfox/
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(_HERE))))  # project root
+sys.path.insert(0, os.path.dirname(_HERE))                   # ops/linkfox/
 from _session_config import (
     CODES_EXCEL, LINKFOX_DIR,
     R2_SHOT_SUBDIR, SHOT_SUFFIXES, TARGET_MODEL_URLS,

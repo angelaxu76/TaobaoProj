@@ -8,7 +8,7 @@
   - 将未处理编码去重后，保存到 OUTPUT_EXCEL（列名：商品编码）
 
 用法：
-  1. SHOT_SUFFIXES 从 _session_config.py 读取，与 run_ai_face_swap.py / run_linkfox_faceswap.py 保持一致。
+  1. SHOT_SUFFIXES 从 _session_config.py 读取，与 run_ai_face_swap.py / run_linkfox_faceswap_direct.py 保持一致。
   2. python ops/ai_image/run_find_unprocessed_faceswap.py
 """
 import os
