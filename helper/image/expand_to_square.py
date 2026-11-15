@@ -64,8 +64,8 @@ if __name__ == "__main__":
     # ============================================================
     # 修改这里
     # ============================================================
-    INPUT_DIR  = r"G:\temp\1"
-    OUTPUT_DIR = r"G:\temp\2"
+    INPUT_DIR  = r"C:\Users\Maddingzhou\Desktop\12"
+    OUTPUT_DIR = r"C:\Users\Maddingzhou\Desktop\12_out"
     RECURSIVE  = True    # True = 递归子目录（M&S 分组后的目录结构）
     QUALITY    = 90
     # ============================================================

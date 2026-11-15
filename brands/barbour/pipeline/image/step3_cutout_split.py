@@ -6,7 +6,7 @@ classify/detail 里前景占比过高（容易抠坏边缘）的图移到 classi
 其余留在 classify/detail。
 
 运行：python brands/barbour/pipeline/image/step3_cutout_split.py
-结束后：人工复核两个目录，然后跑 step4。
+结束后：人工复核两个目录，再把平铺图从 classify/detail 挑到 classify/平铺，然后跑 step4。
 """
 import sys
 from pathlib import Path
@@ -30,6 +30,7 @@ def main() -> None:
         f"适合抠图   ：{S.DETAIL_DIR}（{len(list_images(S.DETAIL_DIR))} 张）",
         f"不适合抠图 ：{S.DETAIL_HARD_DIR}（{len(list_images(S.DETAIL_HARD_DIR))} 张）",
         "上面列出的'接近阈值'的图建议重点看；判断错的在两个目录之间互相移动即可。",
+        f"再把平铺图从 classify/detail 挑到：{S.FLAT_DIR}（文件名保持 {{code}}_{{数字}}）",
         "完成后运行 step4_finalize_html.py",
     ])
 

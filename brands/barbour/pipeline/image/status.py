@@ -57,6 +57,8 @@ def main() -> None:
     _row(hard_exists, "classify/detail_difficult",
          f"{len(hard):>5} 张" if hard_exists else "未拆分（step3 未跑）")
 
+    _imgs("classify/平铺", S.FLAT_DIR)
+
     processed = _imgs("linkfox_processed", S.IMAGE_PROCESS)
     renamed = bool(processed) and any("__" in p.stem for p in processed)
     if processed:
@@ -78,7 +80,7 @@ def main() -> None:
     elif not hard_exists:
         nxt = "确认换脸效果后，跑 step3_cutout_split.py"
     elif not processed:
-        nxt = "人工复核 detail / detail_difficult 后，跑 step4_finalize_html.py"
+        nxt = "人工复核 detail / detail_difficult，把平铺图挑到 classify/平铺，然后跑 step4_finalize_html.py"
     elif not renamed:
         nxt = "step4_finalize_html.py（抠图已完成：RUN_TAG_DETAILS~RUN_COPY_HARD 设为 False，从改名开始）"
     elif not des or not first:

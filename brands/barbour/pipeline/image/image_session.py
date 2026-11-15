@@ -20,6 +20,7 @@ IMAGE_SELECTED   = BARBOUR["IMAGE_SELECTED"]                 # step1 选图输�
 PERSON_DIR       = BARBOUR["IMAGE_PERSON_DIR"]               # classify/person
 DETAIL_DIR       = BARBOUR["IMAGE_DETAIL_DIR"]               # classify/detail（step3 后 = 适合抠图）
 DETAIL_HARD_DIR  = REPUB / "classify" / "detail_difficult"   # step3 输出：不适合抠图
+FLAT_DIR         = REPUB / "classify" / "平铺"               # step3 后人工从 detail 挑出的平铺图（step4 抠图来源之一）
 LINKFOX_DIR      = REPUB / "linkfox_output"                  # 换脸原始输出
 LINKFOX_BAD      = REPUB / "linkfox_bad"                     # 质量对比剔除的换脸图
 COMPARE_CSV      = REPUB / "linkfox_compare_report.csv"
@@ -28,7 +29,7 @@ IMAGE_PROCESS    = BARBOUR["IMAGE_PROCESS"]                  # linkfox_processed
 # ══════════════════════════════════════════════════════════════════
 #  step1：下载 / 选图 / 人物分类
 # ══════════════════════════════════════════════════════════════════
-RUN_DOWNLOAD     = True    # 从官网下载 + 防指纹 + 按编码入长期库
+RUN_DOWNLOAD     = False    # 从官网下载 + 防指纹 + 按编码入长期库
 FORCE_REDOWNLOAD = False   # True = 长期库里已有的编码也重新下载
 RUN_SELECT       = True    # 按 codes.xlsx 从长期库选图
 RUN_CLASSIFY     = True    # 人物 / 细节分类
@@ -94,17 +95,21 @@ CUTOUT_HARD_THRESHOLD = 0.65   # 前景占比 >= 阈值判为难抠图，越高�
 #  step4：抠图 + 汇总 + 改名 + HTML
 # ══════════════════════════════════════════════════════════════════
 # 子步骤开关（按执行顺序）：只想跑其中几步时，把其余的设为 False。
-# 改名(RUN_RENAME)之后 linkfox_processed 变成 {code}__N，此时 1~4 会拒绝执行，
+# 跑 step4 之前：step3 拆好 detail / detail_difficult → 人工把平铺图从 detail 挑到 classify/平铺。
+# 改名(RUN_RENAME)之后 linkfox_processed 变成 {code}__N，此时 2~5 会拒绝执行，
 # 要重做抠图须先清空 linkfox_processed。
-RUN_TAG_DETAILS  = False  # 1. 每款编号最小的细节图改名为 {code}_details，让它按
-                          #    IMAGE_RENAME_PRIORITY 排到第 2 位；False 时细节图排在换脸图之后
+RUN_TAG_DETAILS  = False  # 1. （不挑平铺图时用）detail / detail_difficult 里每款编号最小的一张
+                          #    自动改名为 {code}_details；挑了平铺图就保持 False，交给第 4 步
 RUN_CUT_FACESWAP = True   # 2. 换脸图 linkfox_output → 抠图白底正方形 → linkfox_processed
 RUN_CUT_DETAIL   = True   # 3. 适合抠图的 classify/detail → 抠图白底正方形 → linkfox_processed
-RUN_COPY_HARD    = True   # 4. 不适合抠图的 classify/detail_difficult → 原样复制到 linkfox_processed
-RUN_RENAME       = True   # 5. 按 image_priority_config 改名为 {code}__1/__2/...（HTML 选图依赖）
-RUN_MERGE        = True   # 6. 合并宽图 → image_merged
-RUN_GEN_HTML     = True   # 7. 生成详情页 / 首页 HTML
-RUN_RENDER       = True   # 8. HTML 渲染为图片 + 裁边 → html_cutter
+RUN_CUT_FLAT     = True   # 4. 平铺图 classify/平铺 → 抠图白底正方形 → linkfox_processed，
+                          #    再把每款编号最小的一张输出图改名为 {code}_details，
+                          #    按 IMAGE_RENAME_PRIORITY 排到第 2 位（平铺目录里的原图不改名）
+RUN_COPY_HARD    = True   # 5. 不适合抠图的 classify/detail_difficult → 原样复制到 linkfox_processed
+RUN_RENAME       = True   # 6. 按 image_priority_config 改名为 {code}__1/__2/...（HTML 选图依赖）
+RUN_MERGE        = True   # 7. 合并宽图 → image_merged
+RUN_GEN_HTML     = True   # 8. 生成详情页 / 首页 HTML
+RUN_RENDER       = True   # 9. HTML 渲染为图片 + 裁边 → html_cutter
 
 CUT_AUTO_CUTOUT   = True       # False = 只裁正方形不抠图
 CUT_WHITE_BG_SKIP = False      # True = 检测到白底就跳过抠图
