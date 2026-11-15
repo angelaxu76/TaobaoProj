@@ -107,98 +107,27 @@
     generate_price_excels_bulk(brand="barbour", input_dir=store_dir, ...)
 
 ================================================================================
-  图片流水线总览（阶段 E ~ G）
+  图片流水线（阶段 E ~ G）
+  目录：brands/barbour/pipeline/image/   详细说明见该目录 README.md
 ================================================================================
 
-  images/ 下的长期原始素材库是 image_download/（BARBOUR["IMAGE_DOWNLOAD"]，按编码分子目录），
-  另有两个阶段E内部中转目录 image_download_raw/ 和 image_download_processed/（扁平散图，
-  每次跑阶段E前会被清空重建）。images/ 与 publication / repulibcation 平级，
-  backup_and_clear_brand_dirs() 只清空 publication 和 repulibcation，不会碰 images/，
-  所以下载库不会被清理流程误删。
+  参数只改 image/image_session.py；不知道跑到哪一步时运行 image/status.py。
 
-  阶段F1~G（选图 ~ HTML产出）的所有批次临时数据统一放在 repulibcation/ 下
-  （BARBOUR["IMAGE_SELECTED"] / IMAGE_PERSON_DIR / IMAGE_DETAIL_DIR / IMAGE_PROCESS 等，
-  即 PROCESS_BASE），跟 images/ 的原始下载库分开，避免混在一起误删；
-  repulibcation/ 会随每批发布被 backup_and_clear_brand_dirs() 备份后清空，
-  属于正常的批次产出，不需要长期保留。
+    step1_prepare.py        下载 → 防指纹 → 入长期库 → 选图 → 人物/细节分类
+      ✋ 剔除 classify/person 里不适合换脸的图
+    step2_faceswap.py       加 _front_ 关键字 → 上传 R2 → 换脸 → 质量对比 → 自动重试
+                            （FACESWAP_BATCH = "men" / "women" 各跑一次）
+      ✋ 检查换脸效果
+    step3_cutout_split.py   细节图按抠图难易拆分
+      ✋ 复核 detail / detail_difficult
+    step4_finalize_html.py  抠图 → 汇总 → 按优先级改名 __N → HTML → 渲染 → 裁边
 
-  images/
-  ├── image_download_raw/        ← 阶段E中转：官网下载的原始散图（扁平，每次跑前清空）
-  ├── image_download_processed/  ← 阶段E中转：防指纹处理后的散图（扁平，每次跑前清空）
-  └── image_download/            ← 阶段E输出：长期库，按编码分子目录累积所有历史图片
+  旧的单步脚本（image_download_and_prepare / image_select_and_prepare /
+  run_classify_person_images / run_rename_faceswap_images / image_process_and_html）
+  已移到 brands/barbour/legacy/，逻辑已并入上面的 step 脚本。
 
-  repulibcation/
-  ├── images_selected/         ← 阶段F1输出：本批次要发布的商品图片（按编码分目录）
-  ├── missing_codes.txt        ← 阶段F1输出：库里找不到图片的编码
-  ├── classify/
-  │   ├── person/              ← 阶段F2输出：含人物的模特图 → 交给 AI 换脸脚本处理
-  │   └── detail/               ← 阶段F2输出：细节/平铺图，无需换脸
-  │                                （与 ops/linkfox/_session_config.py 的 PERSON_DIR 一致）
-  ├── linkfox_processed/       ← AI 换脸脚本输出 = 阶段G输入（BARBOUR["IMAGE_PROCESS"]）
-  ├── image_merged/            ← 阶段G输出：横向合并宽图
-  ├── html/{description,first_page}/
-  ├── html_image/{description,first_page}/
-  └── html_cutter/{description,first_page}/   ← 阶段G最终产出
-
-================================================================================
-  阶段 E：图片下载 & 初步处理
-  脚本：image_download_and_prepare.py
-================================================================================
-
-  0. 清空两个中转目录 IMAGE_DOWNLOAD_RAW / IMAGE_DOWNLOAD_PROCESSED
-
-  1. 从 Barbour 官网下载图片（多线程）-> IMAGE_DOWNLOAD_RAW：
-       download_barbour_images_multi(max_workers=6)
-     会先按商品编码检查长期库 IMAGE_DOWNLOAD/<code>/，已下载过的编码直接跳过；
-     如需强制重下，传 skip_existing=False（命令行 --force）。
-
-  2. 批量防指纹处理（轻微扰动，防止电商平台查重）RAW -> PROCESSED：
-       batch_process_images(IMAGE_IN=IMAGE_DOWNLOAD_RAW, IMAGE_OUT=IMAGE_DOWNLOAD_PROCESSED)
-
-  3. 按商品编码分组并重命名 PROCESSED -> IMAGE_DOWNLOAD（长期库）：
-       group_and_rename_images(IMAGE_DOWNLOAD_PROCESSED, code_len=11,
-                               overwrite=True, dest_dir=IMAGE_DOWNLOAD)
-
-  说明：防指纹和分组都只认"扁平散图"。RAW / PROCESSED 每次清空重来，
-        分组结果只往 IMAGE_DOWNLOAD 累积，重复执行不会因为库里已是编码子目录而错乱。
-
-================================================================================
-  阶段 F1：选图
-  脚本：image_select_and_prepare.py
-================================================================================
-
-  前置：已有发布 Excel（含要发布的商品编码列表）
-
-  按 Excel 编码从 IMAGE_DOWNLOAD（长期库）复制图片到 IMAGE_SELECTED，
-  找不到图片的编码写入 IMAGE_MISSING_TXT。
-
-================================================================================
-  阶段 F2：AI 人物图分类
-  脚本：run_classify_person_images.py
-================================================================================
-
-  将 IMAGE_SELECTED 目录中的图片自动分类：
-    - classify/person/：含人物（含头部）的模特图 → 交给 AI 换脸脚本（ops/linkfox/）批量处理
-    - classify/detail/：细节图、无人物图，无需换脸
-
-  参数：CONFIDENCE=0.4, REQUIRE_HEAD=True, HEAD_CONFIDENCE=0.3
-
-  换脸完成后（ops/linkfox/），输出直接落在 repulibcation/linkfox_processed/，
-  即 BARBOUR["IMAGE_PROCESS"]，无需再手动汇总，直接进入阶段G。
-  如需混入 detail/ 中的细节图，再手动补充到 linkfox_processed/ 即可。
-
-================================================================================
-  阶段 G：生成 HTML 详情页 & 图片
-  脚本：image_process_and_html.py
-================================================================================
-
-  前置：repulibcation/linkfox_processed/（即 IMAGE_PROCESS）已有换脸图
-       （如需细节图一并出图，先手动补充 detail/ 中的图进去）
-
-  1. 横向合并多张图片为宽图（MERGED_DIR, width=750）
-  2. 生成商品详情卡 HTML（含首页 FirstPage）
-  3. HTML 渲染为 PNG 图片（多线程，6 线程）
-  4. 裁剪图片两侧留白
+  images/image_download/ 是长期原始素材库，backup_and_clear_brand_dirs() 不会清理；
+  其余批次数据都在 repulibcation/ 下，随每批发布备份后清空。
 
 ================================================================================
   阶段 H：生成发布 Excel
@@ -245,7 +174,7 @@
     A(步骤1+2) → B → C → D
 
   上新发布流程：
-    A → B → C → D → E → F1 → G → H
+    A → B → C → D → 图片流水线 step1~4 → H
 
   只更新价格/库存 Excel（数据库已是最新）：
     D

@@ -14,25 +14,8 @@ BARBOUR_BASE = BASE_DIR / "barbour"
 # 换脸/合并/HTML/裁边等后续处理产出统一放到 repulibcation/（PROCESS_BASE）下，
 # 这部分本来就跟着每批发布走，backup_and_clear_brand_dirs() 清空前会先备份，可放心清理。
 #
-# 流水线顺序（各阶段目录对应各脚本的输入/输出）：
-#   1. image_download_and_prepare.py
-#        下载                => IMAGE_DOWNLOAD_RAW（images/image_download_raw，扁平散图，每次跑前清空）
-#        防指纹处理           => IMAGE_DOWNLOAD_PROCESSED（images/image_download_processed，扁平散图，每次跑前清空）
-#        按编码分组           => IMAGE_DOWNLOAD（长期库，按编码分子目录累积所有历史图片，唯一长期留在 images/ 下的目录）
-#        —— RAW / PROCESSED 是本步内部的中转目录，只放散图；分组产出只进 IMAGE_DOWNLOAD。
-#           这样重复执行时不会因为 IMAGE_DOWNLOAD 里已经是"编码子目录"而不是散图，导致防指纹/分组处理错乱。
-#   2. image_select_and_prepare.py
-#        按发布 Excel 从 IMAGE_DOWNLOAD 选出本批次商品的图片 => IMAGE_SELECTED（repulibcation/images_selected）
-#        （找不到图片的编码写入 IMAGE_MISSING_TXT）
-#   3. run_classify_person_images.py
-#        对 IMAGE_SELECTED 做人物/细节分类          => IMAGE_PERSON_DIR / IMAGE_DETAIL_DIR
-#        （repulibcation/classify/person、/detail —— 与 ops/linkfox/_session_config.py 的
-#          PERSON_DIR 保持一致，供换脸质量对比脚本直接读取，无需再手动同步）
-#   4. [外部] AI 换脸脚本（ops/linkfox/）处理 IMAGE_PERSON_DIR 中的模特图，
-#        输出直接落在 repulibcation/linkfox_processed（即 IMAGE_PROCESS）—— 无需再手动汇总
-#   5. image_process_and_html.py
-#        以 IMAGE_PROCESS（repulibcation/linkfox_processed）为图源，合并宽图/生成HTML/渲染图片/裁边
-#        => MERGED_DIR -> HTML_DIR -> HTML_IMAGE -> HTML_CUTTER_DES / HTML_CUTTER_FIRST_PAGE（最终产出，均在 repulibcation/ 下）
+# 图片流水线脚本在 brands/barbour/pipeline/image/（step1~step4 + status.py），
+# 各目录的读写关系见该目录 README.md。
 IMAGES_BASE = BARBOUR_BASE / "images"
 PROCESS_BASE = BARBOUR_BASE / "repulibcation"
 

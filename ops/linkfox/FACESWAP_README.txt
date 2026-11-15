@@ -3,6 +3,11 @@
   脚本位置：ops/linkfox/
 ================================================================================
 
+  ⚠ Barbour 已改用 brands/barbour/pipeline/image/step2_faceswap.py（自动完成下面的
+    Step 2~6 + 质量对比/重试，男女款分批），无需再手动改 _session_config.py。
+    本文档保留给其他品牌参考；下文提到的 run_classify_person_images.py
+    已并入 brands/barbour/pipeline/image/step1_prepare.py。
+
 前提条件
 --------
   - 已从 Barbour 官网下载好商品图片（文件名格式：{code}_1.jpg, {code}_2.jpg ...）
