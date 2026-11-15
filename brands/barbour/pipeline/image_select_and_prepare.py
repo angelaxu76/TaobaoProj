@@ -1,8 +1,8 @@
 """
-按发布 Excel 从图片下载库中选图，集中到本批次的发布目录。
+按 codes.xlsx 从图片下载库中选图，集中到本批次的发布目录。
 
 步骤：
-  1. 按 Excel 中的商品编码，从 BARBOUR["IMAGE_DOWNLOAD"]（长期图片库）
+  1. 按 codes.xlsx（repulibcation/codes.xlsx）中的商品编码，从 BARBOUR["IMAGE_DOWNLOAD"]（长期图片库）
      复制对应编码的图片到 BARBOUR["IMAGE_SELECTED"]
   2. 找不到图片的编码写入 BARBOUR["IMAGE_MISSING_TXT"]
 
@@ -13,7 +13,9 @@ from common.image.copy_images_by_excel import prepare_images_for_publication
 
 
 def main():
-    excel_path = r"D:\TB\Products\barbour\document\publication\barbour_publication_20261110_081041.xlsx"
+    # 直接读 codes.xlsx（发布 Excel 也是由它生成的），无需等发布 Excel 产出即可先备图。
+    # 路径与 publish_generate_excel.py / ops/linkfox/_session_config.py 保持一致。
+    excel_path = BARBOUR["OUTPUT_DIR"] / "codes.xlsx"
 
     # downloaded_dir 和 processed_dir 传同一个库目录：只要编码在库里就直接算 ready，
     # 不再区分"已处理/待处理"两级（这套区分过去从未真正生效过）。
@@ -22,6 +24,7 @@ def main():
         downloaded_dir=BARBOUR["IMAGE_DOWNLOAD"],
         processed_dir=BARBOUR["IMAGE_DOWNLOAD"],
         publish_ready_dir=BARBOUR["IMAGE_SELECTED"],
+        
         publish_need_process_dir=BARBOUR["IMAGE_SELECTED"],
         missing_txt_path=BARBOUR["IMAGE_MISSING_TXT"],
         verbose=True,

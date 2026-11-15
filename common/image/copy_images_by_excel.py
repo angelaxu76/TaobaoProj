@@ -17,11 +17,15 @@ def _read_codes_from_excel(excel_path: str) -> List[str]:
         raise FileNotFoundError(f"Excel 不存在: {excel_path}")
 
     df = pd.read_excel(excel_path, dtype=str)
-    if "商品编码" not in df.columns:
-        raise ValueError(f"Excel 中找不到列：商品编码。当前列：{list(df.columns)}")
+    # 兼容发布 Excel（商品编码）和 codes.xlsx（product_code）等多种列名
+    candidates = ["商品编码", "product_code", "product code", "编码", "color_code"]
+    normalized = {str(c).strip().lower(): c for c in df.columns}
+    col = next((normalized[c] for c in candidates if c in normalized), None)
+    if col is None:
+        raise ValueError(f"Excel 中找不到编码列（{candidates}）。当前列：{list(df.columns)}")
 
     return (
-        df["商品编码"]
+        df[col]
         .dropna()
         .astype(str)
         .str.strip()
