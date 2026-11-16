@@ -41,7 +41,7 @@ CLASSIFY_HEAD_CONFIDENCE = 0.3
 # ══════════════════════════════════════════════════════════════════
 #  step2：换脸（男 / 女分两批跑：改 FACESWAP_BATCH 后各跑一次 step2）
 # ══════════════════════════════════════════════════════════════════
-FACESWAP_BATCH = "men"     # 本次跑哪一批，对应下面 FACESWAP_BATCHES 的 key
+FACESWAP_BATCH = "women"     # 本次跑哪一批，对应下面 FACESWAP_BATCHES 的 key
 
 # 每批：
 #   model_urls    —— 目标模特头部参考图，多个时按商品顺序轮流分配
@@ -67,11 +67,11 @@ FACESWAP_BATCHES = {
         "model_urls": [
             "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_1.png",
             "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_2.png",
-            "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_3.png",
+            # "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_3.png",
             "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_4.png",
-            "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_5.png",
-            "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_6.png",
-            "https://file-ai.linkfox.com/UPLOAD/MANAGE/8f941970caa04ccc8fde3eca9a9fe2cc.jpg?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3138373130383439343336353336303132383029",
+            "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_7.jpeg",
+            "https://pub-26c1d97a1b2d4ebf9fa6c000f2a9fe13.r2.dev/women_mode_8.jpeg",
+            # "https://file-ai.linkfox.com/UPLOAD/MANAGE/8f941970caa04ccc8fde3eca9a9fe2cc.jpg?x-oss-process=image/resize,m_mfit,w_512,h_512&dv2=646174613a732832323a3138373130383439343336353336303132383029",
         ],
     },
 }
