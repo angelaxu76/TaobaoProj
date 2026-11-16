@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Barbour 图片流水线 step2：加镜头关键字 → 上传 R2 → 换脸 → 质量对比 → 自动重试。
+Barbour 图片流水线 step2：加镜头关键字 → 上传 R2 → 换脸（只跑一轮）→ 质量对比。
 
 男 / 女款要换不同模特，分两批跑：改 image_session.FACESWAP_BATCH 后各跑一次。
-已经换好的图会被跳过，重复运行同一批只会补未完成的部分。
+不自动重试：LinkFox 同一张图重换结果一样。linkfox_output 和 linkfox_bad 里已有的图
+都算已处理，重复运行只补接口失败等没生成出来的那几张。
 
 前置：step1 已跑完，classify/person 已人工剔除不适合换脸的图。
 运行：python brands/barbour/pipeline/image/step2_faceswap.py
@@ -75,16 +76,25 @@ def upload(codes: list[str]) -> None:
         sys.exit(f"[停止] {len(failed)} 张上传失败，换脸会取不到原图：{failed}")
 
 
-def run_faceswap_round(batch: dict, codes_xlsx: Path) -> None:
+def run_faceswap(batch: dict, pending: dict[str, set[str]], codes_xlsx: Path) -> None:
+    """按"缺哪几张"分组调用换脸脚本，每款只换缺的后缀，已有结果的不重换。"""
     import ops.linkfox.run_linkfox_faceswap_direct as fs
 
-    fs.INPUT_FILE = str(codes_xlsx)
+    groups: dict[tuple[str, ...], list[str]] = {}
+    for code, sfx in pending.items():
+        key = tuple(s for s in S.SHOT_SUFFIXES if s in sfx)  # 保持 SHOT_SUFFIXES 顺序
+        groups.setdefault(key, []).append(code)
+
     fs.HEADER_ROWS = 1
     fs.OUTPUT_DIR = str(S.LINKFOX_DIR)
     fs.TARGET_MODEL_URLS = list(batch["model_urls"])
-    fs.SHOT_SUFFIXES = list(S.SHOT_SUFFIXES)
     fs.R2_SHOT_SUBDIR = S.R2_SHOT_SUBDIR
-    fs.main()
+    for suffixes, codes in groups.items():
+        banner(f"换脸 {len(codes)} 款 × {list(suffixes)}")
+        write_codes(codes_xlsx, sorted(codes))
+        fs.INPUT_FILE = str(codes_xlsx)
+        fs.SHOT_SUFFIXES = list(suffixes)
+        fs.main()
 
 
 def run_quality_check() -> None:
@@ -119,34 +129,24 @@ def main() -> None:
         upload(sorted(pending))
 
     codes_xlsx = S.REPUB / f"faceswap_codes_{name}.xlsx"
-    prev_missing = None
-    for rnd in range(1, S.FACESWAP_MAX_ROUNDS + 1):
-        pending = missing_shots(S, codes)
+    if pending:
         n_missing = sum(len(v) for v in pending.values())
-        if not pending:
-            break
-        if prev_missing is not None and n_missing >= prev_missing:
-            print(f"\n上一轮没有任何进展（仍缺 {n_missing} 张），停止重试以免浪费点数。")
-            break
-        cost = len(pending) * len(S.SHOT_SUFFIXES) * POINTS_PER_IMAGE
-        banner(f"第 {rnd}/{S.FACESWAP_MAX_ROUNDS} 轮换脸：{len(pending)} 款，缺 {n_missing} 张，预计约 {cost} 点")
-        write_codes(codes_xlsx, sorted(pending))
-        run_faceswap_round(batch, codes_xlsx)
+        banner(f"换脸：{len(pending)} 款，缺 {n_missing} 张，预计约 {n_missing * POINTS_PER_IMAGE} 点")
+        run_faceswap(batch, pending, codes_xlsx)
         banner("质量对比：衣服被改动的换脸图移到 linkfox_bad")
         run_quality_check()
-        prev_missing = n_missing
 
     pending = missing_shots(S, codes)
     write_codes(codes_xlsx, sorted(pending))
-    lines = [f"批次 {name}：{len(codes) - len(pending)}/{len(codes)} 款已全部换好"]
+    lines = [f"批次 {name}：{len(codes) - len(pending)}/{len(codes)} 款已处理完"]
     if pending:
-        lines.append(f"仍未完成 {len(pending)} 款（清单：{codes_xlsx}）：")
+        lines.append(f"仍未生成 {len(pending)} 款（接口失败等，清单：{codes_xlsx}）：")
         lines += [f"  {c}: {', '.join(sorted(v))}" for c, v in sorted(pending.items())[:20]]
-        lines.append("  背影等合成失败的原因见 linkfox_output/head_failed_*.txt；可再跑一次 step2 重试")
+        lines.append("  背影等合成失败的原因见 linkfox_output/head_failed_*.txt；需要时手动再跑一次 step2")
     lines += [
         "",
         f"请检查换脸效果：{S.LINKFOX_DIR}",
-        f"  效果不好的移到 {S.LINKFOX_BAD}（重跑 step2 会重新换这几张）",
+        f"  质量对比判为不合格的在 {S.LINKFOX_BAD}，请人工检查（不会自动重新生成）",
     ]
     others = [b for b in S.FACESWAP_BATCHES if b != name]
     lines.append(f"下一步：把 FACESWAP_BATCH 改成 {others} 再跑 step2；全部批次完成后跑 step3_cutout_split.py")

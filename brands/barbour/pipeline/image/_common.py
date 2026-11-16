@@ -70,12 +70,18 @@ def batch_codes(S, batch_name: str) -> list[str]:
 
 
 def missing_shots(S, codes: list[str]) -> dict[str, set[str]]:
-    """{code: 还没有换脸结果的后缀集合}，只返回有缺失的编码。"""
+    """{code: 还没有换脸结果的后缀集合}，只返回有缺失的编码。
+
+    linkfox_bad 里的图也算已处理：LinkFox 同一张图重换结果一样，不再重新生成。
+    """
     if not codes or not Path(S.PERSON_DIR).is_dir():
         return {}
     orig = _build_set(Path(S.PERSON_DIR), S.SHOT_SUFFIXES)
-    done = (_build_set(Path(S.LINKFOX_DIR), S.SHOT_SUFFIXES, strip_faceswap=True)
-            if Path(S.LINKFOX_DIR).is_dir() else {})
+    done: dict[str, set[str]] = {}
+    for folder in (Path(S.LINKFOX_DIR), Path(S.LINKFOX_BAD)):
+        if folder.is_dir():
+            for c, sfx in _build_set(folder, S.SHOT_SUFFIXES, strip_faceswap=True).items():
+                done.setdefault(c, set()).update(sfx)
     result = {}
     for c in codes:
         miss = orig.get(c, set()) - done.get(c, set())
