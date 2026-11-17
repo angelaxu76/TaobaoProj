@@ -137,6 +137,43 @@ def supplier_done_this_round(publication_base: Path, supplier: str) -> bool:
     return round_ts is not None and done_ts is not None and done_ts >= round_ts
 
 
+def wait_for_round_start(
+    publication_base: Path,
+    max_age_minutes: float,
+    poll_sec: int,
+    timeout_minutes: float,
+    ref_ts: float | None = None,
+) -> bool:
+    """
+    副机（RUN_A_BACKUP=False）开抓前调用：等待主机清空 publication 并写入
+    _ROUND_STARTED.json。
+
+    "本轮已清空" = _ROUND_STARTED.json 的时间不早于 ref_ts - max_age_minutes
+    （ref_ts 默认为现在；主机先启动并已清空完时立即通过，上一轮的旧标记不算）。
+    每次轮询都打印一行，避免外层看门狗因输出静默把等待中的进程 kill 掉。
+    返回 True = 已清空；False = 超时。
+    """
+    ref_ts = ref_ts or time.time()
+    floor = ref_ts - max_age_minutes * 60
+    deadline = time.time() + timeout_minutes * 60
+    path = publication_base / ROUND_FILE
+    print(
+        f"   等待主机清空 publication（需要 {_fmt(floor)} 之后写入的 {ROUND_FILE}），"
+        f"最长等待 {timeout_minutes:.0f} 分钟（至 {_fmt(deadline)}）",
+        flush=True,
+    )
+    while True:
+        ts = _read_ts(path)
+        if ts is not None and ts >= floor:
+            print(f"   ✅ 主机已于 {_fmt(ts)} 完成清空，开始抓取", flush=True)
+            return True
+        if time.time() >= deadline:
+            return False
+        last = f"上次清空 {_fmt(ts)}" if ts else "尚无清空记录"
+        print(f"   ⏳ [{datetime.now().strftime('%H:%M:%S')}] 主机尚未完成清空（{last}），{poll_sec}s 后重试", flush=True)
+        time.sleep(poll_sec)
+
+
 # ══════════════════════════════════════════════════════════════════
 #  主机等待
 # ══════════════════════════════════════════════════════════════════

@@ -35,7 +35,7 @@ from config import resolve_shared_path
 #    run_barbour_jingya_listing.py 或 prepare_jingya_listing.py）时按下面写的值单机全跑。
 #    规则：
 #    - 第一台：RUN_A_BACKUP=True，先启动，负责备份并清空 publication / repulibcation
-#    - 其他机器：RUN_A_BACKUP=False，等第一台清空完成后再启动
+#    - 其他机器：RUN_A_BACKUP=False，可同时启动，开抓前自动等第一台清空完成（见 WORKER_WAIT_*）
 #    - 只有主机把 RUN_B_IMPORT / RUN_C_INVENTORY / RUN_D_EXPORT 设为 True；
 #      主机进入 B 阶段前会先等待 WAIT_SUPPLIERS 里各供货商的 TXT 就绪（见下方 WAIT_*）
 # ══════════════════════════════════════════════════════════════════
@@ -208,6 +208,16 @@ B_IMPORT_MAX_WORKERS = len(B_SUPPLIERS)
 # 这么多分钟内有文件写入（说明别的机器正在抓），拒绝清空并中止本机运行。
 BACKUP_GUARD_MINUTES = 10
 
+# 副机等待主机清空：多机模式（指定了节点）且 RUN_A_BACKUP=False 的机器，开抓前
+# 先轮询 _ROUND_STARTED.json，等主机备份清空完成后再开始，副机可以和主机同时启动。
+#   WORKER_WAIT_ROUND_MAX_AGE_MINUTES：副机启动前这么多分钟内写入的清空标记都算"本轮"
+#     （主机比副机早启动、已经清空完的情况会立即通过；更早的视为上一轮，继续等）。
+#   WORKER_WAIT_ROUND_TIMEOUT_MINUTES：等这么久主机还没清空，副机中止（不抓，避免被清掉）。
+WORKER_WAIT_FOR_ROUND_START       = True
+WORKER_WAIT_ROUND_MAX_AGE_MINUTES = 180
+WORKER_WAIT_ROUND_TIMEOUT_MINUTES = 240
+WORKER_WAIT_ROUND_POLL_SEC        = 30
+
 # 主机在 B 阶段前是否等待各供货商 TXT 就绪（只在 RUN_B_IMPORT=True 时生效）。
 # 单机全跑时也可以保持 True：A 阶段刚跑完，文件都已就绪，会立即通过。
 WAIT_FOR_SUPPLIERS = True
@@ -254,7 +264,7 @@ NODE_PROFILES: dict[str, dict] = {
         "RUN_D_EXPORT":    True,
         "a_suppliers": ["barbour",  "philipmorris", "allweathers", "terraces", "samturner"],
     },
-    # 副机：主机清空完成后再启动，只抓自己那部分供货商
+    # 副机：可与主机同时启动，自动等主机清空完成后再抓自己那部分供货商
     "worker": {
         "RUN_A_BACKUP":    False,
         "RUN_A_CRAWL":     True,

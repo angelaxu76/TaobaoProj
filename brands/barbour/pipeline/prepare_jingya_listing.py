@@ -65,6 +65,10 @@ from brands.barbour.pipeline.session_config import (
     B_IMPORT_MAX_WORKERS,
     # 多机协作
     BACKUP_GUARD_MINUTES,
+    WORKER_WAIT_FOR_ROUND_START,
+    WORKER_WAIT_ROUND_MAX_AGE_MINUTES,
+    WORKER_WAIT_ROUND_TIMEOUT_MINUTES,
+    WORKER_WAIT_ROUND_POLL_SEC,
     WAIT_FOR_SUPPLIERS,
     WAIT_SUPPLIERS,
     WAIT_MIN_TXT_DEFAULT,
@@ -217,6 +221,20 @@ def run_a_crawl():
         multi_node.mark_round_started(pub_base)
     elif resume:
         _skip("备份/清空（续跑模式，第一次尝试已清空）")
+    elif NODE_NAME and WORKER_WAIT_FOR_ROUND_START:
+        # 多机副机：等主机备份清空完成再开抓，否则本机抓的 TXT 会被主机清掉
+        _step("等待主机备份并清空 publication")
+        ok = multi_node.wait_for_round_start(
+            pub_base,
+            max_age_minutes=WORKER_WAIT_ROUND_MAX_AGE_MINUTES,
+            poll_sec=WORKER_WAIT_ROUND_POLL_SEC,
+            timeout_minutes=WORKER_WAIT_ROUND_TIMEOUT_MINUTES,
+            ref_ts=first_ts or None,
+        )
+        if not ok:
+            _fail("A-wait-round", RuntimeError(
+                f"等待 {WORKER_WAIT_ROUND_TIMEOUT_MINUTES} 分钟主机仍未清空 publication，"
+                f"本机不抓取（请确认主机已启动）"))
     else:
         _skip("备份/清空（RUN_A_BACKUP=False）")
 
