@@ -39,7 +39,7 @@ from brands.barbour.pipeline.prepare_jingya_listing import (
 )
 
 # ══ CONFIG ══
-RUN_C_INVENTORY = True   # True = 先重算库存/价格（阶段 C）再导出；False = 只导出（阶段 D）
+RUN_C_INVENTORY = False   # True = 先重算库存/价格（阶段 C）再导出；False = 只导出（阶段 D）
 
 
 def main() -> None:
