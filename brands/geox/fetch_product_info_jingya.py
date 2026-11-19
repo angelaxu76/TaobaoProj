@@ -1,5 +1,6 @@
 import os
 import re
+import atexit
 import time
 import threading
 from pathlib import Path
@@ -21,9 +22,35 @@ PRODUCT_LINK_FILE = GEOX["BASE"] / "publication" / "product_links.txt"
 TXT_OUTPUT_DIR = GEOX["TXT_DIR"]
 BRAND = "geox"
 MAX_THREADS = 4              # 建议 3~6；GEOX 有限速时调低
-LOGIN_WAIT_SECONDS = 3       # Profile 已保存登录态，无需长时间等待；如需手动登录改回 20
+LOGIN_WAIT_SECONDS = 300     # 首次打开浏览器时最长等待登录的秒数；登录好后按回车可立即继续
+RELOGIN_WAIT_SECONDS = 3     # 同一次运行中后续再打开浏览器（补抓缺失/空数据）时的等待秒数
 WORKER_HEADLESS = False      # False=抓取窗口可见（内部折扣价需页面真实渲染才显示）；确认无头也能拿到折扣价后可改 True
-FORCE_MANUAL_LOGIN = False   # True=每次都暂停等待手动登录后按回车（登录态失效时用）
+REUSE_LOGIN_SESSION = True   # True=直接在登录窗口里逐个抓取（可靠，单线程，max_workers 无效）；False=导出 cookie 多线程抓取
+FORCE_MANUAL_LOGIN = False   # True=同一次运行中每次打开浏览器都给足登录时间
+_LOGIN_DONE = False          # 本次运行是否已经完成过登录等待
+
+
+def _wait_for_login(seconds: int) -> None:
+    """倒计时等待登录；按回车立即继续，超时自动继续。"""
+    print(f"🔐 请在 Chrome 窗口中登录 GEOX，确认页面显示内部折扣价后按【回车】继续"
+          f"（最多等待 {seconds} 秒，超时自动继续）")
+    try:
+        import msvcrt
+    except ImportError:
+        time.sleep(seconds)
+        return
+    end = time.time() + seconds
+    last_shown = None
+    while time.time() < end:
+        if msvcrt.kbhit() and msvcrt.getwch() in ("\r", "\n"):
+            print("\n✅ 已确认登录，开始抓取")
+            return
+        left = int(end - time.time())
+        if left != last_shown and left % 10 == 0:
+            print(f"   ...剩余 {left} 秒", flush=True)
+            last_shown = left
+        time.sleep(0.2)
+    print("⏰ 等待结束，继续抓取")
 
 TXT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -412,7 +439,10 @@ def _get_thread_driver(session: Dict) -> webdriver.Chrome:
 
 
 def _process_one_url(idx: int, total: int, url: str, session: Dict) -> Tuple[bool, str]:
-    driver = _get_thread_driver(session)
+    return _process_url_with_driver(idx, total, url, _get_thread_driver(session))
+
+
+def _process_url_with_driver(idx: int, total: int, url: str, driver: webdriver.Chrome) -> Tuple[bool, str]:
     try:
         print(f"[{idx}/{total}] 抓取：{url}")
         html = get_html(driver, url)
@@ -449,6 +479,40 @@ def _cleanup_thread_drivers():
         _THREAD_DRIVERS.clear()
 
 
+# ===================== 复用登录窗口（同一次运行内保持打开，程序结束时关闭） =====================
+_LOGIN_DRIVER: Optional[webdriver.Chrome] = None
+
+
+def _close_login_driver():
+    global _LOGIN_DRIVER
+    if _LOGIN_DRIVER is not None:
+        try:
+            _LOGIN_DRIVER.quit()
+        except Exception:
+            pass
+        _LOGIN_DRIVER = None
+
+atexit.register(_close_login_driver)
+
+
+def _get_login_driver(first_url: str) -> webdriver.Chrome:
+    """返回已登录的浏览器；第一次调用（或窗口已被关闭）时打开窗口并等待手动登录。"""
+    global _LOGIN_DRIVER
+    if _LOGIN_DRIVER is not None:
+        try:
+            _ = _LOGIN_DRIVER.current_url   # 检查窗口是否还活着
+            if not FORCE_MANUAL_LOGIN:
+                print("♻️ 复用本次运行中已登录的浏览器窗口")
+                return _LOGIN_DRIVER
+        except Exception:
+            _close_login_driver()
+    if _LOGIN_DRIVER is None:
+        _LOGIN_DRIVER = create_driver(headless=False)
+    _LOGIN_DRIVER.get(first_url)
+    _wait_for_login(LOGIN_WAIT_SECONDS)
+    return _LOGIN_DRIVER
+
+
 # ===================== 主流程（登录一次→批量抓取） =====================
 def fetch_all_product_info(links_file=None, max_workers: int = MAX_THREADS):
     """
@@ -473,25 +537,38 @@ def fetch_all_product_info(links_file=None, max_workers: int = MAX_THREADS):
         print(f"⚠️ 链接列表为空: {links_path}")
         return
 
-    # =========================
-    # === 主流程不变（登录 → 批量抓取）===
-    # =========================
+    total = len(urls)
 
-    # 1) 用你的定制 Chrome/固定 Profile 打开“可见”窗口登录一次
-    # Profile 目录不存在 = 首次运行，没有登录态，需要手动登录（之后登录态保存在 Profile 里）
-    need_manual_login = FORCE_MANUAL_LOGIN or not (Path(PROFILE_ROOT) / PROFILE_NAME).exists()
+    # ===== 方式 A（默认）：直接在已登录的浏览器窗口里逐个抓取，登录态最可靠 =====
+    if REUSE_LOGIN_SESSION:
+        driver = _get_login_driver(urls[0])
+        print(f"📦 本次需要抓取 GEOX 商品数量: {total}（在已登录窗口中逐个抓取）")
+        t0 = time.time()
+        success = fail = 0
+        for idx, url in enumerate(urls, 1):
+            ok, _ = _process_url_with_driver(idx, total, url, driver)
+            if ok:
+                success += 1
+            else:
+                fail += 1
+        dt = time.time() - t0
+        print(f"\n✅ GEOX 抓取完成：成功 {success} 条，失败 {fail} 条，耗时约 {dt/60:.1f} 分钟")
+        return
+
+    # ===== 方式 B：登录后导出 cookie，注入到多个新浏览器并发抓取（快，但登录态可能带不过去） =====
+    global _LOGIN_DONE
     login_driver = create_driver(headless=False)
     login_driver.get(urls[0])
-    if need_manual_login:
-        input("🔐 请在打开的 Chrome 窗口中登录 GEOX 账号，确认页面显示内部折扣价后，回到这里按回车继续...")
+    if FORCE_MANUAL_LOGIN or not _LOGIN_DONE:
+        _wait_for_login(LOGIN_WAIT_SECONDS)
+        _LOGIN_DONE = True
     else:
-        print(f"⏳ 使用已保存的登录态（等待 {LOGIN_WAIT_SECONDS} 秒）")
-        time.sleep(LOGIN_WAIT_SECONDS)
+        print(f"⏳ 使用本次运行已登录的状态（等待 {RELOGIN_WAIT_SECONDS} 秒）")
+        time.sleep(RELOGIN_WAIT_SECONDS)
     session = export_session(login_driver)
     login_driver.quit()
 
-    # 2) 多线程抓取
-    total = len(urls)
+    # 多线程抓取
     print(f"📦 本次需要抓取 GEOX 商品数量: {total}，线程数: {max_workers}")
     t0 = time.time()
     success = fail = 0
