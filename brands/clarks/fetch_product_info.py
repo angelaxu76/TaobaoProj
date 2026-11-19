@@ -306,6 +306,12 @@ def process_product(url):
         else:
             original_price = discount_price  # ✅ fallback 为折扣价
 
+        # 页面既无价格也无尺码按钮 = 商品已下架（通常被跳转到首页），不生成 TXT，
+        # 否则下面会按尺码范围补出一整排"无货"，让无效商品进入数据库并被反复补抓
+        if not discount_price and not original_price and not build_size_button_map(soup):
+            print(f"⏭️ 商品页已失效，跳过: {url}")
+            return None
+
         material = extract_material(soup, product_data)
         feature_str = extract_features(product_data)
 

@@ -359,6 +359,9 @@ def parse_product(html: str, url: str) -> Dict:
 
     # 尺码库存
     size_blocks = soup.select("div.size-value")
+    # 页面既无价格也无尺码 = 商品已下架/页面失效，不生成 TXT，避免全"无货"的无效商品进入数据库
+    if not size_blocks and original_price == "No Data":
+        return None
     size_stock: Dict[str, str] = {}
     for sb in size_blocks:
         size = sb.get("data-attr-value") or sb.get("prodsize") or sb.get("aria-label")
