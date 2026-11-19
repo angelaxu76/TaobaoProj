@@ -17,7 +17,7 @@ from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import
 #   False → 快速模式（requests + 多线程，折扣公开时使用，日常推荐）
 #   True  → 登录模式（Selenium + Chrome Profile，会员专属折扣时使用）
 # =====================================================================
-MEMBER_DISCOUNT_MODE = False
+MEMBER_DISCOUNT_MODE = True   # 2026-11 GEOX 内部折扣期间临时开启；折扣取消后改回 False
 
 if MEMBER_DISCOUNT_MODE:
     from brands.geox.fetch_product_info_jingya import fetch_all_product_info

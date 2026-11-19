@@ -22,6 +22,8 @@ TXT_OUTPUT_DIR = GEOX["TXT_DIR"]
 BRAND = "geox"
 MAX_THREADS = 4              # 建议 3~6；GEOX 有限速时调低
 LOGIN_WAIT_SECONDS = 3       # Profile 已保存登录态，无需长时间等待；如需手动登录改回 20
+WORKER_HEADLESS = False      # False=抓取窗口可见（内部折扣价需页面真实渲染才显示）；确认无头也能拿到折扣价后可改 True
+FORCE_MANUAL_LOGIN = False   # True=每次都暂停等待手动登录后按回车（登录态失效时用）
 
 TXT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -70,6 +72,22 @@ def _build_options(headless: bool = False, user_data_dir: str = PROFILE_ROOT, pr
 
     return chrome_options
 
+_SERVICE_PATH_CACHE: Dict[str, Optional[str]] = {}
+
+def _make_service() -> Service:
+    """本地 chromedriver 与 Chrome 主版本一致则用本地；否则交给 Selenium Manager 自动下载匹配驱动。"""
+    if "path" not in _SERVICE_PATH_CACHE:
+        from common.browser.driver_auto import _detect_chrome_major_on_windows, _get_driver_major
+        chrome_v = _detect_chrome_major_on_windows()
+        driver_v = _get_driver_major(GLOBAL_CHROMEDRIVER_PATH) if GLOBAL_CHROMEDRIVER_PATH else None
+        if GLOBAL_CHROMEDRIVER_PATH and (not chrome_v or chrome_v == driver_v):
+            _SERVICE_PATH_CACHE["path"] = GLOBAL_CHROMEDRIVER_PATH
+        else:
+            print(f"🔄 本地 chromedriver({driver_v}) 与 Chrome({chrome_v}) 不匹配，改用 Selenium Manager 自动下载驱动")
+            _SERVICE_PATH_CACHE["path"] = None
+    path = _SERVICE_PATH_CACHE["path"]
+    return Service(path) if path else Service()
+
 def _kill_chrome():
     os.system('taskkill /F /IM chrome.exe /T')
     os.system('taskkill /F /IM chromedriver.exe /T')
@@ -80,7 +98,7 @@ def create_driver(headless: bool = False) -> webdriver.Chrome:
     print("Using profile-directory =", PROFILE_NAME)
     try:
         opts = _build_options(headless=headless)
-        driver = webdriver.Chrome(service=Service(GLOBAL_CHROMEDRIVER_PATH), options=opts)
+        driver = webdriver.Chrome(service=_make_service(), options=opts)
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined});")
         print("Chrome =", driver.capabilities.get("browserVersion"),
               "| Chromedriver =", driver.capabilities.get("chrome", {}).get("chromedriverVersion"))
@@ -90,7 +108,7 @@ def create_driver(headless: bool = False) -> webdriver.Chrome:
         _kill_chrome()
         time.sleep(0.5)
         opts = _build_options(headless=headless)
-        driver = webdriver.Chrome(service=Service(GLOBAL_CHROMEDRIVER_PATH), options=opts)
+        driver = webdriver.Chrome(service=_make_service(), options=opts)
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined});")
         print("Chrome =", driver.capabilities.get("browserVersion"),
               "| Chromedriver =", driver.capabilities.get("chrome", {}).get("chromedriverVersion"))
@@ -101,7 +119,8 @@ def create_worker_driver() -> webdriver.Chrome:
     # 这个 driver 用来长时间复用；不动你原有的 create_driver 逻辑
     from selenium.webdriver.chrome.options import Options
     o = Options()
-    o.add_argument("--headless=new")                 # 无头，提速
+    if WORKER_HEADLESS:
+        o.add_argument("--headless=new")             # 无头，提速
     o.add_argument("--disable-gpu")
     o.add_argument("--no-sandbox")
     o.add_argument("--disable-dev-shm-usage")
@@ -116,7 +135,7 @@ def create_worker_driver() -> webdriver.Chrome:
     )
     # DOMContentLoaded 即返回，减少等待
     o.set_capability("pageLoadStrategy", "eager")
-    d = webdriver.Chrome(service=Service(GLOBAL_CHROMEDRIVER_PATH), options=o)
+    d = webdriver.Chrome(service=_make_service(), options=o)
     d.execute_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined});")
     return d
 
@@ -459,10 +478,15 @@ def fetch_all_product_info(links_file=None, max_workers: int = MAX_THREADS):
     # =========================
 
     # 1) 用你的定制 Chrome/固定 Profile 打开“可见”窗口登录一次
+    # Profile 目录不存在 = 首次运行，没有登录态，需要手动登录（之后登录态保存在 Profile 里）
+    need_manual_login = FORCE_MANUAL_LOGIN or not (Path(PROFILE_ROOT) / PROFILE_NAME).exists()
     login_driver = create_driver(headless=False)
     login_driver.get(urls[0])
-    print(f"⏳ 如需登录，请在新窗口手动登录 GEOX（等待 {LOGIN_WAIT_SECONDS} 秒）")
-    time.sleep(LOGIN_WAIT_SECONDS)
+    if need_manual_login:
+        input("🔐 请在打开的 Chrome 窗口中登录 GEOX 账号，确认页面显示内部折扣价后，回到这里按回车继续...")
+    else:
+        print(f"⏳ 使用已保存的登录态（等待 {LOGIN_WAIT_SECONDS} 秒）")
+        time.sleep(LOGIN_WAIT_SECONDS)
     session = export_session(login_driver)
     login_driver.quit()
 
