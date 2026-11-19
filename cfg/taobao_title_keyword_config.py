@@ -187,3 +187,83 @@ TITLE_WORD_BLACKLIST = [
     "高尔夫",
     "Belle",
 ]
+
+# -------------------------
+# ECCO 系列英文名 → 中文系列名（标题中输出为 "SOFT 7柔酷"）
+# - key 用大写，按"最长前缀"匹配：SOFT 7 / SOFT 7 TRED / SOFT ZERO 都命中 "SOFT"；
+#   需要更精确的名称时加更长的 key（如 "SOFT 7": "柔酷7号"），会优先于短 key
+# - value 为空字符串 = 不加中文，只输出英文
+# - 注意中文越长占用 60 字节越多，尽量 2~4 个字
+# -------------------------
+ECCO_SERIES_CN_MAP = {
+    # ── 官方 / 国内常用叫法 ─────────────────────────
+    "SOFT": "柔酷",
+    "BIOM": "健步",
+    "STREET 720": "街头",      # 官方名"街头720"；英文已含 720，这里只写"街头"避免标题出现 "STREET 720街头720"
+    "RECEPTOR": "徒步",        # 官方宣传"徒步系列"（RECEPTOR XP 徒步）
+    "EXOSTRIDE": "适动",
+    "GRUUV": "灵动",           # 也有叫法"灵动混合"，需要的话改成 "灵动混合"
+    "ULT-TRN": "奥途",
+    "MX": "驱动",
+    "COZMO": "科摩",
+    "ASTIR": "雅跃",
+    "LIVA": "丽芙",
+    "SARTORELLE": "洒脱",
+    "SCULPTED": "型塑",
+
+    # ── 城市 / 地名系列（标准译名）─────────────────
+    "LISBON": "里斯本",
+    "HELSINKI": "赫尔辛基",
+    "MELBOURNE": "墨尔本",
+    "CHARLESTOWN": "查尔斯顿",
+    "JAMESTOWN": "詹姆斯敦",
+    "METROPOLE": "大都会",
+    "METROPOLE VIENNA": "维也纳",
+    "METROPOLE PRAGUE": "布拉格",
+    "METROPOLE MILAN": "米兰",
+    "METROPOLE LONDON": "伦敦",
+    "METROPOLE VERONA": "维罗纳",
+    "METROPOLE OSLO": "奥斯陆",
+    "METROPOLE AMSTERDAM": "阿姆斯特丹",
+    "METROPOLE SEOUL": "都市首尔",
+
+    # ── 人名系列（音译）──────────────────────────
+    "BELLA": "贝拉",
+    "MARGOT": "玛格特",
+    "VALERIE": "瓦莱丽",
+    "ELAINA": "伊莲娜",
+    "IRVING": "欧文",
+    "FELICIA": "菲丽希亚",
+    "ASTRID": "阿斯特丽德",
+
+    # ── 英文词意译 ─────────────────────────────────
+    "OFFROAD": "越野",
+    "STREET": "街头",
+    "CITY STRIDE": "城市漫步",
+    "URBAN": "都市",
+    "SNOW MOUNTAIN": "雪山",
+    "GLACIA": "冰川",
+    "CLASSIC": "经典",
+    "DRESS CLASSIC": "经典正装",
+    "XPEDITION": "远征",
+    "WALKER": "步行者",
+
+    # ── ECCO 自造词，暂无公认中文名（确认后填入）───────
+    "GRAINER": "",
+    "MOVE": "",
+    "BYWAY": "步威",
+    "TRACK": "",
+    "TERRACRUISE": "热酷",
+    "JOKE": "",
+
+    # ── 具体型号（优先于上面的短 key）─────────────────
+    "SOFT 7": "柔酷7号",
+    "SOFT 10": "柔酷10号",
+    "BIOM 2.0": "健步2.0",
+    "BIOM C-TRAIL": "健步C踪迹",
+    "RECEPTOR XP": "徒步XP",
+    "SARTORELLE 25": "型塑25",
+    "LIVA 35": "丽芙35",
+    "GRUUV STUDIO": "灵动混合",
+    "EXOSTRIKE": "突破",
+}

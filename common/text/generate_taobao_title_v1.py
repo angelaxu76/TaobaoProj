@@ -5,7 +5,7 @@ from config import BRAND_NAME_MAP
 from common.utils.logger_utils import setup_logger
 
 # ✅ 新增：款式名提取策略（按品牌）
-from common.text.style_extractors import extract_style_name
+from common.text.style_extractors import extract_style_name, strip_trademarks
 
 from cfg.taobao_title_keyword_config import (
     COLOR_MAP, COLOR_KEYWORDS, COLOR_GUESS,
@@ -107,7 +107,7 @@ def _normalize_gender(gender_raw: str, title_en: str) -> str:
             return "女款"
         if re.search(r"\b(men|men['’]s|male)\b", s):
             return "男款"
-        if re.search(r"\b(kid|kids|child|children|boy|girl)\b", s):
+        if re.search(r"\b(kid|kids|child|children|boy|girl|junior|baby|infant|toddler)\b", s):
             return "童款"
         return ""
 
@@ -141,19 +141,31 @@ def extract_short_code(product_code: str, brand_key: str = None, mode: str = "st
 def _fix_english_spacing(s: str) -> str:
     if not s:
         return s
-    s = re.sub(r"([\u4e00-\u9fff])([A-Za-z0-9])", r"\1 \2", s)
-    s = re.sub(r"([A-Za-z0-9])([\u4e00-\u9fff])", r"\1 \2", s)
-    s = re.sub(r"([A-Za-z])(\d)", r"\1 \2", s)
-    s = re.sub(r"(\d)([A-Za-z])", r"\1 \2", s)
+    # \u4e2d\u6587\u4e0e\u82f1\u6587/\u6570\u5b57\u4e4b\u95f4\u4e0d\u7559\u7a7a\u683c\uff1b\u82f1\u6587\u5355\u8bcd\u4e4b\u95f4\u4fdd\u7559\u4e00\u4e2a\u7a7a\u683c\uff1b
+    # \u4e0d\u62c6\u5b57\u6bcd+\u6570\u5b57\uff08BIOM H5 / SPHERICA EC7 \u4fdd\u6301\u539f\u6837\uff09
+    s = re.sub(r"\s+(?=[\u4e00-\u9fff])", "", s)
+    s = re.sub(r"(?<=[\u4e00-\u9fff])\s+", "", s)
     s = re.sub(r"\s{2,}", " ", s).strip()
     return s
+
+
+def _join_short_code(base: str, short_code: str) -> str:
+    """\u77ed\u7801\u7d27\u8ddf\u4e2d\u6587\u65f6\u4e0d\u52a0\u7a7a\u683c\uff0c\u7d27\u8ddf\u82f1\u6587/\u6570\u5b57\u65f6\u52a0\u7a7a\u683c\u907f\u514d\u7c98\u8fde\u3002"""
+    if SHORT_CODE_JOIN_WITH_SPACE and base and re.match(r"[A-Za-z0-9]", base[-1]):
+        return f"{base} {short_code}"
+    return f"{base}{short_code}"
 
 # =========================
 # 黑名单过滤（整词删除，英文不区分大小写）
 # =========================
 def _apply_blacklist(title: str) -> str:
     for word in TITLE_WORD_BLACKLIST:
-        title = re.sub(re.escape(word), "", title, flags=re.IGNORECASE)
+        if re.fullmatch(r"[A-Za-z0-9\s\-]+", word):
+            # 英文按整词删除，避免 "Ash" 误删 "WASHIBA" 中的子串
+            pattern = rf"(?<![A-Za-z0-9]){re.escape(word)}(?![A-Za-z0-9])"
+        else:
+            pattern = re.escape(word)
+        title = re.sub(pattern, "", title, flags=re.IGNORECASE)
     return re.sub(r"\s{2,}", " ", title).strip()
 
 # =========================
@@ -234,8 +246,7 @@ def enforce_60_bytes_title(
         core = _replace_terms_to_cn(core)
 
         if short_code:
-            joiner = " " if SHORT_CODE_JOIN_WITH_SPACE else ""
-            core = _fix_english_spacing(f"{core}{joiner}{short_code}")
+            core = _fix_english_spacing(_join_short_code(core, short_code))
 
         base_title = core
 
@@ -268,7 +279,7 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
         brand_en, brand_cn = BRAND_NAME_MAP.get(bk, (brand_key.upper(), brand_key))
         brand_full = f"{brand_en}{brand_cn}"
 
-        title_en = extract_field_from_content(content, "Product Name")
+        title_en = strip_trademarks(extract_field_from_content(content, "Product Name"))
         if not title_en:
             logger.warning(f"NO Product Name | code={product_code}")
 
@@ -305,8 +316,7 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
         if short_cfg.get("enable"):
             short_code = extract_short_code(product_code, brand_key=bk, mode=short_cfg.get("mode", "style"))
             if short_code:
-                joiner = " " if SHORT_CODE_JOIN_WITH_SPACE else ""
-                base_title = f"{base_title}{joiner}{short_code}"
+                base_title = _join_short_code(base_title, short_code)
 
         # ✅ v2：严格 60 字节 + 不足补齐（补回旧逻辑）
         base_title = enforce_60_bytes_title(
@@ -320,7 +330,7 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
             short_code=short_code
         )
 
-        base_title = _apply_blacklist(base_title)
+        base_title = _fix_english_spacing(_apply_blacklist(strip_trademarks(base_title)))
 
         logger.info(f"OK | brand={brand_key} | code={product_code} | title={base_title}")
         return {"title_cn": base_title, "taobao_title": base_title}
