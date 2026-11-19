@@ -12,16 +12,28 @@ from channels.jingya.maintenance.generate_missing_links_for_brand import generat
 from channels.jingya.maintenance.generate_empty_product_links_for_brand import generate_empty_product_links_for_brand
 from channels.jingya.pricing.generate_taobao_store_price_for_import_excel import generate_price_excels_bulk
 
+import sys
+
 # =====================================================================
-# 抓取模式选择（改这一行即可）：
+# 抓取模式选择（默认值，改这一行即可）：
 #   False → 快速模式（requests + 多线程，折扣公开时使用，日常推荐）
 #   True  → 登录模式（Selenium + Chrome Profile，会员专属折扣时使用）
+# 也可以不改文件，运行时加参数临时指定（优先于上面的默认值）：
+#   python -m brands.geox.pipeline.prepare_jingya_listing --fast
+#   python -m brands.geox.pipeline.prepare_jingya_listing --login
 # =====================================================================
 MEMBER_DISCOUNT_MODE = True   # 2026-11 GEOX 内部折扣期间临时开启；折扣取消后改回 False
 
+if "--fast" in sys.argv:
+    MEMBER_DISCOUNT_MODE = False
+elif "--login" in sys.argv:
+    MEMBER_DISCOUNT_MODE = True
+
 if MEMBER_DISCOUNT_MODE:
+    print("🔐 GEOX 抓取模式：登录模式（会员折扣价，单窗口逐个抓取）")
     from brands.geox.fetch_product_info_jingya import fetch_all_product_info
 else:
+    print("⚡ GEOX 抓取模式：快速模式（公开价格，多线程）")
     from brands.geox.fetch_product_info_fast import fetch_all_product_info
 
 def run_script(filename: str):
