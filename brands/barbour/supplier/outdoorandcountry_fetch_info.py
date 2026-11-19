@@ -214,7 +214,7 @@ class OutdoorAndCountryFetcher(BaseFetcher):
         # 6. 提取 Product Code：优先 JSON-LD offers[].mpn（如 "MWX0017BE5134"，只含当前颜色）。
         #    dataLayer 已无 products 段（2026-11 改版），失败时返回 "Unknown"（非空字符串），
         #    所以只作兜底，且必须符合 Barbour 编码格式才采用。
-        product_code = self._extract_color_code_from_jsonld(html)
+        product_code = self._extract_color_code_from_jsonld(html, color)
         if not product_code:
             dl_code = (info.get("Product Color Code") or "").strip()
             if re.fullmatch(r"[A-Z]{3}\d{4}[A-Z]{2}\d{2}", dl_code):
@@ -332,10 +332,46 @@ class OutdoorAndCountryFetcher(BaseFetcher):
 
         return rows
 
-    def _extract_color_code_from_jsonld(self, html: str) -> str:
-        """从 JSON-LD 的 MPN 字段提取 Barbour Product Code"""
+    def _extract_color_code_from_jsonld(self, html: str, color: str = "") -> str:
+        """
+        从 JSON-LD 的 MPN 字段提取 Barbour Product Code
+
+        支持两种结构：
+        - 旧版: {"@type": "Product", "offers": [{"mpn": "MCA0538NY71_34"}]}
+        - 新版 (2026-11): {"@type": "ProductGroup", "hasVariant": [
+              {"@type": "Product", "color": "Camel", "mpn": "LWO0255CM518", ...}]}
+          mpn 直接挂在 variant 上，编码 + 尺码无分隔符，取前 11 位
+        有 color 时优先取颜色匹配的 variant（多色商品每色编码不同）
+        """
         import json
         soup = BeautifulSoup(html, "html.parser")
+        code_re = re.compile(r"^[A-Z]{3}\d{4}[A-Z]{2}\d{2}$")
+
+        def _code_from_mpn(mpn) -> str:
+            if not isinstance(mpn, str):
+                return ""
+            mpn = mpn.split("_")[0].strip().upper()
+            if len(mpn) >= 11 and code_re.match(mpn[:11]):
+                return mpn[:11]
+            return ""
+
+        def _norm(s: str) -> str:
+            return re.sub(r"[\s/]+", " ", (s or "")).strip().lower()
+
+        # (variant_color, code) 候选列表
+        candidates_codes = []
+
+        def _collect_product(obj: dict):
+            vcolor = obj.get("color") or ""
+            code = _code_from_mpn(obj.get("mpn"))
+            if code:
+                candidates_codes.append((vcolor, code))
+            offers = obj.get("offers")
+            if offers:
+                for off in (offers if isinstance(offers, list) else [offers]):
+                    code = _code_from_mpn((off or {}).get("mpn"))
+                    if code:
+                        candidates_codes.append((vcolor, code))
 
         for script in soup.find_all("script", type="application/ld+json"):
             try:
@@ -344,36 +380,28 @@ class OutdoorAndCountryFetcher(BaseFetcher):
                     continue
 
                 j = json.loads(raw)
-                candidates = j if isinstance(j, list) else [j]
-
-                for obj in candidates:
-                    if not isinstance(obj, dict) or obj.get("@type") != "Product":
+                for obj in (j if isinstance(j, list) else [j]):
+                    if not isinstance(obj, dict):
                         continue
-
-                    offers = obj.get("offers")
-                    if not offers:
-                        continue
-
-                    offers_list = offers if isinstance(offers, list) else [offers]
-
-                    for off in offers_list:
-                        mpn = (off or {}).get("mpn")
-                        if not isinstance(mpn, str):
-                            continue
-
-                        # MPN 格式: "MCA0538NY71_34"
-                        mpn = mpn.split("_")[0].strip()
-
-                        # 提取前 11 位作为 Product Code
-                        if len(mpn) >= 11:
-                            maybe_code = mpn[:11]
-                            if re.match(r"^[A-Z]{3}\d{4}[A-Z]{2}\d{2}$", maybe_code):
-                                return maybe_code
-
+                    t = obj.get("@type")
+                    if t == "ProductGroup":
+                        for v in obj.get("hasVariant") or []:
+                            if isinstance(v, dict):
+                                _collect_product(v)
+                    elif t == "Product":
+                        _collect_product(obj)
             except Exception:
                 continue
 
-        return ""
+        if not candidates_codes:
+            return ""
+
+        target = _norm(color)
+        if target:
+            for vcolor, code in candidates_codes:
+                if _norm(vcolor) == target:
+                    return code
+        return candidates_codes[0][1]
 
     def _build_sizes_from_offers(self, offers, gender: str) -> str:
         """从 offers 构建 Product Size Detail（经由 size_normalizer 标准化）"""

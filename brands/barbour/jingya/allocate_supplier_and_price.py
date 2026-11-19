@@ -481,7 +481,27 @@ def _select_sites(
     fill_target: int,
     fill_max_sites: Optional[int],
 ) -> List[dict]:
-    """按 strategy 分派到对应的选站点算法；allocate_and_sync 和 select_suppliers_for_code 共用。"""
+    """按 strategy 分派到对应的选站点算法；allocate_and_sync 和 select_suppliers_for_code 共用。
+
+    单尺码短路：所有候选供应商的有货尺码并集只有 1 个（均码 ONESIZE，或全网
+    只剩一个尺码有货）时，多选供应商不会增加任何库存、只会因"定价取所选
+    最贵者"而抬价——直接选有效成本最低的一家，不走任何策略。
+    """
+    if cand is not None and not cand.empty:
+        all_sizes: Set[str] = set()
+        for s in cand["site_name"]:
+            all_sizes |= sizes_by_site.get(s, set())
+        if len(all_sizes) <= 1:
+            r = cand.sort_values(
+                ["min_eff_price", "sizes_in_stock", "latest"],
+                ascending=[True, False, False],
+            ).iloc[0]
+            return [{
+                "site": r["site_name"],
+                "min_eff_price": float(r["min_eff_price"]),
+                "sizes_in_stock": int(r["sizes_in_stock"]),
+            }]
+
     if strategy == "price_window":
         return _select_sites_by_price_window(cand, price_tolerance_pct, max_suppliers, min_sizes_in_stock)
     if strategy == "fill_sizes":

@@ -195,9 +195,16 @@ def _fetch_prices_by_code_and_size_bulk(
             # 构造本批 SQL
             query_sql = (
                 f"WITH wanted(code,size) AS (VALUES {values_sql_block}) "
-                f"SELECT t.product_code, t.size, t.taobao_store_price "
+                # 均码：库里可能存 ONESIZE 或 NOSIZE，统一按 ONESIZE 匹配；
+                # 返回 w.size（Excel 侧的键）保证后续按 (code,size) merge 能对上。
+                f"SELECT t.product_code, w.size, t.taobao_store_price "
                 f"FROM {table} t "
-                "JOIN wanted w ON t.product_code = w.code AND t.size = w.size"
+                "JOIN wanted w ON t.product_code = w.code AND ("
+                "  t.size = w.size OR ("
+                f"    w.size = '{ONE_SIZE_KEY}' "
+                "    AND UPPER(TRIM(t.size)) IN ('ONESIZE','NOSIZE','ONE SIZE','OS','均码')"
+                "  )"
+                ")"
             )
 
             # Debug: 打印本批的关键信息（不会太吵）
@@ -497,6 +504,10 @@ def _normalize_input_columns(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+ONE_SIZE_KEY = "ONESIZE"
+_ONE_SIZE_ALIASES = {"ONESIZE", "NOSIZE", "ONE SIZE", "OS", "均码"}
+
+
 def _split_spec_value(spec_val: str) -> tuple[str|None, str|None]:
     """
     把 'MWX0339OL71,M' 这种值拆成 ('MWX0339OL71','M')
@@ -509,14 +520,23 @@ def _split_spec_value(spec_val: str) -> tuple[str|None, str|None]:
     raw = spec_val.strip()
     if raw == "":
         return (None, None)
-    parts = [p.strip() for p in raw.split(",")]
-    if len(parts) < 2:
-        # 没有尺码信息，视为无效
+    parts = [p.strip() for p in raw.replace("，", ",").split(",") if p.strip()]
+    if not parts:
         return (None, None)
-    code_part = parts[0].strip().upper()
-    size_part = parts[1].strip()
-    if code_part == "" or size_part == "":
-        return (None, None)
+    # 均码商品（包/围巾/帽子等）的两种写法：
+    #   新：'LSC0479TN26,'          —— 只有编码，没有尺码
+    #   旧：'ONESIZE,MHA0909OL74,'  —— 尺码在前、编码在后
+    # 统一返回 (编码, ONESIZE)；查价时 ONESIZE 会匹配库里的 ONESIZE / NOSIZE。
+    if parts[0].upper() in _ONE_SIZE_ALIASES:
+        if len(parts) < 2:
+            return (None, None)
+        return (parts[1].upper(), ONE_SIZE_KEY)
+    if len(parts) == 1:
+        return (parts[0].upper(), ONE_SIZE_KEY)
+    code_part = parts[0].upper()
+    size_part = parts[1]
+    if size_part.upper() in _ONE_SIZE_ALIASES:
+        size_part = ONE_SIZE_KEY
     return (code_part, size_part)
 
 
