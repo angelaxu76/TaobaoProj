@@ -2,10 +2,10 @@ import os
 import shutil
 
 # 原始图片目录
-source_dir = r"D:\TB\Products\barbour\repulibcation\linkfox_processed"
+source_dir = r"C:\Users\Maddingzhou\Desktop\ecco\image_process"
 
 # 目标根目录（可以修改为其他路径）
-target_root_dir = r"D:\TB\Products\barbour\repulibcation\linkfox_processed分组图片"
+target_root_dir = r"C:\Users\Maddingzhou\Desktop\ecco\image_process分组图片"
 
 # 分成几组（图片平均分配到各组）
 num_groups = 3

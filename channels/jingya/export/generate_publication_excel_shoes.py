@@ -10,8 +10,9 @@ from common.product.category_utils import infer_shoe_publish_category
 from common.publication.publish_blocklist import load_publish_blocklist, filter_blocked_codes
 from common.publication.season_utils import get_next_season_label
 from common.publication.excel_columns import (
-    TITLE_COLUMN, TITLE_EN_COLUMN, CODE_COLUMN, PRICE_COLUMN, SIZES_COLUMN,
-    COLOR_COLUMN, LAUNCH_SEASON_COLUMN, MATERIAL_COLUMN,
+    TITLE_EN_COLUMN, CODE_COLUMN, SIZES_COLUMN, COLOR_COLUMN, LAUNCH_SEASON_COLUMN,
+    SHOE_TITLE_COLUMN, SHOE_PRICE_COLUMN,
+    SHOE_LINING_MATERIAL_COLUMN, SHOE_UPPER_MATERIAL_COLUMN,
 )
 
 # ==== 固定参数 ====
@@ -223,13 +224,13 @@ def generate_publication_excels(brand: str):
 
         row = {
             TITLE_EN_COLUMN: title_en,
-            TITLE_COLUMN: title_cn,
+            SHOE_TITLE_COLUMN: title_cn,
             CODE_COLUMN: code,
             COLOR_COLUMN: color_map.get(code_clean, ""),
             SIZES_COLUMN: size_stock_map.get(code_clean, ""),
-            PRICE_COLUMN: rmb_price,
-            "内里材质": lining_material,
-            MATERIAL_COLUMN: upper_material,   # 鞋面材质
+            SHOE_PRICE_COLUMN: rmb_price,
+            SHOE_LINING_MATERIAL_COLUMN: lining_material,
+            SHOE_UPPER_MATERIAL_COLUMN: upper_material,
             LAUNCH_SEASON_COLUMN: 上市年份季节,
             "季节": 季节,
             "款式": 款式,

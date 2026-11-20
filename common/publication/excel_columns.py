@@ -17,3 +17,9 @@ SIZES_COLUMN = "有货尺码"
 COLOR_COLUMN = "颜色"
 LAUNCH_SEASON_COLUMN = "上市年份季节"
 MATERIAL_COLUMN = "材质"   # 鞋：鞋面材质；服装：表面面料
+
+# ==== 鞋类发布 Excel 专用列名（兼容旧 UiPath 鞋类 project，不要随上面的通用列名改动）====
+SHOE_TITLE_COLUMN = "标题"            # 中文淘宝标题
+SHOE_PRICE_COLUMN = "价格"            # 淘宝零售价（CNY）
+SHOE_LINING_MATERIAL_COLUMN = "内里材质"
+SHOE_UPPER_MATERIAL_COLUMN = "帮面材质"
