@@ -46,6 +46,11 @@ CREATE TABLE IF NOT EXISTS {TABLE} (
     updated_at              TIMESTAMP NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_{TABLE}_brand ON {TABLE} (brand);
+CREATE TABLE IF NOT EXISTS {TABLE}_settings (
+    key         TEXT PRIMARY KEY,
+    value       TEXT,
+    updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
 """
 
 # 可写入的字段（append / import 使用）
@@ -147,12 +152,57 @@ def refresh_discount_status(only_release_on_discount: bool = True, verbose: bool
 
 
 # ------------------------------------------------------------------ 发布过滤（generate_publication_excels 使用）
+def is_blocklist_enabled() -> bool:
+    """总开关：默认启用；用 ops/blocklist/run_toggle_blocklist.py 暂停/恢复。"""
+    conn = _connect()
+    try:
+        ensure_table(conn)
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT value FROM {TABLE}_settings WHERE key = 'enabled';")
+            row = cur.fetchone()
+    finally:
+        conn.close()
+    return row is None or str(row[0]).strip().lower() not in {"false", "0", "off"}
+
+
+def set_blocklist_enabled(enabled: bool) -> None:
+    conn = _connect()
+    try:
+        ensure_table(conn)
+        with conn.cursor() as cur:
+            cur.execute(f"""
+                INSERT INTO {TABLE}_settings (key, value, updated_at) VALUES ('enabled', %s, NOW())
+                ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
+            """, ("true" if enabled else "false",))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def clear_blocklist() -> int:
+    """清空黑名单表（不可恢复，调用前请先备份）。返回删除行数。"""
+    conn = _connect()
+    try:
+        ensure_table(conn)
+        with conn.cursor() as cur:
+            cur.execute(f"DELETE FROM {TABLE};")
+            n = cur.rowcount
+        conn.commit()
+    finally:
+        conn.close()
+    return n
+
+
 def load_publish_blocklist(check_discount: bool = True) -> set[str]:
     """
     返回当前需要拦截的编码集合（大写）。
+    总开关暂停时返回空集合（不拦截任何商品）。
     check_discount=True 时先实时刷新折扣状态，release_on_discount 且已打折的编码放行。
     """
     try:
+        if not is_blocklist_enabled():
+            print(f"⏸️ 发布黑名单已暂停（ops/blocklist/run_toggle_blocklist.py），本次不拦截任何商品")
+            return set()
         if check_discount:
             try:
                 refresh_discount_status(verbose=True)

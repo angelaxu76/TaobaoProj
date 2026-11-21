@@ -75,6 +75,90 @@ def extract_features(product_data):
     items = [li.get_text(strip=True) for li in fsoup.find_all("li") if li.get_text(strip=True)]
     return "; ".join(items) if items else "No Data"
 
+# =========================
+# ✅ 价格解析（兼容 普通打折 / 黑五等活动促销）
+# =========================
+# 是否采用活动促销价（product.promotion，如黑五 "Black Friday Price"）。
+# 活动价若需要折扣码才能拿到（promotion.discountCode 非空），默认不采用。
+USE_PROMOTION_PRICE = True
+ALLOW_PROMOTION_WITH_CODE = False
+
+
+def _cents_to_str(cents):
+    try:
+        return f"{int(cents) / 100:.2f}"
+    except (TypeError, ValueError):
+        return ""
+
+
+def _to_float(s):
+    try:
+        return float(str(s).replace("£", "").replace(",", "").strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def extract_prices(soup, product_data, ld_data):
+    """
+    返回 (original_price, discount_price, source)，均为字符串。
+    取价优先级（任一层取到就用，取不到往下回落，活动结束后自动恢复为普通逻辑）：
+      1. __NEXT_DATA__ product.promotion.priceRange   —— 黑五等站点活动价
+      2. __NEXT_DATA__ product.priceV2 now / was      —— 商品自身售价（普通打折）
+      3. JSON-LD offers.price + span[wasPrice]        —— 旧页面结构兜底
+      4. 页面促销文案 .plp-pdp-promo-messaging__bold  —— 活动价 HTML 兜底
+    """
+    pd = product_data or {}
+
+    # ---- 2/3: 商品自身的 现价 / 原价 ----
+    now = was = ""
+    pv2 = pd.get("priceV2") or {}
+    if (pv2.get("now") or {}).get("amount") is not None:
+        now = _cents_to_str(pv2["now"]["amount"])
+        if (pv2.get("was") or {}).get("amount") is not None:
+            was = _cents_to_str(pv2["was"]["amount"])
+    if not now:
+        ld_price = (ld_data.get("offers") or {}).get("price", "") if isinstance(ld_data, dict) else ""
+        now = str(ld_price).strip()
+    if not was:
+        tag = soup.find("span", {"data-testid": "wasPrice"})
+        if tag:
+            was = tag.get_text(strip=True).replace("£", "").strip()
+
+    original = was or now
+    discount = now
+    source = "sale" if was and _to_float(was) != _to_float(now) else "regular"
+
+    if not USE_PROMOTION_PRICE:
+        return original, discount, source
+
+    # ---- 1: 站点活动促销价 ----
+    promo_price = ""
+    promo = pd.get("promotion") or {}
+    if promo and (ALLOW_PROMOTION_WITH_CODE or not promo.get("discountCode")):
+        pr = promo.get("priceRange") or {}
+        if pr.get("minPrice") is not None:
+            # 多尺码价格不同时取最高价，避免按最低价报价导致亏损
+            promo_price = _cents_to_str(pr.get("maxPrice", pr["minPrice"]))
+        promo_tag = promo.get("layoutId") or "promotion"
+    else:
+        promo_tag = ""
+
+    # ---- 4: HTML 促销文案兜底 ----
+    if not promo_price and not promo:
+        bold = soup.select_one(".plp-pdp-promo-messaging__bold")
+        if bold:
+            m = re.search(r"£\s*([\d,]+(?:\.\d+)?)", bold.get_text())
+            if m:
+                promo_price = m.group(1).replace(",", "")
+                promo_tag = "promo-html"
+
+    p, d = _to_float(promo_price), _to_float(discount)
+    if p is not None and p > 0 and (d is None or p < d):
+        return original, promo_price, promo_tag
+
+    return original, discount, source
+
+
 def detect_gender_from_text(text: str) -> str:
     t = text.lower()
 
@@ -293,18 +377,10 @@ def process_product(url):
         gender = detect_gender(soup, title, desc, url)
 
 
-        # 折扣价
-        discount_price_raw = data.get("offers", {}).get("price", "")
-        discount_price = str(discount_price_raw).strip()
-
-        # 原价
-        price_tag = soup.find("span", {"data-testid": "wasPrice"})
-        if price_tag:
-            original_price = (
-                price_tag.get_text(strip=True).replace("£", "").strip()
-            )
-        else:
-            original_price = discount_price  # ✅ fallback 为折扣价
+        # 原价 / 折扣价（含黑五等活动促销价）
+        original_price, discount_price, price_source = extract_prices(soup, product_data, data)
+        if price_source not in ("regular", "sale"):
+            print(f"🏷️ 活动促销价 [{price_source}]: £{original_price} → £{discount_price}")
 
         # 页面既无价格也无尺码按钮 = 商品已下架（通常被跳转到首页），不生成 TXT，
         # 否则下面会按尺码范围补出一整排"无货"，让无效商品进入数据库并被反复补抓
