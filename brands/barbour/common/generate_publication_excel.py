@@ -17,6 +17,7 @@ from brands.barbour.common.generate_taobao_title_accessories import (
 from brands.barbour.common.product_attributes import detect_material, detect_product_type
 from common.pricing.price_utils import calculate_jingya_prices
 from common.publication.season_utils import get_next_season_label
+from common.publication.publish_blocklist import load_publish_blocklist, filter_blocked_codes
 from common.publication.excel_columns import (
     TITLE_COLUMN, TITLE_EN_COLUMN, CODE_COLUMN, PRICE_COLUMN, SIZES_COLUMN,
     COLOR_COLUMN, LAUNCH_SEASON_COLUMN, MATERIAL_COLUMN,
@@ -252,6 +253,15 @@ def generate_publication_excel():
 
     # 读取 (code, supplier)
     code_pairs = load_codes_with_supplier()
+
+    # 发布黑名单过滤（跨品牌共享，DB 表 publish_blocklist；打折后可发布的商品打折时自动放行）
+    blocklist = load_publish_blocklist()
+    if blocklist:
+        _, blocked = filter_blocked_codes([c for c, _ in code_pairs], blocklist)
+        code_pairs = [(c, s) for c, s in code_pairs if str(c).strip().upper() not in blocklist]
+        if not code_pairs:
+            print("⚠️ 编码全部被发布黑名单拦截，任务结束")
+            return
 
     wb = openpyxl.Workbook()
     ws = wb.active

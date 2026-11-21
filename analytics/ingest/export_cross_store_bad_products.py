@@ -40,6 +40,7 @@ class BadProductRule:
     max_cart_qty: Optional[int] = 0       # 加购件数上限；None 不看
     max_fav_cnt: Optional[int] = 0        # 收藏数上限；None 不看
     min_price_by_brand: dict[str, float] = field(default_factory=dict)  # 品牌 → 一口价阈值（CNY）
+    brands: Optional[list[str]] = None    # 只判定这些品牌（小写）；None = 全部
 
 
 def _label(rule: BadProductRule, store: str) -> str:
@@ -137,6 +138,8 @@ def _mark_bad(codes: pd.DataFrame, rule: BadProductRule, end_date: date) -> pd.D
     if rule.min_price_by_brand:
         price_min = codes["brand"].map(rule.min_price_by_brand)
         bad &= price_min.isna() | (codes["min_list_price"] > price_min)
+    if rule.brands:
+        bad &= codes["brand"].isin({b.strip().lower() for b in rule.brands})
     codes["is_bad"] = bad
     return codes
 
@@ -240,3 +243,8 @@ def write_report(result: dict, output_dir: Path) -> tuple[Path, Path]:
 
     txt.write_text("\n".join(result["jingya_ids"]["channel_product_id"].astype(str)), encoding="utf-8")
     return xlsx, txt
+
+
+if __name__ == "__main__":
+    print("ℹ️ 本文件是函数库，不直接执行。请运行：analytics/pipeline/run_cross_store_bad_products.py"
+          "（参数在 analytics/pipeline/store_config.py 的 BAD_*）")

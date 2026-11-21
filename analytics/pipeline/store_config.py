@@ -96,19 +96,21 @@ FILTER_PUBLICATION_WEEKS: int = 3
 BAD_WINDOW_DAYS: int = 30
 BAD_MIN_PUBLISH_DAYS: int = 30      # 发布不满 N 天的新品不判断
 BAD_METRIC: str = "pageviews"       # 浏览量；可改 "visitors"（访客数）
-BAD_METRIC_MAX: int = 20            # 所有店合计严格小于才算无访问
+BAD_METRIC_MAX: int = 10            # 所有店合计严格小于才算无访问
 BAD_MAX_PAY_QTY: int | None = 0     # 成交件数上限；None 不看
 BAD_MAX_CART_QTY: int | None = 0    # 加购件数上限；None 不看
 BAD_MAX_FAV_CNT: int | None = 0     # 收藏数上限；None 不看
-# 是否把待删除商品写入发布黑名单（cfg/paths.py 的 PUBLISH_BLOCKLIST_FILENAME）
+# 是否把待删除商品写入发布黑名单（数据库表 publish_blocklist，见 ops/blocklist/）
 BAD_WRITE_BLOCKLIST: bool = True
+# 只清理这些品牌（小写 key）；None = 全部品牌。例：["camper", "clarks"]
+BAD_BRANDS: list[str] | None = None
 # 品牌价格阈值（淘宝一口价 CNY）；{} = 不限价格
 BAD_MIN_PRICE_BY_BRAND: dict[str, float] = {
-    "ecco":    2500,
-    "camper":  2500,
-    "clarks":  1500,
-    "geox":    2000,
-    "barbour": 3500,
+    "ecco":    22000,
+    "camper":  22000,
+    "clarks":  12000,
+    "geox":    16000,
+    "barbour": 2800,
 }
 
 # ============================================================

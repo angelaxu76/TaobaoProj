@@ -11,7 +11,7 @@ from common.publication.publish_blocklist import clear_blocklist, read_blocklist
 from ops.blocklist.blocklist_excel import export_to_excel
 from ops.blocklist.run_export_blocklist_excel import _default_dir
 
-CONFIRM = False   # 改成 True 才会真正执行清空
+CONFIRM = True   # 改成 True 才会真正执行清空
 
 if __name__ == "__main__":
     n = len(read_blocklist())

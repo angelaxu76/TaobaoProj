@@ -15,7 +15,7 @@ from analytics.pipeline.store_config import (
     CROSS_STORE_EXPORT_DIR, get_active_stores,
     BAD_WINDOW_DAYS, BAD_MIN_PUBLISH_DAYS, BAD_METRIC, BAD_METRIC_MAX,
     BAD_MAX_PAY_QTY, BAD_MAX_CART_QTY, BAD_MAX_FAV_CNT,
-    BAD_WRITE_BLOCKLIST, BAD_MIN_PRICE_BY_BRAND,
+    BAD_WRITE_BLOCKLIST, BAD_MIN_PRICE_BY_BRAND, BAD_BRANDS,
 )
 from common.publication.publish_blocklist import upsert_blocklist
 
@@ -49,8 +49,10 @@ if __name__ == "__main__":
         max_cart_qty=BAD_MAX_CART_QTY,
         max_fav_cnt=BAD_MAX_FAV_CNT,
         min_price_by_brand=BAD_MIN_PRICE_BY_BRAND,
+        brands=BAD_BRANDS,
     )
     print(f"店铺：{'、'.join(str(s) for s in stores)}")
+    print(f"品牌范围：{'、'.join(rule.brands) if rule.brands else '全部'}")
     print(f"规则（三条同时满足）：")
     print(f"  价格高：一口价 > {rule.min_price_by_brand or '不限'}")
     print(f"  无访问：发布满 {rule.min_publish_days} 天，近 {rule.window_days} 天所有店 {rule.metric} 合计 < {rule.metric_max}，"

@@ -3,6 +3,7 @@ import pandas as pd
 from config import BARBOUR
 from brands.barbour.common.generate_publication_excel import generate_publication_excel
 from brands.barbour.common.export_discounts import export_barbour_discounts_excel, export_barbour_discounts_excel_multi
+from common.publication.publish_blocklist import load_publish_blocklist, filter_blocked_codes
 
 # codes.xlsx 路径与 ops/linkfox/_session_config.py 保持一致
 CODES_XLSX = BARBOUR["OUTPUT_DIR"] / "codes.xlsx"
@@ -25,6 +26,11 @@ def _save_codes_to_xlsx(excel_path: Path, codes_xlsx: Path = CODES_XLSX) -> int:
             f"❌ 折扣候选导出为空，未写入 codes.xlsx：{excel_path}\n"
             "   请检查编码前缀是否存在于 barbour_offers、是否已全部发布、或 min_sizes 过高"
         )
+
+    # 发布黑名单过滤（DB 表 publish_blocklist）：在这里拦掉，后续抓图 / 生成发布 Excel 都不再处理
+    codes, blocked = filter_blocked_codes(codes, load_publish_blocklist())
+    if not codes:
+        raise SystemExit(f"❌ 折扣候选的 {len(blocked)} 个编码全部在发布黑名单中，未写入 codes.xlsx")
     codes_xlsx.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame({"product_code": codes}).to_excel(codes_xlsx, index=False)
     print(f"✅ 已写入 {len(codes)} 个编码 → {codes_xlsx}")
