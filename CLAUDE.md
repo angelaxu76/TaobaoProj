@@ -162,6 +162,11 @@ from config import BRAND_CONFIG, BRAND_NAME_MAP, PGSQL_CONFIG
 | `ops/stock/run_zero_stock_offline.py` | 将指定商品编码的库存设为 0（下架） |
 | `ops/stock/run_clean_low_stock.py` | 清理低库存商品 |
 | `ops/pricing/run_pricing_validate.py` | 校验定价合规性 |
+| `ops/blocklist/` | 发布黑名单（DB 表 `publish_blocklist`）：建表迁移、刷新折扣、导出/导入 Excel、手动加入/解除，索引见 `ops/blocklist/__init__.py` |
+
+**发布黑名单**：核心库 `common/publication/publish_blocklist.py`，数据在 PostgreSQL 表 `publish_blocklist`（不再用 Excel）。
+`generate_publication_excel_*.py` 调 `load_publish_blocklist()` 过滤；`release_on_discount=TRUE` 的商品在供应商打折后自动放行。
+判断是否打折统一用 `common/pricing/discount_status.py` 的 `fetch_discount_status()`（Barbour 看 `barbour_offers`）。
 
 ---
 

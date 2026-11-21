@@ -88,22 +88,21 @@ FILTER_PUBLICATION_WEEKS: int = 3
 
 # ============================================================
 # 跨店铺差商品规则（run_cross_store_bad_products 使用）
-# 单店"差"：同时满足
-#   1. 该店最早发布日期距今 >= BAD_MIN_PUBLISH_DAYS 天（排除新品）
-#   2. 最近 BAD_WINDOW_DAYS 天（截止到库里最新日报日期）BAD_METRIC 合计 < BAD_METRIC_MAX
-#   3. 同期成交件数 <= BAD_MAX_PAY_QTY
-# 商品编码在所有上架店铺都"差" → 差商品；
-# 差商品若供应商端未打折（库存表 discount_price_gbp 不低于 original_price_gbp）→ 列入删除名单 + 发布黑名单
+# 按商品编码汇总所有店铺；以下三条同时满足 → 待删除（写入发布黑名单）
+#   价格高：各店一口价都 > BAD_MIN_PRICE_BY_BRAND 品牌阈值（未列出的品牌不限价格）
+#   无访问：发布满 BAD_MIN_PUBLISH_DAYS 天，最近 BAD_WINDOW_DAYS 天（截止到库里最新日报日期）
+#           所有店 BAD_METRIC 合计 < BAD_METRIC_MAX，且 成交/加购/收藏 不超过各自上限
+#   无折扣：库存表 discount_price_gbp 为空或不低于 original_price_gbp（Barbour 看 barbour_offers）
 BAD_WINDOW_DAYS: int = 30
-BAD_MIN_PUBLISH_DAYS: int = 10
+BAD_MIN_PUBLISH_DAYS: int = 30      # 发布不满 N 天的新品不判断
 BAD_METRIC: str = "pageviews"       # 浏览量；可改 "visitors"（访客数）
-BAD_METRIC_MAX: int = 10            # 严格小于才算差
-BAD_MAX_PAY_QTY: int = 0            # 有成交就不算差；设 None 关闭此条件
-# True = 必须在 ACTIVE_STORES 全部店铺都上架（且都差）才算；False = 只要求上架的店铺都差
-BAD_REQUIRE_ALL_STORES: bool = True
+BAD_METRIC_MAX: int = 20            # 所有店合计严格小于才算无访问
+BAD_MAX_PAY_QTY: int | None = 0     # 成交件数上限；None 不看
+BAD_MAX_CART_QTY: int | None = 0    # 加购件数上限；None 不看
+BAD_MAX_FAV_CNT: int | None = 0     # 收藏数上限；None 不看
 # 是否把待删除商品写入发布黑名单（cfg/paths.py 的 PUBLISH_BLOCKLIST_FILENAME）
 BAD_WRITE_BLOCKLIST: bool = True
-# 品牌价格阈值（淘宝一口价 CNY）：只有该店一口价 > 阈值的商品才可能判为差；未列出的品牌不限价格
+# 品牌价格阈值（淘宝一口价 CNY）；{} = 不限价格
 BAD_MIN_PRICE_BY_BRAND: dict[str, float] = {
     "ecco":    2500,
     "camper":  2500,
