@@ -32,7 +32,7 @@ BRAND_STRATEGY = {
     "camper": "ladder_depth_ratio",
     "ecco":   "discount_priority",
     "geox":   "discount_priority",
-    "clarks": "discount_priority",
+    "clarks": "ladder_wrap_discount_priority",  # 阶梯见 discount_ladder_config_v2.BRAND_DISCOUNT_LADDER["clarks"]
 }
 
 

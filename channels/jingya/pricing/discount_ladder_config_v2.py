@@ -21,7 +21,20 @@ DEFAULT_MIN_APPLY_DISCOUNT: float = 0.30
 DEFAULT_MAX_REASONABLE_DISCOUNT: float = 0.90
 
 # 品牌级覆盖（保持不变）
-BRAND_DISCOUNT_LADDER: Dict[str, List[Tuple[float, float]]] = {}
-BRAND_MIN_APPLY_DISCOUNT: Dict[str, float] = {}
+BRAND_DISCOUNT_LADDER: Dict[str, List[Tuple[float, float]]] = {
+    # Clarks（策略 ladder_wrap_discount_priority，第二个值 = 目标折扣，价格 = o × (1 - 目标折扣)）
+    # 阈值留 1% 余量，避免官网 49.9% off 这类四舍五入误差漏掉
+    "clarks": [
+        (0.49, 0.40),  # 官网 >=50% off → 按 40% off 卖（0.60o）
+        (0.39, 0.33),  # 官网 >=40% off → 按 33% off 卖（0.67o）
+        (0.29, 0.25),  # 官网 >=30% off → 按 25% off 卖（0.75o）
+        (0.19, 0.15),  # 官网 >=20% off → 按 15% off 卖（0.85o）
+        # < 20% off → 直接用官网折扣价
+    ],
+}
+# 注意：低于 min_apply 的折扣不会查阶梯，所以要 <= 阶梯最低阈值
+BRAND_MIN_APPLY_DISCOUNT: Dict[str, float] = {
+    "clarks": 0.19,
+}
 BRAND_MAX_REASONABLE_DISCOUNT: Dict[str, float] = {}
 
