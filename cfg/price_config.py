@@ -29,7 +29,11 @@ DEFAULT_RETAIL_MARGIN  = 1.35   # 零售价加成（淘宝店铺价 = 未税价 
 #   ladder_wrap_discount_priority           阶梯抬价后再走 discount_priority 策略
 #   ladder_depth_ratio              变比例型：折扣越深，品牌折扣率越宽松（阈值见 discount_ladder_config_v2）
 BRAND_STRATEGY = {
-    "camper": "ladder_depth_ratio",
+    # Camper 两套方案，切换时只保留一行：
+    #   内部折扣期（折扣不叠加）：min(官网折扣价, 原价×0.75)
+    #   全面打折期（阶梯叠加）  ：ladder_depth_ratio，阶梯见下方 BRAND_DEPTH_RATIO_LADDER["camper"]
+    "camper": "discount_or_original_ratio",   # ← 当前：内部折扣期
+    # "camper": "ladder_depth_ratio",         # ← 全面打折期，改回时取消注释并注释上一行
     "ecco":   "discount_priority",
     "geox":   "discount_priority",
     "clarks": "ladder_wrap_discount_priority",  # 阶梯见 discount_ladder_config_v2.BRAND_DISCOUNT_LADDER["clarks"]

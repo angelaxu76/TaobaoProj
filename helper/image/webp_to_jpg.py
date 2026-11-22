@@ -10,10 +10,11 @@ from pathlib import Path
 from typing import List, Tuple, Dict, Iterable, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from PIL import Image, ImageOps
+from config import DOWNLOADS_DIR
 
 # ========== 在这里配置 ==========
-INPUT_DIR  = r"C:\Users\angel\Downloads"   # 输入目录（含 .webp）
-OUTPUT_DIR = r"C:\Users\angel\Downloads"    # 输出目录（生成 .jpg）
+INPUT_DIR  = str(DOWNLOADS_DIR)   # 输入目录（含 .webp），默认当前用户的 Downloads
+OUTPUT_DIR = str(DOWNLOADS_DIR)   # 输出目录（生成 .jpg）
 RECURSIVE  = True                        # 递归子目录
 OVERWRITE  = True                        # 已存在时是否覆盖
 WORKERS    = 0                           # 并发线程数；0=自动
