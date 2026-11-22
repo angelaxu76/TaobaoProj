@@ -132,6 +132,31 @@ FEATURE_MAP = {
     "宽楦": ["wide fit", "wide-width", "wide width", "wide"],
 }
 
+# -------------------------
+# 羊毛/羊绒关键词（秋冬重点卖点）：命中后【必定】出现在标题中，且排在性别词后面，
+# 超 60 字节截断时也会保留（不会像普通特性词那样被丢掉）。
+# - 按顺序匹配，取第一个命中的（越具体的放越前面）
+# - 英文按整词匹配（不区分大小写）；"lambskin"（小羊皮革）不算羊毛，不会命中
+# - WOOL_IGNORE_PATTERNS：先从文本中剔除的洗涤说明等误判短语
+# -------------------------
+# 统一写成"羊绒"，方便运营在后台按"羊绒"一次搜出所有羊毛类商品
+WOOL_KEYWORD_RULES = [
+    ("羊绒", [
+        r"cashmere", r"merino",
+        r"lambs?['’]?\s?wool", r"lamb\s?fur", r"lamb",
+        r"shearling", r"sheepskin", r"sheep\s?wool",
+        r"wool(?:len)?", r"woolly", r"wooly",
+    ]),
+]
+
+WOOL_IGNORE_PATTERNS = [
+    r"(?:detergent|cycle|programme|program|wash|setting)\s+(?:\w+\s+){0,2}for\s+wool",
+    r"wool\s+(?:cycle|wash|programme|program|setting|detergent)",
+    # 仿羊毛 / 人造：不是真羊毛
+    r"wool[\s-]+(?:touch|look|feel|effect|like)",
+    r"(?:faux|fake|imitation|vegan|synthetic)[\s-]+(?:\w+[\s-]+)?(?:shearling|sheepskin|wool|lambswool|fur|lamb)",
+]
+
 # 特性合并：命中这两个/多个后，替换成一个（省字节更自然）
 FEATURE_MERGE_RULES = [
     ({"加绒", "保暖"}, "加绒保暖"),

@@ -199,6 +199,8 @@ def jingya_parse_txt_file(txt_path: Path) -> list:
     info["product_description"] = None   # Product Description
     info["style_category"] = None        # Style Category
     info["color_en"] = None              # Product Color（英文原值，导入时再翻译）
+    info["product_material"] = None      # Product Material
+    info["feature"] = None               # Feature
 
     for line in lines:
         line = line.strip()
@@ -228,6 +230,10 @@ def jingya_parse_txt_file(txt_path: Path) -> list:
             info["style_category"] = line.split(":", 1)[1].strip()
         elif line.startswith("Product Color:"):
             info["color_en"] = line.split(":", 1)[1].strip()
+        elif line.startswith("Product Material:"):
+            info["product_material"] = line.split(":", 1)[1].strip() or None
+        elif line.startswith("Feature:"):
+            info["feature"] = line.split(":", 1)[1].strip() or None
 
         elif line.startswith("Product Size Detail:"):
             raw = line.split(":", 1)[1]
@@ -267,6 +273,8 @@ def jingya_parse_txt_file(txt_path: Path) -> list:
             info.get("product_title"),
             info.get("style_category"),
             info.get("color_en"),
+            info.get("product_material"),
+            info.get("feature"),
         ))
 
     return records

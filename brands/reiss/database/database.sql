@@ -14,6 +14,8 @@ CREATE TABLE reiss_inventory (
     product_title TEXT,                               -- 商品标题（英文名称）
     style_category VARCHAR(50),                       -- 商品分类，如 coat、dress、shirt
     color VARCHAR(100),                               -- 颜色（中文，导入 TXT 时由 Product Color 翻译）
+    product_material TEXT,                            -- 材质（来自 TXT 的 Product Material）
+    feature TEXT,                                     -- 卖点/成分明细（来自 TXT 的 Feature，含内衬成分等）
 
     -- 淘宝&渠道绑定信息
     channel_product_id VARCHAR(50),                   -- 渠道产品 ID

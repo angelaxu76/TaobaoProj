@@ -93,7 +93,8 @@ def import_txt_to_db_supplier(brand_name: str):
     for t in parsed_records:
         (product_code, product_url, size, gender,
          ean, stock_count, original_price_gbp, discount_price_gbp, is_published,
-         product_description, product_title, style_category, color_en) = t
+         product_description, product_title, style_category, color_en,
+         product_material, feature) = t
         color = to_color_cn(color_en, product_title) or None
 
         try:
@@ -148,7 +149,8 @@ def import_txt_to_db_supplier(brand_name: str):
             ean, sc,
             original_price_gbp, discount_price_gbp, is_published,
             product_description, product_title, style_category, color,
-            untaxed, retail
+            untaxed, retail,
+            product_material, feature,
         ))
 
     # 3️⃣ 安全校验：TRUNCATE 前检查编码重叠率，防止抓取数据错误导致库存清零
@@ -185,9 +187,10 @@ def import_txt_to_db_supplier(brand_name: str):
                     ean, stock_count,
                     original_price_gbp, discount_price_gbp, is_published,
                     product_description, product_title, style_category, color,
-                    jingya_untaxed_price, taobao_store_price
+                    jingya_untaxed_price, taobao_store_price,
+                    product_material, feature
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             execute_batch(cur, sql, enriched, page_size=500)
             print(f"✅ [{brand_name.upper()}] 数据已写入 {table_name}")

@@ -16,6 +16,7 @@ from cfg.taobao_title_keyword_config import (
     FILLER_WORDS, MAX_SHOE_TYPES,
     TITLE_WORD_BLACKLIST,
 )
+from common.text.wool_keyword import detect_wool_keyword
 
 logger = setup_logger(
     log_dir="d:/logs/taobao_title",
@@ -232,7 +233,8 @@ def enforce_60_bytes_title(
     shoe_type_str: str,
     color_cn: str,
     material_cn: str,
-    short_code: str
+    short_code: str,
+    wool_cn: str = "",
 ) -> str:
     base_title = title.strip()
     base_title = base_title.replace("No Data", "").strip()
@@ -240,7 +242,7 @@ def enforce_60_bytes_title(
 
     # 超 60：先去掉特性，保留核心信息（跟你旧版一致思路）
     if get_byte_length(base_title) > 60:
-        core_parts = [brand_full, gender_str, style_name, shoe_type_str, color_cn, material_cn]
+        core_parts = [brand_full, gender_str, wool_cn, style_name, shoe_type_str, color_cn, material_cn]
         core = "".join([p for p in core_parts if p]).strip()
         core = _fix_english_spacing(core)
         core = _replace_terms_to_cn(core)
@@ -293,7 +295,10 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
         if not color_en_clean:
             logger.warning(f"NO Color | code={product_code}")
 
-        color_cn = COLOR_MAP.get(color_en_clean, "") or guess_color_cn_from_name(title_en)
+        if re.search(r"[一-鿿]", color_en or ""):
+            color_cn = color_en.strip()   # 部分抓取脚本/数据库已是中文颜色，直接用
+        else:
+            color_cn = COLOR_MAP.get(color_en_clean, "") or guess_color_cn_from_name(title_en)
 
         gender_std = _normalize_gender(gender_raw, title_en)
         gender_str = {"女款": "女鞋", "男款": "男鞋", "童款": "童鞋"}[gender_std]
@@ -305,7 +310,11 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
         material_cn = kw.get("material", "")
         features_str = "".join(kw.get("features") or [])
 
-        parts = [brand_full, gender_str, style_name, shoe_type_str, color_cn, material_cn, features_str]
+        wool_cn = detect_wool_keyword(title_en, content)
+        if wool_cn:
+            logger.info(f"WOOL | code={product_code} | wool={wool_cn}")
+
+        parts = [brand_full, gender_str, wool_cn, style_name, shoe_type_str, color_cn, material_cn, features_str]
         base_title = "".join([p for p in parts if p]).strip()
         base_title = _fix_english_spacing(base_title)
         base_title = _replace_terms_to_cn(base_title)
@@ -327,7 +336,8 @@ def generate_taobao_title(product_code: str, content: str, brand_key: str) -> di
             shoe_type_str=shoe_type_str,
             color_cn=color_cn,
             material_cn=material_cn,
-            short_code=short_code
+            short_code=short_code,
+            wool_cn=wool_cn,
         )
 
         base_title = _fix_english_spacing(_apply_blacklist(strip_trademarks(base_title)))
