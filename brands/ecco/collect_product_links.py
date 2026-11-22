@@ -21,6 +21,8 @@ except Exception:
 TARGET_URLS = [
     ("https://gb.ecco.com/women", "Women"),
     ("https://gb.ecco.com/men", "Men"),
+    ("https://gb.ecco.com/women/shoes", "Women shoes"),
+    ("https://gb.ecco.com/men/shoes", "Men shoes"),
 	("https://gb.ecco.com/men/shoes/sneakers", "Men sneakers"),
 	("https://gb.ecco.com/men/shoes/loafers-and-moccasins", "Men loafer"),
 	("https://gb.ecco.com/men/shoes/casual", "Men casual"),
@@ -34,7 +36,8 @@ TARGET_URLS = [
 	("https://gb.ecco.com/women/shoes/flats-and-ballerinas", "Women flat"),
 	("https://gb.ecco.com/women/shoes/loafers-and-smart", "Women loafer"),
 	("https://gb.ecco.com/women/shoes/waterproof-and-gore-tex", "Women goretex"),
-	("https://gb.ecco.com/women/shoes/smart-and-formal", "Women"),
+	("https://gb.ecco.com/women/shoes/smart-and-formal", "Women smart-and-formal"),
+	("https://gb.ecco.com/women/shoes/sandals", "Women sandals"),
 	("https://gb.ecco.com/women/shoes/heels", "Women heels"),
 	("https://gb.ecco.com/women/shoes/slip-ons", "Women slipons"),
 	("https://gb.ecco.com/women/shoes/boots", "Women boots"),
