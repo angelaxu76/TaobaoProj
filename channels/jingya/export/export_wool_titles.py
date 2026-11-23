@@ -9,8 +9,10 @@
     鞋类（camper/clarks/ecco/geox） → common.text.generate_taobao_title_v1（已内置羊绒规则）
     Barbour                          → Barbour 标题生成器 + ensure_wool_in_title 后处理
     Toast 等服装                     → 服装/外套标题生成器 + ensure_wool_in_title 后处理
-- 输出：一个 Excel，每个品牌一个 sheet + 汇总 sheet
+- 输出：一个 Excel：汇总 + 每个品牌一个 sheet（已发布，用于改标题）
+        + 「未发布羊绒鞋」sheet（鞋类品牌，附预生成标题，按有货尺码数倒序）
 """
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -43,6 +45,10 @@ def _read_txt(brand: str, code: str) -> str:
 
 
 def _load_published(brand: str) -> list[dict]:
+    return _load_rows(brand, published=True)
+
+
+def _load_rows(brand: str, published: bool) -> list[dict]:
     table = BRAND_CONFIG[brand]["TABLE_NAME"]
     with psycopg2.connect(**PGSQL_CONFIG) as conn, conn.cursor() as cur:
         cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name=%s", (table,))
@@ -52,7 +58,8 @@ def _load_published(brand: str) -> list[dict]:
     sql = f"""
         SELECT product_code,
                string_agg(DISTINCT channel_product_id, ',') AS channel_product_id,
-               string_agg(DISTINCT NULLIF(channel_item_id, ''), ',') AS channel_item_id,
+               COALESCE(SUM(stock_count), 0)                       AS total_stock,
+               COUNT(*) FILTER (WHERE stock_count > 0)              AS sizes_in_stock,
                MAX(product_title)       AS product_title,
                MAX(product_description) AS product_description,
                {_col("color")}               AS color,
@@ -61,8 +68,8 @@ def _load_published(brand: str) -> list[dict]:
                MAX(gender)              AS gender,
                MAX(style_category)      AS style_category
         FROM {table}
-        WHERE COALESCE(channel_product_id, '') <> ''
         GROUP BY product_code
+        HAVING {"" if published else "NOT "}bool_or(COALESCE(channel_product_id, '') <> '')
         ORDER BY product_code
     """
     with psycopg2.connect(**PGSQL_CONFIG) as conn, conn.cursor() as cur:
@@ -166,7 +173,6 @@ def collect_wool_titles(brand: str) -> pd.DataFrame:
             "品牌": brand,
             "商品编码": code,
             "渠道产品ID": r.get("channel_product_id") or "",
-            "渠道商品ID": r.get("channel_item_id") or "",
             "新标题": title,
             "标题字节数": _gbk_len(title),
             "含羊绒": "是" if wool_cn in (title or "") else "否",
@@ -176,6 +182,62 @@ def collect_wool_titles(brand: str) -> pd.DataFrame:
         })
         print(f"[{brand}] {code} → {title}")
     return pd.DataFrame(out)
+
+
+# 鞋类品牌里的配件（袜子/帽子/手套/包等）按英文名排除
+NON_SHOE_PATTERN = re.compile(
+    r"(?i)\b(socks?|beanies?|hats?|caps?|gloves?|mittens?|balaclavas?|scarf|scarves|bags?|backpacks?|"
+    r"wallets?|belts?|insoles?|shoelaces?|spray|cream|polish|keyrings?|umbrellas?|accessories|"
+    r"coats?|jackets?|parkas?|gilets?|vests?|jumpers?|sweaters?|cardigans?|knitwear|hoodies?|trousers|"
+    r"master\s+products)\b"
+)
+_WOOL_EN_PATTERN = re.compile(
+    r"(?i)(\d+\s?%\s*(?:recycled\s+|virgin\s+|merino\s+)?(?:wool|merino|cashmere|sheepskin|shearling|lambswool)"
+    r"|merino\s+wool|lambs?['’]?\s?wool|lamb\s+(?:lining|fur|lined)|shearling|sheepskin|cashmere|merino|wool|lamb)"
+)
+
+
+def _wool_snippet(text: str) -> str:
+    """优先取带百分比的成分（如 65% Recycled Wool），否则取命中的英文词。"""
+    hits = [m.group(0) for m in _WOOL_EN_PATTERN.finditer(text or "")]
+    with_pct = [h for h in hits if "%" in h]
+    return (with_pct or hits or [""])[0]
+
+
+def collect_unpublished_wool_shoes(brand: str) -> pd.DataFrame:
+    """未发布（无渠道产品ID）且含羊绒类材质的鞋，附预生成标题，按有货尺码数倒序。"""
+    brand = brand.lower()
+    if brand not in SHOE_BRANDS:
+        return pd.DataFrame()
+    out = []
+    for r in _load_rows(brand, published=False):
+        code = r["product_code"]
+        en_title = r.get("product_title") or ""
+        if not en_title or NON_SHOE_PATTERN.search(en_title):
+            continue
+        txt = "" if (r.get("product_material") or r.get("feature")) else _read_txt(brand, code)
+        blob = " ".join(filter(None, [r.get("product_description"), r.get("product_material"), r.get("feature"), txt]))
+        if not detect_wool_keyword(en_title, blob):
+            continue
+        try:
+            title, err = _title_shoe(brand, r, _shoe_content(r, txt)), ""
+        except Exception as e:
+            title, err = "", str(e)
+        out.append({
+            "品牌": brand,
+            "商品编码": code,
+            "英文名": en_title,
+            "有货尺码数": int(r.get("sizes_in_stock") or 0),
+            "总库存": int(r.get("total_stock") or 0),
+            "羊毛成分": _wool_snippet(f"{r.get('feature') or ''} {r.get('product_material') or ''} {blob}"),
+            "预生成标题": title,
+            "标题字节数": _gbk_len(title),
+            "备注": err,
+        })
+    df = pd.DataFrame(out)
+    if not df.empty:
+        df = df.sort_values(["有货尺码数", "总库存"], ascending=False).reset_index(drop=True)
+    return df
 
 
 def export_wool_titles(brands: list[str], output_dir: str | Path) -> Path:
@@ -191,14 +253,30 @@ def export_wool_titles(brands: list[str], output_dir: str | Path) -> Path:
         summary.append({"品牌": b, "商品数": len(df)})
         print(f"✅ {b}: {len(df)} 个")
 
+    unpub = [collect_unpublished_wool_shoes(b) for b in brands if b.lower() in SHOE_BRANDS]
+    unpub_df = pd.concat([d for d in unpub if not d.empty], ignore_index=True) if any(not d.empty for d in unpub) else pd.DataFrame()
+    for b in brands:
+        if b.lower() in SHOE_BRANDS:
+            sub = unpub_df[unpub_df["品牌"] == b.lower()] if not unpub_df.empty else unpub_df
+            n_stock = int((sub["有货尺码数"] > 0).sum()) if not sub.empty else 0
+            for row in summary:
+                if row["品牌"] == b:
+                    row["未发布羊绒鞋"] = len(sub)
+                    row["其中有库存"] = n_stock
+
     with pd.ExcelWriter(out_path, engine="openpyxl") as w:
         pd.DataFrame(summary).to_excel(w, sheet_name="汇总", index=False)
+        if not unpub_df.empty:
+            unpub_df.to_excel(w, sheet_name="未发布羊绒鞋", index=False)
+            ws = w.sheets["未发布羊绒鞋"]
+            for col, width in zip("ABCDEFGHI", [10, 18, 45, 10, 8, 24, 70, 10, 20]):
+                ws.column_dimensions[col].width = width
         for b, df in frames.items():
             df.to_excel(w, sheet_name=b[:31], index=False)
             ws = w.sheets[b[:31]]
-            for col, width in zip("ABCDEFGHIJ", [10, 16, 22, 22, 70, 10, 8, 45, 10, 30]):
+            for col, width in zip("ABCDEFGHI", [10, 16, 22, 70, 10, 8, 45, 10, 30]):
                 ws.column_dimensions[col].width = width
-            for row in ws.iter_rows(min_row=2, min_col=3, max_col=4):
+            for row in ws.iter_rows(min_row=2, min_col=3, max_col=3):
                 for cell in row:
                     cell.number_format = "@"
 
