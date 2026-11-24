@@ -1,6 +1,6 @@
 import os
 import subprocess
-from config import GEOX, resolve_shared_path
+from config import GEOX, resolve_shared_path, stock_exclude_path
 from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 from brands.geox.collect_product_links import collect_all_product_links
 from channels.jingya.ingest.import_txt_to_db import import_txt_to_db_supplier
@@ -79,7 +79,7 @@ def main():
 
     print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
     stock_dest_excel_folder = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\input")
-    export_stock_excel("geox",stock_dest_excel_folder)
+    export_stock_excel("geox", stock_dest_excel_folder, exclude_excel_file=stock_exclude_path("geox"))
 
     print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
     price_dest_excel = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\geox\publication_prices")

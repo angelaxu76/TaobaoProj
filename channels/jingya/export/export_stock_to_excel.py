@@ -11,8 +11,9 @@
 依赖：pandas openpyxl psycopg2-binary
 """
 
+import re
 from pathlib import Path
-from typing import Optional, List, Set
+from typing import Optional, List, Set, Tuple
 
 import pandas as pd
 import openpyxl
@@ -25,37 +26,73 @@ except Exception:
     PGSQL_CONFIG = {}
 
 
-def _load_exclude_codes_from_excel(excel_path: Path) -> Set[str]:
+_EMPTY_CELL = {"", "NAN", "NONE", "NAT"}
+_SIZE_SPLIT_RE = re.compile(r"[,，、/;；\s]+")
+
+
+def _norm_code(v) -> str:
+    return str(v).strip().upper()
+
+
+def _norm_size(v) -> str:
+    """尺码归一化：去空格、大写，Excel 数字 43.0 → 43。"""
+    s = str(v).strip().upper()
+    if re.fullmatch(r"\d+\.0+", s):
+        s = s.split(".")[0]
+    return s
+
+
+def _load_exclude_from_excel(excel_path: Path) -> Tuple[Set[str], Set[Tuple[str, str]]]:
     """
-    从 Excel 读取白名单商品编码（大写）。
-    自动识别列名含 'code' 或 '编码' 的列。
+    从 Excel 读取库存导出排除名单。返回 (整款排除编码, {(编码, 尺码)} 按尺码排除)。
+
+    - 编码列：列名含 'code' 或 '编码'（必需）
+    - 尺码列：列名含 'size' 或 '尺码'（可选）
+        * 尺码留空 → 该商品编码所有尺码都不导出（整款排除）
+        * 尺码有值 → 只排除这些尺码，其余尺码正常导出；
+          一格可填多个尺码，用逗号/顿号/斜杠/空格分隔，如 "42,43"
     文件不存在或无法解析时返回空集合。
     """
     if not excel_path.exists():
-        print(f"[INFO] 白名单文件未找到：{excel_path}（不做排除）")
-        return set()
+        print(f"[INFO] 排除名单文件未找到：{excel_path}（不做排除）")
+        return set(), set()
     try:
-        df_exc = pd.read_excel(excel_path)
+        df_exc = pd.read_excel(excel_path, dtype=str)
     except Exception as e:
-        print(f"[WARN] 无法读取白名单Excel {excel_path}: {e}")
-        return set()
+        print(f"[WARN] 无法读取排除名单Excel {excel_path}: {e}")
+        return set(), set()
 
-    candidate_cols = [
-        col for col in df_exc.columns
-        if "code" in str(col).lower() or "编码" in str(col)
-    ]
-    if not candidate_cols:
-        print(f"[WARN] 白名单Excel中未找到含'code'/'编码'的列，列名={list(df_exc.columns)}")
-        return set()
+    code_cols = [c for c in df_exc.columns if "code" in str(c).lower() or "编码" in str(c)]
+    if not code_cols:
+        print(f"[WARN] 排除名单Excel中未找到含'code'/'编码'的列，列名={list(df_exc.columns)}")
+        return set(), set()
+    size_cols = [c for c in df_exc.columns if "size" in str(c).lower() or "尺码" in str(c)]
+    code_col = code_cols[0]
+    size_col = size_cols[0] if size_cols else None
 
-    col_use = candidate_cols[0]
-    codes = {
-        v.strip().upper()
-        for v in df_exc[col_use].astype(str).tolist()
-        if v.strip() and v.strip().upper() != "NAN"
-    }
-    print(f"[INFO] 白名单加载 {len(codes)} 条商品编码（来自列 '{col_use}'）")
-    return codes
+    whole_codes: Set[str] = set()
+    code_sizes: Set[Tuple[str, str]] = set()
+    for _, row in df_exc.iterrows():
+        code = _norm_code(row[code_col])
+        if code in _EMPTY_CELL:
+            continue
+        raw_size = "" if size_col is None else str(row[size_col]).strip()
+        if raw_size.upper() in _EMPTY_CELL:
+            whole_codes.add(code)
+            continue
+        for s in _SIZE_SPLIT_RE.split(raw_size):
+            s = _norm_size(s)
+            if s and s not in _EMPTY_CELL:
+                code_sizes.add((code, s))
+
+    print(f"[INFO] 排除名单加载：整款 {len(whole_codes)} 个编码，按尺码 {len(code_sizes)} 个SKU"
+          f"（编码列 '{code_col}'，尺码列 '{size_col or '无'}'）")
+    return whole_codes, code_sizes
+
+
+def _load_exclude_codes_from_excel(excel_path: Path) -> Set[str]:
+    """兼容旧接口：只返回整款排除的商品编码。"""
+    return _load_exclude_from_excel(excel_path)[0]
 
 SHEET_NAME = "sheet1"
 HEADERS = ["渠道产品ID(必填)", "skuID", "库存(必填)"]
@@ -85,8 +122,10 @@ def export_stock_excel(
     """
     导出鲸芽库存更新 Excel。
 
-    exclude_excel_file: 可选。Excel 白名单路径，列名含 'code' 或 '编码'。
-                        名单内的商品编码（product_code）将从导出结果中排除。
+    exclude_excel_file: 可选。排除名单 Excel 路径：
+                        - 编码列（列名含 'code'/'编码'）必需
+                        - 尺码列（列名含 'size'/'尺码'）可选；留空=整款排除，
+                          有值=只排除该编码下的这些尺码（如自有 43 码库存，不随官网更新）
     """
     brand_l = brand.lower().strip()
     if brand_l not in BRAND_CONFIG:
@@ -100,27 +139,39 @@ def export_stock_excel(
 
     # 0) 加载白名单（若有）
     exclude_codes: Set[str] = set()
+    exclude_code_sizes: Set[Tuple[str, str]] = set()
     if exclude_excel_file:
-        exclude_codes = _load_exclude_codes_from_excel(Path(exclude_excel_file))
+        exclude_codes, exclude_code_sizes = _load_exclude_from_excel(Path(exclude_excel_file))
 
-    # 1) 读取数据：仅 channel_product_id 非空/非空串；同时取 product_code 供白名单过滤
+    # 1) 读取数据：仅 channel_product_id 非空/非空串；同时取 product_code/size 供排除过滤
     conn = psycopg2.connect(
         host=pgcfg["host"], port=pgcfg["port"],
         user=pgcfg["user"], password=pgcfg["password"], dbname=pgcfg["dbname"],
     )
     sql = f"""
-        SELECT channel_product_id, skuid, stock_count, product_code
+        SELECT channel_product_id, skuid, stock_count, product_code, size
         FROM {table}
         WHERE channel_product_id IS NOT NULL AND TRIM(channel_product_id) <> ''
     """
     df = pd.read_sql(sql, conn)
     conn.close()
 
-    # 1b) 按白名单排除
-    if exclude_codes:
+    # 1b) 按排除名单过滤：整款 / 按尺码
+    if exclude_codes or exclude_code_sizes:
         before = len(df)
-        df = df[~df["product_code"].astype(str).str.strip().str.upper().isin(exclude_codes)]
-        print(f"[INFO] 白名单排除：{before - len(df)} 条（剩余 {len(df)} 条）")
+        codes_n = df["product_code"].map(_norm_code)
+        mask = codes_n.isin(exclude_codes)
+        if exclude_code_sizes:
+            sizes_n = df["size"].map(_norm_size)
+            pair_hit = pd.Series(list(zip(codes_n, sizes_n)), index=df.index).isin(exclude_code_sizes)
+            matched = set(zip(codes_n[pair_hit], sizes_n[pair_hit]))
+            unmatched = exclude_code_sizes - matched
+            if unmatched:
+                print(f"[WARN] 以下 编码+尺码 在已绑定库存中未找到（请核对尺码写法）："
+                      f"{sorted(unmatched)[:20]}{' ...' if len(unmatched) > 20 else ''}")
+            mask |= pair_hit
+        df = df[~mask]
+        print(f"[INFO] 排除名单过滤：{before - len(df)} 条SKU（剩余 {len(df)} 条）")
 
     # 1c) 安全校验：已发布商品库存全零比例检查
     _ZERO_STOCK_ABORT_THRESHOLD = 0.70  # 超过70%的已发布商品库存全零时中止

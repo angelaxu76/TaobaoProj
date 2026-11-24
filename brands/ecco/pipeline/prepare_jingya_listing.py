@@ -1,6 +1,6 @@
 import os
 
-from config import ECCO, resolve_shared_path
+from config import ECCO, resolve_shared_path, stock_exclude_path
 from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 
 # ====== 抓取阶段（沿用 ECCO 原逻辑）======
@@ -75,7 +75,7 @@ def main():
 
     print("\n🟡 Step: 6️⃣ 生成鲸芽【库存更新】Excel")
     stock_dest_excel_folder = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\input")
-    export_stock_excel("ecco", stock_dest_excel_folder)
+    export_stock_excel("ecco", stock_dest_excel_folder, exclude_excel_file=stock_exclude_path("ecco"))
 
     print("\n🟡 Step: 6️⃣ 生成鲸芽【价格更新】Excel")
     price_dest_excel = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\ecco\publication_prices")

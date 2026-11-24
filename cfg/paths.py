@@ -40,6 +40,31 @@ def resolve_shared_path(path) -> str:
     return str(Path(LOCAL_SHARED_PREFIX) / rel)
 
 
+def first_existing_path(*paths) -> str:
+    r"""
+    按顺序返回第一个存在的路径；都不存在则返回第一个（交给调用方按"未找到"处理）。
+    用于 VM 与本机目录结构不一致的场景，例如：
+      \\vmware-host\Shared Folders\shared\camper\stock_exclude.xlsx  (VM)
+      E:\shared\GEI_SHARED\camper\stock_exclude.xlsx                  (本机)
+    """
+    for p in paths:
+        try:
+            if os.path.exists(p):
+                return str(p)
+        except OSError:
+            continue
+    return str(paths[0])
+
+
+def stock_exclude_path(brand: str) -> str:
+    r"""各品牌鲸芽库存导出排除名单 stock_exclude.xlsx（VM 优先，本机回退 E:\shared\GEI_SHARED）。"""
+    b = brand.lower().strip()
+    return first_existing_path(
+        rf"\\vmware-host\Shared Folders\shared\{b}\stock_exclude.xlsx",
+        rf"E:\shared\GEI_SHARED\{b}\stock_exclude.xlsx",
+    )
+
+
 GEI_SHARED_BASE = Path(resolve_shared_path(r"\\vmware-host\Shared Folders\shared"))
 
 # 鲸芽后台导出的渠道产品目录文件（GEI@sales_catalogue_export@...xlsx）存放目录，按品牌分子目录

@@ -1,5 +1,5 @@
 import os
-from config import CAMPER, resolve_shared_path
+from config import CAMPER, resolve_shared_path, stock_exclude_path
 from channels.jingya.ingest.import_channel_info import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
 from channels.jingya.export.export_stock_to_excel import export_stock_excel
 from channels.jingya.export.export_channel_price_excel_jingya import export_jiangya_channel_prices
@@ -62,7 +62,7 @@ def main():
 
     print("\\n🟡 Step: 6️⃣ 鲸芽侧更新价格和库存------")
     stock_dest_excel_folder = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\input")
-    export_stock_excel("camper",stock_dest_excel_folder)
+    export_stock_excel("camper", stock_dest_excel_folder, exclude_excel_file=stock_exclude_path("camper"))
 
     print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
     price_dest_excel = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\camper\publication_prices")

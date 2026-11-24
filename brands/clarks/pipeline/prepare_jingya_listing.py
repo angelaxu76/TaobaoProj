@@ -1,7 +1,7 @@
 import os
 import subprocess
 import sys
-from config import CLARKS, resolve_shared_path
+from config import CLARKS, resolve_shared_path, stock_exclude_path
 from channels.jingya.ingest.import_channel_info import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
 from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 from brands.clarks.collect_product_links import generate_product_links
@@ -104,7 +104,7 @@ def main():
 
     print("\\n🟡 Step: 6️⃣ 导出库存用于更新")
     stock_dest_excel_folder = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\input")
-    export_stock_excel("clarks",stock_dest_excel_folder)
+    export_stock_excel("clarks", stock_dest_excel_folder, exclude_excel_file=stock_exclude_path("clarks"))
 
     price_dest_excel = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\clarks\publication_prices")
     export_jiangya_channel_prices("clarks",price_dest_excel,chunk_size=200)
