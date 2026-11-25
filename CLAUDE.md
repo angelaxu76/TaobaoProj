@@ -34,6 +34,7 @@ TaobaoProj/
 ├── ops/            运营入口脚本（直接运行的 CLI）
 │   ├── pricing/    价格相关操作
 │   └── stock/      库存相关操作
+├── creative/       淘宝商品素材（文案生成，后续短视频等），说明见 creative/__init__.py
 ├── analytics/      数据分析流水线
 ├── finance/        财务数据处理
 ├── helper/         底层工具脚本（图片处理/HTML转图/通用Excel工具）
@@ -163,6 +164,8 @@ from config import BRAND_CONFIG, BRAND_NAME_MAP, PGSQL_CONFIG
 | `ops/stock/run_clean_low_stock.py` | 清理低库存商品 |
 | `ops/pricing/run_pricing_validate.py` | 校验定价合规性 |
 | `ops/blocklist/` | 发布黑名单（DB 表 `publish_blocklist`）：建表迁移、刷新折扣、导出/导入 Excel、手动加入/解除，索引见 `ops/blocklist/__init__.py` |
+| `ops/creative/run_generate_copy_excel.py` | 生成卖点1/卖点2/推荐理由/短标题/宝贝名称 → 审核 Excel + 每店一个淘宝素材导入文件（不入库），配置 `cfg/creative_config.py` |
+| `ops/creative/run_generate_video.py` | 商品图片（品牌 IMAGE_PROCESS 目录）→ 1:1 主图视频 + 视频清单（需 `pip install imageio-ffmpeg`） |
 
 **发布黑名单**：核心库 `common/publication/publish_blocklist.py`，数据在 PostgreSQL 表 `publish_blocklist`（不再用 Excel）。
 `generate_publication_excel_*.py` 调 `load_publish_blocklist()` 过滤；`release_on_discount=TRUE` 的商品在供应商打折后自动放行。
