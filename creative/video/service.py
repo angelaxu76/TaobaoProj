@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from config import BRAND_CONFIG
+
 from creative.copywriting.copy_excel import STORE_ID_PREFIX
 from creative.copywriting.service import generate_for_brand
 from creative.store_items import build_store_items
@@ -24,17 +26,26 @@ def _render_one(args):
     return out
 
 
-def make_videos(brands: list[str], out_dir: Path, codes: list[str] | None = None, style: VideoStyle | None = None,
-                copy_mode: str = "safe", use_ai: bool = True, reuse: dict | None = None, limit: int | None = None,
-                workers: int = 4, overwrite: bool = False, image_dirs: dict[str, Path] | None = None,
-                stores: list[str] | None = None) -> Path | None:
+def video_dir(brand: str, root: Path | None = None) -> Path:
+    """视频输出目录：默认 {品牌 BASE}\\document\\video（流水线清理只清 publication / repulibcation，不会删）。
+    品牌配置里可用 VIDEO_DIR 单独指定；root 不为空时改为 {root}\\{品牌}（测试用）。"""
+    if root is not None:
+        return Path(root) / brand
+    cfg = BRAND_CONFIG[brand]
+    return Path(cfg.get("VIDEO_DIR", Path(cfg["BASE"]) / "document" / "video"))
+
+
+def make_videos(brands: list[str], out_root: Path | None = None, codes: list[str] | None = None,
+                style: VideoStyle | None = None, copy_mode: str = "safe", use_ai: bool = True,
+                reuse: dict | None = None, limit: int | None = None, workers: int = 4, overwrite: bool = False,
+                image_dirs: dict[str, Path] | None = None, stores: list[str] | None = None) -> list[Path]:
     """
+    视频和清单都放各品牌自己的目录（见 video_dir）。
     codes: 只做这些商品编码/渠道产品ID；None = 图片目录里的全部商品。
     reuse: 审核过的文案（copy_excel.read_copy_excel），有则直接用作字幕。
-    返回视频清单 Excel 路径。
+    返回各品牌视频清单 Excel 路径。
     """
     style = style or VideoStyle()
-    out_dir = Path(out_dir)
     jobs, records = [], []
     for brand in brands:
         brand = brand.lower()
@@ -60,7 +71,7 @@ def make_videos(brands: list[str], out_dir: Path, codes: list[str] | None = None
             if limit is not None and n_brand >= limit:
                 break
             n_brand += 1
-            out = out_dir / brand / f"{p.product_code}.mp4"
+            out = video_dir(brand, out_root) / f"{p.product_code}.mp4"
             texts = [r.get(f, "") for f in CAPTION_FIELDS]
             records.append((p, r, out, len(pics[:style.max_images])))
             if overwrite or not out.exists():
@@ -68,7 +79,7 @@ def make_videos(brands: list[str], out_dir: Path, codes: list[str] | None = None
 
     if not records:
         print("⚠️ 没有可生成的视频")
-        return None
+        return []
     print(f"🎬 共 {len(records)} 个商品，需渲染 {len(jobs)} 个（已存在的跳过，约 {len(jobs) * 17 / max(workers, 1) / 60:.0f} 分钟）")
     failed = {}
     with ProcessPoolExecutor(max_workers=workers) as pool:
@@ -90,11 +101,15 @@ def make_videos(brands: list[str], out_dir: Path, codes: list[str] | None = None
         "图片数": n, "时长(秒)": style.duration,
         **{k: r.get(f, "") for k, f in zip(["短标题", "卖点1", "卖点2", "推荐理由"], CAPTION_FIELDS)},
     } for p, r, out, n in records]
-    path = out_dir / f"视频清单_{'_'.join(brands)}_{datetime.now():%Y%m%d_%H%M}.xlsx"
-    pd.DataFrame(rows).to_excel(path, index=False)
-    ok = sum(r["状态"] == "已生成" for r in rows)
-    print(f"✅ 视频 {ok}/{len(rows)} 个可用，清单：{path}")
-    return path
+    paths = []
+    stamp = f"{datetime.now():%Y%m%d_%H%M}"
+    for brand, df in pd.DataFrame(rows).groupby("品牌", sort=False):   # 每个品牌一份清单，放在该品牌视频目录
+        path = video_dir(brand, out_root) / f"视频清单_{brand}_{stamp}.xlsx"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        df.to_excel(path, index=False)
+        paths.append(path)
+        print(f"✅ [{brand}] 视频 {(df['状态'] == '已生成').sum()}/{len(df)} 个可用，目录：{path.parent}")
+    return paths
 
 
 def style_with(**kw) -> VideoStyle:
