@@ -67,6 +67,10 @@ def stock_exclude_path(brand: str) -> str:
 
 GEI_SHARED_BASE = Path(resolve_shared_path(r"\\vmware-host\Shared Folders\shared"))
 
+# 鲸芽渠道价格更新 Excel（export_jiangya_channel_prices）统一输出目录，所有品牌共用。
+# Playwright 脚本会扫描这里并自动上传，不要把其它文件写进来。
+JINGYA_PRICE_EXPORT_DIR = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\input_price")
+
 # 鲸芽后台导出的渠道产品目录文件（GEI@sales_catalogue_export@...xlsx）存放目录，按品牌分子目录
 GEI_EXPORT_BASE = Path(r"E:\shared\GEI_SHARED")
 

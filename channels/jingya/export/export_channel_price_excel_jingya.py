@@ -21,7 +21,7 @@ import pandas as pd
 import openpyxl
 import psycopg2
 
-from config import BRAND_CONFIG,BRAND_DISCOUNT
+from config import BRAND_CONFIG, BRAND_DISCOUNT, JINGYA_PRICE_EXPORT_DIR
 try:
     from config import PGSQL_CONFIG  # 兜底
 except Exception:
@@ -102,6 +102,7 @@ def export_jiangya_channel_prices(
 ) -> str:
     """
     通用鲸芽渠道价格导出。
+    - output_dir 不传时写入统一目录 JINGYA_PRICE_EXPORT_DIR（VMShared/input_price）
     新增功能：
     - 可传入 exclude_excel_file 指定Excel路径，读取商品编码列做排除。
     其他逻辑完全保持不变。
@@ -148,7 +149,7 @@ def export_jiangya_channel_prices(
 
     conn.close()
 
-    out_dir = Path(output_dir) if output_dir else Path(cfg["OUTPUT_DIR"])
+    out_dir = Path(output_dir or JINGYA_PRICE_EXPORT_DIR)
     out_dir.mkdir(parents=True, exist_ok=True)
     if df.empty:
         out_file = out_dir / f"{brand_l}_jiangya_price_update_part1_of1.xlsx"
@@ -498,7 +499,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="导出鲸芽渠道价格更新 Excel（固定表头/分文件）")
     parser.add_argument("--brand", required=True, help="品牌名，例如 camper / clarks / geox / barbour")
-    parser.add_argument("--output-dir", default=None, help="可选，导出目录（默认 BRAND_CONFIG[brand]['OUTPUT_DIR']）")
+    parser.add_argument("--output-dir", default=None, help="可选，导出目录（默认 VMShared/input_price）")
     args = parser.parse_args()
     path = export_jiangya_channel_prices(args.brand, args.output_dir)
     print("[OK]", path)

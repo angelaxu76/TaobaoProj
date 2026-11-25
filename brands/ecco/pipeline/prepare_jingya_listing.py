@@ -1,6 +1,6 @@
 import os
 
-from config import ECCO, resolve_shared_path, stock_exclude_path
+from config import ECCO, JINGYA_PRICE_EXPORT_DIR, resolve_shared_path, stock_exclude_path
 from common.maintenance.backup_and_clear import backup_and_clear_brand_dirs
 
 # ====== 抓取阶段（沿用 ECCO 原逻辑）======
@@ -78,7 +78,7 @@ def main():
     export_stock_excel("ecco", stock_dest_excel_folder, exclude_excel_file=stock_exclude_path("ecco"))
 
     print("\n🟡 Step: 6️⃣ 生成鲸芽【价格更新】Excel")
-    price_dest_excel = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\ecco\publication_prices")
+    price_dest_excel = JINGYA_PRICE_EXPORT_DIR
     export_jiangya_channel_prices("ecco", price_dest_excel,chunk_size=200)
 
     print("\n🟡 Step: 7️⃣ 为新品生成【鲸芽上新模板】Excel")

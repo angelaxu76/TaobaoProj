@@ -1,6 +1,6 @@
 from pathlib import Path
 import pandas as pd
-from config import TOAST, resolve_shared_path, stock_exclude_path
+from config import TOAST, JINGYA_PRICE_EXPORT_DIR, resolve_shared_path, stock_exclude_path
 from channels.jingya.ingest.import_channel_info import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
 from channels.jingya.export.export_stock_to_excel import export_stock_excel
 from channels.jingya.export.export_channel_price_excel_jingya import export_jiangya_channel_prices
@@ -18,7 +18,6 @@ from channels.jingya.maintenance.generate_empty_product_links_for_brand import g
 
 STORE_PRICE_INPUT_DIR = resolve_shared_path(r"\\vmware-host\Shared Folders\shared\toast\store_prices")
 STORE_PRICE_OUTPUT_DIR = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\toast\store_prices")
-PUBLICATION_PRICE_DIR = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\toast\publication_prices")
 BLACKLIST_EXCEL_FILE = resolve_shared_path(r"\\vmware-host\Shared Folders\shared\toast\exclude.xlsx")
 
 
@@ -29,7 +28,7 @@ def ensure_default_inputs():
     - store_prices：各淘宝店铺导出的价格 Excel；为空时改价步骤自动跳过
     - exclude.xlsx：黑名单（仅表头 商品编码），等同于不启用黑名单
     """
-    for d in (TOAST["GEI_DIR"], STORE_PRICE_INPUT_DIR, STORE_PRICE_OUTPUT_DIR, PUBLICATION_PRICE_DIR):
+    for d in (TOAST["GEI_DIR"], STORE_PRICE_INPUT_DIR, STORE_PRICE_OUTPUT_DIR, JINGYA_PRICE_EXPORT_DIR):
         Path(d).mkdir(parents=True, exist_ok=True)
 
     blacklist = Path(BLACKLIST_EXCEL_FILE)
@@ -84,7 +83,7 @@ def main():
     export_stock_excel("toast", stock_dest_excel_folder, exclude_excel_file=stock_exclude_path("toast"))
 
     print("\n🟡 Step: 6️⃣ 导出价格用于更新")
-    export_jiangya_channel_prices("toast", PUBLICATION_PRICE_DIR, chunk_size=200)
+    export_jiangya_channel_prices("toast", JINGYA_PRICE_EXPORT_DIR, chunk_size=200)
 
     print("\n🟡 Step: 6️⃣为新品创建excel用于鲸芽侧发布（服装全品类）")
     generate_publication_excels_clothing("toast", all_categories=True, infer_attributes=True)

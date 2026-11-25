@@ -3,7 +3,7 @@ from __future__ import annotations
 
 # ========== split configs (normal imports) ==========
 from cfg.paths import (
-    BASE_DIR, DISCOUNT_EXCEL_DIR, GEI_EXPORT_BASE, ensure_all_dirs,
+    BASE_DIR, DISCOUNT_EXCEL_DIR, GEI_EXPORT_BASE, JINGYA_PRICE_EXPORT_DIR, ensure_all_dirs,
     USER_HOME, DESKTOP_DIR, DOWNLOADS_DIR, ONEDRIVE_UK_DIR, ONEDRIVE_HK_DIR,
     resolve_shared_path, first_existing_path, stock_exclude_path, VM_SHARED_PREFIX, LOCAL_SHARED_PREFIX,
     PUBLISH_BLOCKLIST_FILENAME, PUBLISH_BLOCKLIST_DIRS,

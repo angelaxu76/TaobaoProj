@@ -1,4 +1,4 @@
-from config import MARKSANDSPENCER
+from config import MARKSANDSPENCER, JINGYA_PRICE_EXPORT_DIR
 from channels.jingya.ingest.import_channel_info import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
 from channels.jingya.export.export_stock_to_excel import export_stock_excel
 from channels.jingya.export.export_channel_price_excel_jingya import export_jiangya_channel_prices
@@ -55,7 +55,7 @@ def main():
     # export_stock_excel("marksandspencer",stock_dest_excel_folder)
 
     # print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
-    # price_dest_excel_folder = r"\\vmware-host\Shared Folders\VMShared\marksandspencer\publication_prices"
+    # price_dest_excel_folder = JINGYA_PRICE_EXPORT_DIR
     # export_jiangya_channel_prices("marksandspencer",price_dest_excel_folder,chunk_size=200)
 
 

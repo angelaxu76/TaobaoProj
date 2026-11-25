@@ -20,7 +20,7 @@ brands/barbour/jingya/allocate_supplier_and_price_config.py 两处，现在
 
 import os
 
-from config import resolve_shared_path
+from config import JINGYA_PRICE_EXPORT_DIR, resolve_shared_path
 
 # ══════════════════════════════════════════════════════════════════
 #  阶段开关
@@ -145,7 +145,7 @@ MIN_SIZES_EXEMPT_PREFIXES = ONE_SIZE_PREFIXES
 MANUAL_STOCK_XLSX    = resolve_shared_path(r"\\vmware-host\Shared Folders\shared\barbour\barbour_manual_stock.xlsx")
 MANUAL_PRICE_XLSX    = resolve_shared_path(r"\\vmware-host\Shared Folders\shared\barbour\barbour_manual_price.xlsx")
 STOCK_EXPORT_DIR     = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\input")
-PRICE_EXPORT_DIR     = resolve_shared_path(r"\\vmware-host\Shared Folders\VMShared\barbour\publication_prices")
+PRICE_EXPORT_DIR     = JINGYA_PRICE_EXPORT_DIR  # 所有品牌共用 VMShared\input_price（见 cfg/paths.py）
 
 # ── D 阶段：淘宝店铺价格导出 ──────────────────────────────────────
 # 淘宝店铺导出的 Excel 所在文件夹（每个店铺一个文件）

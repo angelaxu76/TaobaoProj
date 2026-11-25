@@ -1,4 +1,4 @@
-from config import CAMPER
+from config import CAMPER, JINGYA_PRICE_EXPORT_DIR
 from channels.jingya.ingest.import_channel_info import insert_jingyaid_to_db,insert_missing_products_with_zero_stock
 from channels.jingya.export.export_stock_to_excel import export_stock_excel
 from channels.jingya.export.export_channel_price_excel_jingya import export_jiangya_channel_prices
@@ -36,7 +36,7 @@ def main():
     export_stock_excel("camper",stock_dest_excel_folder)
 
     print("\\n🟡 Step: 6️⃣ 导出价格用于更新")
-    price_dest_excel_folder = r"D:\TB\Products\camper\repulibcation\publication_prices"
+    price_dest_excel_folder = JINGYA_PRICE_EXPORT_DIR
     export_jiangya_channel_prices("camper",price_dest_excel_folder)
 
 
