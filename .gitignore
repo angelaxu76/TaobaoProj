@@ -25,3 +25,6 @@ models/*.onnx
 # System
 .DS_Store
 Thumbs.db
+
+# Background music for creative/video (large binaries, keep locally)
+creative/music/

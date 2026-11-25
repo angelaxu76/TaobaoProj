@@ -2,6 +2,7 @@
 """批量生成主图视频：图片目录里的商品 → 取文案 → 渲染（多进程）→ 视频清单 Excel。"""
 from __future__ import annotations
 
+import hashlib
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import replace
 from datetime import datetime
@@ -15,7 +16,7 @@ from creative.copywriting.copy_excel import STORE_ID_PREFIX
 from creative.copywriting.service import generate_for_brand
 from creative.store_items import build_store_items
 from creative.video.images import image_dir, scan_images
-from creative.video.render import VideoStyle, render_video
+from creative.video.render import VideoStyle, list_music, media_duration, render_video
 
 CAPTION_FIELDS = ["short_title", "selling_point_1", "selling_point_2", "recommend_reason"]
 
@@ -24,6 +25,28 @@ def _render_one(args):
     images, texts, out, style = args
     render_video(images, texts, out, style)
     return out
+
+
+class MusicPicker:
+    """style.music 为文件夹时，每个商品挑一首、并在前 MAX_START 秒内挑一个起播点。
+    按商品编码固定（不是每次运行都变），所以重做同一商品时背景音乐不变；音乐文件夹增删文件后会重新分配。"""
+    MAX_START = 20.0
+
+    def __init__(self, spec, duration: float):
+        self.files = list_music(spec)
+        self.duration = duration
+        self._len: dict[Path, float] = {}
+
+    def pick(self, code: str) -> tuple[str | None, float]:
+        if not self.files:
+            return None, 0.0
+        h = int(hashlib.md5(code.upper().encode()).hexdigest(), 16)
+        f = self.files[h % len(self.files)]
+        if f not in self._len:
+            self._len[f] = media_duration(f)
+        room = min(self.MAX_START, self._len[f] - self.duration - 1)
+        start = (h // len(self.files) % 1000) / 1000 * room if room > 0 else 0.0
+        return str(f), round(start, 1)
 
 
 def video_dir(brand: str, root: Path | None = None) -> Path:
@@ -46,6 +69,9 @@ def make_videos(brands: list[str], out_root: Path | None = None, codes: list[str
     返回各品牌视频清单 Excel 路径。
     """
     style = style or VideoStyle()
+    music = MusicPicker(style.music, style.duration)
+    if music.files:
+        print(f"🎵 背景音乐 {len(music.files)} 首，按商品编码分配")
     jobs, records = [], []
     for brand in brands:
         brand = brand.lower()
@@ -73,9 +99,11 @@ def make_videos(brands: list[str], out_root: Path | None = None, codes: list[str
             n_brand += 1
             out = video_dir(brand, out_root) / f"{p.product_code}.mp4"
             texts = [r.get(f, "") for f in CAPTION_FIELDS]
-            records.append((p, r, out, len(pics[:style.max_images])))
+            track, start = music.pick(p.product_code)
+            p_style = replace(style, music=track, music_start=start)
+            records.append((p, r, out, len(pics[:style.max_images]), track, start))
             if overwrite or not out.exists():
-                jobs.append((pics, texts, out, style))
+                jobs.append((pics, texts, out, p_style))
 
     if not records:
         print("⚠️ 没有可生成的视频")
@@ -93,14 +121,15 @@ def make_videos(brands: list[str], out_root: Path | None = None, codes: list[str
             if i % 10 == 0 or i == len(jobs):
                 print(f"   … {i}/{len(jobs)}")
 
-    store_items = build_store_items([p for p, _, _, _ in records], stores)
+    store_items = build_store_items([p for p, *_ in records], stores)
     rows = [{
         "品牌": p.brand, "渠道产品ID": p.channel_product_id, "商品编码": p.product_code,
         **{STORE_ID_PREFIX + s.folder: ",".join(s.get(p.product_code)) for s in store_items},
         "视频文件": str(out), "状态": "失败：" + failed[out] if out in failed else ("已生成" if out.exists() else "缺失"),
         "图片数": n, "时长(秒)": style.duration,
+        "背景音乐": Path(track).name if track else "（静音）", "音乐起点(秒)": start if track else "",
         **{k: r.get(f, "") for k, f in zip(["短标题", "卖点1", "卖点2", "推荐理由"], CAPTION_FIELDS)},
-    } for p, r, out, n in records]
+    } for p, r, out, n, track, start in records]
     paths = []
     stamp = f"{datetime.now():%Y%m%d_%H%M}"
     for brand, df in pd.DataFrame(rows).groupby("品牌", sort=False):   # 每个品牌一份清单，放在该品牌视频目录

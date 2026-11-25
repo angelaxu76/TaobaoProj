@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -34,6 +35,34 @@ class VideoStyle:
     text_bottom: int = 110           # 字幕底框离画面底部的距离（像素）
     crf: int = 20
     music: str | None = None         # 背景音乐文件（mp3/m4a）；None = 静音音轨
+    music_start: float = 0.0         # 从音乐第几秒开始
+    music_volume: float = 0.8
+
+
+MUSIC_EXTS = {".mp3", ".m4a", ".aac", ".wav", ".flac", ".ogg"}
+
+
+def list_music(spec: str | Path | None) -> list[Path]:
+    """spec 是文件 → [文件]；是文件夹 → 里面全部音乐文件（按文件名排序）；None → []。"""
+    if not spec:
+        return []
+    p = Path(spec)
+    if p.is_dir():
+        files = sorted(f for f in p.iterdir() if f.suffix.lower() in MUSIC_EXTS)
+        if not files:
+            raise FileNotFoundError(f"音乐文件夹里没有音乐文件：{p}")
+        return files
+    if not p.is_file():
+        raise FileNotFoundError(f"找不到背景音乐：{p}")
+    return [p]
+
+
+def media_duration(path: Path) -> float:
+    """用 ffmpeg 读时长（秒）；读不到返回 0。"""
+    out = subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), "-hide_banner", "-i", str(path)],
+                         capture_output=True, text=True, encoding="utf-8", errors="ignore").stderr
+    m = re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", out)
+    return int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3)) if m else 0.0
 
 
 def _load_square(path: Path, size: int) -> np.ndarray:
@@ -102,9 +131,10 @@ def render_video(images: list[Path], texts: list[str], out_path: Path, style: Vi
     out_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = out_path.with_suffix(".part.mp4")
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
-    audio = (["-stream_loop", "-1", "-i", style.music] if style.music
+    audio = (["-ss", f"{style.music_start:.2f}", "-stream_loop", "-1", "-i", str(style.music)] if style.music
              else ["-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100"])
-    afilter = (["-af", f"afade=t=out:st={max(0, style.duration - 1.5)}:d=1.5"] if style.music else [])
+    afilter = (["-af", f"volume={style.music_volume},afade=t=in:st=0:d=0.5,"
+                       f"afade=t=out:st={max(0, style.duration - 1.5)}:d=1.5"] if style.music else [])
     cmd = [ffmpeg, "-y", "-loglevel", "error",
            "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{s}x{s}", "-r", str(fps), "-i", "-",
            *audio, "-map", "0:v", "-map", "1:a", *afilter,
