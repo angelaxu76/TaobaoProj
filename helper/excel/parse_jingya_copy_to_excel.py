@@ -8,7 +8,7 @@ from config import DESKTOP_DIR
 
 # ========= 在这里直接修改路径 =========
 INPUT_TXT = str(DESKTOP_DIR / "publish/YGLD.txt")
-OUTPUT_XLSX = str(DESKTOP_DIR / "publish/abc.xlsx")
+OUTPUT_XLSX = str(DESKTOP_DIR / "publish/input.xlsx")
 
 # INPUT_TXT = str(DESKTOP_DIR / "WXJ.txt")
 # OUTPUT_XLSX = str(DESKTOP_DIR / "WXJ.xlsx7)
