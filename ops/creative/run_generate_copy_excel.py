@@ -23,7 +23,7 @@ SCOPE = "published"    # published = 已发布；in_stock = 有库存；all = �
 SOURCE = "db"          # db = 数据库里的描述/特征/颜色（推荐）；txt = 品牌 TXT_DIR 下的 TXT
 REUSE_EXCEL: Path | None = None        # 之前输出（可人工改过）的 Excel：已有文案原样保留，只补新商品和空格
 COPY_MODE = "safe"     # safe = 只用可核实的颜色/材质/功能 + 中性短语（推荐，不调用 AI）；ai = AI 撰写（更生动，需人工审核）
-USE_AI = True          # ai 模式下 False = 只用规则短语；系列中文名翻译也用它控制
+USE_AI = True          # ai 模式下 False = 只用规则短语；系列中文名翻译也用它控制（仅 cfg/creative_config.py SERIES_USE_CN=True 时）
 LIMIT: int | None = None               # 每个品牌最多多少个，试跑时填 10
 STORES: list[str] | None = None        # 要输出导入文件的店铺，如 ["五小剑"]；None = 全部启用的店铺
 OUTPUT_DIR = Path(r"D:\TB\Products\creative")

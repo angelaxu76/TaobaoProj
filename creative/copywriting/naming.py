@@ -114,9 +114,10 @@ def gender_word(p: ProductInfo) -> str:
 
 
 def _series_options(series_en: str, core: str, series_cn: str) -> list[str]:
-    first2 = "".join(series_en.split()[:2])
+    toks = [t.strip(".,") for t in series_en.split()]
+    first2 = "".join(toks[:2])
     opts = [first2] if re.search(r"\d", first2) else []   # SOFT 7 → SOFT7：带型号才用两段
-    opts += [core.replace(" ", ""), series_cn]
+    opts += ["".join(toks[:len(core.split())]), series_cn]  # 保留官网原大小写（Pelotas，不改成 PELOTAS）
     return list(dict.fromkeys(o for o in opts if o))
 
 
@@ -139,7 +140,9 @@ def _join(brand_cn: str, series: str, gender: str, cat: str) -> str:
 def _compose(limit: int, brand_cn: str, series_opts: list[str], gender: str, cat: str) -> str:
     cats = list(dict.fromkeys([cat, _short_category(cat)]))
     for opts in (series_opts, [""]):
-        for c in cats:
+        # 带款式名放不下时，品类缩成一个字（看步Pelotas鞋），宁可品类笼统也保住英文款式名
+        generic = [cat[-1]] if opts is series_opts and cat[-1:] in ("鞋", "靴") and cat[-1] not in cats else []
+        for c in cats + generic:
             for s in opts:
                 for g in dict.fromkeys([gender, ""]):
                     name = _join(brand_cn, s, g, c)

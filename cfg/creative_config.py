@@ -97,6 +97,11 @@ SERIES_STOP_WORDS = {
 
 # 系列中文名（优先级最高；ECCO 另外会用 ECCO_SERIES_CN_MAP）。key 用大写。
 # 这里没有的由 AI 翻译一次后存入 creative/copywriting/series_names.json，可直接改该文件，之后保持统一。
+# 短标题/宝贝名称里的款式名是否换成中文：False = 一律保留英文原名（Pelotas 不写成"佩洛"），
+# 放不下时先缩短品类（休闲鞋 → 鞋），再放不下才去掉款式名。中文音译生硬，懂品牌的买家反而怀疑是假货。
+# True = 英文放不下时用下面 SERIES_CN_MAP / ECCO 中文系列名 / series_names.json（AI 翻译）的中文名。
+SERIES_USE_CN = False
+
 SERIES_CN_MAP = {
     "clarks": {"WALLABEE": "袋鼠", "DESERT": "沙漠"},
 }

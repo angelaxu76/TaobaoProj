@@ -3,7 +3,7 @@
 
 画面：每张图缓慢推近/拉远，交叉淡化；字幕依次为 短标题 → 卖点1 → 卖点2 → 推荐理由（同文案脚本）。
 输出：各品牌自己的目录 D:\\TB\\Products\\{品牌}\\document\\video\\
-        {商品编码}.mp4
+        {商品编码}_video.mp4
         视频清单_{品牌}_日期.xlsx（含渠道产品ID、各店淘宝商品ID，方便上传对应）
       document 目录不在流水线清理范围内（只清 publication / repulibcation），视频不会被删。
       想换位置：在 cfg/brands/{品牌}.py 里加 "VIDEO_DIR": 路径。

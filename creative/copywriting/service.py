@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from cfg.creative_config import COPY_LABELS
+from cfg.creative_config import COPY_LABELS, SERIES_USE_CN
 from creative.copywriting.naming import build_names, extract_series, infer_category, series_core
 from creative.copywriting.safe_copy import generate_safe
 from creative.copywriting.selling_points import FIELDS as POINT_FIELDS, generate_selling_points
@@ -47,7 +47,8 @@ def generate_for_brand(brand: str, source: str = "db", scope: str = "published",
 
     results: dict[str, dict] = {}
     if products:
-        series_map = resolve_series_cn(brand, {series_core(extract_series(p)) for p in products}, use_ai)
+        series_map = (resolve_series_cn(brand, {series_core(extract_series(p)) for p in products}, use_ai)
+                      if SERIES_USE_CN else {})
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {pool.submit(build_copy, p, series_map, use_ai, reuse.get((brand, p.product_code)), mode): p
                        for p in products}

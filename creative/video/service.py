@@ -99,7 +99,7 @@ def make_videos(brands: list[str], out_root: Path | None = None, codes: list[str
             if limit is not None and n_brand >= limit:
                 break
             n_brand += 1
-            out = video_dir(brand, out_root) / f"{p.product_code}.mp4"
+            out = video_dir(brand, out_root) / f"{p.product_code}_video.mp4"
             texts = [r.get(f, "") for f in CAPTION_FIELDS]
             track, start = music.pick(p.product_code)
             p_style = replace(style, music=track, music_start=start)
