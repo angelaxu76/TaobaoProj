@@ -10,6 +10,7 @@ from helper.image.trim_sides_batch import trim_sides_batch
 from helper.image.crop_to_square import run_crop_and_expand
 from helper.image.copy_images import copy_images
 from ops.image_rename.rename_by_shot_priority import rename_by_shot_priority
+from ops.creative.run_generate_video import generate_videos_for_codes_file
 from brands.geox.download_product_images import download_geox_images_by_code_file
 import helper.image.cut_square_white_watermark as _cutmod
 
@@ -66,6 +67,9 @@ def main():
     print("生成产品首页图片")
     convert_html_to_images(GEOX["HTML_DIR_FIRST_PAGE"], GEOX["HTML_IMAGE_FIRST_PAGE"],"",6)
     trim_sides_batch(GEOX["HTML_IMAGE_FIRST_PAGE"],GEOX["HTML_CUTTER_FIRST_PAGE"])
+
+    print("生成主图视频（1:1，字幕用商品文案）→ D:\\TB\\Products\\geox\\document\\video")
+    generate_videos_for_codes_file("geox", code_file_path)
 
 
 if __name__ == "__main__":

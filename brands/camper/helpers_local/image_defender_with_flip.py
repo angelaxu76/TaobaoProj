@@ -14,15 +14,16 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 ROTATE_RANGE = (-2, 2)            # 旋转角度范围（度）
 CROP_PERCENT = (0.5, 1.5)         # 裁剪百分比范围（上下左右）
 BORDER_PADDING = 20               # 白边像素
-NOISE_OPACITY = 0.04              # 噪点图层透明度（0~1）
+NOISE_AMPLITUDE = 3               # 噪点幅度（±像素值，均值为 0）
+# 亮度/对比度只往上调：< 1 会把白底整体压暗成浅灰（原来噪点层 + 0.97 系数会让 255 变成 ~246）
+BRIGHTNESS_RANGE = (1.00, 1.03)
+CONTRAST_RANGE = (1.00, 1.03)
 
 def add_noise_layer(img: Image.Image) -> Image.Image:
-    """添加透明噪点图层，扰乱图像指纹"""
-    width, height = img.size
-    noise = np.random.randint(0, 50, (height, width, 3), dtype='uint8')
-    noise_img = Image.fromarray(noise, 'RGB').convert("RGBA")
-    noise_img.putalpha(int(255 * NOISE_OPACITY))
-    return Image.alpha_composite(img.convert("RGBA"), noise_img)
+    """叠加均值为 0 的随机噪点，扰乱图像指纹（不改变整体亮度，白底仍为白色）"""
+    arr = np.asarray(img.convert("RGB"), dtype=np.int16)
+    noise = np.random.randint(-NOISE_AMPLITUDE, NOISE_AMPLITUDE + 1, arr.shape, dtype=np.int16)
+    return Image.fromarray(np.clip(arr + noise, 0, 255).astype(np.uint8), "RGB")
 
 def safe_crop(img: Image.Image, crop_percent=1.0):
     """安全裁剪四周，避免裁掉主体"""
@@ -50,8 +51,8 @@ def edit_image(img_path: Path, out_path: Path):
         img = safe_crop(img, crop_percent)
 
         # 5️⃣ 亮度 & 对比度微调
-        img = ImageEnhance.Brightness(img).enhance(random.uniform(0.97, 1.03))
-        img = ImageEnhance.Contrast(img).enhance(random.uniform(0.97, 1.03))
+        img = ImageEnhance.Brightness(img).enhance(random.uniform(*BRIGHTNESS_RANGE))
+        img = ImageEnhance.Contrast(img).enhance(random.uniform(*CONTRAST_RANGE))
 
         # 6️⃣ 添加噪点扰动
         img = add_noise_layer(img)

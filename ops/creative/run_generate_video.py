@@ -8,6 +8,8 @@
       document 目录不在流水线清理范围内（只清 publication / repulibcation），视频不会被删。
       想换位置：在 cfg/brands/{品牌}.py 里加 "VIDEO_DIR": 路径。
 运行：python -m ops.creative.run_generate_video
+品牌图片流水线（brands/*/pipeline/image_pipeline_runner.py）最后一步会调用 generate_videos_for_codes_file()，
+只做本批 publication_codes.txt 里的商品，参数用下面这一份。
 """
 from pathlib import Path
 
@@ -29,6 +31,27 @@ WORKERS = 8                            # 同时渲染几个（本机 32 核；�
 OVERWRITE = False                      # True = 已有视频也重做（改了文案/时长后用）
 STORES: list[str] | None = None        # 清单里列哪些店的淘宝商品ID；None = 全部启用的店铺
 # ==============
+
+
+def read_code_file(path) -> list[str]:
+    """publication_codes.txt：一行一个商品编码，空行和 # 开头的行忽略。"""
+    lines = Path(path).read_text(encoding="utf-8-sig").splitlines()
+    return [s.strip() for s in lines if s.strip() and not s.strip().startswith("#")]
+
+
+def generate_videos_for_codes_file(brand: str, code_file) -> list[Path]:
+    """给品牌图片流水线用：为 code_file 里的商品生成主图视频（参数同本文件顶部，已存在的视频跳过）。"""
+    if not Path(code_file).is_file():
+        print(f"⚠️ [{brand}] 编码文件不存在，跳过视频：{code_file}")
+        return []
+    return make_videos(
+        [brand],
+        codes=read_code_file(code_file),
+        style=style_with(duration=DURATION, music=MUSIC),
+        copy_mode=COPY_MODE,
+        workers=WORKERS, overwrite=OVERWRITE, stores=STORES,
+    )
+
 
 if __name__ == "__main__":
     make_videos(

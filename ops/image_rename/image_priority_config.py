@@ -50,7 +50,8 @@ IMAGE_PRIORITY_CONFIG = {
     "camper": {
         # 同时供 brands/camper/helpers_local/rename_suffix.py（改 IMAGE_CUTTER）和
         # rename_by_shot_priority（改 IMAGE_PROCESS）两处使用，见文件头注释
-        "IMAGE_RENAME_PRIORITY": ["F", "C", "L", "P", "T"],
+        # DF/FF：官网灰底棚拍的局部特写/倒影摆拍（补充图，多数款式只有一张），排在最后 → __6/__7
+        "IMAGE_RENAME_PRIORITY": ["F", "C", "L", "P", "T", "DF", "FF"],
         # 原始后缀 F/C/L/T 对应改名后的 __1/__2/__3/__5（跳过 P=__4，维持原有偏好）
         "IMAGE_FIRST_PRIORITY": [1, 2, 3, 5],
         # 原始后缀 C/F/L/T 对应 __2/__1/__3/__5

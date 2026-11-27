@@ -10,6 +10,7 @@ from helper.image.copy_images import copy_images
 from brands.clarks.download_product_images import download_images_by_code_file,download_all_images_from_product_links
 from brands.camper.helpers_local.image_defender_with_flip import batch_process_images
 from ops.image_rename.rename_by_shot_priority import rename_by_shot_priority
+from ops.creative.run_generate_video import generate_videos_for_codes_file
 
 def main():
     code_file_path = r"D:\TB\Products\clarks\repulibcation\publication_codes.txt"
@@ -58,6 +59,9 @@ def main():
 
     # print("导出发布商品的价格")
     # export_channel_price_excel_from_txt("clarks",code_file_path)
+
+    print("生成主图视频（1:1，字幕用商品文案）→ D:\\TB\\Products\\clarks\\document\\video")
+    generate_videos_for_codes_file("clarks", code_file_path)
 
 
 if __name__ == "__main__":

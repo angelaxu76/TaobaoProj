@@ -9,6 +9,7 @@ from helper.image.merge_product_images import batch_merge_images
 from helper.html.html_to_png_multithread import convert_html_to_images
 from helper.image.trim_sides_batch import trim_sides_batch
 from ops.image_rename.rename_by_shot_priority import rename_by_shot_priority
+from ops.creative.run_generate_video import generate_videos_for_codes_file
 
 
 def main():
@@ -23,16 +24,15 @@ def main():
     print("下载指定商品编码的的图片")
     download_images_from_codes(code_file_path)
 
+    # 顺序与 ECCO 一致：先方形化（DOWNLOAD → CUTTER），再抖动+翻转（CUTTER → PROCESS），
+    # 这样 IMAGE_PROCESS 就是最终可用的方图（详情页 HTML、主图视频都读这个目录）。
+    print("将图片变成正方形（白底补边）")
+    expand_images_in_folder(CAMPER["IMAGE_DOWNLOAD"], CAMPER["IMAGE_CUTTER"])
+
     print("图抖动加上水平翻转")
-    INPUT_DIR = Path(CAMPER["IMAGE_DOWNLOAD"])
     OUTPUT_DIR = Path(CAMPER["IMAGE_PROCESS"])
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    batch_process_images(INPUT_DIR,OUTPUT_DIR)
-
-    input_folder = CAMPER["IMAGE_PROCESS"]
-    output_folder = CAMPER["IMAGE_CUTTER"]
-    print("将图片变成正方形")
-    expand_images_in_folder(input_folder, output_folder)
+    batch_process_images(Path(CAMPER["IMAGE_CUTTER"]), OUTPUT_DIR)
 
     print("将图片merge到一张图片中")
     batch_merge_images(CAMPER["IMAGE_CUTTER"],CAMPER["MERGED_DIR"], width=750)
@@ -60,6 +60,9 @@ def main():
     # export_channel_price_excel_from_txt("camper",code_file_path)
     # code_missing_path = r"D:\TB\Products\camper\repulibcation\publication_codes_missing.txt"
     # export_channel_price_excel_from_channel_ids("camper",code_missing_path)
+
+    print("生成主图视频（1:1，字幕用商品文案）→ D:\\TB\\Products\\camper\\document\\video")
+    generate_videos_for_codes_file("camper", code_file_path)
 
 
 if __name__ == "__main__":

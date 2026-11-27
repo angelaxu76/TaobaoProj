@@ -85,9 +85,11 @@ def make_videos(brands: list[str], out_root: Path | None = None, codes: list[str
             wanted = [c for c in wanted if len(imgs[c]) >= 2][:limit]   # 试跑时只为这几个生成文案
         items = generate_for_brand(brand, codes=wanted, use_ai=use_ai, reuse=reuse, mode=copy_mode)
         found = {p.product_code.upper() for p, _ in items}
-        no_db = sorted(c for c in imgs if c in set(wanted) and c not in found)
-        if no_db:
-            print(f"⚠️ [{brand}] {len(no_db)} 个商品有图片但数据库里没有（无法取文案），跳过：{', '.join(no_db[:8])}")
+        matched = found | {p.channel_product_id.upper() for p, _ in items}   # codes 里也可能是渠道产品ID
+        unmatched = sorted(set(wanted) - matched)
+        if unmatched:
+            print(f"⚠️ [{brand}] {len(unmatched)} 个编码在数据库里找不到（无法取文案），跳过：{', '.join(unmatched[:8])}"
+                  f"{' …' if len(unmatched) > 8 else ''}")
         n_brand = 0
         for p, r in items:
             pics = imgs.get(p.product_code.upper(), [])

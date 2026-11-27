@@ -6,6 +6,7 @@ from common.publication.generate_html_FristPage import generate_first_page_from_
 from helper.html.html_to_png_multithread import convert_html_to_images
 from helper.image.trim_sides_batch import trim_sides_batch
 from ops.image_rename.rename_by_shot_priority import rename_by_shot_priority
+from ops.creative.run_generate_video import generate_videos_for_codes_file
 from brands.ecco.download_product_images_v2 import download_images_by_code_file
 from config import ECCO
 
@@ -43,6 +44,8 @@ def main():
     convert_html_to_images(ECCO["HTML_DIR_FIRST_PAGE"], ECCO["HTML_IMAGE_FIRST_PAGE"],"",6)
     trim_sides_batch(ECCO["HTML_IMAGE_FIRST_PAGE"],ECCO["HTML_CUTTER_FIRST_PAGE"])
 
+    print("生成主图视频（1:1，字幕用商品文案）→ D:\\TB\\Products\\ecco\\document\\video")
+    generate_videos_for_codes_file("ecco", code_file_path)
 
 
 if __name__ == "__main__":
