@@ -23,7 +23,7 @@ CODES_EXCEL: Path | None = None        # 只做 Excel 里的商品（列：商�
 REUSE_EXCEL: Path | None = None        # 审核修改过的 商品文案_*.xlsx：字幕直接用里面的文案
 COPY_MODE = "safe"                     # 没有 REUSE_EXCEL 时现场生成文案：safe = 保守（推荐）；ai = AI 撰写
 DURATION = 15                          # 秒，淘宝建议 30 秒以内
-MUSIC: str | None = str(Path(__file__).resolve().parents[2] / "creative" / "music")
+MUSIC: str | None = r"D:\music"       # 音乐文件太大不进 git，每台机器（含虚拟机）各自放一份到 D:\music
                                        # 背景音乐：文件夹 = 每个视频从里面挑一首（按商品编码固定，重做不变）；
                                        # 单个文件 = 全部用这首；None = 静音。请只放可商用的音乐
 LIMIT: int | None = None               # 每个品牌最多做几个，试跑填 3
