@@ -55,13 +55,14 @@ STYLE_MAP_SHOES = {
 def _parse_code_size_from_goods_name(name: str) -> Tuple[str, str]:
     """
     从 “货品名称” 中解析：颜色分类:CODE;尺码:S    （也兼容 “颜色:CODE”，以及 “尺码:S;颜色分类:CODE” 顺序颠倒）
+    单尺码商品（围巾/帽子等）只有 “颜色分类:CODE”，此时返回 (CODE, "")，尺码由调用方从 DB 补。
     """
     s = str(name or "")
     m_code = re.search(r"(?:颜色分类|颜色)\s*[:：]\s*([^;；]+)", s)
     m_size = re.search(r"尺码\s*[:：]\s*([^;；]+)", s)
-    if not m_code or not m_size:
+    if not m_code:
         return "", ""
-    return m_code.group(1).strip(), m_size.group(1).strip()
+    return m_code.group(1).strip(), (m_size.group(1).strip() if m_size else "")
 
 def _parse_code_size_from_any(text: str) -> Tuple[str, str]:
     """

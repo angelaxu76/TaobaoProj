@@ -6,7 +6,7 @@ from pathlib import Path
 from config import BRAND_CONFIG
 from common.product.size_utils import clean_size_for_barbour
 from cainiao.barbour_goods_type import build_barbour_goods_name, get_package_spec
-from cainiao.generate_binding_goods_excel import _parse_code_size_from_goods_name
+from cainiao.generate_binding_goods_excel import _parse_code_size_from_goods_name, _fetch_maps
 
 # ======================= ✅【参数配置区】=======================
 BRAND = "barbour"                     # 这里默认做 Barbour 服装
@@ -102,18 +102,29 @@ def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 50
     # —— 下面沿用你原有逻辑（保持不变），仅在取 key 时按品牌差异化 —— 
     brand_label = BRAND_MAP.get(brand, brand)
 
-    df = pd.read_excel(infile)
+    # 单尺码商品货品名称里没有尺码：按 货品ID → inventory 取尺码（与绑定脚本一致）
+    id_to_channel_item, item_to_code_size, _ = _fetch_maps(table_inventory, pg)
+
+    df = pd.read_excel(infile, dtype=str)
     out_rows = []
+    skipped = []
 
     for _, row in df.iterrows():
         raw = str(row.get("货品名称", ""))
         code_field = str(row.get("货品编码", ""))
         barcode = str(row.get("条形码", ""))
+        if barcode == "nan":
+            barcode = ""
 
-        # 支持 “颜色分类:CODE;尺码:S” / “颜色:CODE;尺码:S” / “尺码:S;颜色分类:CODE”
+        # 支持 “颜色分类:CODE;尺码:S” / “颜色:CODE;尺码:S” / “尺码:S;颜色分类:CODE” / 仅 “颜色分类:CODE”
         color_code, size_raw = _parse_code_size_from_goods_name(raw)
         if not color_code:
+            skipped.append(raw)
             continue
+        if not size_raw:
+            goods_id = str(row.get("货品ID", ""))
+            ch_item = id_to_channel_item.get(goods_id, goods_id)
+            size_raw = item_to_code_size.get(ch_item, ("", ""))[1] or "ONESIZE"
 
         if brand.lower() == "barbour":
             size_norm = clean_size_for_barbour(size_raw)
@@ -124,6 +135,7 @@ def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 50
                 if any_keys:
                     info = prod[any_keys[0]]
                 else:
+                    skipped.append(raw)
                     continue
         else:
             # 其他品牌：key 使用原始尺码
@@ -133,6 +145,7 @@ def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 50
                 if any_keys:
                     info = prod[any_keys[0]]
                 else:
+                    skipped.append(raw)
                     continue
 
         if brand.lower() == "barbour":
@@ -166,6 +179,8 @@ def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 50
         }
         out_rows.append(row_out)
 
+    if skipped:
+        print(f"⚠️ 跳过 {len(skipped)} 条（货品名称解析不到编码，或 DB 中无该编码），样例：{skipped[:5]}")
     if not out_rows:
         print("⚠️ 没有可导出的记录")
         return
