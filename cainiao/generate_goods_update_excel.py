@@ -7,6 +7,7 @@ from config import BRAND_CONFIG
 from common.product.size_utils import clean_size_for_barbour
 from cainiao.barbour_goods_type import build_barbour_goods_name, get_package_spec
 from cainiao.generate_binding_goods_excel import _parse_code_size_from_goods_name, _fetch_maps
+from cainiao import toast_goods_type
 
 # ======================= ✅【参数配置区】=======================
 BRAND = "barbour"                     # 这里默认做 Barbour 服装
@@ -21,6 +22,7 @@ BRAND_MAP = {
     "clarks": "clarks其乐",
     "ecco": "ecco爱步",
     "geox": "geox健乐士",
+    "toast": "TOAST",
 }
 
 # 服装类关键字 → 中文款式（简单映射，可随时补充）
@@ -82,6 +84,8 @@ def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 50
             for code, sz, gender, title, cat, style_name in cur.fetchall():
                 key = (str(code), clean_size_for_barbour(str(sz)))
                 prod[key] = {"gender": gender, "title": title, "category": cat, "style_name": style_name}
+        elif brand.lower() == "toast":
+            pass   # 见下方 toast_map（按编码取，不按尺码）
         else:
             # 其他品牌：从各自的 inventory 表取（字段名以你现有结构为准）
             # 这里尽量做了字段兜底：product_name 为编码（你数据库里用它存 code），
@@ -104,6 +108,7 @@ def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 50
 
     # 单尺码商品货品名称里没有尺码：按 货品ID → inventory 取尺码（与绑定脚本一致）
     id_to_channel_item, item_to_code_size, _ = _fetch_maps(table_inventory, pg)
+    toast_map = toast_goods_type.fetch_toast_products(pg, table_inventory) if brand.lower() == "toast" else {}
 
     df = pd.read_excel(infile, dtype=str)
     out_rows = []
@@ -137,6 +142,11 @@ def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 50
                 else:
                     skipped.append(raw)
                     continue
+        elif brand.lower() == "toast":
+            info = toast_map.get(color_code)
+            if info is None:
+                skipped.append(raw)
+                continue
         else:
             # 其他品牌：key 使用原始尺码
             info = prod.get((color_code, size_raw))
@@ -158,6 +168,15 @@ def export_goods_excel_from_db(brand: str, goods_dir: Path, group_size: int = 50
                 brand_label=brand_label,
             )
             package = get_package_spec(goods_type)
+        elif brand.lower() == "toast":
+            new_name, goods_type = toast_goods_type.build_toast_goods_name(
+                color_code, size_raw,
+                style_category=info.get("category", ""),
+                title=info.get("title", ""),
+                gender=info.get("gender", ""),
+                brand_label=brand_label,
+            )
+            package = toast_goods_type.get_package_spec(goods_type)
         else:
             gender_std = normalize_gender(info.get("gender",""), info.get("title",""))
             style_zh = guess_style_zh(info.get("category","") or info.get("title",""))

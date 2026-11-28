@@ -12,6 +12,7 @@ from typing import Dict, Tuple
 from config import BRAND_CONFIG, PGSQL_CONFIG
 from common.product.size_utils import clean_size_for_barbour
 from cainiao.barbour_goods_type import build_barbour_goods_name
+from cainiao.toast_goods_type import build_toast_goods_name, fetch_toast_products
 
 # 菜鸟官方「单个商品绑定上传模板」：直接改模板 XML 填数据，生成的文件可直接导入
 # （pandas/openpyxl 保存的文件用内联字符串，鲸芽导入不认，见 _write_into_template）
@@ -41,6 +42,7 @@ BRAND_MAP  = {
     "ecco": "ecco爱步",
     "geox": "geox健乐士",
     "barbour": "Barbour",
+    "toast": "TOAST",
 }
 
 # 鞋类风格映射（保持原样）
@@ -61,7 +63,7 @@ def _parse_code_size_from_goods_name(name: str) -> Tuple[str, str]:
     """
     s = str(name or "")
     m_code = re.search(r"(?:颜色分类|颜色)\s*[:：]\s*([^;；]+)", s)
-    m_size = re.search(r"尺码\s*[:：]\s*([^;；]+)", s)
+    m_size = re.search(r"(?:尺码|尺寸)\s*[:：]\s*([^;；]+)", s)   # TOAST 部分商品用 “尺寸:”
     if not m_code:
         return "", ""
     return m_code.group(1).strip(), (m_size.group(1).strip() if m_size else "")
@@ -146,11 +148,13 @@ def _build_product_name(brand: str,
                         bp_title: str = "",
                         bp_gender: str = "",
                         bp_category: str = "",
-                        bp_style_name: str = "") -> str:
+                        bp_style_name: str = "",
+                        toast_info: Dict[str, str] = None) -> str:
     """
     统一生成 *商品名称
     - Barbour：按 编码前缀 → 英文名(style_name) → category 逐步匹配商品类型（服装/帽子/…），
       输出：{品牌}{男装/女装/男士/女士}{品类}{编码}尺码{size}（见 barbour_goods_type.py）
+    - TOAST：按 toast_inventory.style_category + 英文名匹配品类（见 toast_goods_type.py）
     - 其他品牌：保留鞋类逻辑：{品牌}{男鞋/女鞋}{风格}{编码}尺码{size}
     """
     b = (brand or "").lower()
@@ -162,6 +166,17 @@ def _build_product_name(brand: str,
             style_name=bp_style_name or bp_title,
             gender=bp_gender or gender_from_inv,
             category=bp_category,
+            brand_label=brand_label,
+        )
+        return name.replace("None", "")
+
+    if b == "toast":
+        info = toast_info or {}
+        name, _ = build_toast_goods_name(
+            code, size_raw,
+            style_category=info.get("category", ""),
+            title=info.get("title", ""),
+            gender=info.get("gender", "") or gender_from_inv,
             brand_label=brand_label,
         )
         return name.replace("None", "")
@@ -188,7 +203,7 @@ def generate_channel_binding_excel(brand: str, goods_dir: Path, debug: bool = Tr
     product_files = list(goods_dir.glob("货品导出*.xlsx"))
     if not product_files:
         raise FileNotFoundError("❌ 未找到以『货品导出』开头的 Excel 文件")
-    product_file = product_files[0]
+    product_file = max(product_files, key=lambda f: f.stat().st_mtime)   # 多个时用最新的
     relation_file = goods_dir / "商货品关系导出.xlsx"
     log(f"✓ 输入文件：{product_file}")
     log(f"✓ 关系文件：{relation_file}（存在={relation_file.exists()}）")
@@ -233,6 +248,12 @@ def generate_channel_binding_excel(brand: str, goods_dir: Path, debug: bool = Tr
         t = time.time()
         bp_map = _fetch_barbour_products(pgcfg)
         log(f"✓ 读取 barbour_products：{len(bp_map)} 条，用时 {time.time()-t:.2f}s")
+
+    # TOAST: 按编码预取 品类/英文名/性别
+    toast_map: Dict[str, Dict[str, str]] = {}
+    if brand == "toast":
+        toast_map = fetch_toast_products(pgcfg, table_name)
+        log(f"✓ 读取 {table_name}（按编码）：{len(toast_map)} 个编码")
 
     # 固定列
     unbound_df["*销售渠道"] = "淘分销"
@@ -323,7 +344,8 @@ def generate_channel_binding_excel(brand: str, goods_dir: Path, debug: bool = Tr
             bp_title=bp_title,
             bp_gender=bp_gender,
             bp_category=bp_category,
-            bp_style_name=bp_style_name
+            bp_style_name=bp_style_name,
+            toast_info=toast_map.get(code),
         )
 
     t = time.time()

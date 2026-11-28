@@ -12,7 +12,7 @@ INPUT_SHEET_NAME = "file"
 
 # 输入文件名前缀，以及拆分结果的文件名结尾（查找输入文件时要排除）
 INPUT_FILE_PREFIX = "货品导出"
-SPLIT_OUTPUT_PATTERN = re.compile(r"_(camper|barbour|ecco|clarks|geox|other)$")
+SPLIT_OUTPUT_PATTERN = re.compile(r"_(camper|barbour|toast|ecco|clarks|geox|other)$")
 
 
 def _extract_code(product_name: str) -> str | None:
@@ -32,7 +32,10 @@ def _detect_brand(code: str) -> str:
     """
     根据编码格式判断品牌：
       - 含 '-'                      → camper   (如 K201636-002, 25WNTSK-002)
-      - 前三位全字母（无 '-'）        → barbour  (如 MOL0726GN87)
+      - 3字母+4数字+2字母+2~3数字     → barbour  (如 MOL0726GN87, LBA0433BR71)
+      - 5字母+2数字+4字母             → toast    (如 WTRWS14OLLE, LTRWW09CHAR)
+        或 1数字+8字母                →          (如 6SWAISILV)
+        注意：不能只看"前三位是字母"，TOAST 编码也是字母开头（WTR/LTR/WJK…），会被误判成 barbour
       - 11 位纯数字                  → ecco     (如 06956301378)
       - 8  位纯数字                  → clarks   (如 26170510)
       - 16位字母数字、首字母开头        → geox     (如 U56MXB00022C1018, D654JF0TU11C1122)
@@ -40,8 +43,10 @@ def _detect_brand(code: str) -> str:
     """
     if "-" in code:
         return "camper"
-    if re.match(r"[A-Za-z]{3}", code):
+    if re.fullmatch(r"[A-Za-z]{3}\d{4}[A-Za-z]{2}\d{2,3}", code):
         return "barbour"
+    if re.fullmatch(r"[A-Za-z]{5}\d{2}[A-Za-z]{4}|\d[A-Za-z]{8}", code):
+        return "toast"
     if re.fullmatch(r"\d{11}", code):
         return "ecco"
     if re.fullmatch(r"\d{8}", code):
@@ -56,7 +61,7 @@ def split_excel_by_brand(input_path: str | Path, output_dir: str | Path) -> None
     将货品导出 Excel 按品牌拆分成多个文件。
 
     品牌判断逻辑（基于 "货品名称" 列）：
-      - 以 "颜色分类:" 开头 → 解析编码，按格式区分 camper / ecco / clarks / other
+      - 以 "颜色分类:" 开头 → 解析编码，按格式区分 camper / barbour / toast / ecco / clarks / geox / other
       - 不以 "颜色分类:" 开头（已处理行）→ 直接归入 other，不重复解析
 
     Parameters

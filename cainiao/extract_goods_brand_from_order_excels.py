@@ -26,6 +26,7 @@ def detect_brand_from_name(name: str) -> str:
     - clarks
     - geox
     - barbour
+    - toast
     """
     if not isinstance(name, str):
         return ""
@@ -42,6 +43,8 @@ def detect_brand_from_name(name: str) -> str:
         return "geox"
     if "barbour" in lower:
         return "barbour"
+    if "toast" in lower:
+        return "toast"
 
     return ""
 
@@ -72,6 +75,7 @@ BRAND_TABLES = {
     "clarks": "clarks_inventory",
     "geox": "geox_inventory",
     "barbour": "barbour_inventory",
+    "toast": "toast_inventory",
 }
 
 
@@ -190,14 +194,15 @@ def process_one_file(filepath):
 # -----------------------------------------------------------
 # ✅ 主函数：支持 pipeline 调用
 # -----------------------------------------------------------
-def extract_goods_brand_info(input_dir: str, shoes_output: str, barbour_output: str):
+def extract_goods_brand_info(input_dir: str, shoes_output: str, barbour_output: str, toast_output: str):
     """
-    从 input_dir 中批量解析 Excel 文件，输出两个 Excel：
+    从 input_dir 中批量解析 Excel 文件，输出三个 Excel：
     - camper/ecco/clarks/geox --> shoes_output（按 brand 排序）
     - barbour --> barbour_output
+    - toast --> toast_output
 
-    返回 (shoes_written, barbour_written, audit)：
-    - shoes_written/barbour_written：对应文件本次是否实际生成，供调用方判断是否跳过后续步骤
+    返回 (shoes_written, barbour_written, toast_written, audit)：
+    - *_written：对应文件本次是否实际生成，供调用方判断是否跳过后续步骤
     - audit：{"order_ids", "issues", "ignored_files"}，供 report_hscode_audit 核对
     """
 
@@ -210,7 +215,7 @@ def extract_goods_brand_info(input_dir: str, shoes_output: str, barbour_output: 
 
     if not files:
         print(f"[ERROR] 没找到 Excel 文件: {input_dir}")
-        return False, False, audit
+        return False, False, False, audit
 
     print(f"[INFO] 在目录 {input_dir} 中找到 {len(files)} 个文件。")
 
@@ -225,7 +230,7 @@ def extract_goods_brand_info(input_dir: str, shoes_output: str, barbour_output: 
 
     if not all_results:
         print("[WARN] 没有任何数据被解析。")
-        return False, False, audit
+        return False, False, False, audit
 
     final_df = pd.concat(all_results, ignore_index=True)
 
@@ -256,6 +261,7 @@ def extract_goods_brand_info(input_dir: str, shoes_output: str, barbour_output: 
 
     df_shoes = final_df[final_df["brand"].isin(shoe_brands)].copy()
     df_barbour = final_df[final_df["brand"] == "barbour"].copy()
+    df_toast = final_df[final_df["brand"] == "toast"].sort_values(by=["货品id"])
 
     # ✅ 按 brand 分类展示：简单做法是排序，让同品牌聚在一起
     if not df_shoes.empty:
@@ -279,7 +285,22 @@ def extract_goods_brand_info(input_dir: str, shoes_output: str, barbour_output: 
         df_barbour.to_excel(barbour_output, sheet_name="sheet1", index=False)
         print(f"[DONE] Barbour 导出 → {barbour_output}，行数: {len(df_barbour)}")
 
-    return not df_shoes.empty, not df_barbour.empty, audit
+    if df_toast.empty:
+        print("[INFO] 没有 TOAST 数据。")
+    else:
+        os.makedirs(os.path.dirname(toast_output), exist_ok=True)
+        df_toast.to_excel(toast_output, sheet_name="sheet1", index=False)
+        print(f"[DONE] TOAST 导出 → {toast_output}，行数: {len(df_toast)}")
+
+    # 识别出品牌、但三个分组都不收的（如 reiss），记入异常，不要悄悄丢掉
+    handled = shoe_brands | {"barbour", "toast"}
+    unsupported = final_df[~final_df["brand"].isin(handled)]
+    audit["issues"].extend(
+        hscode_issue(r["货品id"], r["brand"], "识别品牌", f"品牌 {r['brand']} 暂不支持海关备案")
+        for _, r in unsupported.iterrows()
+    )
+
+    return not df_shoes.empty, not df_barbour.empty, not df_toast.empty, audit
 
 
 # -----------------------------------------------------------
@@ -293,9 +314,10 @@ def parse_args():
     parser.add_argument("--input-dir", required=True, help="输入 Excel 所在目录")
     parser.add_argument("--shoes-output", required=True, help="鞋类品牌输出 Excel 路径")
     parser.add_argument("--barbour-output", required=True, help="Barbour 输出 Excel 路径")
+    parser.add_argument("--toast-output", required=True, help="TOAST 输出 Excel 路径")
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
-    extract_goods_brand_info(args.input_dir, args.shoes_output, args.barbour_output)
+    extract_goods_brand_info(args.input_dir, args.shoes_output, args.barbour_output, args.toast_output)

@@ -2,6 +2,7 @@ from pathlib import Path
 from cainiao.extract_goods_brand_from_order_excels import extract_goods_brand_info
 from cainiao.generate_hscode_excel_barbour import generate_barbour_hscode
 from cainiao.generate_hscode_excel_shoes import generate_shoe_hscode
+from cainiao.generate_hscode_excel_toast import generate_toast_hscode
 from cainiao.hscode_audit import report_hscode_audit
 from config import DOWNLOADS_DIR
 
@@ -11,10 +12,11 @@ def pipeline_jingya():
 
     output_dir = r"D:\TB\taofenxiao\海关备案"
 
-    shoes_written, barbour_written, audit = extract_goods_brand_info(
+    shoes_written, barbour_written, toast_written, audit = extract_goods_brand_info(
         input_dir=str(DOWNLOADS_DIR),
         shoes_output=r"D:\TB\taofenxiao\海关备案\shoes.xlsx",
-        barbour_output=r"D:\TB\taofenxiao\海关备案\barbour.xlsx"
+        barbour_output=r"D:\TB\taofenxiao\海关备案\barbour.xlsx",
+        toast_output=r"D:\TB\taofenxiao\海关备案\toast.xlsx",
     )
 
     generated_ids = set()
@@ -44,6 +46,18 @@ def pipeline_jingya():
         issues += result["issues"]
     else:
         print("[INFO] 本次没有 Barbour 订单，跳过 generate_barbour_hscode。")
+
+    # TOAST：HSCODE 参照 Barbour，原产国统一越南（见 generate_hscode_excel_toast.py）
+    if toast_written:
+        result = generate_toast_hscode(
+            input_list=r"D:\TB\taofenxiao\海关备案\toast.xlsx",
+            output_dir=output_dir,
+            sheet_name="sheet1"
+        )
+        generated_ids |= result["generated_ids"]
+        issues += result["issues"]
+    else:
+        print("[INFO] 本次没有 TOAST 订单，跳过 generate_toast_hscode。")
 
     report_hscode_audit(output_dir, audit["order_ids"], generated_ids, issues, audit["ignored_files"])
 

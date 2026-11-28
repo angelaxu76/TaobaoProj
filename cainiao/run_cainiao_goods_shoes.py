@@ -4,9 +4,9 @@ from cainiao.generate_binding_goods_excel_shoes import generate_channel_binding_
 
 
 # 👇 选择品牌（取消注释其中一行）
-# BRAND = "camper"
+BRAND = "camper"
 # BRAND = "ecco"
-BRAND = "clarks"
+# BRAND = "clarks"
 # BRAND = "geox"
 
 GOODS_DIR = Path("D:/TB/taofenxiao/goods")
