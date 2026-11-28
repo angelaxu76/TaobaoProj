@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 import re
 import time
+import zipfile
+from xml.sax.saxutils import escape as xml_escape
 import psycopg2
 import pandas as pd
 import openpyxl
@@ -11,12 +13,12 @@ from config import BRAND_CONFIG, PGSQL_CONFIG
 from common.product.size_utils import clean_size_for_barbour
 from cainiao.barbour_goods_type import build_barbour_goods_name
 
-# 菜鸟官方「单个商品绑定上传模板」：直接往模板里填数据，生成的文件可直接导入
-# （用 pandas 另存的新文件菜鸟导入不认，需要手工复制到模板里）
+# 菜鸟官方「单个商品绑定上传模板」：直接改模板 XML 填数据，生成的文件可直接导入
+# （pandas/openpyxl 保存的文件用内联字符串，鲸芽导入不认，见 _write_into_template）
 TEMPLATE_FILE = Path("D:/TB/taofenxiao/模版文件/单个商品绑定上传模板.xlsx")
 TEMPLATE_SHEET = "单个商品绑定"
-# 第 1 行表头、第 2 行模板自带提示、第 3 行再写一行提示（菜鸟导入跳过前 3 行，少这一行会导入失败），
-# 数据从第 4 行开始
+# 第 1 行表头、第 2/3 行模板自带提示（菜鸟导入跳过前 3 行），数据从第 4 行开始
+# TEMPLATE_TIP_* 仅在找不到模板、走 pandas 直接导出时使用
 TEMPLATE_TIP_ROW = 3
 TEMPLATE_DATA_START_ROW = 4
 TEMPLATE_TIP_VALUES = {
@@ -363,23 +365,104 @@ def generate_channel_binding_excel(brand: str, goods_dir: Path, debug: bool = Tr
     return output_file
 
 def _write_into_template(final_df: pd.DataFrame, output_file: Path) -> None:
-    """复制官方模板：保留表头/提示行/其他 sheet，清掉第 3 行起的旧内容，写第 3 行提示，再按文本格式写入新数据"""
-    wb = openpyxl.load_workbook(TEMPLATE_FILE)
-    ws = wb[TEMPLATE_SHEET]
-    if ws.max_row >= TEMPLATE_TIP_ROW:
-        ws.delete_rows(TEMPLATE_TIP_ROW, ws.max_row - TEMPLATE_TIP_ROW + 1)
+    """
+    直接改模板 xlsx 的 XML，生成和 Excel 手工粘贴后一样结构的文件。
 
-    header = [c.value for c in ws[1]]
-    col_idx = {name: i + 1 for i, name in enumerate(header) if name}
-    for name, v in TEMPLATE_TIP_VALUES.items():
-        ws.cell(row=TEMPLATE_TIP_ROW, column=col_idx[name], value=v)
-    for r, rec in enumerate(final_df.to_dict("records"), start=TEMPLATE_DATA_START_ROW):
-        for name in TEMPLATE_COLUMNS:
-            v = rec.get(name)
-            cell = ws.cell(row=r, column=col_idx[name], value="" if pd.isna(v) else str(v))
-            cell.number_format = "@"
-    wb.active = wb.sheetnames.index(TEMPLATE_SHEET)
-    wb.save(output_file)
+    不能用 openpyxl 保存：它把字符串写成内联字符串（inlineStr）、不生成 sharedStrings.xml，
+    单元格内容虽然一样，但鲸芽/菜鸟导入读不出来。这里只替换 sheet1 第 4 行起的数据行和
+    sharedStrings.xml，模板第 1~3 行（表头/提示）和其他文件逐字节保留。
+    """
+    # 用 openpyxl 只读表头，确认列顺序（不保存）
+    wb = openpyxl.load_workbook(TEMPLATE_FILE, read_only=True)
+    header = [c.value for c in next(wb[TEMPLATE_SHEET].iter_rows(min_row=1, max_row=1))]
+    wb.close()
+    col_letters = {name: chr(ord("A") + i) for i, name in enumerate(header) if name}
+    missing = [n for n in TEMPLATE_COLUMNS if n not in col_letters]
+    if missing:
+        raise ValueError(f"模板表头缺少列：{missing}，实际表头：{header}")
+    cols = sorted(TEMPLATE_COLUMNS, key=lambda n: col_letters[n])
+    last_col = col_letters[cols[-1]]
+
+    with zipfile.ZipFile(TEMPLATE_FILE) as zin:
+        # 定位目标 sheet 的 XML 路径（workbook.xml 的 r:id → workbook.xml.rels 的 Target）
+        wb_xml = zin.read("xl/workbook.xml").decode("utf-8")
+        rels_xml = zin.read("xl/_rels/workbook.xml.rels").decode("utf-8")
+        rid = re.search(rf'<sheet [^>]*name="{re.escape(TEMPLATE_SHEET)}"[^>]*r:id="([^"]+)"', wb_xml).group(1)
+        target = re.search(rf'<Relationship [^>]*Id="{rid}"[^>]*Target="([^"]+)"', rels_xml)
+        if not target:
+            target = re.search(rf'<Relationship [^>]*Target="([^"]+)"[^>]*Id="{rid}"', rels_xml)
+        sheet_path = "xl/" + target.group(1).lstrip("/").replace("xl/", "", 1)
+
+        sheet_xml = zin.read(sheet_path).decode("utf-8")
+        sst_xml = zin.read("xl/sharedStrings.xml").decode("utf-8")
+
+        # —— sharedStrings：保留模板原有条目，追加新字符串 ——
+        unique_count = len(re.findall(r"<si>", sst_xml))
+        new_si, index = [], {}
+
+        def sst_idx(text: str) -> int:
+            nonlocal unique_count
+            if text not in index:
+                index[text] = unique_count
+                unique_count += 1
+                sp = ' xml:space="preserve"' if text != text.strip() else ""
+                new_si.append(f"<si><t{sp}>{xml_escape(text)}</t></si>")
+            return index[text]
+
+        # —— 数据行：样式沿用模板示例数据行（第 4 行）的 s 值 ——
+        m_tpl_row = re.search(rf'<row r="{TEMPLATE_DATA_START_ROW}"[^>]*>', sheet_xml)
+        row_attrs = re.search(r'(?: s="\d+" customFormat="1")', m_tpl_row.group(0)) if m_tpl_row else None
+        cell_style = re.search(rf'<c r="A{TEMPLATE_DATA_START_ROW}" s="(\d+)"', sheet_xml)
+        cell_s = f' s="{cell_style.group(1)}"' if cell_style else ""
+        row_s = row_attrs.group(0) if row_attrs else ""
+
+        rows_xml, n_refs = [], 0
+        recs = final_df.to_dict("records")
+        for r, rec in enumerate(recs, start=TEMPLATE_DATA_START_ROW):
+            cells = []
+            for name in cols:
+                v = rec.get(name)
+                v = "" if v is None or (isinstance(v, float) and pd.isna(v)) else str(v)
+                ref = f"{col_letters[name]}{r}"
+                if v == "":
+                    cells.append(f'<c r="{ref}"{cell_s}/>')
+                else:
+                    cells.append(f'<c r="{ref}"{cell_s} t="s"><v>{sst_idx(v)}</v></c>')
+                    n_refs += 1
+            rows_xml.append(f'<row r="{r}" spans="1:{len(header)}"{row_s}>{"".join(cells)}</row>')
+
+        # 去掉模板第 4 行起的示例数据，换成新数据
+        head, rest = sheet_xml.split("<sheetData>", 1)
+        body, tail = rest.split("</sheetData>", 1)
+        kept = "".join(
+            m.group(0) for m in re.finditer(r"<row [^>]*?(?:/>|>.*?</row>)", body)
+            if int(re.search(r'r="(\d+)"', m.group(0)).group(1)) < TEMPLATE_DATA_START_ROW
+        )
+        last_row = TEMPLATE_DATA_START_ROW + len(recs) - 1 if recs else TEMPLATE_DATA_START_ROW - 1
+        head = re.sub(r'<dimension ref="[^"]*"/>', f'<dimension ref="A1:{last_col}{last_row}"/>', head)
+        new_sheet_xml = f"{head}<sheetData>{kept}{''.join(rows_xml)}</sheetData>{tail}"
+
+        # sharedStrings 的 count = 所有 t="s" 引用数
+        kept_refs = len(re.findall(r't="s"', kept))
+        other_refs = 0
+        for info in zin.infolist():
+            if info.filename.startswith("xl/worksheets/sheet") and info.filename != sheet_path:
+                other_refs += len(re.findall(r't="s"', zin.read(info.filename).decode("utf-8")))
+        total_count = kept_refs + n_refs + other_refs
+        new_sst_xml = re.sub(r'count="\d+"', f'count="{total_count}"', sst_xml, count=1)
+        new_sst_xml = re.sub(r'uniqueCount="\d+"', f'uniqueCount="{unique_count}"', new_sst_xml, count=1)
+        new_sst_xml = new_sst_xml.replace("</sst>", "".join(new_si) + "</sst>")
+
+        # 其他文件逐字节复制，顺序/压缩方式与模板一致
+        with zipfile.ZipFile(output_file, "w") as zout:
+            for info in zin.infolist():
+                if info.filename == sheet_path:
+                    data = new_sheet_xml.encode("utf-8")
+                elif info.filename == "xl/sharedStrings.xml":
+                    data = new_sst_xml.encode("utf-8")
+                else:
+                    data = zin.read(info.filename)
+                zout.writestr(info, data, compress_type=info.compress_type)
 
 
 if __name__ == "__main__":
