@@ -36,7 +36,9 @@ BRAND_STRATEGY = {
     # "camper": "ladder_depth_ratio",         # ← 全面打折期，改回时取消注释并注释上一行
     "ecco":   "discount_priority",
     "geox":   "discount_priority",
-    "clarks": "ladder_wrap_discount_priority",  # 阶梯见 discount_ladder_config_v2.BRAND_DISCOUNT_LADDER["clarks"]
+    # "clarks": "ladder_wrap_discount_priority",  # 阶梯见 discount_ladder_config_v2.BRAND_DISCOUNT_LADDER["clarks"]
+
+    "clarks": "discount_priority",  
 }
 
 
